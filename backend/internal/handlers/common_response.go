@@ -6,15 +6,20 @@ import (
 )
 
 const (
-	ResourceAccessTokens = "access_tokens"
-	ResourceAuth         = "auth"
-	ResourceResponses    = "responses"
-	ResourceUsers        = "users"
+	ResourceAccessTokens    = "access_tokens"
+	ResourceAuth            = "auth"
+	ResourceProjectTypes    = "project_types"
+	ResourceResponses       = "responses"
+	ResourceTaskFrequencies = "task_frequencies"
+	ResourceTaskPriorities  = "task_priorities"
+	ResourceTaskStatuses    = "task_statuses"
+	ResourceUsers           = "users"
 
 	ActionAuthenticate              = "authenticate"
 	ActionCreate                    = "create"
 	ActionGenerate                  = "generate"
 	ActionGet                       = "get"
+	ActionList                      = "list"
 	ActionMarshal                   = "marshal"
 	ActionRevoke                    = "revoke"
 	ActionUpdateBasicInfo           = "update_basic_info"
@@ -41,7 +46,11 @@ var (
 	ErrSpecAccessTokensGenerateFailed = NewFailureErrSpec(ResourceAccessTokens, ActionGenerate, "Failed to generate access token")
 	ErrSpecAccessTokensRevokeFailed   = NewFailureErrSpec(ResourceAccessTokens, ActionRevoke, "Failed to revoke access token")
 	ErrSpecAuthAuthenticateFailed     = NewFailureErrSpec(ResourceAuth, ActionAuthenticate, "Failed to authenticate")
+	ErrSpecProjectTypesListFailed     = NewFailureErrSpec(ResourceProjectTypes, ActionList, "Failed to list project types")
 	ErrSpecResponsesMarshalFailed     = NewFailureErrSpec(ResourceResponses, ActionMarshal, "Failed to marshal response")
+	ErrSpecTaskFrequenciesListFailed  = NewFailureErrSpec(ResourceTaskFrequencies, ActionList, "Failed to list task frequencies")
+	ErrSpecTaskPrioritiesListFailed   = NewFailureErrSpec(ResourceTaskPriorities, ActionList, "Failed to list task priorities")
+	ErrSpecTaskStatusesListFailed     = NewFailureErrSpec(ResourceTaskStatuses, ActionList, "Failed to list task statuses")
 	ErrSpecUsersCreateFailed          = NewFailureErrSpec(ResourceUsers, ActionCreate, "Failed to create user")
 	ErrSpecUsersGetFailed             = NewFailureErrSpec(ResourceUsers, ActionGet, "Failed to get user")
 	ErrSpecUsersUpdateBasicInfoFailed = NewFailureErrSpec(ResourceUsers, ActionUpdateBasicInfo, "Failed to update user")

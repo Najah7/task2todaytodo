@@ -12,6 +12,10 @@ type ProjectRepository interface {
 	Delete(ctx context.Context, id ProjectID) error
 }
 
+type ProjectTypeRepository interface {
+	List(ctx context.Context) ([]ProjectType, error)
+}
+
 type TaskRepository interface {
 	Get(ctx context.Context, id TaskID) (Task, error)
 	GetByFrequency(ctx context.Context, frequency TaskFrequency) ([]Task, error)
@@ -23,6 +27,18 @@ type TaskRepository interface {
 	Create(ctx context.Context, task Task) (Task, error)
 	Update(ctx context.Context, task Task) (Task, error)
 	Delete(ctx context.Context, id TaskID) error
+}
+
+type TaskFrequencyRepository interface {
+	List(ctx context.Context) ([]TaskFrequency, error)
+}
+
+type TaskPriorityRepository interface {
+	List(ctx context.Context) ([]TaskPriority, error)
+}
+
+type TaskStatusRepository interface {
+	List(ctx context.Context) ([]TaskStatus, error)
 }
 
 type TaskScheduleRepository interface {

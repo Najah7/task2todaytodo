@@ -31,6 +31,10 @@ func main() {
 
 	userHandler := handlers.NewUserHandler(app.Service.User, ulidGen)
 	accessTokenHandler := handlers.NewAccessTokenHandler(app.Service.AccessToken, app.Service.User)
+	projectTypeHandler := handlers.NewProjectTypeHandler(app.Service.ProjectType)
+	taskFrequencyHandler := handlers.NewTaskFrequencyHandler(app.Service.TaskFrequency)
+	taskPriorityHandler := handlers.NewTaskPriorityHandler(app.Service.TaskPriority)
+	taskStatusHandler := handlers.NewTaskStatusHandler(app.Service.TaskStatus)
 
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("http://localhost:8080/swagger/doc.json"),
@@ -43,6 +47,10 @@ func main() {
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/users", userHandler.Create)
 		r.Post("/access-tokens", accessTokenHandler.Generate)
+		r.Get("/projects/types", projectTypeHandler.List)
+		r.Get("/tasks/frequencies", taskFrequencyHandler.List)
+		r.Get("/tasks/priorities", taskPriorityHandler.List)
+		r.Get("/tasks/statuses", taskStatusHandler.List)
 
 		authRoutes := r.With(middlewares.AuthMiddleware(*app.Service.AccessToken))
 		authRoutes.Get("/users/me", userHandler.Get)
