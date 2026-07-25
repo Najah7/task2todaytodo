@@ -18,7 +18,7 @@
                 ],
                 "description": "Revokes the current access token from the Authorization header.",
                 "tags": [
-                    "Auth"
+                    "Access Tokens"
                 ],
                 "summary": "Revoke access token",
                 "responses": {
@@ -53,7 +53,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Access Tokens"
                 ],
                 "summary": "Generate access token",
                 "parameters": [
@@ -102,7 +102,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Monitoring"
+                    "Monitor"
                 ],
                 "summary": "Check API health",
                 "responses": {
@@ -128,7 +128,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Task Master Data"
+                    "Projects"
                 ],
                 "summary": "List project types",
                 "responses": {
@@ -154,7 +154,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Task Master Data"
+                    "Tasks"
                 ],
                 "summary": "List task frequencies",
                 "responses": {
@@ -180,7 +180,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Task Master Data"
+                    "Tasks"
                 ],
                 "summary": "List task priorities",
                 "responses": {
@@ -206,7 +206,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Task Master Data"
+                    "Tasks"
                 ],
                 "summary": "List task statuses",
                 "responses": {
@@ -235,7 +235,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Users"
                 ],
                 "summary": "Create user",
                 "parameters": [
@@ -283,7 +283,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Users"
                 ],
                 "summary": "Get current user",
                 "responses": {
@@ -321,7 +321,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Users"
                 ],
                 "summary": "Update current user basic info",
                 "parameters": [
@@ -375,7 +375,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Users"
                 ],
                 "summary": "Update current user password",
                 "parameters": [
