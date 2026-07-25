@@ -7,7 +7,6 @@ import (
 )
 
 var (
-	ErrUserIDEmpty             = errors.New("user ID cannot be empty")
 	ErrPasswordMustBeHashed    = errors.New("password must be hashed")
 	ErrPasswordMustNotBeHashed = errors.New("password must not be hashed")
 	ErrFirstNameRequired       = errors.New("first name is required")
