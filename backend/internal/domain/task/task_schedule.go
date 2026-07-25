@@ -12,6 +12,8 @@ var (
 	ErrTaskScheduleIDEmpty                 = errors.New("task schedule ID cannot be empty")
 	ErrTaskScheduleTaskIDEmpty             = errors.New("task schedule task ID cannot be empty")
 	ErrTaskScheduleTitleEmpty              = errors.New("task schedule title cannot be empty")
+	ErrTaskScheduleStartAtEmpty            = errors.New("task schedule start time must be set")
+	ErrTaskScheduleEndAtEmpty              = errors.New("task schedule end time must be set")
 	ErrTaskScheduleEndAtMustBeAfterStartAt = errors.New("task schedule end time must be after start time")
 )
 
@@ -34,11 +36,15 @@ func NewTaskSchedule(
 	id TaskScheduleID,
 	taskID TaskID,
 	title string,
+	startAt time.Time,
+	endAt time.Time,
 ) (TaskSchedule, error) {
 	schedule := TaskSchedule{
-		ID:     id,
-		TaskID: taskID,
-		Title:  title,
+		ID:      id,
+		TaskID:  taskID,
+		Title:   title,
+		StartAt: startAt,
+		EndAt:   endAt,
 	}
 	return schedule, schedule.Validate()
 }
@@ -115,7 +121,13 @@ func (s TaskSchedule) Validate() error {
 	if strings.TrimSpace(s.Title) == "" {
 		return ErrTaskScheduleTitleEmpty
 	}
-	if !s.StartAt.IsZero() && !s.EndAt.IsZero() && !s.EndAt.After(s.StartAt) {
+	if s.StartAt.IsZero() {
+		return ErrTaskScheduleStartAtEmpty
+	}
+	if s.EndAt.IsZero() {
+		return ErrTaskScheduleEndAtEmpty
+	}
+	if !s.EndAt.After(s.StartAt) {
 		return ErrTaskScheduleEndAtMustBeAfterStartAt
 	}
 

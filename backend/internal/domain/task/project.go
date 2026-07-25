@@ -10,6 +10,8 @@ var (
 	ErrProjectIDEmpty                 = errors.New("project ID cannot be empty")
 	ErrProjectUserIDEmpty             = errors.New("project user ID cannot be empty")
 	ErrProjectTitleEmpty              = errors.New("project title cannot be empty")
+	ErrProjectStartAtEmpty            = errors.New("project start time must be set")
+	ErrProjectEndAtEmpty              = errors.New("project end time must be set")
 	ErrProjectProgressInvalid         = errors.New("project progress must be between 0 and 100")
 	ErrProjectEndAtMustBeAfterStartAt = errors.New("project end time must be after start time")
 )
@@ -33,12 +35,16 @@ func NewProject(
 	userID UserID,
 	projectType ProjectType,
 	title string,
+	startAt time.Time,
+	endAt time.Time,
 ) (Project, error) {
 	p := Project{
-		ID:     id,
-		UserID: userID,
-		Type:   projectType,
-		Title:  title,
+		ID:      id,
+		UserID:  userID,
+		Type:    projectType,
+		Title:   title,
+		StartAt: startAt,
+		EndAt:   endAt,
 	}
 	return p, p.Validate()
 }
@@ -122,10 +128,16 @@ func (p Project) Validate() error {
 	if strings.TrimSpace(p.Title) == "" {
 		return ErrProjectTitleEmpty
 	}
+	if p.StartAt.IsZero() {
+		return ErrProjectStartAtEmpty
+	}
+	if p.EndAt.IsZero() {
+		return ErrProjectEndAtEmpty
+	}
 	if p.Progress < 0 || p.Progress > 100 {
 		return ErrProjectProgressInvalid
 	}
-	if !p.StartAt.IsZero() && !p.EndAt.IsZero() && !p.EndAt.After(p.StartAt) {
+	if !p.EndAt.After(p.StartAt) {
 		return ErrProjectEndAtMustBeAfterStartAt
 	}
 
