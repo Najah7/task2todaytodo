@@ -13,7 +13,7 @@ var (
 	ErrTodoItemTaskIDEmpty       = errors.New("todo item task ID cannot be empty")
 	ErrTodoItemTitleEmpty        = errors.New("todo item title cannot be empty")
 	ErrTodoItemPositionLess      = errors.New("todo item position must be greater than or equal to 0")
-	ErrTodoItemIntervalWeeksLess = errors.New("todo item interval weeks must be greater than or equal to 1")
+	ErrTodoItemIntervalWeeksLess = errors.New("todo item interval weeks must be greater than or equal to 0")
 )
 
 type TodoItemID shared.ID
@@ -26,6 +26,7 @@ type TodoItem struct {
 	Completed     bool
 	Position      int
 	IntervalWeeks int
+	Frequencies   TaskFrequencies
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -52,6 +53,7 @@ func NewTodoItemWithDetails(
 	completed bool,
 	position int,
 	intervalWeeks int,
+	frequencies TaskFrequencies,
 ) (TodoItem, error) {
 	item := TodoItem{
 		ID:            id,
@@ -61,6 +63,7 @@ func NewTodoItemWithDetails(
 		Completed:     completed,
 		Position:      position,
 		IntervalWeeks: intervalWeeks,
+		Frequencies:   frequencies,
 	}
 	return item, item.Validate()
 }
@@ -73,6 +76,7 @@ func NewExistingTodoItem(
 	completed bool,
 	position int,
 	intervalWeeks int,
+	frequencies TaskFrequencies,
 	createdAt time.Time,
 	updatedAt time.Time,
 ) (TodoItem, error) {
@@ -84,6 +88,7 @@ func NewExistingTodoItem(
 		Completed:     completed,
 		Position:      position,
 		IntervalWeeks: intervalWeeks,
+		Frequencies:   frequencies,
 		CreatedAt:     createdAt,
 		UpdatedAt:     updatedAt,
 	}
@@ -115,9 +120,45 @@ func (i TodoItem) Validate() error {
 	if i.Position < 0 {
 		return ErrTodoItemPositionLess
 	}
-	if i.IntervalWeeks < 1 {
+	if i.IntervalWeeks < 0 {
 		return ErrTodoItemIntervalWeeksLess
 	}
 
 	return nil
+}
+
+func (i TodoItem) IsWeekly() bool {
+	return i.IntervalWeeks == WeeklyIntervalWeeks
+}
+
+func (i TodoItem) IsEveryWeekday() bool {
+	return i.Frequencies.IsWeekday() && i.IsWeekly()
+}
+
+func (i TodoItem) IsEveryWeekend() bool {
+	return i.Frequencies.IsWeekend() && i.IsWeekly()
+}
+
+func (i TodoItem) IsBiWeekly() bool {
+	return i.IntervalWeeks == BiWeeklyIntervalWeeks
+}
+
+func (i TodoItem) IsMonthly() bool {
+	return i.IntervalWeeks == MonthlyIntervalWeeks
+}
+
+func (i TodoItem) IsQuarterly() bool {
+	return i.IntervalWeeks == QuarterlyIntervalWeeks
+}
+
+func (i TodoItem) IsSemiAnnually() bool {
+	return i.IntervalWeeks == SemiAnnualIntervalWeeks
+}
+
+func (i TodoItem) IsAnnually() bool {
+	return i.IntervalWeeks == AnnualIntervalWeeks
+}
+
+func (i TodoItem) IsOnce() bool {
+	return i.IntervalWeeks == 0
 }

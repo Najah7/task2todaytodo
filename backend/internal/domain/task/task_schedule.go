@@ -12,7 +12,7 @@ var (
 	ErrTaskScheduleIDEmpty                 = errors.New("task schedule ID cannot be empty")
 	ErrTaskScheduleTaskIDEmpty             = errors.New("task schedule task ID cannot be empty")
 	ErrTaskScheduleTitleEmpty              = errors.New("task schedule title cannot be empty")
-	ErrTaskScheduleIntervalWeeksLess       = errors.New("task schedule interval weeks must be greater than or equal to 1")
+	ErrTaskScheduleIntervalWeeksLess       = errors.New("task schedule interval weeks must be greater than or equal to 0")
 	ErrTaskScheduleStartAtEmpty            = errors.New("task schedule start time must be set")
 	ErrTaskScheduleEndAtEmpty              = errors.New("task schedule end time must be set")
 	ErrTaskScheduleEndAtMustBeAfterStartAt = errors.New("task schedule end time must be after start time")
@@ -27,6 +27,7 @@ type TaskSchedule struct {
 	Description   string
 	Location      string
 	IntervalWeeks int
+	Frequencies   TaskFrequencies
 	StartAt       time.Time
 	EndAt         time.Time
 	DueAt         time.Time
@@ -59,6 +60,7 @@ func NewTaskScheduleWithDetails(
 	description string,
 	location string,
 	intervalWeeks int,
+	frequencies TaskFrequencies,
 	startAt time.Time,
 	endAt time.Time,
 	dueAt time.Time,
@@ -70,6 +72,7 @@ func NewTaskScheduleWithDetails(
 		Description:   description,
 		Location:      location,
 		IntervalWeeks: intervalWeeks,
+		Frequencies:   frequencies,
 		StartAt:       startAt,
 		EndAt:         endAt,
 		DueAt:         dueAt,
@@ -84,6 +87,7 @@ func NewExistingTaskSchedule(
 	description string,
 	location string,
 	intervalWeeks int,
+	frequencies TaskFrequencies,
 	startAt time.Time,
 	endAt time.Time,
 	dueAt time.Time,
@@ -97,6 +101,7 @@ func NewExistingTaskSchedule(
 		Description:   description,
 		Location:      location,
 		IntervalWeeks: intervalWeeks,
+		Frequencies:   frequencies,
 		StartAt:       startAt,
 		EndAt:         endAt,
 		DueAt:         dueAt,
@@ -128,7 +133,7 @@ func (s TaskSchedule) Validate() error {
 	if strings.TrimSpace(s.Title) == "" {
 		return ErrTaskScheduleTitleEmpty
 	}
-	if s.IntervalWeeks < 1 {
+	if s.IntervalWeeks < 0 {
 		return ErrTaskScheduleIntervalWeeksLess
 	}
 	if s.StartAt.IsZero() {
@@ -142,4 +147,40 @@ func (s TaskSchedule) Validate() error {
 	}
 
 	return nil
+}
+
+func (s TaskSchedule) IsWeekly() bool {
+	return s.IntervalWeeks == WeeklyIntervalWeeks
+}
+
+func (s TaskSchedule) IsEveryWeekday() bool {
+	return s.Frequencies.IsWeekday() && s.IsWeekly()
+}
+
+func (s TaskSchedule) IsEveryWeekend() bool {
+	return s.Frequencies.IsWeekend() && s.IsWeekly()
+}
+
+func (s TaskSchedule) IsBiWeekly() bool {
+	return s.IntervalWeeks == BiWeeklyIntervalWeeks
+}
+
+func (s TaskSchedule) IsMonthly() bool {
+	return s.IntervalWeeks == MonthlyIntervalWeeks
+}
+
+func (s TaskSchedule) IsQuarterly() bool {
+	return s.IntervalWeeks == QuarterlyIntervalWeeks
+}
+
+func (s TaskSchedule) IsSemiAnnually() bool {
+	return s.IntervalWeeks == SemiAnnualIntervalWeeks
+}
+
+func (s TaskSchedule) IsAnnually() bool {
+	return s.IntervalWeeks == AnnualIntervalWeeks
+}
+
+func (s TaskSchedule) IsOnce() bool {
+	return s.IntervalWeeks == OnceIntervalWeeks
 }
