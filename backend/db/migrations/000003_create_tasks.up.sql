@@ -94,7 +94,7 @@ CREATE TABLE task_schedules (
     title text NOT NULL CHECK (btrim(title) <> ''),
     description text,
     location text,
-    interval_weeks integer NOT NULL DEFAULT 1 CHECK (interval_weeks >= 1),
+    interval_weeks integer NOT NULL DEFAULT 1 CHECK (interval_weeks >= 0),
     start_at timestamptz NOT NULL,
     end_at timestamptz NOT NULL,
     due_at timestamptz,
@@ -117,7 +117,7 @@ CREATE TABLE todo_items (
     description text,
     completed boolean NOT NULL DEFAULT false,
     position integer NOT NULL CHECK (position >= 0),
-    interval_weeks integer NOT NULL DEFAULT 1 CHECK (interval_weeks >= 1),
+    interval_weeks integer NOT NULL DEFAULT 1 CHECK (interval_weeks >= 0),
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT todo_items_task_id_position_key
@@ -191,5 +191,4 @@ INSERT INTO task_frequency_master (frequency, label, label_jp) VALUES
     ('thu', 'Thursday', '木曜日'),
     ('fri', 'Friday', '金曜日'),
     ('sat', 'Saturday', '土曜日'),
-    ('sun', 'Sunday', '日曜日'),
-    ('once', 'Once', '一度限り');
+    ('sun', 'Sunday', '日曜日');
