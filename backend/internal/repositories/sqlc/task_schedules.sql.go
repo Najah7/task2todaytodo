@@ -12,20 +12,21 @@ import (
 )
 
 const createTaskSchedule = `-- name: CreateTaskSchedule :one
-INSERT INTO task_schedules (id, task_id, title, description, location, start_at, end_at, due_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, task_id, title, description, location, start_at, end_at, due_at, created_at, updated_at
+INSERT INTO task_schedules (id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at, created_at, updated_at
 `
 
 type CreateTaskScheduleParams struct {
-	ID          string
-	TaskID      string
-	Title       string
-	Description pgtype.Text
-	Location    pgtype.Text
-	StartAt     pgtype.Timestamptz
-	EndAt       pgtype.Timestamptz
-	DueAt       pgtype.Timestamptz
+	ID            string
+	TaskID        string
+	Title         string
+	Description   pgtype.Text
+	Location      pgtype.Text
+	IntervalWeeks int32
+	StartAt       pgtype.Timestamptz
+	EndAt         pgtype.Timestamptz
+	DueAt         pgtype.Timestamptz
 }
 
 func (q *Queries) CreateTaskSchedule(ctx context.Context, arg CreateTaskScheduleParams) (TaskSchedule, error) {
@@ -35,6 +36,7 @@ func (q *Queries) CreateTaskSchedule(ctx context.Context, arg CreateTaskSchedule
 		arg.Title,
 		arg.Description,
 		arg.Location,
+		arg.IntervalWeeks,
 		arg.StartAt,
 		arg.EndAt,
 		arg.DueAt,
@@ -46,6 +48,7 @@ func (q *Queries) CreateTaskSchedule(ctx context.Context, arg CreateTaskSchedule
 		&i.Title,
 		&i.Description,
 		&i.Location,
+		&i.IntervalWeeks,
 		&i.StartAt,
 		&i.EndAt,
 		&i.DueAt,
@@ -66,7 +69,7 @@ func (q *Queries) DeleteTaskSchedule(ctx context.Context, id string) error {
 }
 
 const getTaskSchedule = `-- name: GetTaskSchedule :one
-SELECT id, task_id, title, description, location, start_at, end_at, due_at, created_at, updated_at
+SELECT id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at, created_at, updated_at
 FROM task_schedules
 WHERE id = $1
 `
@@ -80,6 +83,7 @@ func (q *Queries) GetTaskSchedule(ctx context.Context, id string) (TaskSchedule,
 		&i.Title,
 		&i.Description,
 		&i.Location,
+		&i.IntervalWeeks,
 		&i.StartAt,
 		&i.EndAt,
 		&i.DueAt,
@@ -95,23 +99,25 @@ SET task_id = $2,
     title = $3,
     description = $4,
     location = $5,
-    start_at = $6,
-    end_at = $7,
-    due_at = $8,
+    interval_weeks = $6,
+    start_at = $7,
+    end_at = $8,
+    due_at = $9,
     updated_at = now()
 WHERE id = $1
-RETURNING id, task_id, title, description, location, start_at, end_at, due_at, created_at, updated_at
+RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at, created_at, updated_at
 `
 
 type UpdateTaskScheduleParams struct {
-	ID          string
-	TaskID      string
-	Title       string
-	Description pgtype.Text
-	Location    pgtype.Text
-	StartAt     pgtype.Timestamptz
-	EndAt       pgtype.Timestamptz
-	DueAt       pgtype.Timestamptz
+	ID            string
+	TaskID        string
+	Title         string
+	Description   pgtype.Text
+	Location      pgtype.Text
+	IntervalWeeks int32
+	StartAt       pgtype.Timestamptz
+	EndAt         pgtype.Timestamptz
+	DueAt         pgtype.Timestamptz
 }
 
 func (q *Queries) UpdateTaskSchedule(ctx context.Context, arg UpdateTaskScheduleParams) (TaskSchedule, error) {
@@ -121,6 +127,7 @@ func (q *Queries) UpdateTaskSchedule(ctx context.Context, arg UpdateTaskSchedule
 		arg.Title,
 		arg.Description,
 		arg.Location,
+		arg.IntervalWeeks,
 		arg.StartAt,
 		arg.EndAt,
 		arg.DueAt,
@@ -132,6 +139,7 @@ func (q *Queries) UpdateTaskSchedule(ctx context.Context, arg UpdateTaskSchedule
 		&i.Title,
 		&i.Description,
 		&i.Location,
+		&i.IntervalWeeks,
 		&i.StartAt,
 		&i.EndAt,
 		&i.DueAt,
