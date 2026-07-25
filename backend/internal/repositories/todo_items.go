@@ -29,12 +29,13 @@ func (r TodoItemRepository) Get(ctx context.Context, id domain.TodoItemID) (doma
 
 func (r TodoItemRepository) Create(ctx context.Context, item domain.TodoItem) (domain.TodoItem, error) {
 	record, err := r.queries.CreateTodoItem(ctx, sqlc.CreateTodoItemParams{
-		ID:          string(item.ID),
-		TaskID:      string(item.TaskID),
-		Title:       item.Title,
-		Description: stringToPgText(item.Description),
-		Completed:   item.Completed,
-		Position:    int32(item.Position),
+		ID:            string(item.ID),
+		TaskID:        string(item.TaskID),
+		Title:         item.Title,
+		Description:   stringToPgText(item.Description),
+		Completed:     item.Completed,
+		Position:      int32(item.Position),
+		IntervalWeeks: int32(item.IntervalWeeks),
 	})
 	if err != nil {
 		return domain.NewZeroTodoItem(), err
@@ -44,12 +45,13 @@ func (r TodoItemRepository) Create(ctx context.Context, item domain.TodoItem) (d
 
 func (r TodoItemRepository) Update(ctx context.Context, item domain.TodoItem) (domain.TodoItem, error) {
 	record, err := r.queries.UpdateTodoItem(ctx, sqlc.UpdateTodoItemParams{
-		ID:          string(item.ID),
-		TaskID:      string(item.TaskID),
-		Title:       item.Title,
-		Description: stringToPgText(item.Description),
-		Completed:   item.Completed,
-		Position:    int32(item.Position),
+		ID:            string(item.ID),
+		TaskID:        string(item.TaskID),
+		Title:         item.Title,
+		Description:   stringToPgText(item.Description),
+		Completed:     item.Completed,
+		Position:      int32(item.Position),
+		IntervalWeeks: int32(item.IntervalWeeks),
 	})
 	if err != nil {
 		return domain.NewZeroTodoItem(), err
