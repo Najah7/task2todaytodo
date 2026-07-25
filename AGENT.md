@@ -1,20 +1,18 @@
-# Project Overview
+# Task2TodayToDo
 
-task2todaytodo is a task management system that turns organized tasks into a daily execution plan.
+***Don’t live for tomorrow. Give today everything you’ve got.***
 
-The core problem is that planning tasks across a week or month is easy to start but hard to maintain. Interruptions create drift, and manually repairing a long-term calendar quickly becomes too much work. task2todaytodo avoids that burden by letting users manage tasks in a structured source of truth, then mechanically generating the TodoList for the day.
+task2todaytodo is a unified task and schedule management system that turns one structured source of truth into a daily execution plan.
 
-The product should prioritize flexible daily planning over maintaining a perfect long-term schedule.
+The core problem is that planning tasks across a week or month is easy to start but hard to maintain. Interruptions create drift, and manually repairing a long-term calendar quickly becomes too much work. task2todaytodo avoids that burden by letting users manage tasks and schedules together in a structured source of truth, then generating only today's TodoList when it is needed.
 
-# Core Functionality
+By separating long-lived task and schedule management from day-by-day execution, the product can create dynamic, flexible TodoLists for the day without forcing users to maintain a perfect long-term schedule.
 
-- Manage tasks in one organized place, including projects, tasks, fixed schedules, repeatable work, and one-off work.
-- Generate a TodoList as the execution plan for the day.
-- Generate the TodoList from managed tasks using priority and urgency as high-level decision inputs.
-- Place TaskSchedules as anchors on the day's timeline, then arrange TodoItems around the available time before, between, and after those anchors.
-- Reflect TaskSchedules, which have explicit start and end times, in Google Calendar.
+# Values
 
-Avoid documenting detailed scoring formulas, recurrence calculations, carry-over mechanics, or calendar sync timing in this root file. Those details belong in feature-specific documentation or lower-level AGENT.md files.
+- Task Management: manage all tasks in a single place, including projects, tasks, fixed schedules, repeatable work, and one-off work.
+- Schedule Management: manage fixed schedules for tasks, including repeatable and one-off schedules. and also synchronize those schedules with 3rd party calendar systems like Google Calendar and ..etc.
+- Generate Today's TodoList: generate a TodoList as the execution plan for the day, based on managed tasks and schedules.
 
 # Domain Terms
 
@@ -24,6 +22,12 @@ Avoid documenting detailed scoring formulas, recurrence calculations, carry-over
 - TodoItem: A small unit of work without a fixed start and end time. TodoItems may be repeatable or one-off.
 - TaskSchedule: A small unit of work with a fixed start and end time. TaskSchedules represent scheduled events and may be repeatable or one-off.
 - TodoList: The execution plan generated for a specific day. It is composed of TaskSchedules and TodoItems, ordered from top to bottom as a timeline for the day.
+
+# Core Relationships
+- User -> Tasks (To manage tasks for a user)
+- Project -> Tasks (To group tasks under a project)
+- Task -> TodoItems (To break down a task into smaller units of work)
+- Task -> TaskSchedules (To schedule a task at a specific time)
 
 # Repository Layout
 
