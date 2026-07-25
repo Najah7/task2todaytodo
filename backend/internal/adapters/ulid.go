@@ -1,7 +1,7 @@
 package adapters
 
 import (
-	"github.com/Najah7/task2schedule/internal/domain/shared"
+	"github.com/Najah7/task2todaytodo/internal/domain/shared"
 	"github.com/oklog/ulid/v2"
 )
 

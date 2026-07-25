@@ -8,9 +8,9 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/Najah7/task2schedule/internal/domain/auth"
-	"github.com/Najah7/task2schedule/internal/domain/task"
-	"github.com/Najah7/task2schedule/internal/repositories"
+	"github.com/Najah7/task2todaytodo/internal/domain/auth"
+	"github.com/Najah7/task2todaytodo/internal/domain/task"
+	"github.com/Najah7/task2todaytodo/internal/repositories"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -75,7 +75,7 @@ func postgresConnectionString() string {
 			getenv("POSTGRES_HOST", "localhost"),
 			getenv("POSTGRES_PORT", "5432"),
 		),
-		Path: "/" + getenv("POSTGRES_DB", "task2schedule"),
+		Path: "/" + getenv("POSTGRES_DB", "task2todaytodo"),
 	}
 
 	query := postgresURL.Query()

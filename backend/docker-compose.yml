@@ -1,6 +1,6 @@
 services:
   db:
-    container_name: task2schedule-db
+    container_name: task2todaytodo-db
     image: postgres:18.4-trixie
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
@@ -21,7 +21,7 @@ services:
       - "5432:5432"
   
   migrate:
-    container_name: task2schedule-migrate
+    container_name: task2todaytodo-migrate
     image: migrate/migrate:v4.19.1
     networks:
       - backend
@@ -31,7 +31,7 @@ services:
       - db
 
   sqlc:
-    container_name: task2schedule-sqlc
+    container_name: task2todaytodo-sqlc
     image: sqlc/sqlc:1.31.1
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
@@ -46,7 +46,7 @@ services:
       - db
 
   swagger:
-    container_name: task2schedule-swagger
+    container_name: task2todaytodo-swagger
     build:
       context: ${PROJECT_ROOT}
       dockerfile_inline: |

@@ -3,8 +3,8 @@ package repositories
 import (
 	"context"
 
-	domain "github.com/Najah7/task2schedule/internal/domain/task"
-	"github.com/Najah7/task2schedule/internal/repositories/sqlc"
+	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
+	"github.com/Najah7/task2todaytodo/internal/repositories/sqlc"
 )
 
 var _ domain.TodoItemRepository = TodoItemRepository{}

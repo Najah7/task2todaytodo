@@ -149,7 +149,7 @@ host: localhost:8080
 info:
   contact: {}
   description: Task scheduling API server.
-  title: task2schedule API
+  title: task2todaytodo API
   version: "1.0"
 paths:
   /access-token/current:

@@ -1,8 +1,8 @@
 # Project Overview
 
-task2schedule is a task management system that turns organized tasks into a daily execution plan.
+task2todaytodo is a task management system that turns organized tasks into a daily execution plan.
 
-The core problem is that planning tasks across a week or month is easy to start but hard to maintain. Interruptions create drift, and manually repairing a long-term calendar quickly becomes too much work. task2schedule avoids that burden by letting users manage tasks in a structured source of truth, then mechanically generating the TodoList for the day.
+The core problem is that planning tasks across a week or month is easy to start but hard to maintain. Interruptions create drift, and manually repairing a long-term calendar quickly becomes too much work. task2todaytodo avoids that burden by letting users manage tasks in a structured source of truth, then mechanically generating the TodoList for the day.
 
 The product should prioritize flexible daily planning over maintaining a perfect long-term schedule.
 

@@ -1,6 +1,6 @@
-# Task2Schedule
+# Task2TodayToDo
 
-Task2Schedule turns organized tasks into a daily execution plan. Product focus:
+Task2TodayToDo turns organized tasks into a daily execution plan. Product focus:
 
 - Project, task, TodoItem, and TaskSchedule management
 - Daily TodoList generation

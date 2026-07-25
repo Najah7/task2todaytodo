@@ -4,8 +4,8 @@ tmp_dir = "tmp"
 
 [build]
   args_bin = []
-  bin = "./tmp/task2schedule-api"
-  cmd = "GOTOOLCHAIN=auto go build -o ./tmp/task2schedule-api ./cmd/api"
+  bin = "./tmp/task2todaytodo-api"
+  cmd = "GOTOOLCHAIN=auto go build -o ./tmp/task2todaytodo-api ./cmd/api"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_file = []

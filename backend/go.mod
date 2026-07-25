@@ -1,4 +1,4 @@
-module github.com/Najah7/task2schedule
+module github.com/Najah7/task2todaytodo
 
 go 1.25.0
 

@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"net/http"
 
-	_ "github.com/Najah7/task2schedule/docs"
-	"github.com/Najah7/task2schedule/internal/adapters"
-	"github.com/Najah7/task2schedule/internal/application"
-	"github.com/Najah7/task2schedule/internal/handlers"
-	"github.com/Najah7/task2schedule/internal/middlewares"
+	_ "github.com/Najah7/task2todaytodo/docs"
+	"github.com/Najah7/task2todaytodo/internal/adapters"
+	"github.com/Najah7/task2todaytodo/internal/application"
+	"github.com/Najah7/task2todaytodo/internal/handlers"
+	"github.com/Najah7/task2todaytodo/internal/middlewares"
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
-// @title						task2schedule API
+// @title						task2todaytodo API
 // @version					1.0
 // @description				Task scheduling API server.
 // @host						localhost:8080

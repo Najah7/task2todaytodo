@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Najah7/task2schedule/internal/domain/auth"
-	"github.com/Najah7/task2schedule/internal/domain/shared"
+	"github.com/Najah7/task2todaytodo/internal/domain/auth"
+	"github.com/Najah7/task2todaytodo/internal/domain/shared"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 

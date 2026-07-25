@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	domain "github.com/Najah7/task2schedule/internal/domain/task"
+	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
 )
 
 func TestTaskStatusHandlerList(t *testing.T) {
