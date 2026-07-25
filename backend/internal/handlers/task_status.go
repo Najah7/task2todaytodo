@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	domain "github.com/Najah7/task2schedule/internal/domain/task"
+	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
 )
 
 type TaskStatusHandler struct {

@@ -2,7 +2,7 @@
     "swagger": "2.0",
     "info": {
         "description": "Task scheduling API server.",
-        "title": "task2schedule API",
+        "title": "task2todaytodo API",
         "contact": {},
         "version": "1.0"
     },
@@ -653,5 +653,5 @@
             "name": "Authorization",
             "in": "header"
         }
-    }
+    }w
 }

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Najah7/task2schedule/internal/domain/auth"
-	"github.com/Najah7/task2schedule/internal/utils"
+	"github.com/Najah7/task2todaytodo/internal/domain/auth"
+	"github.com/Najah7/task2todaytodo/internal/utils"
 )
 
 const AccessTokenContextKey = "accessToken"

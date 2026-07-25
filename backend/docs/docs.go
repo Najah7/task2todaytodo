@@ -668,7 +668,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "localhost:8080",
 	BasePath:         "/api",
 	Schemes:          []string{},
-	Title:            "task2schedule API",
+	Title:            "task2todaytodo API",
 	Description:      "Task scheduling API server.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,

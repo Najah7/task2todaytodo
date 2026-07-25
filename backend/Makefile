@@ -10,7 +10,7 @@ export PROJECT_ROOT := $(CURDIR)
 export MIGRATE_DIR := db/migrations
 export MIGRATE_POSTGRES_HOST ?= db
 export LOGS_DIR := $(PROJECT_ROOT)/out/logs
-export APP_SERVICE_NAME := task2schedule
+export APP_SERVICE_NAME := task2todaytodo
 
 
 ###############################################
