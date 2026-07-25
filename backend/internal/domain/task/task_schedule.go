@@ -12,6 +12,7 @@ var (
 	ErrTaskScheduleIDEmpty                 = errors.New("task schedule ID cannot be empty")
 	ErrTaskScheduleTaskIDEmpty             = errors.New("task schedule task ID cannot be empty")
 	ErrTaskScheduleTitleEmpty              = errors.New("task schedule title cannot be empty")
+	ErrTaskScheduleIntervalWeeksLess       = errors.New("task schedule interval weeks must be greater than or equal to 1")
 	ErrTaskScheduleStartAtEmpty            = errors.New("task schedule start time must be set")
 	ErrTaskScheduleEndAtEmpty              = errors.New("task schedule end time must be set")
 	ErrTaskScheduleEndAtMustBeAfterStartAt = errors.New("task schedule end time must be after start time")
@@ -20,16 +21,17 @@ var (
 type TaskScheduleID shared.ID
 
 type TaskSchedule struct {
-	ID          TaskScheduleID
-	TaskID      TaskID
-	Title       string
-	Description string
-	Location    string
-	StartAt     time.Time
-	EndAt       time.Time
-	DueAt       time.Time
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID            TaskScheduleID
+	TaskID        TaskID
+	Title         string
+	Description   string
+	Location      string
+	IntervalWeeks int
+	StartAt       time.Time
+	EndAt         time.Time
+	DueAt         time.Time
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 func NewTaskSchedule(
@@ -40,11 +42,12 @@ func NewTaskSchedule(
 	endAt time.Time,
 ) (TaskSchedule, error) {
 	schedule := TaskSchedule{
-		ID:      id,
-		TaskID:  taskID,
-		Title:   title,
-		StartAt: startAt,
-		EndAt:   endAt,
+		ID:            id,
+		TaskID:        taskID,
+		Title:         title,
+		IntervalWeeks: 1,
+		StartAt:       startAt,
+		EndAt:         endAt,
 	}
 	return schedule, schedule.Validate()
 }
@@ -55,19 +58,21 @@ func NewTaskScheduleWithDetails(
 	title string,
 	description string,
 	location string,
+	intervalWeeks int,
 	startAt time.Time,
 	endAt time.Time,
 	dueAt time.Time,
 ) (TaskSchedule, error) {
 	schedule := TaskSchedule{
-		ID:          id,
-		TaskID:      taskID,
-		Title:       title,
-		Description: description,
-		Location:    location,
-		StartAt:     startAt,
-		EndAt:       endAt,
-		DueAt:       dueAt,
+		ID:            id,
+		TaskID:        taskID,
+		Title:         title,
+		Description:   description,
+		Location:      location,
+		IntervalWeeks: intervalWeeks,
+		StartAt:       startAt,
+		EndAt:         endAt,
+		DueAt:         dueAt,
 	}
 	return schedule, schedule.Validate()
 }
@@ -78,6 +83,7 @@ func NewExistingTaskSchedule(
 	title string,
 	description string,
 	location string,
+	intervalWeeks int,
 	startAt time.Time,
 	endAt time.Time,
 	dueAt time.Time,
@@ -85,16 +91,17 @@ func NewExistingTaskSchedule(
 	updatedAt time.Time,
 ) (TaskSchedule, error) {
 	schedule := TaskSchedule{
-		ID:          id,
-		TaskID:      taskID,
-		Title:       title,
-		Description: description,
-		Location:    location,
-		StartAt:     startAt,
-		EndAt:       endAt,
-		DueAt:       dueAt,
-		CreatedAt:   createdAt,
-		UpdatedAt:   updatedAt,
+		ID:            id,
+		TaskID:        taskID,
+		Title:         title,
+		Description:   description,
+		Location:      location,
+		IntervalWeeks: intervalWeeks,
+		StartAt:       startAt,
+		EndAt:         endAt,
+		DueAt:         dueAt,
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
 	}
 	if err := schedule.Validate(); err != nil {
 		return NewZeroTaskSchedule(), err
@@ -120,6 +127,9 @@ func (s TaskSchedule) Validate() error {
 	}
 	if strings.TrimSpace(s.Title) == "" {
 		return ErrTaskScheduleTitleEmpty
+	}
+	if s.IntervalWeeks < 1 {
+		return ErrTaskScheduleIntervalWeeksLess
 	}
 	if s.StartAt.IsZero() {
 		return ErrTaskScheduleStartAtEmpty

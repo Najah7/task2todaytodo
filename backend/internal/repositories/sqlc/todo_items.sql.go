@@ -12,18 +12,19 @@ import (
 )
 
 const createTodoItem = `-- name: CreateTodoItem :one
-INSERT INTO todo_items (id, task_id, title, description, completed, position)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, task_id, title, description, completed, position, created_at, updated_at
+INSERT INTO todo_items (id, task_id, title, description, completed, position, interval_weeks)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, task_id, title, description, completed, position, interval_weeks, created_at, updated_at
 `
 
 type CreateTodoItemParams struct {
-	ID          string
-	TaskID      string
-	Title       string
-	Description pgtype.Text
-	Completed   bool
-	Position    int32
+	ID            string
+	TaskID        string
+	Title         string
+	Description   pgtype.Text
+	Completed     bool
+	Position      int32
+	IntervalWeeks int32
 }
 
 func (q *Queries) CreateTodoItem(ctx context.Context, arg CreateTodoItemParams) (TodoItem, error) {
@@ -34,6 +35,7 @@ func (q *Queries) CreateTodoItem(ctx context.Context, arg CreateTodoItemParams) 
 		arg.Description,
 		arg.Completed,
 		arg.Position,
+		arg.IntervalWeeks,
 	)
 	var i TodoItem
 	err := row.Scan(
@@ -43,6 +45,7 @@ func (q *Queries) CreateTodoItem(ctx context.Context, arg CreateTodoItemParams) 
 		&i.Description,
 		&i.Completed,
 		&i.Position,
+		&i.IntervalWeeks,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -60,7 +63,7 @@ func (q *Queries) DeleteTodoItem(ctx context.Context, id string) error {
 }
 
 const getTodoItem = `-- name: GetTodoItem :one
-SELECT id, task_id, title, description, completed, position, created_at, updated_at
+SELECT id, task_id, title, description, completed, position, interval_weeks, created_at, updated_at
 FROM todo_items
 WHERE id = $1
 `
@@ -75,6 +78,7 @@ func (q *Queries) GetTodoItem(ctx context.Context, id string) (TodoItem, error) 
 		&i.Description,
 		&i.Completed,
 		&i.Position,
+		&i.IntervalWeeks,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -88,18 +92,20 @@ SET task_id = $2,
     description = $4,
     completed = $5,
     position = $6,
+    interval_weeks = $7,
     updated_at = now()
 WHERE id = $1
-RETURNING id, task_id, title, description, completed, position, created_at, updated_at
+RETURNING id, task_id, title, description, completed, position, interval_weeks, created_at, updated_at
 `
 
 type UpdateTodoItemParams struct {
-	ID          string
-	TaskID      string
-	Title       string
-	Description pgtype.Text
-	Completed   bool
-	Position    int32
+	ID            string
+	TaskID        string
+	Title         string
+	Description   pgtype.Text
+	Completed     bool
+	Position      int32
+	IntervalWeeks int32
 }
 
 func (q *Queries) UpdateTodoItem(ctx context.Context, arg UpdateTodoItemParams) (TodoItem, error) {
@@ -110,6 +116,7 @@ func (q *Queries) UpdateTodoItem(ctx context.Context, arg UpdateTodoItemParams) 
 		arg.Description,
 		arg.Completed,
 		arg.Position,
+		arg.IntervalWeeks,
 	)
 	var i TodoItem
 	err := row.Scan(
@@ -119,6 +126,7 @@ func (q *Queries) UpdateTodoItem(ctx context.Context, arg UpdateTodoItemParams) 
 		&i.Description,
 		&i.Completed,
 		&i.Position,
+		&i.IntervalWeeks,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

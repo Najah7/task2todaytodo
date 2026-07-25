@@ -74,6 +74,7 @@ func recordToTaskSchedule(record sqlc.TaskSchedule) (domain.TaskSchedule, error)
 		record.Title,
 		pgTextString(record.Description),
 		pgTextString(record.Location),
+		int(record.IntervalWeeks),
 		pgTime(record.StartAt),
 		pgTime(record.EndAt),
 		pgTime(record.DueAt),
@@ -90,6 +91,7 @@ func recordToTodoItem(record sqlc.TodoItem) (domain.TodoItem, error) {
 		pgTextString(record.Description),
 		record.Completed,
 		int(record.Position),
+		int(record.IntervalWeeks),
 		pgTime(record.CreatedAt),
 		pgTime(record.UpdatedAt),
 	)

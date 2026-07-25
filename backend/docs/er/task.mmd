@@ -99,6 +99,7 @@ erDiagram
         text title
         text description
         text location
+        integer interval_weeks
         timestamptz start_at
         timestamptz end_at
         timestamptz due_at
@@ -109,7 +110,6 @@ erDiagram
     task_schedule_frequencies {
         text task_schedule_id PK,FK
         text frequency PK,FK
-        integer interval_weeks
         timestamptz created_at
     }
 
@@ -120,6 +120,7 @@ erDiagram
         text description
         boolean completed
         integer position
+        integer interval_weeks
         timestamptz created_at
         timestamptz updated_at
     }
@@ -127,7 +128,6 @@ erDiagram
     todo_item_frequencies {
         text todo_item_id PK,FK
         text frequency PK,FK
-        integer interval_weeks
         timestamptz created_at
     }
 

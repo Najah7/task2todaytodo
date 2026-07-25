@@ -71,22 +71,22 @@ type TaskPriorityMaster struct {
 }
 
 type TaskSchedule struct {
-	ID          string
-	TaskID      string
-	Title       string
-	Description pgtype.Text
-	Location    pgtype.Text
-	StartAt     pgtype.Timestamptz
-	EndAt       pgtype.Timestamptz
-	DueAt       pgtype.Timestamptz
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	ID            string
+	TaskID        string
+	Title         string
+	Description   pgtype.Text
+	Location      pgtype.Text
+	IntervalWeeks int32
+	StartAt       pgtype.Timestamptz
+	EndAt         pgtype.Timestamptz
+	DueAt         pgtype.Timestamptz
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
 }
 
 type TaskScheduleFrequency struct {
 	TaskScheduleID string
 	Frequency      string
-	IntervalWeeks  int32
 	CreatedAt      pgtype.Timestamptz
 }
 
@@ -113,21 +113,21 @@ type TaskTagAssignment struct {
 }
 
 type TodoItem struct {
-	ID          string
-	TaskID      string
-	Title       string
-	Description pgtype.Text
-	Completed   bool
-	Position    int32
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	ID            string
+	TaskID        string
+	Title         string
+	Description   pgtype.Text
+	Completed     bool
+	Position      int32
+	IntervalWeeks int32
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
 }
 
 type TodoItemFrequency struct {
-	TodoItemID    string
-	Frequency     string
-	IntervalWeeks int32
-	CreatedAt     pgtype.Timestamptz
+	TodoItemID string
+	Frequency  string
+	CreatedAt  pgtype.Timestamptz
 }
 
 type TodoList struct {

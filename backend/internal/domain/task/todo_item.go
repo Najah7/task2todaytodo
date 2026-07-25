@@ -9,23 +9,25 @@ import (
 )
 
 var (
-	ErrTodoItemIDEmpty      = errors.New("todo item ID cannot be empty")
-	ErrTodoItemTaskIDEmpty  = errors.New("todo item task ID cannot be empty")
-	ErrTodoItemTitleEmpty   = errors.New("todo item title cannot be empty")
-	ErrTodoItemPositionLess = errors.New("todo item position must be greater than or equal to 0")
+	ErrTodoItemIDEmpty           = errors.New("todo item ID cannot be empty")
+	ErrTodoItemTaskIDEmpty       = errors.New("todo item task ID cannot be empty")
+	ErrTodoItemTitleEmpty        = errors.New("todo item title cannot be empty")
+	ErrTodoItemPositionLess      = errors.New("todo item position must be greater than or equal to 0")
+	ErrTodoItemIntervalWeeksLess = errors.New("todo item interval weeks must be greater than or equal to 1")
 )
 
 type TodoItemID shared.ID
 
 type TodoItem struct {
-	ID          TodoItemID
-	TaskID      TaskID
-	Title       string
-	Description string
-	Completed   bool
-	Position    int
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID            TodoItemID
+	TaskID        TaskID
+	Title         string
+	Description   string
+	Completed     bool
+	Position      int
+	IntervalWeeks int
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 func NewTodoItem(
@@ -34,9 +36,10 @@ func NewTodoItem(
 	title string,
 ) (TodoItem, error) {
 	item := TodoItem{
-		ID:     id,
-		TaskID: taskID,
-		Title:  title,
+		ID:            id,
+		TaskID:        taskID,
+		Title:         title,
+		IntervalWeeks: 1,
 	}
 	return item, item.Validate()
 }
@@ -48,14 +51,16 @@ func NewTodoItemWithDetails(
 	description string,
 	completed bool,
 	position int,
+	intervalWeeks int,
 ) (TodoItem, error) {
 	item := TodoItem{
-		ID:          id,
-		TaskID:      taskID,
-		Title:       title,
-		Description: description,
-		Completed:   completed,
-		Position:    position,
+		ID:            id,
+		TaskID:        taskID,
+		Title:         title,
+		Description:   description,
+		Completed:     completed,
+		Position:      position,
+		IntervalWeeks: intervalWeeks,
 	}
 	return item, item.Validate()
 }
@@ -67,18 +72,20 @@ func NewExistingTodoItem(
 	description string,
 	completed bool,
 	position int,
+	intervalWeeks int,
 	createdAt time.Time,
 	updatedAt time.Time,
 ) (TodoItem, error) {
 	item := TodoItem{
-		ID:          id,
-		TaskID:      taskID,
-		Title:       title,
-		Description: description,
-		Completed:   completed,
-		Position:    position,
-		CreatedAt:   createdAt,
-		UpdatedAt:   updatedAt,
+		ID:            id,
+		TaskID:        taskID,
+		Title:         title,
+		Description:   description,
+		Completed:     completed,
+		Position:      position,
+		IntervalWeeks: intervalWeeks,
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
 	}
 	if err := item.Validate(); err != nil {
 		return NewZeroTodoItem(), err
@@ -107,6 +114,9 @@ func (i TodoItem) Validate() error {
 	}
 	if i.Position < 0 {
 		return ErrTodoItemPositionLess
+	}
+	if i.IntervalWeeks < 1 {
+		return ErrTodoItemIntervalWeeksLess
 	}
 
 	return nil
