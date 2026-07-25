@@ -127,6 +127,110 @@ const docTemplate = `{
                 }
             }
         },
+        "/projects/types": {
+            "get": {
+                "description": "Returns all project type master data.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Master Data"
+                ],
+                "summary": "List project types",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ProjectTypeListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list project types",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/frequencies": {
+            "get": {
+                "description": "Returns all task frequency master data.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Master Data"
+                ],
+                "summary": "List task frequencies",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.TaskFrequencyListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list task frequencies",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/priorities": {
+            "get": {
+                "description": "Returns all task priority master data.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Master Data"
+                ],
+                "summary": "List task priorities",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.TaskPriorityListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list task priorities",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/statuses": {
+            "get": {
+                "description": "Returns all task status master data.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Master Data"
+                ],
+                "summary": "List task statuses",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.TaskStatusListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list task statuses",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "description": "Creates a user with an email address and password.",
@@ -397,6 +501,109 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ProjectTypeListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.ProjectTypeResponse"
+                    }
+                }
+            }
+        },
+        "handlers.ProjectTypeResponse": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "label_jp": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.TaskFrequencyListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.TaskFrequencyResponse"
+                    }
+                }
+            }
+        },
+        "handlers.TaskFrequencyResponse": {
+            "type": "object",
+            "properties": {
+                "frequency": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "label_jp": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.TaskPriorityListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.TaskPriorityResponse"
+                    }
+                }
+            }
+        },
+        "handlers.TaskPriorityResponse": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "label_jp": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "weight": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.TaskStatusListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.TaskStatusResponse"
+                    }
+                }
+            }
+        },
+        "handlers.TaskStatusResponse": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "label_jp": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }
