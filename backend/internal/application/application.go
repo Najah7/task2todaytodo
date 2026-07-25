@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/Najah7/task2schedule/internal/domain/auth"
+	"github.com/Najah7/task2schedule/internal/domain/task"
 	"github.com/Najah7/task2schedule/internal/repositories"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -19,8 +20,12 @@ type config struct {
 type logger interface{}
 
 type Store struct {
-	Users        *repositories.UserRepository
-	AccessTokens *repositories.AccessTokenRepository
+	Users           *repositories.UserRepository
+	AccessTokens    *repositories.AccessTokenRepository
+	ProjectTypes    *repositories.ProjectTypeRepository
+	TaskFrequencies *repositories.TaskFrequencyRepository
+	TaskPriorities  *repositories.TaskPriorityRepository
+	TaskStatuses    *repositories.TaskStatusRepository
 }
 
 func NewStore(ctx context.Context) Store {
@@ -44,10 +49,18 @@ func NewStore(ctx context.Context) Store {
 
 	userRepo := repositories.NewUserRepository(pool)
 	accessTokenRepo := repositories.NewAccessTokenRepository(pool)
+	projectTypeRepo := repositories.NewProjectTypeRepository(pool)
+	taskFrequencyRepo := repositories.NewTaskFrequencyRepository(pool)
+	taskPriorityRepo := repositories.NewTaskPriorityRepository(pool)
+	taskStatusRepo := repositories.NewTaskStatusRepository(pool)
 
 	return Store{
-		Users:        userRepo,
-		AccessTokens: accessTokenRepo,
+		Users:           userRepo,
+		AccessTokens:    accessTokenRepo,
+		ProjectTypes:    projectTypeRepo,
+		TaskFrequencies: taskFrequencyRepo,
+		TaskPriorities:  taskPriorityRepo,
+		TaskStatuses:    taskStatusRepo,
 	}
 }
 
@@ -82,17 +95,29 @@ func getenv(key, fallback string) string {
 }
 
 type Service struct {
-	User        *auth.UserService
-	AccessToken *auth.AccessTokenService
+	User          *auth.UserService
+	AccessToken   *auth.AccessTokenService
+	ProjectType   *task.ProjectTypeService
+	TaskFrequency *task.TaskFrequencyService
+	TaskPriority  *task.TaskPriorityService
+	TaskStatus    *task.TaskStatusService
 }
 
 func NewService(store Store) Service {
 	userService := auth.NewUserService(store.Users)
 	accessTokenService := auth.NewAccessTokenService(store.AccessTokens)
+	projectTypeService := task.NewProjectTypeService(store.ProjectTypes)
+	taskFrequencyService := task.NewTaskFrequencyService(store.TaskFrequencies)
+	taskPriorityService := task.NewTaskPriorityService(store.TaskPriorities)
+	taskStatusService := task.NewTaskStatusService(store.TaskStatuses)
 
 	return Service{
-		User:        userService,
-		AccessToken: accessTokenService,
+		User:          userService,
+		AccessToken:   accessTokenService,
+		ProjectType:   projectTypeService,
+		TaskFrequency: taskFrequencyService,
+		TaskPriority:  taskPriorityService,
+		TaskStatus:    taskStatusService,
 	}
 }
 
