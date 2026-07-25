@@ -24,7 +24,7 @@ func (r TodoItemRepository) Get(ctx context.Context, id domain.TodoItemID) (doma
 	if err != nil {
 		return domain.NewZeroTodoItem(), err
 	}
-	return recordToTodoItem(record)
+	return recordToTodoItemRow(record)
 }
 
 func (r TodoItemRepository) Create(ctx context.Context, item domain.TodoItem) (domain.TodoItem, error) {

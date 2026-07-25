@@ -68,13 +68,14 @@ func recordsToTasks(records []sqlc.Task) ([]domain.Task, error) {
 }
 
 func recordToTaskSchedule(record sqlc.TaskSchedule) (domain.TaskSchedule, error) {
-	return domain.NewExistingTaskSchedule(
+	return newTaskSchedule(
 		domain.TaskScheduleID(record.ID),
 		domain.TaskID(record.TaskID),
 		record.Title,
 		pgTextString(record.Description),
 		pgTextString(record.Location),
 		int(record.IntervalWeeks),
+		nil,
 		pgTime(record.StartAt),
 		pgTime(record.EndAt),
 		pgTime(record.DueAt),
@@ -83,8 +84,60 @@ func recordToTaskSchedule(record sqlc.TaskSchedule) (domain.TaskSchedule, error)
 	)
 }
 
+func recordToTaskScheduleRow(record sqlc.GetTaskScheduleRow) (domain.TaskSchedule, error) {
+	return newTaskSchedule(
+		domain.TaskScheduleID(record.ID),
+		domain.TaskID(record.TaskID),
+		record.Title,
+		pgTextString(record.Description),
+		pgTextString(record.Location),
+		int(record.IntervalWeeks),
+		record.Frequencies,
+		pgTime(record.StartAt),
+		pgTime(record.EndAt),
+		pgTime(record.DueAt),
+		pgTime(record.CreatedAt),
+		pgTime(record.UpdatedAt),
+	)
+}
+
+func newTaskSchedule(
+	id domain.TaskScheduleID,
+	taskID domain.TaskID,
+	title string,
+	description string,
+	location string,
+	intervalWeeks int,
+	frequencyValues []string,
+	startAt time.Time,
+	endAt time.Time,
+	dueAt time.Time,
+	createdAt time.Time,
+	updatedAt time.Time,
+) (domain.TaskSchedule, error) {
+	frequencies, err := taskFrequenciesFromStrings(frequencyValues)
+	if err != nil {
+		return domain.NewZeroTaskSchedule(), err
+	}
+
+	return domain.NewExistingTaskSchedule(
+		id,
+		taskID,
+		title,
+		description,
+		location,
+		intervalWeeks,
+		frequencies,
+		startAt,
+		endAt,
+		dueAt,
+		createdAt,
+		updatedAt,
+	)
+}
+
 func recordToTodoItem(record sqlc.TodoItem) (domain.TodoItem, error) {
-	return domain.NewExistingTodoItem(
+	return newTodoItem(
 		domain.TodoItemID(record.ID),
 		domain.TaskID(record.TaskID),
 		record.Title,
@@ -92,9 +145,68 @@ func recordToTodoItem(record sqlc.TodoItem) (domain.TodoItem, error) {
 		record.Completed,
 		int(record.Position),
 		int(record.IntervalWeeks),
+		nil,
 		pgTime(record.CreatedAt),
 		pgTime(record.UpdatedAt),
 	)
+}
+
+func recordToTodoItemRow(record sqlc.GetTodoItemRow) (domain.TodoItem, error) {
+	return newTodoItem(
+		domain.TodoItemID(record.ID),
+		domain.TaskID(record.TaskID),
+		record.Title,
+		pgTextString(record.Description),
+		record.Completed,
+		int(record.Position),
+		int(record.IntervalWeeks),
+		record.Frequencies,
+		pgTime(record.CreatedAt),
+		pgTime(record.UpdatedAt),
+	)
+}
+
+func newTodoItem(
+	id domain.TodoItemID,
+	taskID domain.TaskID,
+	title string,
+	description string,
+	completed bool,
+	position int,
+	intervalWeeks int,
+	frequencyValues []string,
+	createdAt time.Time,
+	updatedAt time.Time,
+) (domain.TodoItem, error) {
+	frequencies, err := taskFrequenciesFromStrings(frequencyValues)
+	if err != nil {
+		return domain.NewZeroTodoItem(), err
+	}
+
+	return domain.NewExistingTodoItem(
+		id,
+		taskID,
+		title,
+		description,
+		completed,
+		position,
+		intervalWeeks,
+		frequencies,
+		createdAt,
+		updatedAt,
+	)
+}
+
+func taskFrequenciesFromStrings(values []string) (domain.TaskFrequencies, error) {
+	frequencies := make(domain.TaskFrequencies, 0, len(values))
+	for _, value := range values {
+		frequency, err := domain.NewTaskFrequency(value)
+		if err != nil {
+			return nil, err
+		}
+		frequencies = append(frequencies, frequency)
+	}
+	return frequencies, nil
 }
 
 func recordToTodoList(record sqlc.TodoList) (domain.TodoList, error) {

@@ -69,14 +69,46 @@ func (q *Queries) DeleteTaskSchedule(ctx context.Context, id string) error {
 }
 
 const getTaskSchedule = `-- name: GetTaskSchedule :one
-SELECT id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at, created_at, updated_at
-FROM task_schedules
-WHERE id = $1
+SELECT
+    ts.id,
+    ts.task_id,
+    ts.title,
+    ts.description,
+    ts.location,
+    ts.interval_weeks,
+    ARRAY(
+        SELECT tsf.frequency
+        FROM task_schedule_frequencies AS tsf
+        WHERE tsf.task_schedule_id = ts.id
+        ORDER BY tsf.frequency
+    )::text[] AS frequencies,
+    ts.start_at,
+    ts.end_at,
+    ts.due_at,
+    ts.created_at,
+    ts.updated_at
+FROM task_schedules AS ts
+WHERE ts.id = $1
 `
 
-func (q *Queries) GetTaskSchedule(ctx context.Context, id string) (TaskSchedule, error) {
+type GetTaskScheduleRow struct {
+	ID            string
+	TaskID        string
+	Title         string
+	Description   pgtype.Text
+	Location      pgtype.Text
+	IntervalWeeks int32
+	Frequencies   []string
+	StartAt       pgtype.Timestamptz
+	EndAt         pgtype.Timestamptz
+	DueAt         pgtype.Timestamptz
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
+func (q *Queries) GetTaskSchedule(ctx context.Context, id string) (GetTaskScheduleRow, error) {
 	row := q.db.QueryRow(ctx, getTaskSchedule, id)
-	var i TaskSchedule
+	var i GetTaskScheduleRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
@@ -84,6 +116,7 @@ func (q *Queries) GetTaskSchedule(ctx context.Context, id string) (TaskSchedule,
 		&i.Description,
 		&i.Location,
 		&i.IntervalWeeks,
+		&i.Frequencies,
 		&i.StartAt,
 		&i.EndAt,
 		&i.DueAt,

@@ -19,7 +19,6 @@ func TestNewTaskFrequency(t *testing.T) {
 		{name: "friday", value: "fri", want: TaskFrequency{Value: "fri", Label: "Friday", LabelJp: "金曜日"}},
 		{name: "saturday", value: "sat", want: TaskFrequency{Value: "sat", Label: "Saturday", LabelJp: "土曜日"}},
 		{name: "sunday", value: "sun", want: TaskFrequency{Value: "sun", Label: "Sunday", LabelJp: "日曜日"}},
-		{name: "once", value: "once", want: TaskFrequency{Value: "once", Label: "Once", LabelJp: "一度限り"}},
 		{name: "empty", wantErr: ErrTaskFrequencyEmpty},
 		{name: "invalid", value: "daily", wantErr: ErrTaskFrequencyInvalid},
 	}

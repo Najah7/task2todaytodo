@@ -24,7 +24,7 @@ func (r TaskScheduleRepository) Get(ctx context.Context, id domain.TaskScheduleI
 	if err != nil {
 		return domain.NewZeroTaskSchedule(), err
 	}
-	return recordToTaskSchedule(record)
+	return recordToTaskScheduleRow(record)
 }
 
 func (r TaskScheduleRepository) Create(ctx context.Context, schedule domain.TaskSchedule) (domain.TaskSchedule, error) {

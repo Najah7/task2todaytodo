@@ -1,7 +1,22 @@
 -- name: GetTodoItem :one
-SELECT id, task_id, title, description, completed, position, interval_weeks, created_at, updated_at
-FROM todo_items
-WHERE id = $1;
+SELECT
+    ti.id,
+    ti.task_id,
+    ti.title,
+    ti.description,
+    ti.completed,
+    ti.position,
+    ti.interval_weeks,
+    ARRAY(
+        SELECT tif.frequency
+        FROM todo_item_frequencies AS tif
+        WHERE tif.todo_item_id = ti.id
+        ORDER BY tif.frequency
+    )::text[] AS frequencies,
+    ti.created_at,
+    ti.updated_at
+FROM todo_items AS ti
+WHERE ti.id = $1;
 
 -- name: CreateTodoItem :one
 INSERT INTO todo_items (id, task_id, title, description, completed, position, interval_weeks)
