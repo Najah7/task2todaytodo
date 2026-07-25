@@ -1,0 +1,118 @@
+package repositories
+
+import (
+	"context"
+
+	domain "github.com/Najah7/task2schedule/internal/domain/task"
+	"github.com/Najah7/task2schedule/internal/repositories/sqlc"
+)
+
+var _ domain.TaskRepository = TaskRepository{}
+
+type TaskRepository struct {
+	queries *sqlc.Queries
+}
+
+func NewTaskRepository(db sqlc.DBTX) *TaskRepository {
+	return &TaskRepository{
+		queries: sqlc.New(db),
+	}
+}
+
+func (r TaskRepository) Get(ctx context.Context, id domain.TaskID) (domain.Task, error) {
+	record, err := r.queries.GetTask(ctx, string(id))
+	if err != nil {
+		return domain.NewZeroTask(), err
+	}
+	return recordToTask(record)
+}
+
+func (r TaskRepository) GetByFrequency(ctx context.Context, frequency domain.TaskFrequency) ([]domain.Task, error) {
+	records, err := r.queries.GetTaskByFrequency(ctx, frequency.String())
+	if err != nil {
+		return nil, err
+	}
+	return recordsToTasks(records)
+}
+
+func (r TaskRepository) GetByPriority(ctx context.Context, priority domain.TaskPriority) ([]domain.Task, error) {
+	records, err := r.queries.GetTaskByPriority(ctx, priority.String())
+	if err != nil {
+		return nil, err
+	}
+	return recordsToTasks(records)
+}
+
+func (r TaskRepository) GetByProject(ctx context.Context, projectID domain.ProjectID) ([]domain.Task, error) {
+	records, err := r.queries.GetTaskByProject(ctx, string(projectID))
+	if err != nil {
+		return nil, err
+	}
+	return recordsToTasks(records)
+}
+
+func (r TaskRepository) GetByProjectType(ctx context.Context, projectType domain.ProjectType) ([]domain.Task, error) {
+	records, err := r.queries.GetTaskByProjectType(ctx, projectType.String())
+	if err != nil {
+		return nil, err
+	}
+	return recordsToTasks(records)
+}
+
+func (r TaskRepository) GetByStatus(ctx context.Context, status domain.TaskStatus) ([]domain.Task, error) {
+	records, err := r.queries.GetTaskByStatus(ctx, status.String())
+	if err != nil {
+		return nil, err
+	}
+	return recordsToTasks(records)
+}
+
+func (r TaskRepository) GetByTag(ctx context.Context, tagID string) ([]domain.Task, error) {
+	records, err := r.queries.GetTaskByTag(ctx, tagID)
+	if err != nil {
+		return nil, err
+	}
+	return recordsToTasks(records)
+}
+
+func (r TaskRepository) Create(ctx context.Context, task domain.Task) (domain.Task, error) {
+	record, err := r.queries.CreateTask(ctx, sqlc.CreateTaskParams{
+		ID:               string(task.ID),
+		UserID:           string(task.UserID),
+		ProjectID:        stringToPgText(string(task.ProjectID)),
+		Title:            task.Title,
+		Description:      stringToPgText(task.Description),
+		EstimatedMinutes: intPointerToPgInt(task.EstimatedMinutes),
+		ActualMinutes:    intPointerToPgInt(task.ActualMinutes),
+		Progress:         int16(task.Progress),
+		Priority:         taskPriorityString(task.Priority),
+		Status:           taskStatusString(task.Status),
+	})
+	if err != nil {
+		return domain.NewZeroTask(), err
+	}
+	return recordToTask(record)
+}
+
+func (r TaskRepository) Update(ctx context.Context, task domain.Task) (domain.Task, error) {
+	record, err := r.queries.UpdateTask(ctx, sqlc.UpdateTaskParams{
+		ID:               string(task.ID),
+		UserID:           string(task.UserID),
+		ProjectID:        stringToPgText(string(task.ProjectID)),
+		Title:            task.Title,
+		Description:      stringToPgText(task.Description),
+		EstimatedMinutes: intPointerToPgInt(task.EstimatedMinutes),
+		ActualMinutes:    intPointerToPgInt(task.ActualMinutes),
+		Progress:         int16(task.Progress),
+		Priority:         taskPriorityString(task.Priority),
+		Status:           taskStatusString(task.Status),
+	})
+	if err != nil {
+		return domain.NewZeroTask(), err
+	}
+	return recordToTask(record)
+}
+
+func (r TaskRepository) Delete(ctx context.Context, id domain.TaskID) error {
+	return r.queries.DeleteTask(ctx, string(id))
+}

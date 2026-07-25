@@ -8,8 +8,10 @@ import (
 
 func TestNewProject(t *testing.T) {
 	projectType := mustProjectType(t, "work")
+	startAt := time.Date(2026, 7, 18, 9, 0, 0, 0, time.UTC)
+	endAt := startAt.Add(24 * time.Hour)
 
-	project, err := NewProject("project-1", "user-1", projectType, "Build task domain")
+	project, err := NewProject("project-1", "user-1", projectType, "Build task domain", startAt, endAt)
 	if err != nil {
 		t.Fatalf("NewProject() error = %v", err)
 	}
@@ -17,7 +19,7 @@ func TestNewProject(t *testing.T) {
 	if project.ID != "project-1" || project.UserID != "user-1" || project.Type != projectType {
 		t.Errorf("project = %+v, want IDs and type to be set", project)
 	}
-	if project.Goal != "" || project.Description != "" || project.Progress != 0 {
+	if project.Goal != "" || project.Description != "" || project.Progress != 0 || project.StartAt != startAt || project.EndAt != endAt {
 		t.Errorf("project = %+v, want only required values to be set", project)
 	}
 }
@@ -39,6 +41,8 @@ func TestNewProjectWithDetails(t *testing.T) {
 
 func TestNewProjectValidation(t *testing.T) {
 	projectType := mustProjectType(t, "work")
+	startAt := time.Date(2026, 7, 18, 9, 0, 0, 0, time.UTC)
+	endAt := startAt.Add(time.Hour)
 
 	tests := []struct {
 		name        string
@@ -46,17 +50,22 @@ func TestNewProjectValidation(t *testing.T) {
 		userID      UserID
 		projectType ProjectType
 		title       string
+		startAt     time.Time
+		endAt       time.Time
 		wantErr     error
 	}{
-		{name: "empty ID", userID: "user-1", projectType: projectType, title: "Project", wantErr: ErrProjectIDEmpty},
-		{name: "empty user ID", id: "project-1", projectType: projectType, title: "Project", wantErr: ErrProjectUserIDEmpty},
-		{name: "invalid type", id: "project-1", userID: "user-1", projectType: ProjectType{Value: "fitness"}, title: "Project", wantErr: ErrProjectTypeInvalid},
-		{name: "blank title", id: "project-1", userID: "user-1", projectType: projectType, title: " ", wantErr: ErrProjectTitleEmpty},
+		{name: "empty ID", userID: "user-1", projectType: projectType, title: "Project", startAt: startAt, endAt: endAt, wantErr: ErrProjectIDEmpty},
+		{name: "empty user ID", id: "project-1", projectType: projectType, title: "Project", startAt: startAt, endAt: endAt, wantErr: ErrProjectUserIDEmpty},
+		{name: "invalid type", id: "project-1", userID: "user-1", projectType: ProjectType{Value: "fitness"}, title: "Project", startAt: startAt, endAt: endAt, wantErr: ErrProjectTypeInvalid},
+		{name: "blank title", id: "project-1", userID: "user-1", projectType: projectType, title: " ", startAt: startAt, endAt: endAt, wantErr: ErrProjectTitleEmpty},
+		{name: "empty start time", id: "project-1", userID: "user-1", projectType: projectType, title: "Project", endAt: endAt, wantErr: ErrProjectStartAtEmpty},
+		{name: "empty end time", id: "project-1", userID: "user-1", projectType: projectType, title: "Project", startAt: startAt, wantErr: ErrProjectEndAtEmpty},
+		{name: "end before start", id: "project-1", userID: "user-1", projectType: projectType, title: "Project", startAt: startAt, endAt: startAt, wantErr: ErrProjectEndAtMustBeAfterStartAt},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewProject(tt.id, tt.userID, tt.projectType, tt.title)
+			got, err := NewProject(tt.id, tt.userID, tt.projectType, tt.title, tt.startAt, tt.endAt)
 			assertTaskDomainErrorIs(t, err, tt.wantErr)
 			if got.ID != tt.id || got.UserID != tt.userID || got.Title != tt.title {
 				t.Errorf("project = %+v, want input values to be preserved", got)
@@ -78,7 +87,6 @@ func TestNewProjectWithDetailsValidation(t *testing.T) {
 	}{
 		{name: "negative progress", progress: -1, startAt: startAt, endAt: startAt.Add(time.Hour), wantErr: ErrProjectProgressInvalid},
 		{name: "progress too high", progress: 101, startAt: startAt, endAt: startAt.Add(time.Hour), wantErr: ErrProjectProgressInvalid},
-		{name: "end before start", progress: 0, startAt: startAt, endAt: startAt, wantErr: ErrProjectEndAtMustBeAfterStartAt},
 	}
 
 	for _, tt := range tests {
