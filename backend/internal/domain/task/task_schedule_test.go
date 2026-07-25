@@ -17,7 +17,7 @@ func TestNewTaskSchedule(t *testing.T) {
 	if schedule.ID != "schedule-1" || schedule.TaskID != "task-1" || schedule.Title != "Focus block" {
 		t.Errorf("task schedule = %+v, want required values to be set", schedule)
 	}
-	if schedule.StartAt != startAt || schedule.EndAt != endAt || schedule.Description != "" {
+	if schedule.StartAt != startAt || schedule.EndAt != endAt || schedule.Description != "" || schedule.IntervalWeeks != 1 {
 		t.Errorf("task schedule = %+v, want only required values to be set", schedule)
 	}
 }
@@ -27,13 +27,13 @@ func TestNewTaskScheduleWithDetails(t *testing.T) {
 	endAt := startAt.Add(time.Hour)
 	dueAt := startAt.Add(2 * time.Hour)
 
-	schedule, err := NewTaskScheduleWithDetails("schedule-1", "task-1", "Focus block", "Deep work", "Home", startAt, endAt, dueAt)
+	schedule, err := NewTaskScheduleWithDetails("schedule-1", "task-1", "Focus block", "Deep work", "Home", 2, startAt, endAt, dueAt)
 	if err != nil {
 		t.Fatalf("NewTaskScheduleWithDetails() error = %v", err)
 	}
 
-	if schedule.ID != "schedule-1" || schedule.TaskID != "task-1" || schedule.DueAt != dueAt {
-		t.Errorf("task schedule = %+v, want IDs and due time to be set", schedule)
+	if schedule.ID != "schedule-1" || schedule.TaskID != "task-1" || schedule.IntervalWeeks != 2 || schedule.DueAt != dueAt {
+		t.Errorf("task schedule = %+v, want IDs, interval, and due time to be set", schedule)
 	}
 }
 
@@ -42,25 +42,27 @@ func TestNewTaskScheduleValidation(t *testing.T) {
 	endAt := startAt.Add(time.Hour)
 
 	tests := []struct {
-		name    string
-		id      TaskScheduleID
-		taskID  TaskID
-		title   string
-		startAt time.Time
-		endAt   time.Time
-		wantErr error
+		name          string
+		id            TaskScheduleID
+		taskID        TaskID
+		title         string
+		intervalWeeks int
+		startAt       time.Time
+		endAt         time.Time
+		wantErr       error
 	}{
-		{name: "empty ID", taskID: "task-1", title: "Schedule", startAt: startAt, endAt: endAt, wantErr: ErrTaskScheduleIDEmpty},
-		{name: "empty task ID", id: "schedule-1", title: "Schedule", startAt: startAt, endAt: endAt, wantErr: ErrTaskScheduleTaskIDEmpty},
-		{name: "blank title", id: "schedule-1", taskID: "task-1", title: " ", startAt: startAt, endAt: endAt, wantErr: ErrTaskScheduleTitleEmpty},
-		{name: "empty start time", id: "schedule-1", taskID: "task-1", title: "Schedule", endAt: endAt, wantErr: ErrTaskScheduleStartAtEmpty},
-		{name: "empty end time", id: "schedule-1", taskID: "task-1", title: "Schedule", startAt: startAt, wantErr: ErrTaskScheduleEndAtEmpty},
-		{name: "end before start", id: "schedule-1", taskID: "task-1", title: "Schedule", startAt: startAt, endAt: startAt, wantErr: ErrTaskScheduleEndAtMustBeAfterStartAt},
+		{name: "empty ID", taskID: "task-1", title: "Schedule", intervalWeeks: 1, startAt: startAt, endAt: endAt, wantErr: ErrTaskScheduleIDEmpty},
+		{name: "empty task ID", id: "schedule-1", title: "Schedule", intervalWeeks: 1, startAt: startAt, endAt: endAt, wantErr: ErrTaskScheduleTaskIDEmpty},
+		{name: "blank title", id: "schedule-1", taskID: "task-1", title: " ", intervalWeeks: 1, startAt: startAt, endAt: endAt, wantErr: ErrTaskScheduleTitleEmpty},
+		{name: "interval weeks less than 1", id: "schedule-1", taskID: "task-1", title: "Schedule", intervalWeeks: 0, startAt: startAt, endAt: endAt, wantErr: ErrTaskScheduleIntervalWeeksLess},
+		{name: "empty start time", id: "schedule-1", taskID: "task-1", title: "Schedule", intervalWeeks: 1, endAt: endAt, wantErr: ErrTaskScheduleStartAtEmpty},
+		{name: "empty end time", id: "schedule-1", taskID: "task-1", title: "Schedule", intervalWeeks: 1, startAt: startAt, wantErr: ErrTaskScheduleEndAtEmpty},
+		{name: "end before start", id: "schedule-1", taskID: "task-1", title: "Schedule", intervalWeeks: 1, startAt: startAt, endAt: startAt, wantErr: ErrTaskScheduleEndAtMustBeAfterStartAt},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewTaskSchedule(tt.id, tt.taskID, tt.title, tt.startAt, tt.endAt)
+			got, err := NewTaskScheduleWithDetails(tt.id, tt.taskID, tt.title, "", "", tt.intervalWeeks, tt.startAt, tt.endAt, time.Time{})
 			assertTaskDomainErrorIs(t, err, tt.wantErr)
 			if got.ID != tt.id || got.TaskID != tt.taskID || got.Title != tt.title {
 				t.Errorf("task schedule = %+v, want input values to be preserved", got)
@@ -85,7 +87,7 @@ func TestNewTaskScheduleWithDetailsValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewTaskScheduleWithDetails("schedule-1", "task-1", "Schedule", "", "", tt.startAt, tt.endAt, time.Time{})
+			got, err := NewTaskScheduleWithDetails("schedule-1", "task-1", "Schedule", "", "", 1, tt.startAt, tt.endAt, time.Time{})
 			assertTaskDomainErrorIs(t, err, tt.wantErr)
 			if got.StartAt != tt.startAt || got.EndAt != tt.endAt {
 				t.Errorf("task schedule = %+v, want input details to be preserved", got)
