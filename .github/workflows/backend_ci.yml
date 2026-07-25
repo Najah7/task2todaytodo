@@ -3,7 +3,7 @@ name: Backend CI
 on:
   pull_request:
     paths:
-      - "backend/**"
+      - "backend/**/*.go"
       - ".github/workflows/backend_ci.yml"
 
 permissions:
