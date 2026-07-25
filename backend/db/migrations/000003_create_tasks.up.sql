@@ -94,6 +94,7 @@ CREATE TABLE task_schedules (
     title text NOT NULL CHECK (btrim(title) <> ''),
     description text,
     location text,
+    interval_weeks integer NOT NULL DEFAULT 1 CHECK (interval_weeks >= 1),
     start_at timestamptz NOT NULL,
     end_at timestamptz NOT NULL,
     due_at timestamptz,
@@ -105,7 +106,6 @@ CREATE TABLE task_schedules (
 CREATE TABLE task_schedule_frequencies (
     task_schedule_id text NOT NULL REFERENCES task_schedules(id) ON DELETE CASCADE,
     frequency text NOT NULL REFERENCES task_frequency_master(frequency) ON DELETE RESTRICT,
-    interval_weeks integer NOT NULL DEFAULT 1 CHECK (interval_weeks >= 1),
     created_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (task_schedule_id, frequency)
 );
@@ -117,6 +117,7 @@ CREATE TABLE todo_items (
     description text,
     completed boolean NOT NULL DEFAULT false,
     position integer NOT NULL CHECK (position >= 0),
+    interval_weeks integer NOT NULL DEFAULT 1 CHECK (interval_weeks >= 1),
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT todo_items_task_id_position_key
@@ -126,7 +127,6 @@ CREATE TABLE todo_items (
 CREATE TABLE todo_item_frequencies (
     todo_item_id text NOT NULL REFERENCES todo_items(id) ON DELETE CASCADE,
     frequency text NOT NULL REFERENCES task_frequency_master(frequency) ON DELETE RESTRICT,
-    interval_weeks integer NOT NULL DEFAULT 1 CHECK (interval_weeks >= 1),
     created_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (todo_item_id, frequency)
 );
