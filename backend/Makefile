@@ -12,6 +12,25 @@ export MIGRATE_POSTGRES_HOST ?= db
 export LOGS_DIR := $(PROJECT_ROOT)/out/logs
 export APP_SERVICE_NAME := task2todaytodo
 
+.PHONY: help
+help:
+	@printf '%s\n' 'Available commands:'
+	@printf '  %-28s %s\n' 'make go-fmt' 'Format Go source files.'
+	@printf '  %-28s %s\n' 'make test' 'Run Go tests.'
+	@printf '  %-28s %s\n' 'make build' 'Build the API binary.'
+	@printf '  %-28s %s\n' 'make run' 'Run the app service with Docker Compose.'
+	@printf '  %-28s %s\n' 'make env-up' 'Start the database service.'
+	@printf '  %-28s %s\n' 'make env-down' 'Stop the database service.'
+	@printf '  %-28s %s\n' 'make env-cleanup' 'Remove the database volume after confirmation.'
+	@printf '  %-28s %s\n' 'make cleanup-logs' 'Remove application logs after confirmation.'
+	@printf '  %-28s %s\n' 'make db-shell' 'Open a psql shell in the database container.'
+	@printf '  %-28s %s\n' 'make migrate-up' 'Run database migrations.'
+	@printf '  %-28s %s\n' 'make migrate-down' 'Roll back database migrations.'
+	@printf '  %-28s %s\n' 'make migrate-create name=...' 'Create a new SQL migration.'
+	@printf '  %-28s %s\n' 'make sqlc-gen' 'Generate sqlc repository code.'
+	@printf '  %-28s %s\n' 'make swagger-gen' 'Generate Swagger documentation.'
+	@printf '  %-28s %s\n' 'make swagger-fmt' 'Format Swagger annotations.'
+
 
 ###############################################
 # App
