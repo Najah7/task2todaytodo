@@ -30,7 +30,7 @@ type ProjectTypeListResponse struct {
 //
 //	@Summary		List project types
 //	@Description	Returns all project type master data.
-//	@Tags			Task Master Data
+//	@Tags			Projects
 //	@Produce		json
 //	@Success		200	{object}	ProjectTypeListResponse
 //	@Failure		500	{object}	ErrResponse	"Failed to list project types"

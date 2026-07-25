@@ -31,7 +31,7 @@ type TaskPriorityListResponse struct {
 //
 //	@Summary		List task priorities
 //	@Description	Returns all task priority master data.
-//	@Tags			Task Master Data
+//	@Tags			Tasks
 //	@Produce		json
 //	@Success		200	{object}	TaskPriorityListResponse
 //	@Failure		500	{object}	ErrResponse	"Failed to list task priorities"

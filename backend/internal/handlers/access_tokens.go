@@ -41,7 +41,7 @@ type AccessTokenGenerateRequest struct {
 //
 //	@Summary		Generate access token
 //	@Description	Generates a new access token for a user.
-//	@Tags			Auth
+//	@Tags			Access Tokens
 //	@Accept			json
 //	@Produce		json
 //	@Param			request	body		AccessTokenGenerateRequest	true	"Access token generate request"
@@ -87,7 +87,7 @@ func (h *AccessTokenHandler) Generate(w http.ResponseWriter, r *http.Request) {
 //
 //	@Summary		Revoke access token
 //	@Description	Revokes the current access token from the Authorization header.
-//	@Tags			Auth
+//	@Tags			Access Tokens
 //	@Security		BearerAuth
 //	@Success		200	{object}	MessageResponse	"OK"
 //	@Failure		401	{object}	ErrResponse		"Missing or invalid access token"

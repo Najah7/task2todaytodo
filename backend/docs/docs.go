@@ -24,7 +24,7 @@ const docTemplate = `{
                 ],
                 "description": "Revokes the current access token from the Authorization header.",
                 "tags": [
-                    "Auth"
+                    "Access Tokens"
                 ],
                 "summary": "Revoke access token",
                 "responses": {
@@ -59,7 +59,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Access Tokens"
                 ],
                 "summary": "Generate access token",
                 "parameters": [
@@ -108,7 +108,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Monitoring"
+                    "Monitor"
                 ],
                 "summary": "Check API health",
                 "responses": {
@@ -134,7 +134,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Task Master Data"
+                    "Projects"
                 ],
                 "summary": "List project types",
                 "responses": {
@@ -160,7 +160,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Task Master Data"
+                    "Tasks"
                 ],
                 "summary": "List task frequencies",
                 "responses": {
@@ -186,7 +186,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Task Master Data"
+                    "Tasks"
                 ],
                 "summary": "List task priorities",
                 "responses": {
@@ -212,7 +212,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Task Master Data"
+                    "Tasks"
                 ],
                 "summary": "List task statuses",
                 "responses": {
@@ -241,7 +241,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Users"
                 ],
                 "summary": "Create user",
                 "parameters": [
@@ -289,7 +289,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Users"
                 ],
                 "summary": "Get current user",
                 "responses": {
@@ -327,7 +327,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Users"
                 ],
                 "summary": "Update current user basic info",
                 "parameters": [
@@ -381,7 +381,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Users"
                 ],
                 "summary": "Update current user password",
                 "parameters": [

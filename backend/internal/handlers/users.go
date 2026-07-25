@@ -46,7 +46,7 @@ func newUserResponse(u auth.User) UserResponse {
 //
 //	@Summary		Get current user
 //	@Description	Returns the authenticated user's profile.
-//	@Tags			Auth
+//	@Tags			Users
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Success		200	{object}	UserResponse
@@ -76,7 +76,7 @@ type UserCreateRequest struct {
 //
 //	@Summary		Create user
 //	@Description	Creates a user with an email address and password.
-//	@Tags			Auth
+//	@Tags			Users
 //	@Accept			json
 //	@Produce		json
 //	@Param			request	body		UserCreateRequest	true	"User create request"
@@ -113,7 +113,7 @@ type UserInfoUpdateRequest struct {
 //
 //	@Summary		Update current user basic info
 //	@Description	Updates the authenticated user's first and last name.
-//	@Tags			Auth
+//	@Tags			Users
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
@@ -157,7 +157,7 @@ type UserPasswordUpdateRequest struct {
 //
 //	@Summary		Update current user password
 //	@Description	Updates the authenticated user's password.
-//	@Tags			Auth
+//	@Tags			Users
 //	@Accept			json
 //	@Security		BearerAuth
 //	@Param			request	body		UserPasswordUpdateRequest	true	"User password update request"

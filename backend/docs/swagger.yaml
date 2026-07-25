@@ -172,7 +172,7 @@ paths:
       - BearerAuth: []
       summary: Revoke access token
       tags:
-      - Auth
+      - Access Tokens
   /access-tokens:
     post:
       consumes:
@@ -206,7 +206,7 @@ paths:
             $ref: '#/definitions/handlers.ErrResponse'
       summary: Generate access token
       tags:
-      - Auth
+      - Access Tokens
   /monitor/health:
     get:
       description: Returns the API health status.
@@ -223,7 +223,7 @@ paths:
             $ref: '#/definitions/handlers.ErrResponse'
       summary: Check API health
       tags:
-      - Monitoring
+      - Monitor
   /projects/types:
     get:
       description: Returns all project type master data.
@@ -240,7 +240,7 @@ paths:
             $ref: '#/definitions/handlers.ErrResponse'
       summary: List project types
       tags:
-      - Task Master Data
+      - Projects
   /tasks/frequencies:
     get:
       description: Returns all task frequency master data.
@@ -257,7 +257,7 @@ paths:
             $ref: '#/definitions/handlers.ErrResponse'
       summary: List task frequencies
       tags:
-      - Task Master Data
+      - Tasks
   /tasks/priorities:
     get:
       description: Returns all task priority master data.
@@ -274,7 +274,7 @@ paths:
             $ref: '#/definitions/handlers.ErrResponse'
       summary: List task priorities
       tags:
-      - Task Master Data
+      - Tasks
   /tasks/statuses:
     get:
       description: Returns all task status master data.
@@ -291,7 +291,7 @@ paths:
             $ref: '#/definitions/handlers.ErrResponse'
       summary: List task statuses
       tags:
-      - Task Master Data
+      - Tasks
   /users:
     post:
       consumes:
@@ -321,7 +321,7 @@ paths:
             $ref: '#/definitions/handlers.ErrResponse'
       summary: Create user
       tags:
-      - Auth
+      - Users
   /users/me:
     get:
       description: Returns the authenticated user's profile.
@@ -344,7 +344,7 @@ paths:
       - BearerAuth: []
       summary: Get current user
       tags:
-      - Auth
+      - Users
     patch:
       consumes:
       - application/json
@@ -379,7 +379,7 @@ paths:
       - BearerAuth: []
       summary: Update current user basic info
       tags:
-      - Auth
+      - Users
   /users/me/password:
     patch:
       consumes:
@@ -413,7 +413,7 @@ paths:
       - BearerAuth: []
       summary: Update current user password
       tags:
-      - Auth
+      - Users
 securityDefinitions:
   BearerAuth:
     in: header
