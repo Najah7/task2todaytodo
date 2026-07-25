@@ -1,5 +1,7 @@
 # Task2TodayToDo
 
+[日本語](README.ja.md)
+
 ***Don’t live for tomorrow. Give today everything you’ve got.***
 
 task2todaytodo is a unified task and schedule management system that turns one structured source of truth into a daily execution plan.
