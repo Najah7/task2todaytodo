@@ -63,14 +63,42 @@ func (q *Queries) DeleteTodoItem(ctx context.Context, id string) error {
 }
 
 const getTodoItem = `-- name: GetTodoItem :one
-SELECT id, task_id, title, description, completed, position, interval_weeks, created_at, updated_at
-FROM todo_items
-WHERE id = $1
+SELECT
+    ti.id,
+    ti.task_id,
+    ti.title,
+    ti.description,
+    ti.completed,
+    ti.position,
+    ti.interval_weeks,
+    ARRAY(
+        SELECT tif.frequency
+        FROM todo_item_frequencies AS tif
+        WHERE tif.todo_item_id = ti.id
+        ORDER BY tif.frequency
+    )::text[] AS frequencies,
+    ti.created_at,
+    ti.updated_at
+FROM todo_items AS ti
+WHERE ti.id = $1
 `
 
-func (q *Queries) GetTodoItem(ctx context.Context, id string) (TodoItem, error) {
+type GetTodoItemRow struct {
+	ID            string
+	TaskID        string
+	Title         string
+	Description   pgtype.Text
+	Completed     bool
+	Position      int32
+	IntervalWeeks int32
+	Frequencies   []string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
+func (q *Queries) GetTodoItem(ctx context.Context, id string) (GetTodoItemRow, error) {
 	row := q.db.QueryRow(ctx, getTodoItem, id)
-	var i TodoItem
+	var i GetTodoItemRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
@@ -79,6 +107,7 @@ func (q *Queries) GetTodoItem(ctx context.Context, id string) (TodoItem, error) 
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
+		&i.Frequencies,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
