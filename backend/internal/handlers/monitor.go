@@ -12,7 +12,7 @@ type HealthResponse struct {
 //
 //	@Summary		Check API health
 //	@Description	Returns the API health status.
-//	@Tags			Monitoring
+//	@Tags			Monitor
 //	@Produce		json
 //	@Success		200	{object}	HealthResponse
 //	@Failure		500	{object}	ErrResponse	"Failed to marshal response"

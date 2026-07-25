@@ -30,7 +30,7 @@ type TaskStatusListResponse struct {
 //
 //	@Summary		List task statuses
 //	@Description	Returns all task status master data.
-//	@Tags			Task Master Data
+//	@Tags			Tasks
 //	@Produce		json
 //	@Success		200	{object}	TaskStatusListResponse
 //	@Failure		500	{object}	ErrResponse	"Failed to list task statuses"

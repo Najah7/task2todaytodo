@@ -30,7 +30,7 @@ type TaskFrequencyListResponse struct {
 //
 //	@Summary		List task frequencies
 //	@Description	Returns all task frequency master data.
-//	@Tags			Task Master Data
+//	@Tags			Tasks
 //	@Produce		json
 //	@Success		200	{object}	TaskFrequencyListResponse
 //	@Failure		500	{object}	ErrResponse	"Failed to list task frequencies"
