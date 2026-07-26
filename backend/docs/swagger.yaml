@@ -51,6 +51,96 @@ definitions:
       message:
         type: string
     type: object
+  handlers.ProjectAggregateResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      end_at:
+        type: string
+      goal:
+        type: string
+      id:
+        type: string
+      progress:
+        type: integer
+      start_at:
+        type: string
+      tasks:
+        items:
+          $ref: '#/definitions/handlers.ProjectTaskResponse'
+        type: array
+      title:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.ProjectCreateRequest:
+    properties:
+      description:
+        type: string
+      end_at:
+        type: string
+      goal:
+        type: string
+      start_at:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  handlers.ProjectResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      end_at:
+        type: string
+      goal:
+        type: string
+      id:
+        type: string
+      progress:
+        type: integer
+      start_at:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.ProjectTaskResponse:
+    properties:
+      actual_minutes:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      estimated_minutes:
+        type: integer
+      id:
+        type: string
+      priority:
+        type: string
+      progress:
+        type: integer
+      project_id:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
   handlers.ProjectTypeListResponse:
     properties:
       data:
@@ -66,6 +156,76 @@ definitions:
         type: string
       type:
         type: string
+    type: object
+  handlers.ProjectUpdateRequest:
+    properties:
+      description:
+        type: string
+      end_at:
+        type: string
+      goal:
+        type: string
+      start_at:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  handlers.TaskAggregateResponse:
+    properties:
+      actual_minutes:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      estimated_minutes:
+        type: integer
+      id:
+        type: string
+      priority:
+        type: string
+      progress:
+        type: integer
+      project_id:
+        type: string
+      status:
+        type: string
+      task_schedules:
+        items:
+          $ref: '#/definitions/handlers.TaskScheduleResponse'
+        type: array
+      title:
+        type: string
+      todo_items:
+        items:
+          $ref: '#/definitions/handlers.TodoItemResponse'
+        type: array
+      updated_at:
+        type: string
+    type: object
+  handlers.TaskCreateRequest:
+    properties:
+      actual_minutes:
+        type: integer
+      description:
+        type: string
+      estimated_minutes:
+        type: integer
+      priority:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+    type: object
+  handlers.TaskEstimationUpdateRequest:
+    properties:
+      actual_minutes:
+        type: integer
+      estimated_minutes:
+        type: integer
     type: object
   handlers.TaskFrequencyListResponse:
     properties:
@@ -101,6 +261,107 @@ definitions:
       weight:
         type: integer
     type: object
+  handlers.TaskPriorityUpdateRequest:
+    properties:
+      priority:
+        type: string
+    type: object
+  handlers.TaskResponse:
+    properties:
+      actual_minutes:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      estimated_minutes:
+        type: integer
+      id:
+        type: string
+      priority:
+        type: string
+      progress:
+        type: integer
+      project_id:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.TaskScheduleCreateRequest:
+    properties:
+      description:
+        type: string
+      due_at:
+        type: string
+      end_at:
+        type: string
+      frequencies:
+        items:
+          type: string
+        type: array
+      interval_weeks:
+        type: integer
+      location:
+        type: string
+      start_at:
+        type: string
+      title:
+        type: string
+    type: object
+  handlers.TaskScheduleResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      due_at:
+        type: string
+      end_at:
+        type: string
+      frequencies:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      interval_weeks:
+        type: integer
+      location:
+        type: string
+      start_at:
+        type: string
+      task_id:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.TaskScheduleUpdateRequest:
+    properties:
+      description:
+        type: string
+      due_at:
+        type: string
+      end_at:
+        type: string
+      frequencies:
+        items:
+          type: string
+        type: array
+      interval_weeks:
+        type: integer
+      location:
+        type: string
+      start_at:
+        type: string
+      title:
+        type: string
+    type: object
   handlers.TaskStatusListResponse:
     properties:
       data:
@@ -115,6 +376,55 @@ definitions:
       label_jp:
         type: string
       status:
+        type: string
+    type: object
+  handlers.TaskUpdateRequest:
+    properties:
+      description:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+    type: object
+  handlers.TodoItemCreateRequest:
+    properties:
+      description:
+        type: string
+      frequencies:
+        items:
+          type: string
+        type: array
+      interval_weeks:
+        type: integer
+      position:
+        type: integer
+      title:
+        type: string
+    type: object
+  handlers.TodoItemResponse:
+    properties:
+      completed:
+        type: boolean
+      created_at:
+        type: string
+      description:
+        type: string
+      frequencies:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      interval_weeks:
+        type: integer
+      position:
+        type: integer
+      task_id:
+        type: string
+      title:
+        type: string
+      updated_at:
         type: string
     type: object
   handlers.UserCreateRequest:
@@ -224,6 +534,201 @@ paths:
       summary: Check API health
       tags:
       - Monitor
+  /projects:
+    post:
+      consumes:
+      - application/json
+      description: Creates a Project for the authenticated user.
+      parameters:
+      - description: Project create request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ProjectCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.ProjectResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "409":
+          description: Project ID already exists
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to create project
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Create project
+      tags:
+      - Projects
+  /projects/{project_id}:
+    delete:
+      description: Deletes an owned Project. Existing Tasks are kept and detached
+        by database constraints.
+      parameters:
+      - description: Project ID
+        in: path
+        name: project_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to delete project
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete project
+      tags:
+      - Projects
+    get:
+      description: Returns an owned Project with its Tasks ordered by creation time.
+      parameters:
+      - description: Project ID
+        in: path
+        name: project_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ProjectAggregateResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to get project
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Get project
+      tags:
+      - Projects
+    patch:
+      consumes:
+      - application/json
+      description: Partially updates owned Project basic information.
+      parameters:
+      - description: Project ID
+        in: path
+        name: project_id
+        required: true
+        type: string
+      - description: Project update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ProjectUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ProjectResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to update project
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update project
+      tags:
+      - Projects
+  /projects/{project_id}/tasks:
+    post:
+      consumes:
+      - application/json
+      description: Creates a Task under an owned Project.
+      parameters:
+      - description: Project ID
+        in: path
+        name: project_id
+        required: true
+        type: string
+      - description: Task create request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.TaskCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.TaskResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to create task
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Create project task
+      tags:
+      - Tasks
   /projects/types:
     get:
       description: Returns all project type master data.
@@ -241,6 +746,536 @@ paths:
       summary: List project types
       tags:
       - Projects
+  /tasks:
+    post:
+      consumes:
+      - application/json
+      description: Creates a standalone Task for the authenticated user.
+      parameters:
+      - description: Task create request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.TaskCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.TaskResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to create task
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Create task
+      tags:
+      - Tasks
+  /tasks/{task_id}:
+    delete:
+      description: Deletes an owned Task.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to delete task
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete task
+      tags:
+      - Tasks
+    get:
+      description: Returns an owned Task with TodoItems and TaskSchedules.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.TaskAggregateResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to get task
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Get task
+      tags:
+      - Tasks
+    patch:
+      consumes:
+      - application/json
+      description: Partially updates owned Task basic information.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Task update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.TaskUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.TaskResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to update task
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update task
+      tags:
+      - Tasks
+  /tasks/{task_id}/estimation:
+    patch:
+      consumes:
+      - application/json
+      description: Updates estimated and/or actual minutes for an owned Task.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Task estimation update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.TaskEstimationUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.TaskResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to update task
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update task estimation
+      tags:
+      - Tasks
+  /tasks/{task_id}/priority:
+    patch:
+      consumes:
+      - application/json
+      description: Updates priority for an owned Task.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Task priority update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.TaskPriorityUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.TaskResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to update task
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update task priority
+      tags:
+      - Tasks
+  /tasks/{task_id}/schedules:
+    post:
+      consumes:
+      - application/json
+      description: Creates a TaskSchedule under an owned Task.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: TaskSchedule create request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.TaskScheduleCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.TaskScheduleResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to create task schedule
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Create task schedule
+      tags:
+      - TaskSchedules
+  /tasks/{task_id}/schedules/{task_schedule_id}:
+    delete:
+      description: Deletes an owned TaskSchedule.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: TaskSchedule ID
+        in: path
+        name: task_schedule_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: TaskSchedule not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to delete task schedule
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete task schedule
+      tags:
+      - TaskSchedules
+    patch:
+      consumes:
+      - application/json
+      description: Partially updates an owned TaskSchedule.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: TaskSchedule ID
+        in: path
+        name: task_schedule_id
+        required: true
+        type: string
+      - description: TaskSchedule update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.TaskScheduleUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.TaskScheduleResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: TaskSchedule not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to update task schedule
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update task schedule
+      tags:
+      - TaskSchedules
+  /tasks/{task_id}/todo-items:
+    post:
+      consumes:
+      - application/json
+      description: Creates a TodoItem under an owned Task.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: TodoItem create request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.TodoItemCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.TodoItemResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "409":
+          description: Position conflict
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to create todo item
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Create todo item
+      tags:
+      - TodoItems
+  /tasks/{task_id}/todo-items/{todo_item_id}:
+    delete:
+      description: Deletes an owned TodoItem.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: TodoItem ID
+        in: path
+        name: todo_item_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: TodoItem not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to delete todo item
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete todo item
+      tags:
+      - TodoItems
+  /tasks/{task_id}/todo-items/{todo_item_id}:checked:
+    post:
+      description: Marks an owned TodoItem as completed.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: TodoItem ID
+        in: path
+        name: todo_item_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: TodoItem not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to update todo item
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Check todo item
+      tags:
+      - TodoItems
+  /tasks/{task_id}/todo-items/{todo_item_id}:unchecked:
+    post:
+      description: Marks an owned TodoItem as incomplete.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: TodoItem ID
+        in: path
+        name: todo_item_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: TodoItem not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to update todo item
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Uncheck todo item
+      tags:
+      - TodoItems
   /tasks/frequencies:
     get:
       description: Returns all task frequency master data.
