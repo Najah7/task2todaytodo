@@ -89,6 +89,20 @@ domain concepts.
 - If behavior cannot be expressed cleanly as a domain method, implement the orchestration in Application Service.
 - Introduce Domain Service only for rare pure-domain behavior that does not belong to any entity/VO and does not need repository/DB access.
 
+### Transaction
+
+- Implement transaction support with the Unit of Work pattern.
+- Usecase owns `UnitOfWork` and `Repositories` interfaces.
+- Application/infrastructure implements `UnitOfWork` with DB begin, commit, rollback.
+- In Go, `UnitOfWork` receives the workflow function, e.g. `uow.Do(ctx, func(ctx, repos) error { ... })`.
+- Do not use an event-registration style where operations are queued and executed at the end.
+- Prepare one Unit of Work per domain concern/bounded context, e.g. auth UoW and task UoW.
+- A UoW exposes only repositories for its own bounded context.
+- Repository impl may expose `WithTx(tx)` internally. Do not add `WithTx` to usecase repository ports.
+- Application Service decides the transaction boundary by calling `uow.Do(...)`.
+- Inside `uow.Do(...)`, use only repositories received from `repos`. Do not call service fields backed by non-transaction repositories.
+- Domain never knows transaction, repository, driver, or context-carried DB state.
+
 ## Handler and public error
 
 - Handler owns decode, auth/context extract, HTTP status, error map.
