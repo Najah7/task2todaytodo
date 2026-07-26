@@ -1,4 +1,4 @@
-CREATE TABLE task_priority_master (
+CREATE TABLE priority_master (
     priority text PRIMARY KEY CHECK (priority ~ '^[a-z][a-z0-9_]*$'),
     label text NOT NULL CHECK (btrim(label) <> ''),
     label_jp text NOT NULL CHECK (btrim(label_jp) <> ''),
@@ -15,7 +15,7 @@ CREATE TABLE task_status_master (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE task_frequency_master (
+CREATE TABLE frequency_master (
     frequency text PRIMARY KEY CHECK (frequency ~ '^[a-z][a-z0-9_]*$'),
     label text NOT NULL CHECK (btrim(label) <> ''),
     label_jp text NOT NULL CHECK (btrim(label_jp) <> ''),
@@ -39,6 +39,7 @@ CREATE TABLE projects (
     goal text,
     description text,
     progress smallint NOT NULL DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
+    priority text NOT NULL DEFAULT 'low' REFERENCES priority_master(priority) ON DELETE RESTRICT,
     start_at timestamptz NOT NULL,
     end_at timestamptz NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -56,7 +57,7 @@ CREATE TABLE tasks (
     estimated_minutes integer CHECK (estimated_minutes IS NULL OR estimated_minutes >= 0),
     actual_minutes integer CHECK (actual_minutes IS NULL OR actual_minutes >= 0),
     progress smallint NOT NULL DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
-    priority text NOT NULL DEFAULT 'low' REFERENCES task_priority_master(priority) ON DELETE RESTRICT,
+    priority text NOT NULL DEFAULT 'low' REFERENCES priority_master(priority) ON DELETE RESTRICT,
     status text NOT NULL DEFAULT 'open' REFERENCES task_status_master(status) ON DELETE RESTRICT,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
@@ -105,7 +106,7 @@ CREATE TABLE task_schedules (
 
 CREATE TABLE task_schedule_frequencies (
     task_schedule_id text NOT NULL REFERENCES task_schedules(id) ON DELETE CASCADE,
-    frequency text NOT NULL REFERENCES task_frequency_master(frequency) ON DELETE RESTRICT,
+    frequency text NOT NULL REFERENCES frequency_master(frequency) ON DELETE RESTRICT,
     created_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (task_schedule_id, frequency)
 );
@@ -126,7 +127,7 @@ CREATE TABLE todo_items (
 
 CREATE TABLE todo_item_frequencies (
     todo_item_id text NOT NULL REFERENCES todo_items(id) ON DELETE CASCADE,
-    frequency text NOT NULL REFERENCES task_frequency_master(frequency) ON DELETE RESTRICT,
+    frequency text NOT NULL REFERENCES frequency_master(frequency) ON DELETE RESTRICT,
     created_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (todo_item_id, frequency)
 );
@@ -152,6 +153,7 @@ CREATE TABLE todo_list_task_schedules (
 
 CREATE INDEX idx_projects_user_id ON projects(user_id);
 CREATE INDEX idx_projects_user_id_type ON projects(user_id, type);
+CREATE INDEX idx_projects_user_id_priority ON projects(user_id, priority);
 CREATE INDEX idx_tasks_user_id ON tasks(user_id);
 CREATE INDEX idx_tasks_project_id ON tasks(project_id);
 CREATE INDEX idx_tasks_user_id_status ON tasks(user_id, status);
@@ -170,7 +172,7 @@ INSERT INTO project_type_master (type, label, label_jp) VALUES
     ('hobby', 'Hobby', '趣味'),
     ('other', 'Other', 'その他');
 
-INSERT INTO task_priority_master (priority, label, label_jp, weight) VALUES
+INSERT INTO priority_master (priority, label, label_jp, weight) VALUES
     ('urgent', 'Urgent', '緊急', 100),
     ('high', 'High', '高', 50),
     ('medium', 'Medium', '中', 25),
@@ -184,7 +186,7 @@ INSERT INTO task_status_master (status, label, label_jp) VALUES
     ('in_progress', 'In progress', '進行中'),
     ('done', 'Done', '完了');
 
-INSERT INTO task_frequency_master (frequency, label, label_jp) VALUES
+INSERT INTO frequency_master (frequency, label, label_jp) VALUES
     ('mon', 'Monday', '月曜日'),
     ('tue', 'Tuesday', '火曜日'),
     ('wed', 'Wednesday', '水曜日'),

@@ -10,6 +10,6 @@ DROP TABLE IF EXISTS todo_lists;
 DROP TABLE IF EXISTS tasks;
 DROP TABLE IF EXISTS projects;
 DROP TABLE IF EXISTS project_type_master;
-DROP TABLE IF EXISTS task_frequency_master;
+DROP TABLE IF EXISTS frequency_master;
 DROP TABLE IF EXISTS task_status_master;
-DROP TABLE IF EXISTS task_priority_master;
+DROP TABLE IF EXISTS priority_master;
