@@ -8,11 +8,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
+	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
+	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 )
 
 func TestProjectTypeHandlerList(t *testing.T) {
-	handler := NewProjectTypeHandler(domain.NewProjectTypeService(&stubProjectTypeHandlerRepository{
+	handler := NewProjectTypeHandler(taskusecase.NewProjectTypeService(&stubProjectTypeHandlerRepository{
 		projectTypes: []domain.ProjectType{mustProjectTypeForHandler(t, "work")},
 	}))
 	recorder := httptest.NewRecorder()
@@ -37,7 +38,7 @@ func TestProjectTypeHandlerList(t *testing.T) {
 
 func TestProjectTypeHandlerListError(t *testing.T) {
 	errList := errors.New("list project types")
-	handler := NewProjectTypeHandler(domain.NewProjectTypeService(&stubProjectTypeHandlerRepository{err: errList}))
+	handler := NewProjectTypeHandler(taskusecase.NewProjectTypeService(&stubProjectTypeHandlerRepository{err: errList}))
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/api/projects/types", nil)
 

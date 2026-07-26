@@ -5,19 +5,20 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Najah7/task2todaytodo/internal/domain/auth"
-	"github.com/Najah7/task2todaytodo/internal/domain/shared"
+	auth "github.com/Najah7/task2todaytodo/internal/auth/domain"
+	authusecase "github.com/Najah7/task2todaytodo/internal/auth/usecase"
+	"github.com/Najah7/task2todaytodo/internal/shared"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const UserIDContextKey = "userID"
 
 type UserHandler struct {
-	svc   *auth.UserService
+	svc   *authusecase.UserService
 	idGen shared.IDGenerator
 }
 
-func NewUserHandler(svc *auth.UserService, idGen shared.IDGenerator) *UserHandler {
+func NewUserHandler(svc *authusecase.UserService, idGen shared.IDGenerator) *UserHandler {
 	return &UserHandler{
 		svc:   svc,
 		idGen: idGen,
@@ -194,11 +195,11 @@ func (h UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 
 func errToErrResponse(err error, passwordField string) (int, ErrDetail) {
 	switch {
-	case errors.Is(err, auth.ErrUserEmailAlreadyExists):
+	case errors.Is(err, authusecase.ErrUserEmailAlreadyExists):
 		return http.StatusConflict, NewErrDetail("email", "email_already_exists", "Email is already registered")
 	case isUniqueConstraint(err, "users_email_key"):
 		return http.StatusConflict, NewErrDetail("email", "email_already_exists", "Email is already registered")
-	case errors.Is(err, auth.ErrUserIDAlreadyExists):
+	case errors.Is(err, authusecase.ErrUserIDAlreadyExists):
 		return http.StatusConflict, NewErrDetail("user_id", "user_id_already_exists", "User ID is already registered")
 	case isUniqueConstraint(err, "users_pkey"):
 		return http.StatusConflict, NewErrDetail("user_id", "user_id_already_exists", "User ID is already registered")

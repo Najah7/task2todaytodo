@@ -3,14 +3,15 @@ package handlers
 import (
 	"net/http"
 
-	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
+	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
+	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 )
 
 type TaskStatusHandler struct {
-	service *domain.TaskStatusService
+	service *taskusecase.TaskStatusService
 }
 
-func NewTaskStatusHandler(service *domain.TaskStatusService) *TaskStatusHandler {
+func NewTaskStatusHandler(service *taskusecase.TaskStatusService) *TaskStatusHandler {
 	return &TaskStatusHandler{
 		service: service,
 	}

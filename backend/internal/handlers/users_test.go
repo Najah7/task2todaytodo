@@ -5,7 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Najah7/task2todaytodo/internal/domain/auth"
+	auth "github.com/Najah7/task2todaytodo/internal/auth/domain"
+	authusecase "github.com/Najah7/task2todaytodo/internal/auth/usecase"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -19,7 +20,7 @@ func TestUserServiceErrorResponse(t *testing.T) {
 	}{
 		{
 			name:       "duplicate email",
-			err:        auth.ErrUserEmailAlreadyExists,
+			err:        authusecase.ErrUserEmailAlreadyExists,
 			field:      "password",
 			wantStatus: http.StatusConflict,
 			wantDetail: NewErrDetail("email", "email_already_exists", "Email is already registered"),

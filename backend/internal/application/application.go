@@ -9,9 +9,10 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/Najah7/task2todaytodo/internal/domain/auth"
-	"github.com/Najah7/task2todaytodo/internal/domain/task"
-	"github.com/Najah7/task2todaytodo/internal/repositories"
+	authrepo "github.com/Najah7/task2todaytodo/internal/auth/repository"
+	authusecase "github.com/Najah7/task2todaytodo/internal/auth/usecase"
+	taskrepo "github.com/Najah7/task2todaytodo/internal/task/repository"
+	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -44,29 +45,29 @@ func newPool(ctx context.Context) (*pgxpool.Pool, error) {
 }
 
 type Store struct {
-	Users           *repositories.UserRepository
-	AccessTokens    *repositories.AccessTokenRepository
-	Projects        *repositories.ProjectRepository
-	Tasks           *repositories.TaskRepository
-	TodoItems       *repositories.TodoItemRepository
-	TaskSchedules   *repositories.TaskScheduleRepository
-	ProjectTypes    *repositories.ProjectTypeRepository
-	TaskFrequencies *repositories.TaskFrequencyRepository
-	TaskPriorities  *repositories.TaskPriorityRepository
-	TaskStatuses    *repositories.TaskStatusRepository
+	Users           *authrepo.UserRepository
+	AccessTokens    *authrepo.AccessTokenRepository
+	Projects        *taskrepo.ProjectRepository
+	Tasks           *taskrepo.TaskRepository
+	TodoItems       *taskrepo.TodoItemRepository
+	TaskSchedules   *taskrepo.TaskScheduleRepository
+	ProjectTypes    *taskrepo.ProjectTypeRepository
+	TaskFrequencies *taskrepo.TaskFrequencyRepository
+	TaskPriorities  *taskrepo.TaskPriorityRepository
+	TaskStatuses    *taskrepo.TaskStatusRepository
 }
 
 func newStore(pool *pgxpool.Pool) Store {
-	userRepo := repositories.NewUserRepository(pool)
-	accessTokenRepo := repositories.NewAccessTokenRepository(pool)
-	projectRepo := repositories.NewProjectRepository(pool)
-	taskRepo := repositories.NewTaskRepository(pool)
-	todoItemRepo := repositories.NewTodoItemRepository(pool)
-	taskScheduleRepo := repositories.NewTaskScheduleRepository(pool)
-	projectTypeRepo := repositories.NewProjectTypeRepository(pool)
-	taskFrequencyRepo := repositories.NewTaskFrequencyRepository(pool)
-	taskPriorityRepo := repositories.NewTaskPriorityRepository(pool)
-	taskStatusRepo := repositories.NewTaskStatusRepository(pool)
+	userRepo := authrepo.NewUserRepository(pool)
+	accessTokenRepo := authrepo.NewAccessTokenRepository(pool)
+	projectRepo := taskrepo.NewProjectRepository(pool)
+	taskRepo := taskrepo.NewTaskRepository(pool)
+	todoItemRepo := taskrepo.NewTodoItemRepository(pool)
+	taskScheduleRepo := taskrepo.NewTaskScheduleRepository(pool)
+	projectTypeRepo := taskrepo.NewProjectTypeRepository(pool)
+	taskFrequencyRepo := taskrepo.NewTaskFrequencyRepository(pool)
+	taskPriorityRepo := taskrepo.NewTaskPriorityRepository(pool)
+	taskStatusRepo := taskrepo.NewTaskStatusRepository(pool)
 
 	return Store{
 		Users:           userRepo,
@@ -176,29 +177,29 @@ func (t *Transaction) Run(
 }
 
 type Service struct {
-	User          *auth.UserService
-	AccessToken   *auth.AccessTokenService
-	Project       *task.ProjectService
-	Task          *task.TaskService
-	TodoItem      *task.TodoItemService
-	TaskSchedule  *task.TaskScheduleService
-	ProjectType   *task.ProjectTypeService
-	TaskFrequency *task.TaskFrequencyService
-	TaskPriority  *task.TaskPriorityService
-	TaskStatus    *task.TaskStatusService
+	User          *authusecase.UserService
+	AccessToken   *authusecase.AccessTokenService
+	Project       *taskusecase.ProjectService
+	Task          *taskusecase.TaskService
+	TodoItem      *taskusecase.TodoItemService
+	TaskSchedule  *taskusecase.TaskScheduleService
+	ProjectType   *taskusecase.ProjectTypeService
+	TaskFrequency *taskusecase.TaskFrequencyService
+	TaskPriority  *taskusecase.TaskPriorityService
+	TaskStatus    *taskusecase.TaskStatusService
 }
 
 func newService(store Store) Service {
-	userService := auth.NewUserService(store.Users)
-	accessTokenService := auth.NewAccessTokenService(store.AccessTokens)
-	projectService := task.NewProjectService(store.Projects)
-	taskService := task.NewTaskService(store.Tasks, store.Projects)
-	todoItemService := task.NewTodoItemService(store.TodoItems)
-	taskScheduleService := task.NewTaskScheduleService(store.TaskSchedules)
-	projectTypeService := task.NewProjectTypeService(store.ProjectTypes)
-	taskFrequencyService := task.NewTaskFrequencyService(store.TaskFrequencies)
-	taskPriorityService := task.NewTaskPriorityService(store.TaskPriorities)
-	taskStatusService := task.NewTaskStatusService(store.TaskStatuses)
+	userService := authusecase.NewUserService(store.Users)
+	accessTokenService := authusecase.NewAccessTokenService(store.AccessTokens)
+	projectService := taskusecase.NewProjectService(store.Projects)
+	taskService := taskusecase.NewTaskService(store.Tasks, store.Projects)
+	todoItemService := taskusecase.NewTodoItemService(store.TodoItems)
+	taskScheduleService := taskusecase.NewTaskScheduleService(store.TaskSchedules)
+	projectTypeService := taskusecase.NewProjectTypeService(store.ProjectTypes)
+	taskFrequencyService := taskusecase.NewTaskFrequencyService(store.TaskFrequencies)
+	taskPriorityService := taskusecase.NewTaskPriorityService(store.TaskPriorities)
+	taskStatusService := taskusecase.NewTaskStatusService(store.TaskStatuses)
 
 	return Service{
 		User:          userService,

@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Najah7/task2todaytodo/internal/domain/auth"
+	authusecase "github.com/Najah7/task2todaytodo/internal/auth/usecase"
 	"github.com/Najah7/task2todaytodo/internal/handlers"
 )
 
 const bearerPrefix = "Bearer "
 
-func AuthMiddleware(accessTokenService auth.AccessTokenService) func(http.Handler) http.Handler {
+func AuthMiddleware(accessTokenService authusecase.AccessTokenService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")

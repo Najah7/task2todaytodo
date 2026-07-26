@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Najah7/task2todaytodo/internal/domain/auth"
+	authusecase "github.com/Najah7/task2todaytodo/internal/auth/usecase"
 	"github.com/Najah7/task2todaytodo/internal/utils"
 )
 
@@ -16,11 +16,11 @@ var (
 )
 
 type AccessTokenHandler struct {
-	accessTokenService *auth.AccessTokenService
-	userService        *auth.UserService
+	accessTokenService *authusecase.AccessTokenService
+	userService        *authusecase.UserService
 }
 
-func NewAccessTokenHandler(accessTokenService *auth.AccessTokenService, userService *auth.UserService) *AccessTokenHandler {
+func NewAccessTokenHandler(accessTokenService *authusecase.AccessTokenService, userService *authusecase.UserService) *AccessTokenHandler {
 	return &AccessTokenHandler{
 		accessTokenService: accessTokenService,
 		userService:        userService,
@@ -62,7 +62,7 @@ func (h *AccessTokenHandler) Generate(w http.ResponseWriter, r *http.Request) {
 
 	u, err := h.userService.Login(ctx, req.Email, req.Password)
 	if err != nil {
-		if errors.Is(err, auth.ErrInvalidCredentials) {
+		if errors.Is(err, authusecase.ErrInvalidCredentials) {
 			WriteError(w, http.StatusUnauthorized, ErrSpecAccessTokensGenerateFailed, ErrDetailInvalidCredentials)
 			return
 		}
