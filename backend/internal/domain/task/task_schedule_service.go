@@ -17,7 +17,6 @@ type TaskScheduleCreateParams struct {
 	FrequencyValues []string
 	StartAt         time.Time
 	EndAt           time.Time
-	DueAt           time.Time
 }
 
 type TaskScheduleUpdateParams struct {
@@ -31,7 +30,6 @@ type TaskScheduleUpdateParams struct {
 	FrequencyValues *[]string
 	StartAt         *time.Time
 	EndAt           *time.Time
-	DueAt           *time.Time
 }
 
 type TaskScheduleService struct {
@@ -70,7 +68,6 @@ func (s *TaskScheduleService) Create(ctx context.Context, idGen func() string, p
 		frequencies,
 		params.StartAt,
 		params.EndAt,
-		params.DueAt,
 	)
 	if err != nil {
 		return NewZeroTaskSchedule(), err
@@ -123,11 +120,6 @@ func (s *TaskScheduleService) Update(ctx context.Context, params TaskScheduleUpd
 		endAt = *params.EndAt
 	}
 
-	dueAt := existing.DueAt
-	if params.DueAt != nil {
-		dueAt = *params.DueAt
-	}
-
 	updated, err := NewExistingTaskSchedule(
 		existing.ID,
 		existing.TaskID,
@@ -138,7 +130,6 @@ func (s *TaskScheduleService) Update(ctx context.Context, params TaskScheduleUpd
 		frequencies,
 		startAt,
 		endAt,
-		dueAt,
 		existing.CreatedAt,
 		existing.UpdatedAt,
 	)

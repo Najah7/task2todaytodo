@@ -4,17 +4,20 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestTodoItemServiceCreateDefaultsAppendToTailAndDedupesFrequencies(t *testing.T) {
 	repo := &fakeTodoItemRepository{}
 	service := NewTodoItemService(repo)
+	dueDate := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 
 	got, err := service.Create(context.Background(), fixedTaskIDGen("todo-1"), TodoItemCreateParams{
 		UserID:      "user-1",
 		TaskID:      "task-1",
 		Title:       "Buy milk",
 		Description: "At the store",
+		DueDate:     dueDate,
 		Frequencies: []string{"mon", "mon", "wed"},
 	})
 	if err != nil {
@@ -23,6 +26,9 @@ func TestTodoItemServiceCreateDefaultsAppendToTailAndDedupesFrequencies(t *testi
 
 	if got.ID != "todo-1" || got.TaskID != "task-1" || got.Position != 0 || got.IntervalWeeks != OnceIntervalWeeks {
 		t.Fatalf("todo item = %+v, want generated ID and one-off defaults", got)
+	}
+	if got.DueDate != dueDate {
+		t.Fatalf("todo item = %+v, want due date from params", got)
 	}
 	if len(got.Frequencies) != 2 || got.Frequencies[0].String() != "mon" || got.Frequencies[1].String() != "wed" {
 		t.Fatalf("frequencies = %+v, want deduped order-preserving values", got.Frequencies)

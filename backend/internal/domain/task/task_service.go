@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/domain/shared"
 )
@@ -41,12 +42,13 @@ func (s *TaskService) CreateStandaloneTask(
 	userID UserID,
 	title string,
 	description string,
+	dueDate time.Time,
 	estimatedMinutes *int,
 	actualMinutes *int,
 	priorityValue string,
 	statusValue string,
 ) (Task, error) {
-	newTask, err := newTaskForCreate(idGen, userID, "", title, description, estimatedMinutes, actualMinutes, priorityValue, statusValue)
+	newTask, err := newTaskForCreate(idGen, userID, "", title, description, dueDate, estimatedMinutes, actualMinutes, priorityValue, statusValue)
 	if err != nil {
 		return NewZeroTask(), err
 	}
@@ -61,6 +63,7 @@ func (s *TaskService) CreateProjectTask(
 	projectID ProjectID,
 	title string,
 	description string,
+	dueDate time.Time,
 	estimatedMinutes *int,
 	actualMinutes *int,
 	priorityValue string,
@@ -74,7 +77,7 @@ func (s *TaskService) CreateProjectTask(
 		priorityValue = project.Priority.String()
 	}
 
-	newTask, err := newTaskForCreate(idGen, userID, projectID, title, description, estimatedMinutes, actualMinutes, priorityValue, statusValue)
+	newTask, err := newTaskForCreate(idGen, userID, projectID, title, description, dueDate, estimatedMinutes, actualMinutes, priorityValue, statusValue)
 	if err != nil {
 		return NewZeroTask(), err
 	}
@@ -89,6 +92,7 @@ func (s *TaskService) UpdateTaskBasic(
 	title *string,
 	description *string,
 	statusValue *string,
+	dueDate *time.Time,
 ) (Task, error) {
 	existing, err := s.repo.GetByUser(ctx, userID, taskID)
 	if err != nil {
@@ -108,6 +112,9 @@ func (s *TaskService) UpdateTaskBasic(
 			return NewZeroTask(), err
 		}
 		updated.Status = status
+	}
+	if dueDate != nil {
+		updated.DueDate = *dueDate
 	}
 	if err := updated.Validate(); err != nil {
 		return NewZeroTask(), err
@@ -170,6 +177,7 @@ func newTaskForCreate(
 	projectID ProjectID,
 	title string,
 	description string,
+	dueDate time.Time,
 	estimatedMinutes *int,
 	actualMinutes *int,
 	priorityValue string,
@@ -196,6 +204,7 @@ func newTaskForCreate(
 		projectID,
 		title,
 		description,
+		dueDate,
 		estimatedMinutes,
 		actualMinutes,
 		0,

@@ -23,6 +23,7 @@ type TodoItem struct {
 	TaskID        TaskID
 	Title         string
 	Description   string
+	DueDate       time.Time
 	Completed     bool
 	Position      int
 	IntervalWeeks int
@@ -50,6 +51,7 @@ func NewTodoItemWithDetails(
 	taskID TaskID,
 	title string,
 	description string,
+	dueDate time.Time,
 	completed bool,
 	position int,
 	intervalWeeks int,
@@ -60,6 +62,7 @@ func NewTodoItemWithDetails(
 		TaskID:        taskID,
 		Title:         title,
 		Description:   description,
+		DueDate:       dueDate,
 		Completed:     completed,
 		Position:      position,
 		IntervalWeeks: intervalWeeks,
@@ -73,6 +76,7 @@ func NewExistingTodoItem(
 	taskID TaskID,
 	title string,
 	description string,
+	dueDate time.Time,
 	completed bool,
 	position int,
 	intervalWeeks int,
@@ -85,6 +89,7 @@ func NewExistingTodoItem(
 		TaskID:        taskID,
 		Title:         title,
 		Description:   description,
+		DueDate:       dueDate,
 		Completed:     completed,
 		Position:      position,
 		IntervalWeeks: intervalWeeks,

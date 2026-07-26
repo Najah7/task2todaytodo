@@ -23,6 +23,7 @@ type ProjectUpdate struct {
 	Title       *string
 	Goal        *string
 	Description *string
+	DueDate     *time.Time
 	StartAt     *time.Time
 	EndAt       *time.Time
 }
@@ -36,6 +37,7 @@ func (s *ProjectService) Create(
 	title string,
 	goal string,
 	description string,
+	dueDate time.Time,
 	startAt time.Time,
 	endAt time.Time,
 ) (Project, error) {
@@ -56,7 +58,7 @@ func (s *ProjectService) Create(
 		return NewZeroProject(), err
 	}
 
-	project, err := NewProjectWithDetails(ProjectID(id), userID, t, title, goal, description, 0, priority, startAt, endAt)
+	project, err := NewProjectWithDetails(ProjectID(id), userID, t, title, goal, description, dueDate, 0, priority, startAt, endAt)
 	if err != nil {
 		return NewZeroProject(), err
 	}
@@ -104,6 +106,11 @@ func (s *ProjectService) Update(ctx context.Context, userID UserID, id ProjectID
 		description = *update.Description
 	}
 
+	dueDate := project.DueDate
+	if update.DueDate != nil {
+		dueDate = *update.DueDate
+	}
+
 	startAt := project.StartAt
 	if update.StartAt != nil {
 		startAt = *update.StartAt
@@ -121,6 +128,7 @@ func (s *ProjectService) Update(ctx context.Context, userID UserID, id ProjectID
 		title,
 		goal,
 		description,
+		dueDate,
 		project.Progress,
 		priority,
 		startAt,

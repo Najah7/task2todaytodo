@@ -32,7 +32,6 @@ type TaskSchedule struct {
 	Frequencies   TaskFrequencies
 	StartAt       time.Time
 	EndAt         time.Time
-	DueAt         time.Time
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -65,7 +64,6 @@ func NewTaskScheduleWithDetails(
 	frequencies TaskFrequencies,
 	startAt time.Time,
 	endAt time.Time,
-	dueAt time.Time,
 ) (TaskSchedule, error) {
 	schedule := TaskSchedule{
 		ID:            id,
@@ -77,7 +75,6 @@ func NewTaskScheduleWithDetails(
 		Frequencies:   frequencies,
 		StartAt:       startAt,
 		EndAt:         endAt,
-		DueAt:         dueAt,
 	}
 	return schedule, schedule.Validate()
 }
@@ -92,7 +89,6 @@ func NewExistingTaskSchedule(
 	frequencies TaskFrequencies,
 	startAt time.Time,
 	endAt time.Time,
-	dueAt time.Time,
 	createdAt time.Time,
 	updatedAt time.Time,
 ) (TaskSchedule, error) {
@@ -106,7 +102,6 @@ func NewExistingTaskSchedule(
 		Frequencies:   frequencies,
 		StartAt:       startAt,
 		EndAt:         endAt,
-		DueAt:         dueAt,
 		CreatedAt:     createdAt,
 		UpdatedAt:     updatedAt,
 	}
