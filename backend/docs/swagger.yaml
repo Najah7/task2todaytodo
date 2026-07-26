@@ -57,9 +57,6 @@ definitions:
         type: string
       description:
         type: string
-      due_date:
-        format: date
-        type: string
       end_at:
         type: string
       goal:
@@ -87,9 +84,6 @@ definitions:
     properties:
       description:
         type: string
-      due_date:
-        format: date
-        type: string
       end_at:
         type: string
       goal:
@@ -103,14 +97,16 @@ definitions:
       type:
         type: string
     type: object
+  handlers.ProjectPriorityUpdateRequest:
+    properties:
+      priority:
+        type: string
+    type: object
   handlers.ProjectResponse:
     properties:
       created_at:
         type: string
       description:
-        type: string
-      due_date:
-        format: date
         type: string
       end_at:
         type: string
@@ -129,6 +125,13 @@ definitions:
       type:
         type: string
       updated_at:
+        type: string
+    type: object
+  handlers.ProjectScheduleUpdateRequest:
+    properties:
+      end_at:
+        type: string
+      start_at:
         type: string
     type: object
   handlers.ProjectTaskResponse:
@@ -179,16 +182,7 @@ definitions:
     properties:
       description:
         type: string
-      due_date:
-        format: date
-        type: string
-      end_at:
-        type: string
       goal:
-        type: string
-      priority:
-        type: string
-      start_at:
         type: string
       title:
         type: string
@@ -404,14 +398,17 @@ definitions:
       status:
         type: string
     type: object
+  handlers.TaskStatusUpdateRequest:
+    properties:
+      status:
+        type: string
+    type: object
   handlers.TaskUpdateRequest:
     properties:
       description:
         type: string
       due_date:
         format: date
-        type: string
-      status:
         type: string
       title:
         type: string
@@ -685,7 +682,7 @@ paths:
         name: project_id
         required: true
         type: string
-      - description: Project update request
+      - description: Project basic update request
         in: body
         name: request
         required: true
@@ -716,7 +713,97 @@ paths:
             $ref: '#/definitions/handlers.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Update project
+      summary: Update project basic information
+      tags:
+      - Projects
+  /projects/{project_id}/priority:
+    patch:
+      consumes:
+      - application/json
+      description: Updates owned Project priority.
+      parameters:
+      - description: Project ID
+        in: path
+        name: project_id
+        required: true
+        type: string
+      - description: Project priority update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ProjectPriorityUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ProjectResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to update project
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update project priority
+      tags:
+      - Projects
+  /projects/{project_id}/schedule:
+    patch:
+      consumes:
+      - application/json
+      description: Partially updates owned Project schedule.
+      parameters:
+      - description: Project ID
+        in: path
+        name: project_id
+        required: true
+        type: string
+      - description: Project schedule update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ProjectScheduleUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ProjectResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to update project
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update project schedule
       tags:
       - Projects
   /projects/{project_id}/tasks:
@@ -1148,6 +1235,51 @@ paths:
       summary: Update task schedule
       tags:
       - TaskSchedules
+  /tasks/{task_id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Updates status for an owned Task.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Task status update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.TaskStatusUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.TaskResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+        "500":
+          description: Failed to update task
+          schema:
+            $ref: '#/definitions/handlers.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update task status
+      tags:
+      - Tasks
   /tasks/{task_id}/todo-items:
     post:
       consumes:

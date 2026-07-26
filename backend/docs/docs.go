@@ -333,7 +333,7 @@ const docTemplate = `{
                 "tags": [
                     "Projects"
                 ],
-                "summary": "Update project",
+                "summary": "Update project basic information",
                 "parameters": [
                     {
                         "type": "string",
@@ -343,12 +343,152 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Project update request",
+                        "description": "Project basic update request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/handlers.ProjectUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ProjectResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Project not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to update project",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{project_id}/priority": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates owned Project priority.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Update project priority",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Project priority update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ProjectPriorityUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ProjectResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Project not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to update project",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{project_id}/schedule": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partially updates owned Project schedule.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Update project schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Project schedule update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ProjectScheduleUpdateRequest"
                         }
                     }
                 ],
@@ -1105,6 +1245,76 @@ const docTemplate = `{
                 }
             }
         },
+        "/tasks/{task_id}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates status for an owned Task.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Update task status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Task status update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.TaskStatusUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.TaskResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to update task",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/tasks/{task_id}/todo-items": {
             "post": {
                 "security": [
@@ -1641,10 +1851,6 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "due_date": {
-                    "type": "string",
-                    "format": "date"
-                },
                 "end_at": {
                     "type": "string"
                 },
@@ -1686,10 +1892,6 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "due_date": {
-                    "type": "string",
-                    "format": "date"
-                },
                 "end_at": {
                     "type": "string"
                 },
@@ -1710,6 +1912,14 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.ProjectPriorityUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "priority": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.ProjectResponse": {
             "type": "object",
             "properties": {
@@ -1718,10 +1928,6 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string"
-                },
-                "due_date": {
-                    "type": "string",
-                    "format": "date"
                 },
                 "end_at": {
                     "type": "string"
@@ -1748,6 +1954,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ProjectScheduleUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "end_at": {
+                    "type": "string"
+                },
+                "start_at": {
                     "type": "string"
                 }
             }
@@ -1825,20 +2042,7 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "due_date": {
-                    "type": "string",
-                    "format": "date"
-                },
-                "end_at": {
-                    "type": "string"
-                },
                 "goal": {
-                    "type": "string"
-                },
-                "priority": {
-                    "type": "string"
-                },
-                "start_at": {
                     "type": "string"
                 },
                 "title": {
@@ -2168,6 +2372,14 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.TaskStatusUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.TaskUpdateRequest": {
             "type": "object",
             "properties": {
@@ -2177,9 +2389,6 @@ const docTemplate = `{
                 "due_date": {
                     "type": "string",
                     "format": "date"
-                },
-                "status": {
-                    "type": "string"
                 },
                 "title": {
                     "type": "string"
