@@ -33,10 +33,6 @@ type Project struct {
 	UpdatedAt   time.Time
 }
 
-type ProjectAggregate struct {
-	Project Project
-	Tasks   []Task
-}
 
 func NewProject(
 	id ProjectID,
