@@ -24,7 +24,6 @@ type Project struct {
 	Title       string
 	Goal        string
 	Description string
-	DueDate     time.Time
 	Progress    int
 	Priority    TaskPriority
 	StartAt     time.Time
@@ -61,7 +60,6 @@ func NewProjectWithDetails(
 	title string,
 	goal string,
 	description string,
-	dueDate time.Time,
 	progress int,
 	priority TaskPriority,
 	startAt time.Time,
@@ -74,7 +72,6 @@ func NewProjectWithDetails(
 		Title:       title,
 		Goal:        goal,
 		Description: description,
-		DueDate:     dueDate,
 		Progress:    progress,
 		Priority:    priority,
 		StartAt:     startAt,
@@ -90,7 +87,6 @@ func NewExistingProject(
 	title string,
 	goal string,
 	description string,
-	dueDate time.Time,
 	progress int,
 	priority TaskPriority,
 	startAt time.Time,
@@ -105,7 +101,6 @@ func NewExistingProject(
 		Title:       title,
 		Goal:        goal,
 		Description: description,
-		DueDate:     dueDate,
 		Progress:    progress,
 		Priority:    priority,
 		StartAt:     startAt,

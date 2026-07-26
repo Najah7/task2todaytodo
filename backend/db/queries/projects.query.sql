@@ -1,10 +1,10 @@
 -- name: GetProject :one
-SELECT id, user_id, type, title, goal, description, due_date, progress, priority, start_at, end_at, created_at, updated_at
+SELECT id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
 FROM projects
 WHERE id = $1;
 
 -- name: GetProjectByUser :one
-SELECT id, user_id, type, title, goal, description, due_date, progress, priority, start_at, end_at, created_at, updated_at
+SELECT id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
 FROM projects
 WHERE id = $1
   AND user_id = $2;

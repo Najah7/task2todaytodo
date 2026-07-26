@@ -25,7 +25,6 @@ func recordToProject(record sqlc.Project) (domain.Project, error) {
 		record.Title,
 		pgTextString(record.Goal),
 		pgTextString(record.Description),
-		pgDateTime(record.DueDate),
 		int(record.Progress),
 		priority,
 		pgTime(record.StartAt),

@@ -18,15 +18,16 @@ func NewProjectService(repo ProjectRepository) *ProjectService {
 	}
 }
 
-type ProjectUpdate struct {
+type ProjectBasicUpdate struct {
 	Type        *string
-	Priority    *string
 	Title       *string
 	Goal        *string
 	Description *string
-	DueDate     *time.Time
-	StartAt     *time.Time
-	EndAt       *time.Time
+}
+
+type ProjectScheduleUpdate struct {
+	StartAt *time.Time
+	EndAt   *time.Time
 }
 
 func (s *ProjectService) Create(
@@ -38,7 +39,6 @@ func (s *ProjectService) Create(
 	title string,
 	goal string,
 	description string,
-	dueDate time.Time,
 	startAt time.Time,
 	endAt time.Time,
 ) (domain.Project, error) {
@@ -59,7 +59,7 @@ func (s *ProjectService) Create(
 		return domain.NewZeroProject(), err
 	}
 
-	project, err := domain.NewProjectWithDetails(domain.ProjectID(id), userID, t, title, goal, description, dueDate, 0, priority, startAt, endAt)
+	project, err := domain.NewProjectWithDetails(domain.ProjectID(id), userID, t, title, goal, description, 0, priority, startAt, endAt)
 	if err != nil {
 		return domain.NewZeroProject(), err
 	}
@@ -71,7 +71,7 @@ func (s *ProjectService) GetAggregate(ctx context.Context, userID domain.UserID,
 	return s.repo.GetAggregateByUser(ctx, userID, id)
 }
 
-func (s *ProjectService) Update(ctx context.Context, userID domain.UserID, id domain.ProjectID, update ProjectUpdate) (domain.Project, error) {
+func (s *ProjectService) UpdateBasic(ctx context.Context, userID domain.UserID, id domain.ProjectID, update ProjectBasicUpdate) (domain.Project, error) {
 	project, err := s.repo.GetByUser(ctx, userID, id)
 	if err != nil {
 		return domain.NewZeroProject(), err
@@ -80,13 +80,6 @@ func (s *ProjectService) Update(ctx context.Context, userID domain.UserID, id do
 	projectType := project.Type
 	if update.Type != nil {
 		projectType, err = domain.NewProjectType(*update.Type)
-		if err != nil {
-			return domain.NewZeroProject(), err
-		}
-	}
-	priority := project.Priority
-	if update.Priority != nil {
-		priority, err = domain.NewTaskPriority(*update.Priority)
 		if err != nil {
 			return domain.NewZeroProject(), err
 		}
@@ -107,9 +100,29 @@ func (s *ProjectService) Update(ctx context.Context, userID domain.UserID, id do
 		description = *update.Description
 	}
 
-	dueDate := project.DueDate
-	if update.DueDate != nil {
-		dueDate = *update.DueDate
+	updated, err := domain.NewProjectWithDetails(
+		project.ID,
+		project.UserID,
+		projectType,
+		title,
+		goal,
+		description,
+		project.Progress,
+		project.Priority,
+		project.StartAt,
+		project.EndAt,
+	)
+	if err != nil {
+		return domain.NewZeroProject(), err
+	}
+
+	return s.repo.UpdateByUser(ctx, userID, updated)
+}
+
+func (s *ProjectService) UpdateSchedule(ctx context.Context, userID domain.UserID, id domain.ProjectID, update ProjectScheduleUpdate) (domain.Project, error) {
+	project, err := s.repo.GetByUser(ctx, userID, id)
+	if err != nil {
+		return domain.NewZeroProject(), err
 	}
 
 	startAt := project.StartAt
@@ -125,15 +138,44 @@ func (s *ProjectService) Update(ctx context.Context, userID domain.UserID, id do
 	updated, err := domain.NewProjectWithDetails(
 		project.ID,
 		project.UserID,
-		projectType,
-		title,
-		goal,
-		description,
-		dueDate,
+		project.Type,
+		project.Title,
+		project.Goal,
+		project.Description,
 		project.Progress,
-		priority,
+		project.Priority,
 		startAt,
 		endAt,
+	)
+	if err != nil {
+		return domain.NewZeroProject(), err
+	}
+
+	return s.repo.UpdateByUser(ctx, userID, updated)
+}
+
+func (s *ProjectService) UpdatePriority(ctx context.Context, userID domain.UserID, id domain.ProjectID, priorityValue string) (domain.Project, error) {
+	project, err := s.repo.GetByUser(ctx, userID, id)
+	if err != nil {
+		return domain.NewZeroProject(), err
+	}
+
+	priority, err := domain.NewTaskPriority(priorityValue)
+	if err != nil {
+		return domain.NewZeroProject(), err
+	}
+
+	updated, err := domain.NewProjectWithDetails(
+		project.ID,
+		project.UserID,
+		project.Type,
+		project.Title,
+		project.Goal,
+		project.Description,
+		project.Progress,
+		priority,
+		project.StartAt,
+		project.EndAt,
 	)
 	if err != nil {
 		return domain.NewZeroProject(), err

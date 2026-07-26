@@ -129,18 +129,17 @@ func TestTaskServiceUpdateTaskBasicPreservesDisallowedFields(t *testing.T) {
 	service := NewTaskService(repo, &fakeProjectRepository{})
 	title := "New title"
 	description := "New description"
-	status := "done"
 
-	got, err := service.UpdateTaskBasic(context.Background(), "user-1", "task-1", &title, &description, &status, &resetDueDate)
+	got, err := service.UpdateTaskBasic(context.Background(), "user-1", "task-1", &title, &description, &resetDueDate)
 	if err != nil {
 		t.Fatalf("UpdateTaskBasic() error = %v", err)
 	}
 
-	if got.Title != "New title" || got.Description != "New description" || got.Status.String() != "done" || !got.DueDate.IsZero() {
+	if got.Title != "New title" || got.Description != "New description" || !got.DueDate.IsZero() {
 		t.Fatalf("task = %+v, want allowed fields updated", got)
 	}
-	if got.ProjectID != "project-1" || got.Priority.String() != "urgent" || got.Progress != 42 {
-		t.Fatalf("task = %+v, want project, priority, and progress preserved", got)
+	if got.ProjectID != "project-1" || got.Priority.String() != "urgent" || got.Status.String() != "open" || got.Progress != 42 {
+		t.Fatalf("task = %+v, want project, priority, status, and progress preserved", got)
 	}
 	if got.EstimatedMinutes == nil || *got.EstimatedMinutes != 20 || got.ActualMinutes == nil || *got.ActualMinutes != 5 {
 		t.Fatalf("task = %+v, want estimation preserved", got)

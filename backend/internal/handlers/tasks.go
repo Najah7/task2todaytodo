@@ -277,7 +277,6 @@ func (h *TaskHandler) Get(w http.ResponseWriter, r *http.Request) {
 type TaskUpdateRequest struct {
 	Title       *string `json:"title"`
 	Description *string `json:"description"`
-	Status      *string `json:"status"`
 	DueDate     *string `json:"due_date" format:"date"`
 	DueDateSet  bool    `json:"-"`
 }
@@ -339,7 +338,50 @@ func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.svc.UpdateTaskBasic(r.Context(), userID, taskIDFromRequest(r), req.Title, req.Description, req.Status, dueDate)
+	task, err := h.svc.UpdateTaskBasic(r.Context(), userID, taskIDFromRequest(r), req.Title, req.Description, dueDate)
+	if err != nil {
+		status, detail := taskErrToErrResponse(err)
+		WriteError(w, status, ErrSpecTasksUpdateFailed, detail)
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, newTaskResponse(task))
+}
+
+type TaskStatusUpdateRequest struct {
+	Status string `json:"status"`
+}
+
+// UpdateStatus godoc
+//
+//	@Summary		Update task status
+//	@Description	Updates status for an owned Task.
+//	@Tags			Tasks
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			task_id	path		string					true	"Task ID"
+//	@Param			request	body		TaskStatusUpdateRequest	true	"Task status update request"
+//	@Success		200		{object}	TaskResponse
+//	@Failure		400		{object}	ErrResponse	"Invalid request body"
+//	@Failure		401		{object}	ErrResponse	"Unauthorized"
+//	@Failure		404		{object}	ErrResponse	"Task not found"
+//	@Failure		500		{object}	ErrResponse	"Failed to update task"
+//	@Router			/tasks/{task_id}/status [patch]
+func (h *TaskHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
+	userID, ok := taskUserIDFromRequest(r)
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, ErrSpecTasksUpdateFailed, ErrDetailUnauthorized)
+		return
+	}
+
+	var req TaskStatusUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteError(w, http.StatusBadRequest, ErrSpecTasksUpdateFailed, ErrDetailInvalidRequestBody)
+		return
+	}
+
+	task, err := h.svc.UpdateTaskStatus(r.Context(), userID, taskIDFromRequest(r), req.Status)
 	if err != nil {
 		status, detail := taskErrToErrResponse(err)
 		WriteError(w, status, ErrSpecTasksUpdateFailed, detail)

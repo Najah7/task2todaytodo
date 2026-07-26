@@ -40,7 +40,6 @@ type Project struct {
 	Title       string
 	Goal        pgtype.Text
 	Description pgtype.Text
-	DueDate     pgtype.Date
 	Progress    int16
 	Priority    string
 	StartAt     pgtype.Timestamptz
