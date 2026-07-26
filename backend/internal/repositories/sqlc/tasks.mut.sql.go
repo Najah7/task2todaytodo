@@ -65,6 +65,63 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 	return i, err
 }
 
+const createTaskInProject = `-- name: CreateTaskInProject :one
+INSERT INTO tasks (
+    id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
+    priority, status
+)
+SELECT $1, $2, p.id, $4, $5, $6, $7, $8, $9, $10
+FROM projects AS p
+WHERE p.id = $3
+  AND p.user_id = $2
+RETURNING id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
+          priority, status, created_at, updated_at
+`
+
+type CreateTaskInProjectParams struct {
+	ID               string
+	UserID           string
+	ID_2             string
+	Title            string
+	Description      pgtype.Text
+	EstimatedMinutes pgtype.Int4
+	ActualMinutes    pgtype.Int4
+	Progress         int16
+	Priority         string
+	Status           string
+}
+
+func (q *Queries) CreateTaskInProject(ctx context.Context, arg CreateTaskInProjectParams) (Task, error) {
+	row := q.db.QueryRow(ctx, createTaskInProject,
+		arg.ID,
+		arg.UserID,
+		arg.ID_2,
+		arg.Title,
+		arg.Description,
+		arg.EstimatedMinutes,
+		arg.ActualMinutes,
+		arg.Progress,
+		arg.Priority,
+		arg.Status,
+	)
+	var i Task
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProjectID,
+		&i.Title,
+		&i.Description,
+		&i.EstimatedMinutes,
+		&i.ActualMinutes,
+		&i.Progress,
+		&i.Priority,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const deleteTask = `-- name: DeleteTask :exec
 DELETE FROM tasks
 WHERE id = $1
@@ -73,6 +130,25 @@ WHERE id = $1
 func (q *Queries) DeleteTask(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, deleteTask, id)
 	return err
+}
+
+const deleteTaskByUser = `-- name: DeleteTaskByUser :one
+DELETE FROM tasks
+WHERE id = $1
+  AND user_id = $2
+RETURNING id
+`
+
+type DeleteTaskByUserParams struct {
+	ID     string
+	UserID string
+}
+
+func (q *Queries) DeleteTaskByUser(ctx context.Context, arg DeleteTaskByUserParams) (string, error) {
+	row := q.db.QueryRow(ctx, deleteTaskByUser, arg.ID, arg.UserID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const updateTask = `-- name: UpdateTask :one
@@ -107,6 +183,67 @@ type UpdateTaskParams struct {
 
 func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, error) {
 	row := q.db.QueryRow(ctx, updateTask,
+		arg.ID,
+		arg.UserID,
+		arg.ProjectID,
+		arg.Title,
+		arg.Description,
+		arg.EstimatedMinutes,
+		arg.ActualMinutes,
+		arg.Progress,
+		arg.Priority,
+		arg.Status,
+	)
+	var i Task
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProjectID,
+		&i.Title,
+		&i.Description,
+		&i.EstimatedMinutes,
+		&i.ActualMinutes,
+		&i.Progress,
+		&i.Priority,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateTaskByUser = `-- name: UpdateTaskByUser :one
+UPDATE tasks
+SET project_id = $3,
+    title = $4,
+    description = $5,
+    estimated_minutes = $6,
+    actual_minutes = $7,
+    progress = $8,
+    priority = $9,
+    status = $10,
+    updated_at = now()
+WHERE id = $1
+  AND user_id = $2
+RETURNING id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
+          priority, status, created_at, updated_at
+`
+
+type UpdateTaskByUserParams struct {
+	ID               string
+	UserID           string
+	ProjectID        pgtype.Text
+	Title            string
+	Description      pgtype.Text
+	EstimatedMinutes pgtype.Int4
+	ActualMinutes    pgtype.Int4
+	Progress         int16
+	Priority         string
+	Status           string
+}
+
+func (q *Queries) UpdateTaskByUser(ctx context.Context, arg UpdateTaskByUserParams) (Task, error) {
+	row := q.db.QueryRow(ctx, updateTaskByUser,
 		arg.ID,
 		arg.UserID,
 		arg.ProjectID,
