@@ -1635,6 +1635,10 @@
                 "description": {
                     "type": "string"
                 },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
+                },
                 "end_at": {
                     "type": "string"
                 },
@@ -1676,6 +1680,10 @@
                 "description": {
                     "type": "string"
                 },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
+                },
                 "end_at": {
                     "type": "string"
                 },
@@ -1704,6 +1712,10 @@
                 },
                 "description": {
                     "type": "string"
+                },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
                 },
                 "end_at": {
                     "type": "string"
@@ -1745,6 +1757,10 @@
                 },
                 "description": {
                     "type": "string"
+                },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
                 },
                 "estimated_minutes": {
                     "type": "integer"
@@ -1803,6 +1819,10 @@
                 "description": {
                     "type": "string"
                 },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
+                },
                 "end_at": {
                     "type": "string"
                 },
@@ -1834,6 +1854,10 @@
                 },
                 "description": {
                     "type": "string"
+                },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
                 },
                 "estimated_minutes": {
                     "type": "integer"
@@ -1881,6 +1905,10 @@
                 },
                 "description": {
                     "type": "string"
+                },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
                 },
                 "estimated_minutes": {
                     "type": "integer"
@@ -1980,6 +2008,10 @@
                 "description": {
                     "type": "string"
                 },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
+                },
                 "estimated_minutes": {
                     "type": "integer"
                 },
@@ -2012,9 +2044,6 @@
                 "description": {
                     "type": "string"
                 },
-                "due_at": {
-                    "type": "string"
-                },
                 "end_at": {
                     "type": "string"
                 },
@@ -2045,9 +2074,6 @@
                     "type": "string"
                 },
                 "description": {
-                    "type": "string"
-                },
-                "due_at": {
                     "type": "string"
                 },
                 "end_at": {
@@ -2086,9 +2112,6 @@
             "type": "object",
             "properties": {
                 "description": {
-                    "type": "string"
-                },
-                "due_at": {
                     "type": "string"
                 },
                 "end_at": {
@@ -2145,6 +2168,10 @@
                 "description": {
                     "type": "string"
                 },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
+                },
                 "status": {
                     "type": "string"
                 },
@@ -2158,6 +2185,10 @@
             "properties": {
                 "description": {
                     "type": "string"
+                },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
                 },
                 "frequencies": {
                     "type": "array",
@@ -2187,6 +2218,10 @@
                 },
                 "description": {
                     "type": "string"
+                },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
                 },
                 "frequencies": {
                     "type": "array",

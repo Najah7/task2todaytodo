@@ -1641,6 +1641,10 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
+                },
                 "end_at": {
                     "type": "string"
                 },
@@ -1682,6 +1686,10 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
+                },
                 "end_at": {
                     "type": "string"
                 },
@@ -1710,6 +1718,10 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string"
+                },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
                 },
                 "end_at": {
                     "type": "string"
@@ -1751,6 +1763,10 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string"
+                },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
                 },
                 "estimated_minutes": {
                     "type": "integer"
@@ -1809,6 +1825,10 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
+                },
                 "end_at": {
                     "type": "string"
                 },
@@ -1840,6 +1860,10 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string"
+                },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
                 },
                 "estimated_minutes": {
                     "type": "integer"
@@ -1887,6 +1911,10 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string"
+                },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
                 },
                 "estimated_minutes": {
                     "type": "integer"
@@ -1986,6 +2014,10 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
+                },
                 "estimated_minutes": {
                     "type": "integer"
                 },
@@ -2018,9 +2050,6 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "due_at": {
-                    "type": "string"
-                },
                 "end_at": {
                     "type": "string"
                 },
@@ -2051,9 +2080,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "description": {
-                    "type": "string"
-                },
-                "due_at": {
                     "type": "string"
                 },
                 "end_at": {
@@ -2092,9 +2118,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "description": {
-                    "type": "string"
-                },
-                "due_at": {
                     "type": "string"
                 },
                 "end_at": {
@@ -2151,6 +2174,10 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
+                },
                 "status": {
                     "type": "string"
                 },
@@ -2164,6 +2191,10 @@ const docTemplate = `{
             "properties": {
                 "description": {
                     "type": "string"
+                },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
                 },
                 "frequencies": {
                     "type": "array",
@@ -2193,6 +2224,10 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string"
+                },
+                "due_date": {
+                    "type": "string",
+                    "format": "date"
                 },
                 "frequencies": {
                     "type": "array",
