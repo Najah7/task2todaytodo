@@ -32,6 +32,7 @@ type ProjectResponse struct {
 	Goal        string    `json:"goal"`
 	Description string    `json:"description"`
 	Progress    int       `json:"progress"`
+	Priority    string    `json:"priority"`
 	StartAt     time.Time `json:"start_at"`
 	EndAt       time.Time `json:"end_at"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -65,6 +66,7 @@ func newProjectResponse(project domain.Project) ProjectResponse {
 		Goal:        project.Goal,
 		Description: project.Description,
 		Progress:    project.Progress,
+		Priority:    project.Priority.String(),
 		StartAt:     project.StartAt,
 		EndAt:       project.EndAt,
 		CreatedAt:   project.CreatedAt,
@@ -98,6 +100,7 @@ func newProjectAggregateResponse(aggregate domain.ProjectAggregate) ProjectAggre
 
 type ProjectCreateRequest struct {
 	Type        string    `json:"type"`
+	Priority    string    `json:"priority"`
 	Title       string    `json:"title"`
 	Goal        string    `json:"goal"`
 	Description string    `json:"description"`
@@ -134,7 +137,7 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	project, err := h.svc.Create(ctx, h.idGen.Generate, userID, req.Type, req.Title, req.Goal, req.Description, req.StartAt, req.EndAt)
+	project, err := h.svc.Create(ctx, h.idGen.Generate, userID, req.Type, req.Priority, req.Title, req.Goal, req.Description, req.StartAt, req.EndAt)
 	if err != nil {
 		status, detail := projectErrToErrResponse(err)
 		WriteError(w, status, ErrSpecProjectsCreateFailed, detail)
@@ -177,6 +180,7 @@ func (h *ProjectHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 type ProjectUpdateRequest struct {
 	Type        *string    `json:"type"`
+	Priority    *string    `json:"priority"`
 	Title       *string    `json:"title"`
 	Goal        *string    `json:"goal"`
 	Description *string    `json:"description"`
@@ -187,6 +191,7 @@ type ProjectUpdateRequest struct {
 func (req ProjectUpdateRequest) toDomainUpdate() domain.ProjectUpdate {
 	return domain.ProjectUpdate{
 		Type:        req.Type,
+		Priority:    req.Priority,
 		Title:       req.Title,
 		Goal:        req.Goal,
 		Description: req.Description,
@@ -289,6 +294,8 @@ func projectErrToErrResponse(err error) (int, ErrDetail) {
 		return http.StatusUnauthorized, ErrDetailUnauthorized
 	case errors.Is(err, domain.ErrProjectTypeEmpty), errors.Is(err, domain.ErrProjectTypeInvalid):
 		return http.StatusBadRequest, NewErrDetail("type", "invalid_project_type", "Project type must be one of the supported values")
+	case errors.Is(err, domain.ErrTaskPriorityEmpty), errors.Is(err, domain.ErrTaskPriorityInvalid):
+		return http.StatusBadRequest, NewErrDetail("priority", "invalid_project_priority", "Project priority must be one of the supported values")
 	case errors.Is(err, domain.ErrProjectTitleEmpty):
 		return http.StatusBadRequest, NewErrDetail("title", "project_title_required", "Project title is required")
 	case errors.Is(err, domain.ErrProjectStartAtEmpty):
