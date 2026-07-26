@@ -39,6 +39,17 @@ func (r TodoItemRepository) Get(ctx context.Context, id domain.TodoItemID) (doma
 	return recordToTodoItemRow(record)
 }
 
+func (r TodoItemRepository) ListByTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID) (domain.TodoItems, error) {
+	records, err := r.queries.ListTodoItemsByTaskAndUser(ctx, sqlc.ListTodoItemsByTaskAndUserParams{
+		TaskID: string(taskID),
+		UserID: string(userID),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return recordsToTodoItems(records)
+}
+
 func (r TodoItemRepository) Create(ctx context.Context, item domain.TodoItem) (domain.TodoItem, error) {
 	record, err := r.queries.CreateTodoItem(ctx, sqlc.CreateTodoItemParams{
 		ID:            string(item.ID),

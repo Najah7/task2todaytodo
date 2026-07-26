@@ -153,30 +153,6 @@ func recordToUpdatedTaskScheduleByTaskAndUserRow(record sqlc.UpdateTaskScheduleB
 	)
 }
 
-func recordsToTaskSchedulesByTaskAndUserRows(records []sqlc.ListTaskSchedulesByTaskAndUserRow) ([]domain.TaskSchedule, error) {
-	schedules := make([]domain.TaskSchedule, 0, len(records))
-	for _, record := range records {
-		schedule, err := newTaskSchedule(
-			domain.TaskScheduleID(record.ID),
-			domain.TaskID(record.TaskID),
-			record.Title,
-			pgTextString(record.Description),
-			pgTextString(record.Location),
-			int(record.IntervalWeeks),
-			record.Frequencies,
-			pgTime(record.StartAt),
-			pgTime(record.EndAt),
-			pgTime(record.CreatedAt),
-			pgTime(record.UpdatedAt),
-		)
-		if err != nil {
-			return nil, err
-		}
-		schedules = append(schedules, schedule)
-	}
-	return schedules, nil
-}
-
 func recordsToTaskSchedulesForTaskRows(records []sqlc.ListTaskSchedulesByTaskForUserRow) ([]domain.TaskSchedule, error) {
 	schedules := make([]domain.TaskSchedule, 0, len(records))
 	for _, record := range records {
@@ -266,6 +242,30 @@ func recordToTodoItemRow(record sqlc.GetTodoItemRow) (domain.TodoItem, error) {
 	)
 }
 
+func recordsToTodoItems(records []sqlc.ListTodoItemsByTaskAndUserRow) (domain.TodoItems, error) {
+	items := make([]domain.TodoItem, 0, len(records))
+	for _, record := range records {
+		item, err := newTodoItem(
+			domain.TodoItemID(record.ID),
+			domain.TaskID(record.TaskID),
+			record.Title,
+			pgTextString(record.Description),
+			pgDateTime(record.DueDate),
+			record.Completed,
+			int(record.Position),
+			int(record.IntervalWeeks),
+			record.Frequencies,
+			pgTime(record.CreatedAt),
+			pgTime(record.UpdatedAt),
+		)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
 func recordToTodoItemByTaskAndUserRow(record sqlc.GetTodoItemByTaskAndUserRow) (domain.TodoItem, error) {
 	return newTodoItem(
 		domain.TodoItemID(record.ID),
@@ -296,30 +296,6 @@ func recordToCreatedTodoItemByTaskAndUserRow(record sqlc.CreateTodoItemByTaskAnd
 		pgTime(record.CreatedAt),
 		pgTime(record.UpdatedAt),
 	)
-}
-
-func recordsToTodoItemsByTaskAndUserRows(records []sqlc.ListTodoItemsByTaskAndUserRow) ([]domain.TodoItem, error) {
-	items := make([]domain.TodoItem, 0, len(records))
-	for _, record := range records {
-		item, err := newTodoItem(
-			domain.TodoItemID(record.ID),
-			domain.TaskID(record.TaskID),
-			record.Title,
-			pgTextString(record.Description),
-			pgDateTime(record.DueDate),
-			record.Completed,
-			int(record.Position),
-			int(record.IntervalWeeks),
-			record.Frequencies,
-			pgTime(record.CreatedAt),
-			pgTime(record.UpdatedAt),
-		)
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, item)
-	}
-	return items, nil
 }
 
 func recordsToTodoItemsForTaskRows(records []sqlc.ListTodoItemsByTaskForUserRow) ([]domain.TodoItem, error) {

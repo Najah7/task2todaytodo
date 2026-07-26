@@ -36,3 +36,45 @@ func TestNewTaskStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestTaskStatusPredicates(t *testing.T) {
+	tests := []struct {
+		name           string
+		value          string
+		wantOpen       bool
+		wantPending    bool
+		wantWaiting    bool
+		wantInProgress bool
+		wantDone       bool
+	}{
+		{name: "open", value: "open", wantOpen: true},
+		{name: "pending", value: "pending", wantPending: true},
+		{name: "waiting on others", value: "waiting_on_others", wantWaiting: true},
+		{name: "in progress", value: "in_progress", wantInProgress: true},
+		{name: "done", value: "done", wantDone: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			status, err := NewTaskStatus(tt.value)
+			if err != nil {
+				t.Fatalf("NewTaskStatus() error = %v", err)
+			}
+
+			if status.IsOpen() != tt.wantOpen ||
+				status.IsPending() != tt.wantPending ||
+				status.IsWaitingOnOthers() != tt.wantWaiting ||
+				status.IsInProgress() != tt.wantInProgress ||
+				status.IsDone() != tt.wantDone {
+				t.Fatalf("status predicates for %q = open:%t pending:%t waiting:%t in_progress:%t done:%t",
+					tt.value,
+					status.IsOpen(),
+					status.IsPending(),
+					status.IsWaitingOnOthers(),
+					status.IsInProgress(),
+					status.IsDone(),
+				)
+			}
+		})
+	}
+}

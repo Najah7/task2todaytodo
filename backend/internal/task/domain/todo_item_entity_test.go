@@ -78,3 +78,55 @@ func TestTodoItemRepeatPattern(t *testing.T) {
 		t.Errorf("todo item = %+v, want interval 1 with weekday frequency to mean weekly weekday", weekly)
 	}
 }
+
+func TestTodoItemsSortByPosition(t *testing.T) {
+	items := TodoItems{
+		mustTodoItemWithPosition(t, "todo-item-3", 3, false),
+		mustTodoItemWithPosition(t, "todo-item-1", 1, false),
+		mustTodoItemWithPosition(t, "todo-item-2", 2, false),
+	}
+
+	got := items.SortByPosition()
+
+	if got[0].ID != "todo-item-1" || got[1].ID != "todo-item-2" || got[2].ID != "todo-item-3" {
+		t.Fatalf("sorted todo items = %+v, want ascending position", got)
+	}
+	if items[0].ID != "todo-item-3" {
+		t.Fatalf("original todo items = %+v, want SortByPosition not to mutate receiver", items)
+	}
+}
+
+func TestTodoItemsHasIncomplete(t *testing.T) {
+	tests := []struct {
+		name  string
+		items TodoItems
+		want  bool
+	}{
+		{name: "empty", items: nil, want: false},
+		{name: "all complete", items: TodoItems{
+			mustTodoItemWithPosition(t, "todo-item-1", 1, true),
+			mustTodoItemWithPosition(t, "todo-item-2", 2, true),
+		}, want: false},
+		{name: "has incomplete", items: TodoItems{
+			mustTodoItemWithPosition(t, "todo-item-1", 1, true),
+			mustTodoItemWithPosition(t, "todo-item-2", 2, false),
+		}, want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.items.HasIncomplete(); got != tt.want {
+				t.Fatalf("HasIncomplete() = %t, want %t", got, tt.want)
+			}
+		})
+	}
+}
+
+func mustTodoItemWithPosition(t *testing.T, id TodoItemID, position int, completed bool) TodoItem {
+	t.Helper()
+	item, err := NewTodoItemWithDetails(id, "task-1", "Todo", "", time.Time{}, completed, position, 1, nil)
+	if err != nil {
+		t.Fatalf("NewTodoItemWithDetails() error = %v", err)
+	}
+	return item
+}

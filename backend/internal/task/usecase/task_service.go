@@ -10,18 +10,21 @@ import (
 )
 
 var (
-	ErrTaskEstimationUpdateEmpty = errors.New("estimated minutes or actual minutes must be provided")
+	ErrTaskEstimationUpdateEmpty  = errors.New("estimated minutes or actual minutes must be provided")
+	ErrTaskHasIncompleteTodoItems = errors.New("cannot mark task as done while it has incomplete todo items")
 )
 
 type TaskService struct {
-	repo        TaskRepository
-	projectRepo ProjectRepository
+	repo         TaskRepository
+	projectRepo  ProjectRepository
+	todoItemRepo TodoItemRepository
 }
 
-func NewTaskService(repo TaskRepository, projectRepo ProjectRepository) *TaskService {
+func NewTaskService(repo TaskRepository, projectRepo ProjectRepository, todoItemRepo TodoItemRepository) *TaskService {
 	return &TaskService{
-		repo:        repo,
-		projectRepo: projectRepo,
+		repo:         repo,
+		projectRepo:  projectRepo,
+		todoItemRepo: todoItemRepo,
 	}
 }
 
@@ -117,6 +120,16 @@ func (s *TaskService) UpdateTaskStatus(ctx context.Context, userID domain.UserID
 	status, err := domain.NewTaskStatus(statusValue)
 	if err != nil {
 		return domain.NewZeroTask(), err
+	}
+
+	if status.IsDone() {
+		todoItems, err := s.todoItemRepo.ListByTask(ctx, userID, taskID)
+		if err != nil {
+			return domain.NewZeroTask(), err
+		}
+		if todoItems.HasIncomplete() {
+			return domain.NewZeroTask(), ErrTaskHasIncompleteTodoItems
+		}
 	}
 
 	updated := existing

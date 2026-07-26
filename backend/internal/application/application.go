@@ -148,7 +148,7 @@ func newService(authStore authStore, taskStore taskStore) Service {
 	userService := authusecase.NewUserService(authStore.Users)
 	accessTokenService := authusecase.NewAccessTokenService(authStore.AccessTokens)
 	projectService := taskusecase.NewProjectService(taskStore.Projects)
-	taskService := taskusecase.NewTaskService(taskStore.Tasks, taskStore.Projects)
+	taskService := taskusecase.NewTaskService(taskStore.Tasks, taskStore.Projects, taskStore.TodoItems)
 	todoItemService := taskusecase.NewTodoItemService(taskStore.TodoItems)
 	taskScheduleService := taskusecase.NewTaskScheduleService(taskStore.TaskSchedules)
 	projectTypeService := taskusecase.NewProjectTypeService(taskStore.ProjectTypes)

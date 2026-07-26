@@ -46,3 +46,23 @@ func (s TaskStatus) validate() error {
 func (s TaskStatus) String() string {
 	return s.Value
 }
+
+func (s TaskStatus) IsOpen() bool {
+	return s.Value == "open"
+}
+
+func (s TaskStatus) IsPending() bool {
+	return s.Value == "pending"
+}
+
+func (s TaskStatus) IsWaitingOnOthers() bool {
+	return s.Value == "waiting_on_others"
+}
+
+func (s TaskStatus) IsInProgress() bool {
+	return s.Value == "in_progress"
+}
+
+func (s TaskStatus) IsDone() bool {
+	return s.Value == "done"
+}

@@ -167,3 +167,29 @@ func (i TodoItem) IsAnnually() bool {
 func (i TodoItem) IsOnce() bool {
 	return i.IntervalWeeks == 0
 }
+
+type TodoItems []TodoItem
+
+func (items TodoItems) SortByPosition() TodoItems {
+	sorted := make(TodoItems, len(items))
+	copy(sorted, items)
+
+	for i := 0; i < len(sorted)-1; i++ {
+		for j := 0; j < len(sorted)-i-1; j++ {
+			if sorted[j].Position > sorted[j+1].Position {
+				sorted[j], sorted[j+1] = sorted[j+1], sorted[j]
+			}
+		}
+	}
+
+	return sorted
+}
+
+func (items TodoItems) HasIncomplete() bool {
+	for _, item := range items {
+		if !item.Completed {
+			return true
+		}
+	}
+	return false
+}

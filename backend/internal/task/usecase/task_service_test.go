@@ -3,14 +3,15 @@ package usecase
 import (
 	"context"
 	"errors"
-	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
 	"testing"
 	"time"
+
+	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
 )
 
 func TestTaskServiceCreateStandaloneTask(t *testing.T) {
 	repo := &fakeTaskRepository{}
-	service := NewTaskService(repo, &fakeProjectRepository{})
+	service := NewTaskService(repo, &fakeProjectRepository{}, &fakeTodoItemRepository{})
 	estimated := 30
 
 	got, err := service.CreateStandaloneTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "Write tests", "Cover service", time.Time{}, &estimated, nil, "", "")
@@ -31,7 +32,7 @@ func TestTaskServiceCreateStandaloneTask(t *testing.T) {
 
 func TestTaskServiceCreateProjectTask(t *testing.T) {
 	repo := &fakeTaskRepository{}
-	service := NewTaskService(repo, &fakeProjectRepository{})
+	service := NewTaskService(repo, &fakeProjectRepository{}, &fakeTodoItemRepository{})
 
 	got, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", time.Time{}, nil, nil, "high", "in_progress")
 	if err != nil {
@@ -51,7 +52,7 @@ func TestTaskServiceCreateProjectTaskInheritsProjectPriority(t *testing.T) {
 	projectRepo := &fakeProjectRepository{
 		projectByUser: mustExistingProjectForService(t, "project-1", "user-1", "work", "Project", "", "", 0, "urgent"),
 	}
-	service := NewTaskService(repo, projectRepo)
+	service := NewTaskService(repo, projectRepo, &fakeTodoItemRepository{})
 
 	got, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", time.Time{}, nil, nil, "", "")
 	if err != nil {
@@ -68,7 +69,7 @@ func TestTaskServiceCreateProjectTaskInheritsProjectPriority(t *testing.T) {
 
 func TestTaskServiceCreateProjectTaskNotFound(t *testing.T) {
 	repo := &fakeTaskRepository{createInProjectErr: ErrTaskProjectNotFound}
-	service := NewTaskService(repo, &fakeProjectRepository{})
+	service := NewTaskService(repo, &fakeProjectRepository{}, &fakeTodoItemRepository{})
 
 	_, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", time.Time{}, nil, nil, "", "")
 	if !errors.Is(err, ErrTaskProjectNotFound) {
@@ -79,7 +80,7 @@ func TestTaskServiceCreateProjectTaskNotFound(t *testing.T) {
 func TestTaskServiceCreateProjectTaskInheritPriorityProjectNotFound(t *testing.T) {
 	repo := &fakeTaskRepository{}
 	projectRepo := &fakeProjectRepository{getByUserErr: domain.ErrProjectNotFound}
-	service := NewTaskService(repo, projectRepo)
+	service := NewTaskService(repo, projectRepo, &fakeTodoItemRepository{})
 
 	_, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", time.Time{}, nil, nil, "", "")
 	if !errors.Is(err, domain.ErrProjectNotFound) {
@@ -102,7 +103,7 @@ func TestTaskServiceGetTaskReturnsAggregate(t *testing.T) {
 			},
 		},
 	}
-	service := NewTaskService(repo, &fakeProjectRepository{})
+	service := NewTaskService(repo, &fakeProjectRepository{}, &fakeTodoItemRepository{})
 
 	got, err := service.GetTask(context.Background(), "user-1", "task-1")
 	if err != nil {
@@ -126,7 +127,7 @@ func TestTaskServiceUpdateTaskBasicPreservesDisallowedFields(t *testing.T) {
 		taskByUser: mustExistingTask(t, "task-1", "user-1", "project-1", "Old", "Old description", &estimated, &actual, 42, "urgent", "open"),
 	}
 	repo.taskByUser.DueDate = existingDueDate
-	service := NewTaskService(repo, &fakeProjectRepository{})
+	service := NewTaskService(repo, &fakeProjectRepository{}, &fakeTodoItemRepository{})
 	title := "New title"
 	description := "New description"
 
@@ -151,7 +152,7 @@ func TestTaskServiceUpdateTaskPriorityPreservesOtherFields(t *testing.T) {
 	repo := &fakeTaskRepository{
 		taskByUser: mustExistingTask(t, "task-1", "user-1", "project-1", "Task", "", &estimated, nil, 50, "low", "in_progress"),
 	}
-	service := NewTaskService(repo, &fakeProjectRepository{})
+	service := NewTaskService(repo, &fakeProjectRepository{}, &fakeTodoItemRepository{})
 
 	got, err := service.UpdateTaskPriority(context.Background(), "user-1", "task-1", "high")
 	if err != nil {
@@ -173,7 +174,7 @@ func TestTaskServiceUpdateTaskEstimation(t *testing.T) {
 	repo := &fakeTaskRepository{
 		taskByUser: mustExistingTask(t, "task-1", "user-1", "", "Task", "", &estimated, &actual, 10, "low", "open"),
 	}
-	service := NewTaskService(repo, &fakeProjectRepository{})
+	service := NewTaskService(repo, &fakeProjectRepository{}, &fakeTodoItemRepository{})
 
 	got, err := service.UpdateTaskEstimation(context.Background(), "user-1", "task-1", nil, &newActual)
 	if err != nil {
@@ -192,7 +193,7 @@ func TestTaskServiceUpdateTaskEstimation(t *testing.T) {
 }
 
 func TestTaskServiceUpdateTaskEstimationRejectsEmptyRequest(t *testing.T) {
-	service := NewTaskService(&fakeTaskRepository{}, &fakeProjectRepository{})
+	service := NewTaskService(&fakeTaskRepository{}, &fakeProjectRepository{}, &fakeTodoItemRepository{})
 
 	_, err := service.UpdateTaskEstimation(context.Background(), "user-1", "task-1", nil, nil)
 	if !errors.Is(err, ErrTaskEstimationUpdateEmpty) {
@@ -200,9 +201,73 @@ func TestTaskServiceUpdateTaskEstimationRejectsEmptyRequest(t *testing.T) {
 	}
 }
 
+func TestTaskServiceUpdateTaskStatusRejectsDoneWithIncompleteTodoItems(t *testing.T) {
+	repo := &fakeTaskRepository{
+		taskByUser: mustExistingTask(t, "task-1", "user-1", "", "Task", "", nil, nil, 0, "low", "open"),
+	}
+	todoRepo := &fakeTodoItemRepository{
+		listByTaskItems: domain.TodoItems{
+			mustExistingTodoItemForTaskService(t, "todo-1", "task-1", false, 0),
+		},
+	}
+	service := NewTaskService(repo, &fakeProjectRepository{}, todoRepo)
+
+	_, err := service.UpdateTaskStatus(context.Background(), "user-1", "task-1", "done")
+	if !errors.Is(err, ErrTaskHasIncompleteTodoItems) {
+		t.Fatalf("UpdateTaskStatus() error = %v, want ErrTaskHasIncompleteTodoItems", err)
+	}
+	if repo.updated.ID != "" {
+		t.Fatalf("updated task = %+v, want repository update not called", repo.updated)
+	}
+	if todoRepo.listByTaskUserID != "user-1" || todoRepo.listByTaskTaskID != "task-1" {
+		t.Fatalf("todo item lookup user=%q task=%q, want scoped lookup", todoRepo.listByTaskUserID, todoRepo.listByTaskTaskID)
+	}
+}
+
+func TestTaskServiceUpdateTaskStatusAllowsDoneWhenAllTodoItemsComplete(t *testing.T) {
+	repo := &fakeTaskRepository{
+		taskByUser: mustExistingTask(t, "task-1", "user-1", "", "Task", "", nil, nil, 0, "low", "in_progress"),
+	}
+	todoRepo := &fakeTodoItemRepository{
+		listByTaskItems: domain.TodoItems{
+			mustExistingTodoItemForTaskService(t, "todo-1", "task-1", true, 0),
+			mustExistingTodoItemForTaskService(t, "todo-2", "task-1", true, 1),
+		},
+	}
+	service := NewTaskService(repo, &fakeProjectRepository{}, todoRepo)
+
+	got, err := service.UpdateTaskStatus(context.Background(), "user-1", "task-1", "done")
+	if err != nil {
+		t.Fatalf("UpdateTaskStatus() error = %v", err)
+	}
+	if got.Status.String() != "done" || repo.updated.Status.String() != "done" {
+		t.Fatalf("task = %+v updated = %+v, want done status persisted", got, repo.updated)
+	}
+}
+
+func TestTaskServiceUpdateTaskStatusSkipsTodoItemsForNonDoneStatus(t *testing.T) {
+	listErr := errors.New("todo item list should not be called")
+	repo := &fakeTaskRepository{
+		taskByUser: mustExistingTask(t, "task-1", "user-1", "", "Task", "", nil, nil, 0, "low", "open"),
+	}
+	todoRepo := &fakeTodoItemRepository{listByTaskErr: listErr}
+	service := NewTaskService(repo, &fakeProjectRepository{}, todoRepo)
+
+	got, err := service.UpdateTaskStatus(context.Background(), "user-1", "task-1", "in_progress")
+	if err != nil {
+		t.Fatalf("UpdateTaskStatus() error = %v", err)
+	}
+	if got.Status.String() != "in_progress" {
+		t.Fatalf("task = %+v, want in_progress status", got)
+	}
+	if todoRepo.listByTaskCalls != 0 {
+		t.Fatalf("todo item list calls = %d, want 0", todoRepo.listByTaskCalls)
+	}
+}
+
 func TestTaskServiceDeleteTaskScopesByUser(t *testing.T) {
 	repo := &fakeTaskRepository{}
-	service := NewTaskService(repo, &fakeProjectRepository{})
+	service := NewTaskService(repo, &fakeProjectRepository{}, &fakeTodoItemRepository{})
 
 	if err := service.DeleteTask(context.Background(), "user-1", "task-1"); err != nil {
 		t.Fatalf("DeleteTask() error = %v", err)
@@ -296,4 +361,25 @@ func mustExistingTask(
 		t.Fatalf("domain.NewExistingTask() error = %v", err)
 	}
 	return task
+}
+
+func mustExistingTodoItemForTaskService(t *testing.T, id domain.TodoItemID, taskID domain.TaskID, completed bool, position int) domain.TodoItem {
+	t.Helper()
+	item, err := domain.NewExistingTodoItem(
+		id,
+		taskID,
+		"Todo item",
+		"",
+		time.Time{},
+		completed,
+		position,
+		1,
+		nil,
+		time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC),
+		time.Date(2026, 7, 26, 10, 0, 0, 0, time.UTC),
+	)
+	if err != nil {
+		t.Fatalf("domain.NewExistingTodoItem() error = %v", err)
+	}
+	return item
 }
