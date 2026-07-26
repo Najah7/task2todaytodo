@@ -9,10 +9,16 @@ db/queries/              sqlc SQL source
 docs/                    Generated Swagger
 internal/adapters/       External adapters
 internal/application/    Wiring, config
-internal/domain/<name>/  VO, entity, service, domain tests
+internal/auth/domain/    Auth VO, entity, domain tests
+internal/auth/usecase/   Auth application services, repository ports, usecase tests
+internal/auth/repository/ Auth DB adapters, sqlc mapping
+internal/task/domain/    Task VO, entity, aggregate, domain tests
+internal/task/usecase/   Task application services, repository ports, usecase tests
+internal/task/repository/ Task DB adapters, sqlc mapping
+internal/domain/shared/  Shared VO/helpers used by multiple contexts
 internal/handlers/       HTTP boundary
 internal/middlewares/    HTTP middleware
-internal/repositories/   DB adapters, sqlc mapping
+internal/repositories/sqlc/ Generated sqlc package
 ```
 
 `db/queries` + `sqlc.yml` = sqlc source. `internal/repositories/sqlc` = generated.
@@ -29,14 +35,18 @@ Live reload build fail = app stale. Check build log, binary, port-owning process
 ## Layer rule
 
 ```text
-handler/middleware -> application -> domain <- repository interface
-repository impl -> DB/sqlc
+handler/middleware -> usecase -> domain
+application -> usecase + repository impl wiring
+repository impl -> sqlc/DB
 ```
 
-Domain no HTTP, DB, framework, driver imports. Domain owns interfaces. Outer layer inject impl.
+Domain no HTTP, DB, framework, driver imports. Usecase owns repository ports.
+Repository impl imports usecase ports and maps DB records to domain objects.
+Application wires concrete repositories into usecases.
 
-`internal/domain/<name>/` owns one domain/bounded context. Keep VO, entity,
-service, tests there. No domain source direct under `internal/domain`.
+`internal/<context>/` owns one bounded context. Keep domain/usecase/repository
+inside that context. `internal/domain/shared` is only for cross-context shared
+domain concepts.
 
 ### VO
 
@@ -65,10 +75,16 @@ service, tests there. No domain source direct under `internal/domain`.
 
 ### Service
 
-- Orchestrate entity + repository interface.
+- Service means Application Service unless explicitly stated otherwise.
+- Orchestrate domain object load, domain method call, repository save, and transaction boundary.
+- Keep repository interfaces in the usecase package, close to the Application Service that needs them.
 - No duplicate VO/entity validation.
 - No HTTP req/context. Handler extracts transport data, passes args.
 - Pre-check helps. DB constraint final authority.
+- Prefer entity/VO/aggregate methods for domain behavior.
+- Avoid Domain Service by default. Add domain behavior to the domain object when it naturally belongs there.
+- If behavior cannot be expressed cleanly as a domain method, implement the orchestration in Application Service.
+- Introduce Domain Service only for rare pure-domain behavior that does not belong to any entity/VO and does not need repository/DB access.
 
 ## Handler and public error
 
@@ -81,7 +97,10 @@ service, tests there. No domain source direct under `internal/domain`.
 
 ## Repository and SQL
 
-- Repository = CRUD + DB record ↔ domain map. Business rule stays service/entity.
+- Repository impl lives in `internal/<context>/repository`.
+- Repository ports live in `internal/<context>/usecase`.
+- Generated sqlc stays in `internal/repositories/sqlc` until the sqlc package is moved.
+- Repository = CRUD + DB record ↔ domain map. Business rule stays usecase/domain.
 - Create/update returns persisted entity when caller needs it. Error-only only when result irrelevant.
 - Check nullable DB value validity before read. DB NULL → explicit domain absent state.
 - Restore persisted VO with restore constructor. Never run input transform on stored data.
@@ -96,7 +115,7 @@ service, tests there. No domain source direct under `internal/domain`.
 ## Test
 
 - Split VO/entity tests by concept.
-- Service test orchestration, repository call, error flow. No repeated VO/entity matrix.
+- Usecase service test orchestration, repository call, error flow. No repeated VO/entity matrix.
 - Bug in DB map, nullable field, public error map → regression test.
 - Stateful entity test uses fixed time, explicit fixture.
 
