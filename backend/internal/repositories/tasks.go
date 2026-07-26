@@ -148,7 +148,7 @@ func (r TaskRepository) CreateInProject(ctx context.Context, task domain.Task) (
 	record, err := r.queries.CreateTaskInProject(ctx, sqlc.CreateTaskInProjectParams{
 		ID:               string(task.ID),
 		UserID:           string(task.UserID),
-		ID_2:             string(task.ProjectID),
+		ProjectID:        string(task.ProjectID),
 		Title:            task.Title,
 		Description:      stringToPgText(task.Description),
 		EstimatedMinutes: intPointerToPgInt(task.EstimatedMinutes),
