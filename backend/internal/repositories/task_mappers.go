@@ -13,6 +13,10 @@ func recordToProject(record sqlc.Project) (domain.Project, error) {
 	if err != nil {
 		return domain.NewZeroProject(), err
 	}
+	priority, err := domain.NewTaskPriority(record.Priority)
+	if err != nil {
+		return domain.NewZeroProject(), err
+	}
 
 	return domain.NewExistingProject(
 		domain.ProjectID(record.ID),
@@ -22,6 +26,7 @@ func recordToProject(record sqlc.Project) (domain.Project, error) {
 		pgTextString(record.Goal),
 		pgTextString(record.Description),
 		int(record.Progress),
+		priority,
 		pgTime(record.StartAt),
 		pgTime(record.EndAt),
 		pgTime(record.CreatedAt),
