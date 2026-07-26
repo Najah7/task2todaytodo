@@ -21,6 +21,7 @@ func NewTodoItemHandler(svc *domain.TodoItemService, idGen shared.IDGenerator) *
 type TodoItemCreateRequest struct {
 	Title         string   `json:"title"`
 	Description   string   `json:"description"`
+	DueDate       *string  `json:"due_date" format:"date"`
 	Position      *int     `json:"position"`
 	IntervalWeeks *int     `json:"interval_weeks"`
 	Frequencies   []string `json:"frequencies"`
@@ -56,11 +57,18 @@ func (h *TodoItemHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	dueDate, err := parseOptionalDateOnly(req.DueDate)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, ErrSpecTodoItemsCreateFailed, errDetailInvalidDateOnly("due_date"))
+		return
+	}
+
 	item, err := h.svc.Create(r.Context(), h.idGen.Generate, domain.TodoItemCreateParams{
 		UserID:        userID,
 		TaskID:        taskIDFromRequest(r),
 		Title:         req.Title,
 		Description:   req.Description,
+		DueDate:       dueDate,
 		Position:      req.Position,
 		IntervalWeeks: req.IntervalWeeks,
 		Frequencies:   req.Frequencies,
