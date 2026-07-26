@@ -31,6 +31,10 @@ func main() {
 
 	userHandler := handlers.NewUserHandler(app.Service.User, ulidGen)
 	accessTokenHandler := handlers.NewAccessTokenHandler(app.Service.AccessToken, app.Service.User)
+	projectHandler := handlers.NewProjectHandler(app.Service.Project, ulidGen)
+	taskHandler := handlers.NewTaskHandler(app.Service.Task, ulidGen)
+	todoItemHandler := handlers.NewTodoItemHandler(app.Service.TodoItem, ulidGen)
+	taskScheduleHandler := handlers.NewTaskScheduleHandler(app.Service.TaskSchedule, ulidGen)
 	projectTypeHandler := handlers.NewProjectTypeHandler(app.Service.ProjectType)
 	taskFrequencyHandler := handlers.NewTaskFrequencyHandler(app.Service.TaskFrequency)
 	taskPriorityHandler := handlers.NewTaskPriorityHandler(app.Service.TaskPriority)
@@ -57,6 +61,28 @@ func main() {
 		authRoutes.Patch("/users/me", userHandler.UpdateBasicInfo)
 		authRoutes.Patch("/users/me/password", userHandler.UpdatePassword)
 		authRoutes.Delete("/access-token/current", accessTokenHandler.Revoke)
+
+		authRoutes.Get("/projects/{project_id}", projectHandler.Get)
+		authRoutes.Post("/projects", projectHandler.Create)
+		authRoutes.Patch("/projects/{project_id}", projectHandler.Update)
+		authRoutes.Delete("/projects/{project_id}", projectHandler.Delete)
+		authRoutes.Post("/projects/{project_id}/tasks", taskHandler.CreateInProject)
+
+		authRoutes.Get("/tasks/{task_id}", taskHandler.Get)
+		authRoutes.Post("/tasks", taskHandler.Create)
+		authRoutes.Patch("/tasks/{task_id}", taskHandler.Update)
+		authRoutes.Patch("/tasks/{task_id}/priority", taskHandler.UpdatePriority)
+		authRoutes.Patch("/tasks/{task_id}/estimation", taskHandler.UpdateEstimation)
+		authRoutes.Delete("/tasks/{task_id}", taskHandler.Delete)
+
+		authRoutes.Post("/tasks/{task_id}/todo-items", todoItemHandler.Create)
+		authRoutes.Post("/tasks/{task_id}/todo-items/{todo_item_id}:checked", todoItemHandler.Check)
+		authRoutes.Post("/tasks/{task_id}/todo-items/{todo_item_id}:unchecked", todoItemHandler.Uncheck)
+		authRoutes.Delete("/tasks/{task_id}/todo-items/{todo_item_id}", todoItemHandler.Delete)
+
+		authRoutes.Post("/tasks/{task_id}/schedules", taskScheduleHandler.Create)
+		authRoutes.Patch("/tasks/{task_id}/schedules/{task_schedule_id}", taskScheduleHandler.Update)
+		authRoutes.Delete("/tasks/{task_id}/schedules/{task_schedule_id}", taskScheduleHandler.Delete)
 	})
 
 	srv := &http.Server{
