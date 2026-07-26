@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/db/sqlc"
 	auth "github.com/Najah7/task2todaytodo/internal/auth/domain"
 	usecase "github.com/Najah7/task2todaytodo/internal/auth/usecase"
-	"github.com/Najah7/task2todaytodo/internal/repositories/sqlc"
 	"github.com/Najah7/task2todaytodo/internal/shared"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"

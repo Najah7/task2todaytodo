@@ -41,7 +41,7 @@ services:
       - ${PROJECT_ROOT}/sqlc.yml:/sqlc.yml
       - ${PROJECT_ROOT}/db/migrations:/db/migrations
       - ${PROJECT_ROOT}/db/queries:/db/queries
-      - ${PROJECT_ROOT}/internal/repositories/sqlc:/internal/repositories/sqlc
+      - ${PROJECT_ROOT}/db/sqlc:/db/sqlc
     depends_on:
       - db
 

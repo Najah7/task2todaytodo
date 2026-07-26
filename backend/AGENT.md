@@ -18,10 +18,10 @@ internal/task/repository/ Task DB adapters, sqlc mapping
 internal/domain/shared/  Shared VO/helpers used by multiple contexts
 internal/handlers/       HTTP boundary
 internal/middlewares/    HTTP middleware
-internal/repositories/sqlc/ Generated sqlc package
+/db/sqlc/ Generated sqlc package
 ```
 
-`db/queries` + `sqlc.yml` = sqlc source. `internal/repositories/sqlc` = generated.
+`db/queries` + `sqlc.yml` = sqlc source. `/db/sqlc` = generated.
 
 ## Commands
 
@@ -99,7 +99,7 @@ domain concepts.
 
 - Repository impl lives in `internal/<context>/repository`.
 - Repository ports live in `internal/<context>/usecase`.
-- Generated sqlc stays in `internal/repositories/sqlc` until the sqlc package is moved.
+- Generated sqlc stays in `/db/sqlc` until the sqlc package is moved.
 - Repository = CRUD + DB record ↔ domain map. Business rule stays usecase/domain.
 - Create/update returns persisted entity when caller needs it. Error-only only when result irrelevant.
 - Check nullable DB value validity before read. DB NULL → explicit domain absent state.
