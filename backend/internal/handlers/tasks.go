@@ -6,18 +6,19 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Najah7/task2todaytodo/internal/domain/auth"
-	"github.com/Najah7/task2todaytodo/internal/domain/shared"
-	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
+	auth "github.com/Najah7/task2todaytodo/internal/auth/domain"
+	"github.com/Najah7/task2todaytodo/internal/shared"
+	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
+	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 	"github.com/go-chi/chi/v5"
 )
 
 type TaskHandler struct {
-	svc   *domain.TaskService
+	svc   *taskusecase.TaskService
 	idGen shared.IDGenerator
 }
 
-func NewTaskHandler(svc *domain.TaskService, idGen shared.IDGenerator) *TaskHandler {
+func NewTaskHandler(svc *taskusecase.TaskService, idGen shared.IDGenerator) *TaskHandler {
 	return &TaskHandler{svc: svc, idGen: idGen}
 }
 
@@ -486,11 +487,11 @@ func taskScheduleIDFromRequest(r *http.Request) domain.TaskScheduleID {
 
 func taskErrToErrResponse(err error) (int, ErrDetail) {
 	switch {
-	case errors.Is(err, domain.ErrTaskNotFound):
+	case errors.Is(err, taskusecase.ErrTaskNotFound):
 		return http.StatusNotFound, NewErrDetail("task_id", "task_not_found", "Task not found")
-	case errors.Is(err, domain.ErrTaskProjectNotFound), errors.Is(err, domain.ErrProjectNotFound):
+	case errors.Is(err, taskusecase.ErrTaskProjectNotFound), errors.Is(err, domain.ErrProjectNotFound):
 		return http.StatusNotFound, NewErrDetail("project_id", "project_not_found", "Project not found")
-	case errors.Is(err, domain.ErrTaskEstimationUpdateEmpty):
+	case errors.Is(err, taskusecase.ErrTaskEstimationUpdateEmpty):
 		return http.StatusBadRequest, NewErrDetail("", "empty_estimation_update", "Estimated minutes or actual minutes must be provided")
 	case errors.Is(err, domain.ErrTaskIDEmpty):
 		return http.StatusBadRequest, NewErrDetail("task_id", "invalid_task_id", "Task ID is required")

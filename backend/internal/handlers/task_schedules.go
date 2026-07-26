@@ -6,16 +6,17 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Najah7/task2todaytodo/internal/domain/shared"
-	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
+	"github.com/Najah7/task2todaytodo/internal/shared"
+	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
+	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 )
 
 type TaskScheduleHandler struct {
-	svc   *domain.TaskScheduleService
+	svc   *taskusecase.TaskScheduleService
 	idGen shared.IDGenerator
 }
 
-func NewTaskScheduleHandler(svc *domain.TaskScheduleService, idGen shared.IDGenerator) *TaskScheduleHandler {
+func NewTaskScheduleHandler(svc *taskusecase.TaskScheduleService, idGen shared.IDGenerator) *TaskScheduleHandler {
 	return &TaskScheduleHandler{svc: svc, idGen: idGen}
 }
 
@@ -58,7 +59,7 @@ func (h *TaskScheduleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	schedule, err := h.svc.Create(r.Context(), h.idGen.Generate, domain.TaskScheduleCreateParams{
+	schedule, err := h.svc.Create(r.Context(), h.idGen.Generate, taskusecase.TaskScheduleCreateParams{
 		UserID:          userID,
 		TaskID:          taskIDFromRequest(r),
 		Title:           req.Title,
@@ -118,7 +119,7 @@ func (h *TaskScheduleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	schedule, err := h.svc.Update(r.Context(), domain.TaskScheduleUpdateParams{
+	schedule, err := h.svc.Update(r.Context(), taskusecase.TaskScheduleUpdateParams{
 		UserID:          userID,
 		TaskID:          taskIDFromRequest(r),
 		ID:              taskScheduleIDFromRequest(r),

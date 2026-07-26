@@ -7,11 +7,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
+	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
+	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 )
 
 func TestTaskStatusHandlerList(t *testing.T) {
-	handler := NewTaskStatusHandler(domain.NewTaskStatusService(&stubTaskStatusHandlerRepository{
+	handler := NewTaskStatusHandler(taskusecase.NewTaskStatusService(&stubTaskStatusHandlerRepository{
 		statuses: []domain.TaskStatus{mustTaskStatusForHandler(t, "open")},
 	}))
 	recorder := httptest.NewRecorder()

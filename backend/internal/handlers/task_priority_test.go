@@ -7,11 +7,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
+	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
+	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 )
 
 func TestTaskPriorityHandlerList(t *testing.T) {
-	handler := NewTaskPriorityHandler(domain.NewTaskPriorityService(&stubTaskPriorityHandlerRepository{
+	handler := NewTaskPriorityHandler(taskusecase.NewTaskPriorityService(&stubTaskPriorityHandlerRepository{
 		priorities: []domain.TaskPriority{mustTaskPriorityForHandler(t, "urgent")},
 	}))
 	recorder := httptest.NewRecorder()

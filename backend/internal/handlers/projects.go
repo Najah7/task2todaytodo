@@ -7,18 +7,19 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Najah7/task2todaytodo/internal/domain/auth"
-	"github.com/Najah7/task2todaytodo/internal/domain/shared"
-	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
+	auth "github.com/Najah7/task2todaytodo/internal/auth/domain"
+	"github.com/Najah7/task2todaytodo/internal/shared"
+	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
+	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 	"github.com/go-chi/chi/v5"
 )
 
 type ProjectHandler struct {
-	svc   *domain.ProjectService
+	svc   *taskusecase.ProjectService
 	idGen shared.IDGenerator
 }
 
-func NewProjectHandler(svc *domain.ProjectService, idGen shared.IDGenerator) *ProjectHandler {
+func NewProjectHandler(svc *taskusecase.ProjectService, idGen shared.IDGenerator) *ProjectHandler {
 	return &ProjectHandler{
 		svc:   svc,
 		idGen: idGen,
@@ -201,13 +202,13 @@ type ProjectUpdateRequest struct {
 	EndAt       *time.Time `json:"end_at"`
 }
 
-func (req ProjectUpdateRequest) toDomainUpdate() (domain.ProjectUpdate, error) {
+func (req ProjectUpdateRequest) toDomainUpdate() (taskusecase.ProjectUpdate, error) {
 	dueDate, err := parseDateOnlyPatch(req.DueDate, req.DueDateSet)
 	if err != nil {
-		return domain.ProjectUpdate{}, err
+		return taskusecase.ProjectUpdate{}, err
 	}
 
-	return domain.ProjectUpdate{
+	return taskusecase.ProjectUpdate{
 		Type:        req.Type,
 		Priority:    req.Priority,
 		Title:       req.Title,

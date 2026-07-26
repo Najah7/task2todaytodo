@@ -3,14 +3,15 @@ package handlers
 import (
 	"net/http"
 
-	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
+	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
+	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 )
 
 type TaskPriorityHandler struct {
-	service *domain.TaskPriorityService
+	service *taskusecase.TaskPriorityService
 }
 
-func NewTaskPriorityHandler(service *domain.TaskPriorityService) *TaskPriorityHandler {
+func NewTaskPriorityHandler(service *taskusecase.TaskPriorityService) *TaskPriorityHandler {
 	return &TaskPriorityHandler{
 		service: service,
 	}

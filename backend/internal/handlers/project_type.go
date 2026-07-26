@@ -3,14 +3,15 @@ package handlers
 import (
 	"net/http"
 
-	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
+	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
+	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 )
 
 type ProjectTypeHandler struct {
-	service *domain.ProjectTypeService
+	service *taskusecase.ProjectTypeService
 }
 
-func NewProjectTypeHandler(service *domain.ProjectTypeService) *ProjectTypeHandler {
+func NewProjectTypeHandler(service *taskusecase.ProjectTypeService) *ProjectTypeHandler {
 	return &ProjectTypeHandler{
 		service: service,
 	}

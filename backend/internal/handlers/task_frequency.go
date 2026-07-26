@@ -3,14 +3,15 @@ package handlers
 import (
 	"net/http"
 
-	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
+	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
+	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 )
 
 type TaskFrequencyHandler struct {
-	service *domain.TaskFrequencyService
+	service *taskusecase.TaskFrequencyService
 }
 
-func NewTaskFrequencyHandler(service *domain.TaskFrequencyService) *TaskFrequencyHandler {
+func NewTaskFrequencyHandler(service *taskusecase.TaskFrequencyService) *TaskFrequencyHandler {
 	return &TaskFrequencyHandler{
 		service: service,
 	}

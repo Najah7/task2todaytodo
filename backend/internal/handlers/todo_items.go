@@ -5,16 +5,17 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Najah7/task2todaytodo/internal/domain/shared"
-	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
+	"github.com/Najah7/task2todaytodo/internal/shared"
+	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
+	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 )
 
 type TodoItemHandler struct {
-	svc   *domain.TodoItemService
+	svc   *taskusecase.TodoItemService
 	idGen shared.IDGenerator
 }
 
-func NewTodoItemHandler(svc *domain.TodoItemService, idGen shared.IDGenerator) *TodoItemHandler {
+func NewTodoItemHandler(svc *taskusecase.TodoItemService, idGen shared.IDGenerator) *TodoItemHandler {
 	return &TodoItemHandler{svc: svc, idGen: idGen}
 }
 
@@ -63,7 +64,7 @@ func (h *TodoItemHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := h.svc.Create(r.Context(), h.idGen.Generate, domain.TodoItemCreateParams{
+	item, err := h.svc.Create(r.Context(), h.idGen.Generate, taskusecase.TodoItemCreateParams{
 		UserID:        userID,
 		TaskID:        taskIDFromRequest(r),
 		Title:         req.Title,
@@ -172,11 +173,11 @@ func (h *TodoItemHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func todoItemErrToErrResponse(err error) (int, ErrDetail) {
 	switch {
-	case errors.Is(err, domain.ErrTodoItemTaskNotFound):
+	case errors.Is(err, taskusecase.ErrTodoItemTaskNotFound):
 		return http.StatusNotFound, NewErrDetail("task_id", "task_not_found", "Task not found")
-	case errors.Is(err, domain.ErrTodoItemNotFound):
+	case errors.Is(err, taskusecase.ErrTodoItemNotFound):
 		return http.StatusNotFound, NewErrDetail("todo_item_id", "todo_item_not_found", "Todo item not found")
-	case errors.Is(err, domain.ErrTodoItemPositionConflict):
+	case errors.Is(err, taskusecase.ErrTodoItemPositionConflict):
 		return http.StatusConflict, NewErrDetail("position", "todo_item_position_conflict", "Todo item position already exists")
 	case errors.Is(err, domain.ErrTodoItemTitleEmpty):
 		return http.StatusBadRequest, NewErrDetail("title", "todo_item_title_required", "Todo item title is required")

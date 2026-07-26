@@ -7,11 +7,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
+	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
+	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 )
 
 func TestTaskFrequencyHandlerList(t *testing.T) {
-	handler := NewTaskFrequencyHandler(domain.NewTaskFrequencyService(&stubTaskFrequencyHandlerRepository{
+	handler := NewTaskFrequencyHandler(taskusecase.NewTaskFrequencyService(&stubTaskFrequencyHandlerRepository{
 		frequencies: []domain.TaskFrequency{mustTaskFrequencyForHandler(t, "mon")},
 	}))
 	recorder := httptest.NewRecorder()
