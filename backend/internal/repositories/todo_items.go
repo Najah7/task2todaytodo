@@ -63,7 +63,7 @@ func (r TodoItemRepository) CreateForOwnedTask(ctx context.Context, userID domai
 		Frequencies:   taskFrequencyStrings(item.Frequencies),
 	})
 	if err != nil {
-		return domain.NewZeroTodoItem(), todoItemRepositoryError(err)
+		return domain.NewZeroTodoItem(), todoItemTaskNotFoundError(err)
 	}
 	return recordToCreatedTodoItemByTaskAndUserRow(record)
 }
@@ -121,6 +121,17 @@ func todoItemRepositoryError(err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.ErrTodoItemNotFound
 	}
+	return todoItemConstraintError(err)
+}
+
+func todoItemTaskNotFoundError(err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ErrTodoItemTaskNotFound
+	}
+	return todoItemConstraintError(err)
+}
+
+func todoItemConstraintError(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "todo_items_task_id_position_key" {
 		return domain.ErrTodoItemPositionConflict

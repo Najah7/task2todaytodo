@@ -164,7 +164,9 @@ func (h *TodoItemHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func todoItemErrToErrResponse(err error) (int, ErrDetail) {
 	switch {
-	case errors.Is(err, domain.ErrTodoItemNotFound), errors.Is(err, domain.ErrTodoItemTaskNotFound):
+	case errors.Is(err, domain.ErrTodoItemTaskNotFound):
+		return http.StatusNotFound, NewErrDetail("task_id", "task_not_found", "Task not found")
+	case errors.Is(err, domain.ErrTodoItemNotFound):
 		return http.StatusNotFound, NewErrDetail("todo_item_id", "todo_item_not_found", "Todo item not found")
 	case errors.Is(err, domain.ErrTodoItemPositionConflict):
 		return http.StatusConflict, NewErrDetail("position", "todo_item_position_conflict", "Todo item position already exists")
