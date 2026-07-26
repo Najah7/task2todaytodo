@@ -21,6 +21,12 @@ func NewProjectRepository(db sqlc.DBTX) *ProjectRepository {
 	}
 }
 
+func (r *ProjectRepository) WithTx(tx pgx.Tx) *ProjectRepository {
+	return &ProjectRepository{
+		queries: r.queries.WithTx(tx),
+	}
+}
+
 func (r ProjectRepository) GetByUser(ctx context.Context, userID domain.UserID, id domain.ProjectID) (domain.Project, error) {
 	record, err := r.queries.GetProjectByUser(ctx, sqlc.GetProjectByUserParams{
 		ID:     string(id),

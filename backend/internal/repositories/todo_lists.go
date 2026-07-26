@@ -6,6 +6,7 @@ import (
 
 	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
 	"github.com/Najah7/task2todaytodo/internal/repositories/sqlc"
+	"github.com/jackc/pgx/v5"
 )
 
 var _ domain.TodoListRepository = TodoListRepository{}
@@ -17,6 +18,12 @@ type TodoListRepository struct {
 func NewTodoListRepository(db sqlc.DBTX) *TodoListRepository {
 	return &TodoListRepository{
 		queries: sqlc.New(db),
+	}
+}
+
+func (r *TodoListRepository) WithTx(tx pgx.Tx) *TodoListRepository {
+	return &TodoListRepository{
+		queries: r.queries.WithTx(tx),
 	}
 }
 

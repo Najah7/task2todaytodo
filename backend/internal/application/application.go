@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 
 	"fmt"
 	"net"
@@ -11,6 +12,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/domain/auth"
 	"github.com/Najah7/task2todaytodo/internal/domain/task"
 	"github.com/Najah7/task2todaytodo/internal/repositories"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -19,20 +21,7 @@ type config struct {
 
 type logger interface{}
 
-type Store struct {
-	Users           *repositories.UserRepository
-	AccessTokens    *repositories.AccessTokenRepository
-	Projects        *repositories.ProjectRepository
-	Tasks           *repositories.TaskRepository
-	TodoItems       *repositories.TodoItemRepository
-	TaskSchedules   *repositories.TaskScheduleRepository
-	ProjectTypes    *repositories.ProjectTypeRepository
-	TaskFrequencies *repositories.TaskFrequencyRepository
-	TaskPriorities  *repositories.TaskPriorityRepository
-	TaskStatuses    *repositories.TaskStatusRepository
-}
-
-func NewStore(ctx context.Context) Store {
+func newPool(ctx context.Context) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(postgresConnectionString())
 	if err != nil {
 		panic(fmt.Errorf("failed to parse connection string: %w", err))
@@ -51,6 +40,23 @@ func NewStore(ctx context.Context) Store {
 		panic(fmt.Errorf("ping postgres: %w", err))
 	}
 
+	return pool, nil
+}
+
+type Store struct {
+	Users           *repositories.UserRepository
+	AccessTokens    *repositories.AccessTokenRepository
+	Projects        *repositories.ProjectRepository
+	Tasks           *repositories.TaskRepository
+	TodoItems       *repositories.TodoItemRepository
+	TaskSchedules   *repositories.TaskScheduleRepository
+	ProjectTypes    *repositories.ProjectTypeRepository
+	TaskFrequencies *repositories.TaskFrequencyRepository
+	TaskPriorities  *repositories.TaskPriorityRepository
+	TaskStatuses    *repositories.TaskStatusRepository
+}
+
+func newStore(pool *pgxpool.Pool) Store {
 	userRepo := repositories.NewUserRepository(pool)
 	accessTokenRepo := repositories.NewAccessTokenRepository(pool)
 	projectRepo := repositories.NewProjectRepository(pool)
@@ -73,6 +79,21 @@ func NewStore(ctx context.Context) Store {
 		TaskFrequencies: taskFrequencyRepo,
 		TaskPriorities:  taskPriorityRepo,
 		TaskStatuses:    taskStatusRepo,
+	}
+}
+
+func (s Store) WithTx(tx pgx.Tx) Store {
+	return Store{
+		Users:           s.Users.WithTx(tx),
+		AccessTokens:    s.AccessTokens.WithTx(tx),
+		Projects:        s.Projects.WithTx(tx),
+		Tasks:           s.Tasks.WithTx(tx),
+		TodoItems:       s.TodoItems.WithTx(tx),
+		TaskSchedules:   s.TaskSchedules.WithTx(tx),
+		ProjectTypes:    s.ProjectTypes.WithTx(tx),
+		TaskFrequencies: s.TaskFrequencies.WithTx(tx),
+		TaskPriorities:  s.TaskPriorities.WithTx(tx),
+		TaskStatuses:    s.TaskStatuses.WithTx(tx),
 	}
 }
 
@@ -106,6 +127,54 @@ func getenv(key, fallback string) string {
 	return value
 }
 
+type Transaction struct {
+	pool  *pgxpool.Pool
+	store Store
+}
+
+func newTransaction(pool *pgxpool.Pool, store Store) *Transaction {
+	return &Transaction{
+		pool:  pool,
+		store: store,
+	}
+}
+
+func (t *Transaction) Run(
+	ctx context.Context,
+	fn func(ctx context.Context, store Store) error,
+) error {
+	tx, err := t.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			_ = tx.Rollback(ctx)
+			panic(recovered)
+		}
+	}()
+
+	if err := fn(ctx, t.store.WithTx(tx)); err != nil {
+		rollbackErr := tx.Rollback(ctx)
+
+		if rollbackErr != nil && !errors.Is(rollbackErr, pgx.ErrTxClosed) {
+			return errors.Join(
+				err,
+				fmt.Errorf("rollback transaction: %w", rollbackErr),
+			)
+		}
+
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return nil
+}
+
 type Service struct {
 	User          *auth.UserService
 	AccessToken   *auth.AccessTokenService
@@ -119,7 +188,7 @@ type Service struct {
 	TaskStatus    *task.TaskStatusService
 }
 
-func NewService(store Store) Service {
+func newService(store Store) Service {
 	userService := auth.NewUserService(store.Users)
 	accessTokenService := auth.NewAccessTokenService(store.AccessTokens)
 	projectService := task.NewProjectService(store.Projects)
@@ -150,17 +219,25 @@ type Application struct {
 	logger  logger
 	Store   Store
 	Service Service
+	Tx      *Transaction
 }
 
 func New() *Application {
 	ctx := context.Background()
-	store := NewStore(ctx)
-	service := NewService(store)
+
+	pool, err := newPool(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to create connection pool: %w", err))
+	}
+
+	store := newStore(pool)
+	service := newService(store)
 
 	return &Application{
 		config:  config{},
 		logger:  nil,
 		Store:   store,
 		Service: service,
+		Tx:      newTransaction(pool, store),
 	}
 }

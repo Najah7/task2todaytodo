@@ -23,6 +23,12 @@ func NewTodoItemRepository(db sqlc.DBTX) *TodoItemRepository {
 	}
 }
 
+func (r *TodoItemRepository) WithTx(tx pgx.Tx) *TodoItemRepository {
+	return &TodoItemRepository{
+		queries: r.queries.WithTx(tx),
+	}
+}
+
 func (r TodoItemRepository) Get(ctx context.Context, id domain.TodoItemID) (domain.TodoItem, error) {
 	record, err := r.queries.GetTodoItem(ctx, string(id))
 	if err != nil {

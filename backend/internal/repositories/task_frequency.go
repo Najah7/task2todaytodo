@@ -5,6 +5,7 @@ import (
 
 	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
 	"github.com/Najah7/task2todaytodo/internal/repositories/sqlc"
+	"github.com/jackc/pgx/v5"
 )
 
 var _ domain.TaskFrequencyRepository = TaskFrequencyRepository{}
@@ -16,6 +17,12 @@ type TaskFrequencyRepository struct {
 func NewTaskFrequencyRepository(db sqlc.DBTX) *TaskFrequencyRepository {
 	return &TaskFrequencyRepository{
 		queries: sqlc.New(db),
+	}
+}
+
+func (r *TaskFrequencyRepository) WithTx(tx pgx.Tx) *TaskFrequencyRepository {
+	return &TaskFrequencyRepository{
+		queries: r.queries.WithTx(tx),
 	}
 }
 

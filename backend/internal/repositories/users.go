@@ -6,7 +6,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/domain/auth"
 	"github.com/Najah7/task2todaytodo/internal/domain/shared"
 	"github.com/Najah7/task2todaytodo/internal/repositories/sqlc"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
 )
 
 var _ auth.UserRepository = UserRepository{}
@@ -15,10 +15,16 @@ type UserRepository struct {
 	queries *sqlc.Queries
 }
 
-func NewUserRepository(db *pgxpool.Pool) *UserRepository {
+func NewUserRepository(db sqlc.DBTX) *UserRepository {
 	queries := sqlc.New(db)
 	return &UserRepository{
 		queries: queries,
+	}
+}
+
+func (r *UserRepository) WithTx(tx pgx.Tx) *UserRepository {
+	return &UserRepository{
+		queries: r.queries.WithTx(tx),
 	}
 }
 

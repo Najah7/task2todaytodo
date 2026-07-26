@@ -5,6 +5,7 @@ import (
 
 	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
 	"github.com/Najah7/task2todaytodo/internal/repositories/sqlc"
+	"github.com/jackc/pgx/v5"
 )
 
 var _ domain.ProjectTypeRepository = ProjectTypeRepository{}
@@ -16,6 +17,12 @@ type ProjectTypeRepository struct {
 func NewProjectTypeRepository(db sqlc.DBTX) *ProjectTypeRepository {
 	return &ProjectTypeRepository{
 		queries: sqlc.New(db),
+	}
+}
+
+func (r *ProjectTypeRepository) WithTx(tx pgx.Tx) *ProjectTypeRepository {
+	return &ProjectTypeRepository{
+		queries: r.queries.WithTx(tx),
 	}
 }
 
