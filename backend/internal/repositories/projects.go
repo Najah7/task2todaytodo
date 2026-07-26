@@ -66,6 +66,7 @@ func (r ProjectRepository) Create(ctx context.Context, project domain.Project) (
 		Goal:        stringToPgText(project.Goal),
 		Description: stringToPgText(project.Description),
 		Progress:    int16(project.Progress),
+		Priority:    taskPriorityString(project.Priority),
 		StartAt:     timeToPgTime(project.StartAt),
 		EndAt:       timeToPgTime(project.EndAt),
 	})
@@ -84,6 +85,7 @@ func (r ProjectRepository) UpdateByUser(ctx context.Context, userID domain.UserI
 		Goal:        stringToPgText(project.Goal),
 		Description: stringToPgText(project.Description),
 		Progress:    int16(project.Progress),
+		Priority:    taskPriorityString(project.Priority),
 		StartAt:     timeToPgTime(project.StartAt),
 		EndAt:       timeToPgTime(project.EndAt),
 	})

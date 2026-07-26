@@ -17,7 +17,7 @@ erDiagram
         timestamptz updated_at
     }
 
-    task_priority_master {
+    priority_master {
         text priority PK
         text label
         text label_jp
@@ -34,7 +34,7 @@ erDiagram
         timestamptz updated_at
     }
 
-    task_frequency_master {
+    frequency_master {
         text frequency PK
         text label
         text label_jp
@@ -50,6 +50,7 @@ erDiagram
         text goal
         text description
         smallint progress
+        text priority FK
         timestamptz start_at
         timestamptz end_at
         timestamptz created_at
@@ -150,16 +151,17 @@ erDiagram
     users ||--o{ todo_lists : owns
     project_type_master ||--o{ projects : classifies
     projects o|--o{ tasks : groups
-    task_priority_master ||--o{ tasks : prioritizes
+    priority_master ||--o{ projects : prioritizes
+    priority_master ||--o{ tasks : prioritizes
     task_status_master ||--o{ tasks : tracks
     tasks ||--o{ todo_items : has
     tasks ||--o{ task_schedules : schedules
     task_schedules ||--o{ task_schedule_frequencies : repeats
-    task_frequency_master ||--o{ task_schedule_frequencies : allows
+    frequency_master ||--o{ task_schedule_frequencies : allows
     tasks ||--o{ task_tag_assignments : tagged_by
     task_tags ||--o{ task_tag_assignments : assigned_to
     todo_items ||--o{ todo_item_frequencies : repeats
-    task_frequency_master ||--o{ todo_item_frequencies : allows
+    frequency_master ||--o{ todo_item_frequencies : allows
     todo_lists ||--o{ todo_list_items : contains
     todo_items ||--o{ todo_list_items : listed_in
     todo_lists ||--o{ todo_list_task_schedules : includes

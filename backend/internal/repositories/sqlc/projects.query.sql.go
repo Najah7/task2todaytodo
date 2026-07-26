@@ -12,7 +12,7 @@ import (
 )
 
 const getProject = `-- name: GetProject :one
-SELECT id, user_id, type, title, goal, description, progress, start_at, end_at, created_at, updated_at
+SELECT id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
 FROM projects
 WHERE id = $1
 `
@@ -28,6 +28,7 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 		&i.Goal,
 		&i.Description,
 		&i.Progress,
+		&i.Priority,
 		&i.StartAt,
 		&i.EndAt,
 		&i.CreatedAt,
@@ -37,7 +38,7 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 }
 
 const getProjectByUser = `-- name: GetProjectByUser :one
-SELECT id, user_id, type, title, goal, description, progress, start_at, end_at, created_at, updated_at
+SELECT id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
 FROM projects
 WHERE id = $1
   AND user_id = $2
@@ -59,6 +60,7 @@ func (q *Queries) GetProjectByUser(ctx context.Context, arg GetProjectByUserPara
 		&i.Goal,
 		&i.Description,
 		&i.Progress,
+		&i.Priority,
 		&i.StartAt,
 		&i.EndAt,
 		&i.CreatedAt,

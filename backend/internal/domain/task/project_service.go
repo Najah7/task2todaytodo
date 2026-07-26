@@ -19,6 +19,7 @@ func NewProjectService(repo ProjectRepository) *ProjectService {
 
 type ProjectUpdate struct {
 	Type        *string
+	Priority    *string
 	Title       *string
 	Goal        *string
 	Description *string
@@ -31,6 +32,7 @@ func (s *ProjectService) Create(
 	idGen func() string,
 	userID UserID,
 	projectType string,
+	priorityValue string,
 	title string,
 	goal string,
 	description string,
@@ -49,8 +51,12 @@ func (s *ProjectService) Create(
 	if err != nil {
 		return NewZeroProject(), err
 	}
+	priority, err := newTaskPriorityOrDefault(priorityValue)
+	if err != nil {
+		return NewZeroProject(), err
+	}
 
-	project, err := NewProjectWithDetails(ProjectID(id), userID, t, title, goal, description, 0, startAt, endAt)
+	project, err := NewProjectWithDetails(ProjectID(id), userID, t, title, goal, description, 0, priority, startAt, endAt)
 	if err != nil {
 		return NewZeroProject(), err
 	}
@@ -71,6 +77,13 @@ func (s *ProjectService) Update(ctx context.Context, userID UserID, id ProjectID
 	projectType := project.Type
 	if update.Type != nil {
 		projectType, err = NewProjectType(*update.Type)
+		if err != nil {
+			return NewZeroProject(), err
+		}
+	}
+	priority := project.Priority
+	if update.Priority != nil {
+		priority, err = NewTaskPriority(*update.Priority)
 		if err != nil {
 			return NewZeroProject(), err
 		}
@@ -109,6 +122,7 @@ func (s *ProjectService) Update(ctx context.Context, userID UserID, id ProjectID
 		goal,
 		description,
 		project.Progress,
+		priority,
 		startAt,
 		endAt,
 	)

@@ -20,12 +20,14 @@ type TaskAggregate struct {
 }
 
 type TaskService struct {
-	repo TaskRepository
+	repo        TaskRepository
+	projectRepo ProjectRepository
 }
 
-func NewTaskService(repo TaskRepository) *TaskService {
+func NewTaskService(repo TaskRepository, projectRepo ProjectRepository) *TaskService {
 	return &TaskService{
-		repo: repo,
+		repo:        repo,
+		projectRepo: projectRepo,
 	}
 }
 
@@ -64,6 +66,14 @@ func (s *TaskService) CreateProjectTask(
 	priorityValue string,
 	statusValue string,
 ) (Task, error) {
+	if priorityValue == "" {
+		project, err := s.projectRepo.GetByUser(ctx, userID, projectID)
+		if err != nil {
+			return NewZeroTask(), err
+		}
+		priorityValue = project.Priority.String()
+	}
+
 	newTask, err := newTaskForCreate(idGen, userID, projectID, title, description, estimatedMinutes, actualMinutes, priorityValue, statusValue)
 	if err != nil {
 		return NewZeroTask(), err

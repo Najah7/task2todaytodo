@@ -1644,6 +1644,9 @@
                 "id": {
                     "type": "string"
                 },
+                "priority": {
+                    "type": "string"
+                },
                 "progress": {
                     "type": "integer"
                 },
@@ -1679,6 +1682,9 @@
                 "goal": {
                     "type": "string"
                 },
+                "priority": {
+                    "type": "string"
+                },
                 "start_at": {
                     "type": "string"
                 },
@@ -1706,6 +1712,9 @@
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "priority": {
                     "type": "string"
                 },
                 "progress": {
@@ -1798,6 +1807,9 @@
                     "type": "string"
                 },
                 "goal": {
+                    "type": "string"
+                },
+                "priority": {
                     "type": "string"
                 },
                 "start_at": {

@@ -1650,6 +1650,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "priority": {
+                    "type": "string"
+                },
                 "progress": {
                     "type": "integer"
                 },
@@ -1685,6 +1688,9 @@ const docTemplate = `{
                 "goal": {
                     "type": "string"
                 },
+                "priority": {
+                    "type": "string"
+                },
                 "start_at": {
                     "type": "string"
                 },
@@ -1712,6 +1718,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "priority": {
                     "type": "string"
                 },
                 "progress": {
@@ -1804,6 +1813,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "goal": {
+                    "type": "string"
+                },
+                "priority": {
                     "type": "string"
                 },
                 "start_at": {

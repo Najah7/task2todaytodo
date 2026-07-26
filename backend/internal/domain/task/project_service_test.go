@@ -13,7 +13,7 @@ func TestProjectServiceCreateDefaultsTypeAndProgress(t *testing.T) {
 	startAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	endAt := startAt.Add(24 * time.Hour)
 
-	got, err := service.Create(context.Background(), fixedTaskIDGen("project-1"), "user-1", "", "Build API", "", "", startAt, endAt)
+	got, err := service.Create(context.Background(), fixedTaskIDGen("project-1"), "user-1", "", "", "Build API", "", "", startAt, endAt)
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -21,8 +21,8 @@ func TestProjectServiceCreateDefaultsTypeAndProgress(t *testing.T) {
 	if got.ID != "project-1" || got.UserID != "user-1" || got.Type.String() != "other" {
 		t.Fatalf("project = %+v, want generated ID, user ID, and default type", got)
 	}
-	if got.Progress != 0 || got.StartAt != startAt || got.EndAt != endAt {
-		t.Fatalf("project = %+v, want default progress and requested time range", got)
+	if got.Progress != 0 || got.Priority.String() != "low" || got.StartAt != startAt || got.EndAt != endAt {
+		t.Fatalf("project = %+v, want default progress, priority, and requested time range", got)
 	}
 	if repo.created != got {
 		t.Fatalf("created project = %+v, want %+v", repo.created, got)
@@ -32,7 +32,7 @@ func TestProjectServiceCreateDefaultsTypeAndProgress(t *testing.T) {
 func TestProjectServiceGetAggregateScopesByUser(t *testing.T) {
 	repo := &fakeProjectRepository{
 		aggregate: ProjectAggregate{
-			Project: mustExistingProjectForService(t, "project-1", "user-1", "work", "Project", "", "", 0),
+			Project: mustExistingProjectForService(t, "project-1", "user-1", "work", "Project", "", "", 0, "low"),
 			Tasks: []Task{
 				mustExistingTask(t, "task-1", "user-1", "project-1", "Task", "", nil, nil, 0, "low", "open"),
 			},
@@ -57,16 +57,18 @@ func TestProjectServiceUpdateMergesAllowedFields(t *testing.T) {
 	startAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	endAt := startAt.Add(24 * time.Hour)
 	repo := &fakeProjectRepository{
-		projectByUser: mustExistingProjectWithTimesForService(t, "project-1", "user-1", "work", "Old title", "Old goal", "Old description", 42, startAt, endAt),
+		projectByUser: mustExistingProjectWithTimesForService(t, "project-1", "user-1", "work", "Old title", "Old goal", "Old description", 42, "low", startAt, endAt),
 	}
 	service := NewProjectService(repo)
 	projectType := "study"
+	priority := "high"
 	title := "New title"
 	description := "New description"
 	newEndAt := endAt.Add(24 * time.Hour)
 
 	got, err := service.Update(context.Background(), "user-1", "project-1", ProjectUpdate{
 		Type:        &projectType,
+		Priority:    &priority,
 		Title:       &title,
 		Description: &description,
 		EndAt:       &newEndAt,
@@ -75,7 +77,7 @@ func TestProjectServiceUpdateMergesAllowedFields(t *testing.T) {
 		t.Fatalf("Update() error = %v", err)
 	}
 
-	if got.Type.String() != "study" || got.Title != "New title" || got.Description != "New description" || got.EndAt != newEndAt {
+	if got.Type.String() != "study" || got.Priority.String() != "high" || got.Title != "New title" || got.Description != "New description" || got.EndAt != newEndAt {
 		t.Fatalf("project = %+v, want requested fields updated", got)
 	}
 	if got.Goal != "Old goal" || got.Progress != 42 || got.StartAt != startAt {
@@ -169,10 +171,10 @@ func (r *fakeProjectRepository) DeleteByUser(_ context.Context, userID UserID, i
 	return r.deleteErr
 }
 
-func mustExistingProjectForService(t *testing.T, id ProjectID, userID UserID, projectTypeValue string, title string, goal string, description string, progress int) Project {
+func mustExistingProjectForService(t *testing.T, id ProjectID, userID UserID, projectTypeValue string, title string, goal string, description string, progress int, priorityValue string) Project {
 	t.Helper()
 	startAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
-	return mustExistingProjectWithTimesForService(t, id, userID, projectTypeValue, title, goal, description, progress, startAt, startAt.Add(24*time.Hour))
+	return mustExistingProjectWithTimesForService(t, id, userID, projectTypeValue, title, goal, description, progress, priorityValue, startAt, startAt.Add(24*time.Hour))
 }
 
 func mustExistingProjectWithTimesForService(
@@ -184,6 +186,7 @@ func mustExistingProjectWithTimesForService(
 	goal string,
 	description string,
 	progress int,
+	priorityValue string,
 	startAt time.Time,
 	endAt time.Time,
 ) Project {
@@ -196,6 +199,7 @@ func mustExistingProjectWithTimesForService(
 		goal,
 		description,
 		progress,
+		mustTaskPriority(t, priorityValue),
 		startAt,
 		endAt,
 		startAt.Add(-time.Hour),

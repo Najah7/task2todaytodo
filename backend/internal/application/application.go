@@ -123,7 +123,7 @@ func NewService(store Store) Service {
 	userService := auth.NewUserService(store.Users)
 	accessTokenService := auth.NewAccessTokenService(store.AccessTokens)
 	projectService := task.NewProjectService(store.Projects)
-	taskService := task.NewTaskService(store.Tasks)
+	taskService := task.NewTaskService(store.Tasks, store.Projects)
 	todoItemService := task.NewTodoItemService(store.TodoItems)
 	taskScheduleService := task.NewTaskScheduleService(store.TaskSchedules)
 	projectTypeService := task.NewProjectTypeService(store.ProjectTypes)
