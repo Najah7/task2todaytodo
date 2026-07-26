@@ -26,6 +26,7 @@ type TaskResponse struct {
 	ProjectID        string    `json:"project_id"`
 	Title            string    `json:"title"`
 	Description      string    `json:"description"`
+	DueDate          *string   `json:"due_date" format:"date"`
 	EstimatedMinutes *int      `json:"estimated_minutes"`
 	ActualMinutes    *int      `json:"actual_minutes"`
 	Progress         int       `json:"progress"`
@@ -46,6 +47,7 @@ type TodoItemResponse struct {
 	TaskID        string    `json:"task_id"`
 	Title         string    `json:"title"`
 	Description   string    `json:"description"`
+	DueDate       *string   `json:"due_date" format:"date"`
 	Completed     bool      `json:"completed"`
 	Position      int       `json:"position"`
 	IntervalWeeks int       `json:"interval_weeks"`
@@ -55,18 +57,17 @@ type TodoItemResponse struct {
 }
 
 type TaskScheduleResponse struct {
-	ID            string     `json:"id"`
-	TaskID        string     `json:"task_id"`
-	Title         string     `json:"title"`
-	Description   string     `json:"description"`
-	Location      string     `json:"location"`
-	IntervalWeeks int        `json:"interval_weeks"`
-	Frequencies   []string   `json:"frequencies"`
-	StartAt       time.Time  `json:"start_at"`
-	EndAt         time.Time  `json:"end_at"`
-	DueAt         *time.Time `json:"due_at"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID            string    `json:"id"`
+	TaskID        string    `json:"task_id"`
+	Title         string    `json:"title"`
+	Description   string    `json:"description"`
+	Location      string    `json:"location"`
+	IntervalWeeks int       `json:"interval_weeks"`
+	Frequencies   []string  `json:"frequencies"`
+	StartAt       time.Time `json:"start_at"`
+	EndAt         time.Time `json:"end_at"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 func newTaskResponse(task domain.Task) TaskResponse {
@@ -75,6 +76,7 @@ func newTaskResponse(task domain.Task) TaskResponse {
 		ProjectID:        string(task.ProjectID),
 		Title:            task.Title,
 		Description:      task.Description,
+		DueDate:          dateOnlyResponse(task.DueDate),
 		EstimatedMinutes: task.EstimatedMinutes,
 		ActualMinutes:    task.ActualMinutes,
 		Progress:         task.Progress,
@@ -109,6 +111,7 @@ func newTodoItemResponse(item domain.TodoItem) TodoItemResponse {
 		TaskID:        string(item.TaskID),
 		Title:         item.Title,
 		Description:   item.Description,
+		DueDate:       dateOnlyResponse(item.DueDate),
 		Completed:     item.Completed,
 		Position:      item.Position,
 		IntervalWeeks: item.IntervalWeeks,
@@ -119,11 +122,6 @@ func newTodoItemResponse(item domain.TodoItem) TodoItemResponse {
 }
 
 func newTaskScheduleResponse(schedule domain.TaskSchedule) TaskScheduleResponse {
-	var dueAt *time.Time
-	if !schedule.DueAt.IsZero() {
-		dueAt = &schedule.DueAt
-	}
-
 	return TaskScheduleResponse{
 		ID:            string(schedule.ID),
 		TaskID:        string(schedule.TaskID),
@@ -134,7 +132,6 @@ func newTaskScheduleResponse(schedule domain.TaskSchedule) TaskScheduleResponse 
 		Frequencies:   taskFrequencyValues(schedule.Frequencies),
 		StartAt:       schedule.StartAt,
 		EndAt:         schedule.EndAt,
-		DueAt:         dueAt,
 		CreatedAt:     schedule.CreatedAt,
 		UpdatedAt:     schedule.UpdatedAt,
 	}
@@ -149,12 +146,13 @@ func taskFrequencyValues(frequencies domain.TaskFrequencies) []string {
 }
 
 type TaskCreateRequest struct {
-	Title            string `json:"title"`
-	Description      string `json:"description"`
-	EstimatedMinutes *int   `json:"estimated_minutes"`
-	ActualMinutes    *int   `json:"actual_minutes"`
-	Priority         string `json:"priority"`
-	Status           string `json:"status"`
+	Title            string  `json:"title"`
+	Description      string  `json:"description"`
+	DueDate          *string `json:"due_date" format:"date"`
+	EstimatedMinutes *int    `json:"estimated_minutes"`
+	ActualMinutes    *int    `json:"actual_minutes"`
+	Priority         string  `json:"priority"`
+	Status           string  `json:"status"`
 }
 
 // Create godoc
@@ -184,7 +182,13 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.svc.CreateStandaloneTask(r.Context(), h.idGen.Generate, userID, req.Title, req.Description, req.EstimatedMinutes, req.ActualMinutes, req.Priority, req.Status)
+	dueDate, err := parseOptionalDateOnly(req.DueDate)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, ErrSpecTasksCreateFailed, errDetailInvalidDateOnly("due_date"))
+		return
+	}
+
+	task, err := h.svc.CreateStandaloneTask(r.Context(), h.idGen.Generate, userID, req.Title, req.Description, dueDate, req.EstimatedMinutes, req.ActualMinutes, req.Priority, req.Status)
 	if err != nil {
 		status, detail := taskErrToErrResponse(err)
 		WriteError(w, status, ErrSpecTasksCreateFailed, detail)
@@ -223,7 +227,13 @@ func (h *TaskHandler) CreateInProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.svc.CreateProjectTask(r.Context(), h.idGen.Generate, userID, projectIDFromRequest(r), req.Title, req.Description, req.EstimatedMinutes, req.ActualMinutes, req.Priority, req.Status)
+	dueDate, err := parseOptionalDateOnly(req.DueDate)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, ErrSpecTasksCreateFailed, errDetailInvalidDateOnly("due_date"))
+		return
+	}
+
+	task, err := h.svc.CreateProjectTask(r.Context(), h.idGen.Generate, userID, projectIDFromRequest(r), req.Title, req.Description, dueDate, req.EstimatedMinutes, req.ActualMinutes, req.Priority, req.Status)
 	if err != nil {
 		status, detail := taskErrToErrResponse(err)
 		WriteError(w, status, ErrSpecTasksCreateFailed, detail)
@@ -267,6 +277,30 @@ type TaskUpdateRequest struct {
 	Title       *string `json:"title"`
 	Description *string `json:"description"`
 	Status      *string `json:"status"`
+	DueDate     *string `json:"due_date" format:"date"`
+	DueDateSet  bool    `json:"-"`
+}
+
+func (req *TaskUpdateRequest) UnmarshalJSON(data []byte) error {
+	type requestAlias TaskUpdateRequest
+	var alias requestAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	dueDate, dueDateSet, err := decodeNullableDateOnly(raw, "due_date")
+	if err != nil {
+		return err
+	}
+	alias.DueDate = dueDate
+	alias.DueDateSet = dueDateSet
+
+	*req = TaskUpdateRequest(alias)
+	return nil
 }
 
 // Update godoc
@@ -298,7 +332,13 @@ func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.svc.UpdateTaskBasic(r.Context(), userID, taskIDFromRequest(r), req.Title, req.Description, req.Status)
+	dueDate, err := parseDateOnlyPatch(req.DueDate, req.DueDateSet)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, ErrSpecTasksUpdateFailed, errDetailInvalidDateOnly("due_date"))
+		return
+	}
+
+	task, err := h.svc.UpdateTaskBasic(r.Context(), userID, taskIDFromRequest(r), req.Title, req.Description, req.Status, dueDate)
 	if err != nil {
 		status, detail := taskErrToErrResponse(err)
 		WriteError(w, status, ErrSpecTasksUpdateFailed, detail)

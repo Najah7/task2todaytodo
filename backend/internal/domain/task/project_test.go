@@ -30,13 +30,14 @@ func TestNewProjectWithDetails(t *testing.T) {
 	priority := mustTaskPriority(t, "high")
 	startAt := time.Date(2026, 7, 18, 9, 0, 0, 0, time.UTC)
 	endAt := startAt.Add(24 * time.Hour)
+	dueDate := time.Date(2026, 7, 25, 0, 0, 0, 0, time.UTC)
 
-	project, err := NewProjectWithDetails("project-1", "user-1", projectType, "Build task domain", "Ship it", "Entity layer", 10, priority, startAt, endAt)
+	project, err := NewProjectWithDetails("project-1", "user-1", projectType, "Build task domain", "Ship it", "Entity layer", dueDate, 10, priority, startAt, endAt)
 	if err != nil {
 		t.Fatalf("NewProjectWithDetails() error = %v", err)
 	}
 
-	if project.Goal != "Ship it" || project.Description != "Entity layer" || project.Priority != priority || project.StartAt != startAt || project.EndAt != endAt {
+	if project.Goal != "Ship it" || project.Description != "Entity layer" || project.DueDate != dueDate || project.Priority != priority || project.StartAt != startAt || project.EndAt != endAt {
 		t.Errorf("project = %+v, want details to be set", project)
 	}
 }
@@ -97,7 +98,7 @@ func TestNewProjectWithDetailsValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewProjectWithDetails("project-1", "user-1", projectType, "Project", "", "", tt.progress, priority, tt.startAt, tt.endAt)
+			got, err := NewProjectWithDetails("project-1", "user-1", projectType, "Project", "", "", time.Time{}, tt.progress, priority, tt.startAt, tt.endAt)
 			assertTaskDomainErrorIs(t, err, tt.wantErr)
 			if got.Progress != tt.progress || got.StartAt != tt.startAt || got.EndAt != tt.endAt {
 				t.Errorf("project = %+v, want input details to be preserved", got)

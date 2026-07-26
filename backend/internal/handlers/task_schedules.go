@@ -20,14 +20,13 @@ func NewTaskScheduleHandler(svc *domain.TaskScheduleService, idGen shared.IDGene
 }
 
 type TaskScheduleCreateRequest struct {
-	Title         string     `json:"title"`
-	Description   string     `json:"description"`
-	Location      string     `json:"location"`
-	IntervalWeeks *int       `json:"interval_weeks"`
-	Frequencies   []string   `json:"frequencies"`
-	StartAt       time.Time  `json:"start_at"`
-	EndAt         time.Time  `json:"end_at"`
-	DueAt         *time.Time `json:"due_at"`
+	Title         string    `json:"title"`
+	Description   string    `json:"description"`
+	Location      string    `json:"location"`
+	IntervalWeeks *int      `json:"interval_weeks"`
+	Frequencies   []string  `json:"frequencies"`
+	StartAt       time.Time `json:"start_at"`
+	EndAt         time.Time `json:"end_at"`
 }
 
 // Create godoc
@@ -59,11 +58,6 @@ func (h *TaskScheduleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var dueAt time.Time
-	if req.DueAt != nil {
-		dueAt = *req.DueAt
-	}
-
 	schedule, err := h.svc.Create(r.Context(), h.idGen.Generate, domain.TaskScheduleCreateParams{
 		UserID:          userID,
 		TaskID:          taskIDFromRequest(r),
@@ -74,7 +68,6 @@ func (h *TaskScheduleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		FrequencyValues: req.Frequencies,
 		StartAt:         req.StartAt,
 		EndAt:           req.EndAt,
-		DueAt:           dueAt,
 	})
 	if err != nil {
 		status, detail := taskScheduleErrToErrResponse(err)
@@ -93,35 +86,6 @@ type TaskScheduleUpdateRequest struct {
 	FrequencyValues *[]string  `json:"frequencies"`
 	StartAt         *time.Time `json:"start_at"`
 	EndAt           *time.Time `json:"end_at"`
-	DueAt           *time.Time `json:"due_at"`
-}
-
-func (req *TaskScheduleUpdateRequest) UnmarshalJSON(data []byte) error {
-	type requestAlias TaskScheduleUpdateRequest
-	var alias requestAlias
-	if err := json.Unmarshal(data, &alias); err != nil {
-		return err
-	}
-
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	if value, ok := raw["due_at"]; ok {
-		if string(value) == "null" {
-			zero := time.Time{}
-			alias.DueAt = &zero
-		} else {
-			var dueAt time.Time
-			if err := json.Unmarshal(value, &dueAt); err != nil {
-				return err
-			}
-			alias.DueAt = &dueAt
-		}
-	}
-
-	*req = TaskScheduleUpdateRequest(alias)
-	return nil
 }
 
 // Update godoc
@@ -165,7 +129,6 @@ func (h *TaskScheduleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		FrequencyValues: req.FrequencyValues,
 		StartAt:         req.StartAt,
 		EndAt:           req.EndAt,
-		DueAt:           req.DueAt,
 	})
 	if err != nil {
 		status, detail := taskScheduleErrToErrResponse(err)

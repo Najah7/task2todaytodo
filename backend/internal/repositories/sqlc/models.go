@@ -40,6 +40,7 @@ type Project struct {
 	Title       string
 	Goal        pgtype.Text
 	Description pgtype.Text
+	DueDate     pgtype.Date
 	Progress    int16
 	Priority    string
 	StartAt     pgtype.Timestamptz
@@ -62,6 +63,7 @@ type Task struct {
 	ProjectID        pgtype.Text
 	Title            string
 	Description      pgtype.Text
+	DueDate          pgtype.Date
 	EstimatedMinutes pgtype.Int4
 	ActualMinutes    pgtype.Int4
 	Progress         int16
@@ -80,7 +82,6 @@ type TaskSchedule struct {
 	IntervalWeeks int32
 	StartAt       pgtype.Timestamptz
 	EndAt         pgtype.Timestamptz
-	DueAt         pgtype.Timestamptz
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 }
@@ -118,6 +119,7 @@ type TodoItem struct {
 	TaskID        string
 	Title         string
 	Description   pgtype.Text
+	DueDate       pgtype.Date
 	Completed     bool
 	Position      int32
 	IntervalWeeks int32

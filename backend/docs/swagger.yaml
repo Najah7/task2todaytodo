@@ -57,6 +57,9 @@ definitions:
         type: string
       description:
         type: string
+      due_date:
+        format: date
+        type: string
       end_at:
         type: string
       goal:
@@ -84,6 +87,9 @@ definitions:
     properties:
       description:
         type: string
+      due_date:
+        format: date
+        type: string
       end_at:
         type: string
       goal:
@@ -102,6 +108,9 @@ definitions:
       created_at:
         type: string
       description:
+        type: string
+      due_date:
+        format: date
         type: string
       end_at:
         type: string
@@ -129,6 +138,9 @@ definitions:
       created_at:
         type: string
       description:
+        type: string
+      due_date:
+        format: date
         type: string
       estimated_minutes:
         type: integer
@@ -167,6 +179,9 @@ definitions:
     properties:
       description:
         type: string
+      due_date:
+        format: date
+        type: string
       end_at:
         type: string
       goal:
@@ -187,6 +202,9 @@ definitions:
       created_at:
         type: string
       description:
+        type: string
+      due_date:
+        format: date
         type: string
       estimated_minutes:
         type: integer
@@ -218,6 +236,9 @@ definitions:
       actual_minutes:
         type: integer
       description:
+        type: string
+      due_date:
+        format: date
         type: string
       estimated_minutes:
         type: integer
@@ -282,6 +303,9 @@ definitions:
         type: string
       description:
         type: string
+      due_date:
+        format: date
+        type: string
       estimated_minutes:
         type: integer
       id:
@@ -303,8 +327,6 @@ definitions:
     properties:
       description:
         type: string
-      due_at:
-        type: string
       end_at:
         type: string
       frequencies:
@@ -325,8 +347,6 @@ definitions:
       created_at:
         type: string
       description:
-        type: string
-      due_at:
         type: string
       end_at:
         type: string
@@ -352,8 +372,6 @@ definitions:
   handlers.TaskScheduleUpdateRequest:
     properties:
       description:
-        type: string
-      due_at:
         type: string
       end_at:
         type: string
@@ -390,6 +408,9 @@ definitions:
     properties:
       description:
         type: string
+      due_date:
+        format: date
+        type: string
       status:
         type: string
       title:
@@ -398,6 +419,9 @@ definitions:
   handlers.TodoItemCreateRequest:
     properties:
       description:
+        type: string
+      due_date:
+        format: date
         type: string
       frequencies:
         items:
@@ -417,6 +441,9 @@ definitions:
       created_at:
         type: string
       description:
+        type: string
+      due_date:
+        format: date
         type: string
       frequencies:
         items:

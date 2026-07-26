@@ -27,6 +27,7 @@ type Task struct {
 	ProjectID        ProjectID
 	Title            string
 	Description      string
+	DueDate          time.Time
 	EstimatedMinutes *int
 	ActualMinutes    *int
 	Progress         int
@@ -55,6 +56,7 @@ func NewTaskWithDetails(
 	projectID ProjectID,
 	title string,
 	description string,
+	dueDate time.Time,
 	estimatedMinutes *int,
 	actualMinutes *int,
 	progress int,
@@ -67,6 +69,7 @@ func NewTaskWithDetails(
 		ProjectID:        projectID,
 		Title:            title,
 		Description:      description,
+		DueDate:          dueDate,
 		EstimatedMinutes: estimatedMinutes,
 		ActualMinutes:    actualMinutes,
 		Progress:         progress,
@@ -82,6 +85,7 @@ func NewExistingTask(
 	projectID ProjectID,
 	title string,
 	description string,
+	dueDate time.Time,
 	estimatedMinutes *int,
 	actualMinutes *int,
 	progress int,
@@ -96,6 +100,7 @@ func NewExistingTask(
 		ProjectID:        projectID,
 		Title:            title,
 		Description:      description,
+		DueDate:          dueDate,
 		EstimatedMinutes: estimatedMinutes,
 		ActualMinutes:    actualMinutes,
 		Progress:         progress,

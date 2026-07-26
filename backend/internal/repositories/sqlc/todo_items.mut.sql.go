@@ -27,9 +27,9 @@ func (q *Queries) AddTodoItemFrequency(ctx context.Context, arg AddTodoItemFrequ
 }
 
 const createTodoItem = `-- name: CreateTodoItem :one
-INSERT INTO todo_items (id, task_id, title, description, completed, position, interval_weeks)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, task_id, title, description, completed, position, interval_weeks, created_at, updated_at
+INSERT INTO todo_items (id, task_id, title, description, due_date, completed, position, interval_weeks)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, task_id, title, description, due_date, completed, position, interval_weeks, created_at, updated_at
 `
 
 type CreateTodoItemParams struct {
@@ -37,6 +37,7 @@ type CreateTodoItemParams struct {
 	TaskID        string
 	Title         string
 	Description   pgtype.Text
+	DueDate       pgtype.Date
 	Completed     bool
 	Position      int32
 	IntervalWeeks int32
@@ -48,6 +49,7 @@ func (q *Queries) CreateTodoItem(ctx context.Context, arg CreateTodoItemParams) 
 		arg.TaskID,
 		arg.Title,
 		arg.Description,
+		arg.DueDate,
 		arg.Completed,
 		arg.Position,
 		arg.IntervalWeeks,
@@ -58,6 +60,7 @@ func (q *Queries) CreateTodoItem(ctx context.Context, arg CreateTodoItemParams) 
 		&i.TaskID,
 		&i.Title,
 		&i.Description,
+		&i.DueDate,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
@@ -80,22 +83,23 @@ next_position AS (
     LEFT JOIN todo_items AS ti ON ti.task_id = ot.id
 ),
 inserted AS (
-    INSERT INTO todo_items (id, task_id, title, description, completed, position, interval_weeks)
+    INSERT INTO todo_items (id, task_id, title, description, due_date, completed, position, interval_weeks)
     SELECT
         $4,
         owned_task.id,
         $5,
         $6,
+        $7,
         false,
         next_position.position,
-        $7
+        $8
     FROM owned_task
     CROSS JOIN next_position
-    RETURNING id, task_id, title, description, completed, position, interval_weeks, created_at, updated_at
+    RETURNING id, task_id, title, description, due_date, completed, position, interval_weeks, created_at, updated_at
 ),
 inserted_frequencies AS (
     INSERT INTO todo_item_frequencies (todo_item_id, frequency)
-    SELECT inserted.id, unnest($8::text[])
+    SELECT inserted.id, unnest($9::text[])
     FROM inserted
     ON CONFLICT DO NOTHING
 )
@@ -104,6 +108,7 @@ SELECT
     inserted.task_id,
     inserted.title,
     inserted.description,
+    inserted.due_date,
     inserted.completed,
     inserted.position,
     inserted.interval_weeks,
@@ -125,6 +130,7 @@ type CreateTodoItemByTaskAndUserParams struct {
 	ID            string
 	Title         string
 	Description   pgtype.Text
+	DueDate       pgtype.Date
 	IntervalWeeks int32
 	Frequencies   []string
 }
@@ -134,6 +140,7 @@ type CreateTodoItemByTaskAndUserRow struct {
 	TaskID        string
 	Title         string
 	Description   pgtype.Text
+	DueDate       pgtype.Date
 	Completed     bool
 	Position      int32
 	IntervalWeeks int32
@@ -150,6 +157,7 @@ func (q *Queries) CreateTodoItemByTaskAndUser(ctx context.Context, arg CreateTod
 		arg.ID,
 		arg.Title,
 		arg.Description,
+		arg.DueDate,
 		arg.IntervalWeeks,
 		arg.Frequencies,
 	)
@@ -159,6 +167,7 @@ func (q *Queries) CreateTodoItemByTaskAndUser(ctx context.Context, arg CreateTod
 		&i.TaskID,
 		&i.Title,
 		&i.Description,
+		&i.DueDate,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
@@ -221,7 +230,7 @@ WHERE ti.id = $1
   AND ti.task_id = $2
   AND t.id = ti.task_id
   AND t.user_id = $3
-RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.completed, ti.position, ti.interval_weeks, ti.created_at, ti.updated_at
+RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.completed, ti.position, ti.interval_weeks, ti.created_at, ti.updated_at
 `
 
 type SetTodoItemCompletedByTaskAndUserParams struct {
@@ -244,6 +253,7 @@ func (q *Queries) SetTodoItemCompletedByTaskAndUser(ctx context.Context, arg Set
 		&i.TaskID,
 		&i.Title,
 		&i.Description,
+		&i.DueDate,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
@@ -258,12 +268,13 @@ UPDATE todo_items
 SET task_id = $2,
     title = $3,
     description = $4,
-    completed = $5,
-    position = $6,
-    interval_weeks = $7,
+    due_date = $5,
+    completed = $6,
+    position = $7,
+    interval_weeks = $8,
     updated_at = now()
 WHERE id = $1
-RETURNING id, task_id, title, description, completed, position, interval_weeks, created_at, updated_at
+RETURNING id, task_id, title, description, due_date, completed, position, interval_weeks, created_at, updated_at
 `
 
 type UpdateTodoItemParams struct {
@@ -271,6 +282,7 @@ type UpdateTodoItemParams struct {
 	TaskID        string
 	Title         string
 	Description   pgtype.Text
+	DueDate       pgtype.Date
 	Completed     bool
 	Position      int32
 	IntervalWeeks int32
@@ -282,6 +294,7 @@ func (q *Queries) UpdateTodoItem(ctx context.Context, arg UpdateTodoItemParams) 
 		arg.TaskID,
 		arg.Title,
 		arg.Description,
+		arg.DueDate,
 		arg.Completed,
 		arg.Position,
 		arg.IntervalWeeks,
@@ -292,6 +305,7 @@ func (q *Queries) UpdateTodoItem(ctx context.Context, arg UpdateTodoItemParams) 
 		&i.TaskID,
 		&i.Title,
 		&i.Description,
+		&i.DueDate,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,

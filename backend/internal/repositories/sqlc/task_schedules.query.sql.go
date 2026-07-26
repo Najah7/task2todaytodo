@@ -27,7 +27,6 @@ SELECT
     )::text[] AS frequencies,
     ts.start_at,
     ts.end_at,
-    ts.due_at,
     ts.created_at,
     ts.updated_at
 FROM task_schedules AS ts
@@ -44,7 +43,6 @@ type GetTaskScheduleRow struct {
 	Frequencies   []string
 	StartAt       pgtype.Timestamptz
 	EndAt         pgtype.Timestamptz
-	DueAt         pgtype.Timestamptz
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 }
@@ -62,7 +60,6 @@ func (q *Queries) GetTaskSchedule(ctx context.Context, id string) (GetTaskSchedu
 		&i.Frequencies,
 		&i.StartAt,
 		&i.EndAt,
-		&i.DueAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -85,7 +82,6 @@ SELECT
     )::text[] AS frequencies,
     ts.start_at,
     ts.end_at,
-    ts.due_at,
     ts.created_at,
     ts.updated_at
 FROM task_schedules AS ts
@@ -111,7 +107,6 @@ type GetTaskScheduleByTaskAndUserRow struct {
 	Frequencies   []string
 	StartAt       pgtype.Timestamptz
 	EndAt         pgtype.Timestamptz
-	DueAt         pgtype.Timestamptz
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 }
@@ -129,7 +124,6 @@ func (q *Queries) GetTaskScheduleByTaskAndUser(ctx context.Context, arg GetTaskS
 		&i.Frequencies,
 		&i.StartAt,
 		&i.EndAt,
-		&i.DueAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -152,7 +146,6 @@ SELECT
     )::text[] AS frequencies,
     ts.start_at,
     ts.end_at,
-    ts.due_at,
     ts.created_at,
     ts.updated_at
 FROM task_schedules AS ts
@@ -177,7 +170,6 @@ type ListTaskSchedulesByTaskAndUserRow struct {
 	Frequencies   []string
 	StartAt       pgtype.Timestamptz
 	EndAt         pgtype.Timestamptz
-	DueAt         pgtype.Timestamptz
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 }
@@ -201,7 +193,6 @@ func (q *Queries) ListTaskSchedulesByTaskAndUser(ctx context.Context, arg ListTa
 			&i.Frequencies,
 			&i.StartAt,
 			&i.EndAt,
-			&i.DueAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {

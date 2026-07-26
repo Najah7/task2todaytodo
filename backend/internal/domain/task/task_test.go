@@ -1,6 +1,9 @@
 package task
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestNewTask(t *testing.T) {
 	task, err := NewTask("task-1", "user-1", "Write tests")
@@ -21,13 +24,14 @@ func TestNewTaskWithDetails(t *testing.T) {
 	actual := 10
 	priority := mustTaskPriority(t, "low")
 	status := mustTaskStatus(t, "open")
+	dueDate := time.Date(2026, 7, 25, 0, 0, 0, 0, time.UTC)
 
-	task, err := NewTaskWithDetails("task-1", "user-1", "project-1", "Write tests", "Domain entity tests", &estimated, &actual, 20, priority, status)
+	task, err := NewTaskWithDetails("task-1", "user-1", "project-1", "Write tests", "Domain entity tests", dueDate, &estimated, &actual, 20, priority, status)
 	if err != nil {
 		t.Fatalf("NewTaskWithDetails() error = %v", err)
 	}
 
-	if task.ProjectID != "project-1" || task.EstimatedMinutes == nil || *task.EstimatedMinutes != estimated || task.ActualMinutes == nil || *task.ActualMinutes != actual {
+	if task.ProjectID != "project-1" || task.DueDate != dueDate || task.EstimatedMinutes == nil || *task.EstimatedMinutes != estimated || task.ActualMinutes == nil || *task.ActualMinutes != actual {
 		t.Errorf("task = %+v, want details to be set", task)
 	}
 }
@@ -83,7 +87,7 @@ func TestNewTaskWithDetailsValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewTaskWithDetails(tt.id, tt.userID, "", tt.title, "", tt.estimatedMinutes, tt.actualMinutes, tt.progress, tt.priority, tt.status)
+			got, err := NewTaskWithDetails(tt.id, tt.userID, "", tt.title, "", time.Time{}, tt.estimatedMinutes, tt.actualMinutes, tt.progress, tt.priority, tt.status)
 			assertTaskDomainErrorIs(t, err, tt.wantErr)
 			if got.ID != tt.id || got.UserID != tt.userID || got.Title != tt.title {
 				t.Errorf("task = %+v, want input values to be preserved", got)

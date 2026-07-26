@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/domain/shared"
 )
@@ -18,6 +19,7 @@ type TodoItemCreateParams struct {
 	TaskID        TaskID
 	Title         string
 	Description   string
+	DueDate       time.Time
 	Position      *int
 	IntervalWeeks *int
 	Frequencies   []string
@@ -60,6 +62,7 @@ func (s *TodoItemService) Create(ctx context.Context, idGen func() string, param
 		params.TaskID,
 		params.Title,
 		params.Description,
+		params.DueDate,
 		false,
 		position,
 		intervalWeeks,

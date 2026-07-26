@@ -13,12 +13,12 @@ import (
 
 const createTask = `-- name: CreateTask :one
 INSERT INTO tasks (
-    id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
-    priority, status
+    id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes,
+    progress, priority, status
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
-          priority, status, created_at, updated_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes,
+          progress, priority, status, created_at, updated_at
 `
 
 type CreateTaskParams struct {
@@ -27,6 +27,7 @@ type CreateTaskParams struct {
 	ProjectID        pgtype.Text
 	Title            string
 	Description      pgtype.Text
+	DueDate          pgtype.Date
 	EstimatedMinutes pgtype.Int4
 	ActualMinutes    pgtype.Int4
 	Progress         int16
@@ -41,6 +42,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		arg.ProjectID,
 		arg.Title,
 		arg.Description,
+		arg.DueDate,
 		arg.EstimatedMinutes,
 		arg.ActualMinutes,
 		arg.Progress,
@@ -54,6 +56,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		&i.ProjectID,
 		&i.Title,
 		&i.Description,
+		&i.DueDate,
 		&i.EstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Progress,
@@ -67,8 +70,8 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 
 const createTaskInProject = `-- name: CreateTaskInProject :one
 INSERT INTO tasks (
-    id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
-    priority, status
+    id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes,
+    progress, priority, status
 )
 SELECT
     $1,
@@ -80,12 +83,13 @@ SELECT
     $6,
     $7,
     $8,
-    $9
+    $9,
+    $10
 FROM projects AS p
-WHERE p.id = $10
+WHERE p.id = $11
   AND p.user_id = $2
-RETURNING id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
-          priority, status, created_at, updated_at
+RETURNING id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes,
+          progress, priority, status, created_at, updated_at
 `
 
 type CreateTaskInProjectParams struct {
@@ -93,6 +97,7 @@ type CreateTaskInProjectParams struct {
 	UserID           string
 	Title            string
 	Description      pgtype.Text
+	DueDate          pgtype.Date
 	EstimatedMinutes pgtype.Int4
 	ActualMinutes    pgtype.Int4
 	Progress         int16
@@ -107,6 +112,7 @@ func (q *Queries) CreateTaskInProject(ctx context.Context, arg CreateTaskInProje
 		arg.UserID,
 		arg.Title,
 		arg.Description,
+		arg.DueDate,
 		arg.EstimatedMinutes,
 		arg.ActualMinutes,
 		arg.Progress,
@@ -121,6 +127,7 @@ func (q *Queries) CreateTaskInProject(ctx context.Context, arg CreateTaskInProje
 		&i.ProjectID,
 		&i.Title,
 		&i.Description,
+		&i.DueDate,
 		&i.EstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Progress,
@@ -167,15 +174,16 @@ SET user_id = $2,
     project_id = $3,
     title = $4,
     description = $5,
-    estimated_minutes = $6,
-    actual_minutes = $7,
-    progress = $8,
-    priority = $9,
-    status = $10,
+    due_date = $6,
+    estimated_minutes = $7,
+    actual_minutes = $8,
+    progress = $9,
+    priority = $10,
+    status = $11,
     updated_at = now()
 WHERE id = $1
-RETURNING id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
-          priority, status, created_at, updated_at
+RETURNING id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes,
+          progress, priority, status, created_at, updated_at
 `
 
 type UpdateTaskParams struct {
@@ -184,6 +192,7 @@ type UpdateTaskParams struct {
 	ProjectID        pgtype.Text
 	Title            string
 	Description      pgtype.Text
+	DueDate          pgtype.Date
 	EstimatedMinutes pgtype.Int4
 	ActualMinutes    pgtype.Int4
 	Progress         int16
@@ -198,6 +207,7 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, e
 		arg.ProjectID,
 		arg.Title,
 		arg.Description,
+		arg.DueDate,
 		arg.EstimatedMinutes,
 		arg.ActualMinutes,
 		arg.Progress,
@@ -211,6 +221,7 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, e
 		&i.ProjectID,
 		&i.Title,
 		&i.Description,
+		&i.DueDate,
 		&i.EstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Progress,
@@ -227,16 +238,17 @@ UPDATE tasks
 SET project_id = $3,
     title = $4,
     description = $5,
-    estimated_minutes = $6,
-    actual_minutes = $7,
-    progress = $8,
-    priority = $9,
-    status = $10,
+    due_date = $6,
+    estimated_minutes = $7,
+    actual_minutes = $8,
+    progress = $9,
+    priority = $10,
+    status = $11,
     updated_at = now()
 WHERE id = $1
   AND user_id = $2
-RETURNING id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
-          priority, status, created_at, updated_at
+RETURNING id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes,
+          progress, priority, status, created_at, updated_at
 `
 
 type UpdateTaskByUserParams struct {
@@ -245,6 +257,7 @@ type UpdateTaskByUserParams struct {
 	ProjectID        pgtype.Text
 	Title            string
 	Description      pgtype.Text
+	DueDate          pgtype.Date
 	EstimatedMinutes pgtype.Int4
 	ActualMinutes    pgtype.Int4
 	Progress         int16
@@ -259,6 +272,7 @@ func (q *Queries) UpdateTaskByUser(ctx context.Context, arg UpdateTaskByUserPara
 		arg.ProjectID,
 		arg.Title,
 		arg.Description,
+		arg.DueDate,
 		arg.EstimatedMinutes,
 		arg.ActualMinutes,
 		arg.Progress,
@@ -272,6 +286,7 @@ func (q *Queries) UpdateTaskByUser(ctx context.Context, arg UpdateTaskByUserPara
 		&i.ProjectID,
 		&i.Title,
 		&i.Description,
+		&i.DueDate,
 		&i.EstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Progress,

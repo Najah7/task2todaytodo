@@ -13,7 +13,7 @@ func TestProjectServiceCreateDefaultsTypeAndProgress(t *testing.T) {
 	startAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	endAt := startAt.Add(24 * time.Hour)
 
-	got, err := service.Create(context.Background(), fixedTaskIDGen("project-1"), "user-1", "", "", "Build API", "", "", startAt, endAt)
+	got, err := service.Create(context.Background(), fixedTaskIDGen("project-1"), "user-1", "", "", "Build API", "", "", time.Time{}, startAt, endAt)
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -56,8 +56,10 @@ func TestProjectServiceGetAggregateScopesByUser(t *testing.T) {
 func TestProjectServiceUpdateMergesAllowedFields(t *testing.T) {
 	startAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	endAt := startAt.Add(24 * time.Hour)
+	project := mustExistingProjectWithTimesForService(t, "project-1", "user-1", "work", "Old title", "Old goal", "Old description", 42, "low", startAt, endAt)
+	project.DueDate = time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	repo := &fakeProjectRepository{
-		projectByUser: mustExistingProjectWithTimesForService(t, "project-1", "user-1", "work", "Old title", "Old goal", "Old description", 42, "low", startAt, endAt),
+		projectByUser: project,
 	}
 	service := NewProjectService(repo)
 	projectType := "study"
@@ -65,19 +67,21 @@ func TestProjectServiceUpdateMergesAllowedFields(t *testing.T) {
 	title := "New title"
 	description := "New description"
 	newEndAt := endAt.Add(24 * time.Hour)
+	resetDueDate := time.Time{}
 
 	got, err := service.Update(context.Background(), "user-1", "project-1", ProjectUpdate{
 		Type:        &projectType,
 		Priority:    &priority,
 		Title:       &title,
 		Description: &description,
+		DueDate:     &resetDueDate,
 		EndAt:       &newEndAt,
 	})
 	if err != nil {
 		t.Fatalf("Update() error = %v", err)
 	}
 
-	if got.Type.String() != "study" || got.Priority.String() != "high" || got.Title != "New title" || got.Description != "New description" || got.EndAt != newEndAt {
+	if got.Type.String() != "study" || got.Priority.String() != "high" || got.Title != "New title" || got.Description != "New description" || !got.DueDate.IsZero() || got.EndAt != newEndAt {
 		t.Fatalf("project = %+v, want requested fields updated", got)
 	}
 	if got.Goal != "Old goal" || got.Progress != 42 || got.StartAt != startAt {
@@ -198,6 +202,7 @@ func mustExistingProjectWithTimesForService(
 		title,
 		goal,
 		description,
+		time.Time{},
 		progress,
 		mustTaskPriority(t, priorityValue),
 		startAt,

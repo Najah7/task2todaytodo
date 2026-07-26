@@ -40,6 +40,7 @@ func (r TodoItemRepository) Create(ctx context.Context, item domain.TodoItem) (d
 		Completed:     item.Completed,
 		Position:      int32(item.Position),
 		IntervalWeeks: int32(item.IntervalWeeks),
+		DueDate:       timeToPgDate(item.DueDate),
 	})
 	if err != nil {
 		return domain.NewZeroTodoItem(), err
@@ -60,6 +61,7 @@ func (r TodoItemRepository) CreateForOwnedTask(ctx context.Context, userID domai
 		Title:         item.Title,
 		Description:   stringToPgText(item.Description),
 		IntervalWeeks: int32(item.IntervalWeeks),
+		DueDate:       timeToPgDate(item.DueDate),
 		Frequencies:   taskFrequencyStrings(item.Frequencies),
 	})
 	if err != nil {
@@ -77,6 +79,7 @@ func (r TodoItemRepository) Update(ctx context.Context, item domain.TodoItem) (d
 		Completed:     item.Completed,
 		Position:      int32(item.Position),
 		IntervalWeeks: int32(item.IntervalWeeks),
+		DueDate:       timeToPgDate(item.DueDate),
 	})
 	if err != nil {
 		return domain.NewZeroTodoItem(), err

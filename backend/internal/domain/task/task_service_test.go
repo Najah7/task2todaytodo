@@ -12,7 +12,7 @@ func TestTaskServiceCreateStandaloneTask(t *testing.T) {
 	service := NewTaskService(repo, &fakeProjectRepository{})
 	estimated := 30
 
-	got, err := service.CreateStandaloneTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "Write tests", "Cover service", &estimated, nil, "", "")
+	got, err := service.CreateStandaloneTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "Write tests", "Cover service", time.Time{}, &estimated, nil, "", "")
 	if err != nil {
 		t.Fatalf("CreateStandaloneTask() error = %v", err)
 	}
@@ -32,7 +32,7 @@ func TestTaskServiceCreateProjectTask(t *testing.T) {
 	repo := &fakeTaskRepository{}
 	service := NewTaskService(repo, &fakeProjectRepository{})
 
-	got, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", nil, nil, "high", "in_progress")
+	got, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", time.Time{}, nil, nil, "high", "in_progress")
 	if err != nil {
 		t.Fatalf("CreateProjectTask() error = %v", err)
 	}
@@ -52,7 +52,7 @@ func TestTaskServiceCreateProjectTaskInheritsProjectPriority(t *testing.T) {
 	}
 	service := NewTaskService(repo, projectRepo)
 
-	got, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", nil, nil, "", "")
+	got, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", time.Time{}, nil, nil, "", "")
 	if err != nil {
 		t.Fatalf("CreateProjectTask() error = %v", err)
 	}
@@ -69,7 +69,7 @@ func TestTaskServiceCreateProjectTaskNotFound(t *testing.T) {
 	repo := &fakeTaskRepository{createInProjectErr: ErrTaskProjectNotFound}
 	service := NewTaskService(repo, &fakeProjectRepository{})
 
-	_, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", nil, nil, "", "")
+	_, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", time.Time{}, nil, nil, "", "")
 	if !errors.Is(err, ErrTaskProjectNotFound) {
 		t.Fatalf("CreateProjectTask() error = %v, want ErrTaskProjectNotFound", err)
 	}
@@ -80,7 +80,7 @@ func TestTaskServiceCreateProjectTaskInheritPriorityProjectNotFound(t *testing.T
 	projectRepo := &fakeProjectRepository{getByUserErr: ErrProjectNotFound}
 	service := NewTaskService(repo, projectRepo)
 
-	_, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", nil, nil, "", "")
+	_, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", time.Time{}, nil, nil, "", "")
 	if !errors.Is(err, ErrProjectNotFound) {
 		t.Fatalf("CreateProjectTask() error = %v, want ErrProjectNotFound", err)
 	}
@@ -119,20 +119,23 @@ func TestTaskServiceGetTaskReturnsAggregate(t *testing.T) {
 func TestTaskServiceUpdateTaskBasicPreservesDisallowedFields(t *testing.T) {
 	estimated := 20
 	actual := 5
+	existingDueDate := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	resetDueDate := time.Time{}
 	repo := &fakeTaskRepository{
 		taskByUser: mustExistingTask(t, "task-1", "user-1", "project-1", "Old", "Old description", &estimated, &actual, 42, "urgent", "open"),
 	}
+	repo.taskByUser.DueDate = existingDueDate
 	service := NewTaskService(repo, &fakeProjectRepository{})
 	title := "New title"
 	description := "New description"
 	status := "done"
 
-	got, err := service.UpdateTaskBasic(context.Background(), "user-1", "task-1", &title, &description, &status)
+	got, err := service.UpdateTaskBasic(context.Background(), "user-1", "task-1", &title, &description, &status, &resetDueDate)
 	if err != nil {
 		t.Fatalf("UpdateTaskBasic() error = %v", err)
 	}
 
-	if got.Title != "New title" || got.Description != "New description" || got.Status.String() != "done" {
+	if got.Title != "New title" || got.Description != "New description" || got.Status.String() != "done" || !got.DueDate.IsZero() {
 		t.Fatalf("task = %+v, want allowed fields updated", got)
 	}
 	if got.ProjectID != "project-1" || got.Priority.String() != "urgent" || got.Progress != 42 {
@@ -288,7 +291,7 @@ func mustExistingTask(
 	status := mustTaskStatus(t, statusValue)
 	createdAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	updatedAt := createdAt.Add(time.Hour)
-	task, err := NewExistingTask(id, userID, projectID, title, description, estimatedMinutes, actualMinutes, progress, priority, status, createdAt, updatedAt)
+	task, err := NewExistingTask(id, userID, projectID, title, description, time.Time{}, estimatedMinutes, actualMinutes, progress, priority, status, createdAt, updatedAt)
 	if err != nil {
 		t.Fatalf("NewExistingTask() error = %v", err)
 	}

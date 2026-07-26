@@ -27,9 +27,9 @@ func (q *Queries) AddTaskScheduleFrequency(ctx context.Context, arg AddTaskSched
 }
 
 const createTaskSchedule = `-- name: CreateTaskSchedule :one
-INSERT INTO task_schedules (id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at, created_at, updated_at
+INSERT INTO task_schedules (id, task_id, title, description, location, interval_weeks, start_at, end_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, created_at, updated_at
 `
 
 type CreateTaskScheduleParams struct {
@@ -41,7 +41,6 @@ type CreateTaskScheduleParams struct {
 	IntervalWeeks int32
 	StartAt       pgtype.Timestamptz
 	EndAt         pgtype.Timestamptz
-	DueAt         pgtype.Timestamptz
 }
 
 func (q *Queries) CreateTaskSchedule(ctx context.Context, arg CreateTaskScheduleParams) (TaskSchedule, error) {
@@ -54,7 +53,6 @@ func (q *Queries) CreateTaskSchedule(ctx context.Context, arg CreateTaskSchedule
 		arg.IntervalWeeks,
 		arg.StartAt,
 		arg.EndAt,
-		arg.DueAt,
 	)
 	var i TaskSchedule
 	err := row.Scan(
@@ -66,7 +64,6 @@ func (q *Queries) CreateTaskSchedule(ctx context.Context, arg CreateTaskSchedule
 		&i.IntervalWeeks,
 		&i.StartAt,
 		&i.EndAt,
-		&i.DueAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -75,7 +72,7 @@ func (q *Queries) CreateTaskSchedule(ctx context.Context, arg CreateTaskSchedule
 
 const createTaskScheduleByTaskAndUser = `-- name: CreateTaskScheduleByTaskAndUser :one
 WITH inserted AS (
-    INSERT INTO task_schedules (id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at)
+    INSERT INTO task_schedules (id, task_id, title, description, location, interval_weeks, start_at, end_at)
     SELECT
         $1,
         $2,
@@ -84,16 +81,15 @@ WITH inserted AS (
         $5,
         $6,
         $7,
-        $8,
-        $9
+        $8
     FROM tasks AS t
     WHERE t.id = $2
-      AND t.user_id = $10
-    RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at, created_at, updated_at
+      AND t.user_id = $9
+    RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, created_at, updated_at
 ),
 inserted_frequencies AS (
     INSERT INTO task_schedule_frequencies (task_schedule_id, frequency)
-    SELECT inserted.id, unnest($11::text[])
+    SELECT inserted.id, unnest($10::text[])
     FROM inserted
     ON CONFLICT DO NOTHING
 )
@@ -112,7 +108,6 @@ SELECT
     )::text[] AS frequencies,
     inserted.start_at,
     inserted.end_at,
-    inserted.due_at,
     inserted.created_at,
     inserted.updated_at
 FROM inserted
@@ -127,7 +122,6 @@ type CreateTaskScheduleByTaskAndUserParams struct {
 	IntervalWeeks int32
 	StartAt       pgtype.Timestamptz
 	EndAt         pgtype.Timestamptz
-	DueAt         pgtype.Timestamptz
 	UserID        string
 	Frequencies   []string
 }
@@ -142,7 +136,6 @@ type CreateTaskScheduleByTaskAndUserRow struct {
 	Frequencies   []string
 	StartAt       pgtype.Timestamptz
 	EndAt         pgtype.Timestamptz
-	DueAt         pgtype.Timestamptz
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 }
@@ -157,7 +150,6 @@ func (q *Queries) CreateTaskScheduleByTaskAndUser(ctx context.Context, arg Creat
 		arg.IntervalWeeks,
 		arg.StartAt,
 		arg.EndAt,
-		arg.DueAt,
 		arg.UserID,
 		arg.Frequencies,
 	)
@@ -172,7 +164,6 @@ func (q *Queries) CreateTaskScheduleByTaskAndUser(ctx context.Context, arg Creat
 		&i.Frequencies,
 		&i.StartAt,
 		&i.EndAt,
-		&i.DueAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -231,10 +222,9 @@ SET task_id = $2,
     interval_weeks = $6,
     start_at = $7,
     end_at = $8,
-    due_at = $9,
     updated_at = now()
 WHERE id = $1
-RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at, created_at, updated_at
+RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, created_at, updated_at
 `
 
 type UpdateTaskScheduleParams struct {
@@ -246,7 +236,6 @@ type UpdateTaskScheduleParams struct {
 	IntervalWeeks int32
 	StartAt       pgtype.Timestamptz
 	EndAt         pgtype.Timestamptz
-	DueAt         pgtype.Timestamptz
 }
 
 func (q *Queries) UpdateTaskSchedule(ctx context.Context, arg UpdateTaskScheduleParams) (TaskSchedule, error) {
@@ -259,7 +248,6 @@ func (q *Queries) UpdateTaskSchedule(ctx context.Context, arg UpdateTaskSchedule
 		arg.IntervalWeeks,
 		arg.StartAt,
 		arg.EndAt,
-		arg.DueAt,
 	)
 	var i TaskSchedule
 	err := row.Scan(
@@ -271,7 +259,6 @@ func (q *Queries) UpdateTaskSchedule(ctx context.Context, arg UpdateTaskSchedule
 		&i.IntervalWeeks,
 		&i.StartAt,
 		&i.EndAt,
-		&i.DueAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -287,14 +274,13 @@ WITH updated AS (
         interval_weeks = $4,
         start_at = $5,
         end_at = $6,
-        due_at = $7,
         updated_at = now()
     FROM tasks AS t
-    WHERE ts.id = $8
-      AND ts.task_id = $9
+    WHERE ts.id = $7
+      AND ts.task_id = $8
       AND t.id = ts.task_id
-      AND t.user_id = $10
-    RETURNING ts.id, ts.task_id, ts.title, ts.description, ts.location, ts.interval_weeks, ts.start_at, ts.end_at, ts.due_at, ts.created_at, ts.updated_at
+      AND t.user_id = $9
+    RETURNING ts.id, ts.task_id, ts.title, ts.description, ts.location, ts.interval_weeks, ts.start_at, ts.end_at, ts.created_at, ts.updated_at
 ),
 deleted_frequencies AS (
     DELETE FROM task_schedule_frequencies AS tsf
@@ -304,7 +290,7 @@ deleted_frequencies AS (
 ),
 inserted_frequencies AS (
     INSERT INTO task_schedule_frequencies (task_schedule_id, frequency)
-    SELECT updated.id, unnest($11::text[])
+    SELECT updated.id, unnest($10::text[])
     FROM updated
     LEFT JOIN (SELECT count(*) AS deleted_count FROM deleted_frequencies) AS deleted ON true
     ON CONFLICT DO NOTHING
@@ -324,7 +310,6 @@ SELECT
     )::text[] AS frequencies,
     updated.start_at,
     updated.end_at,
-    updated.due_at,
     updated.created_at,
     updated.updated_at
 FROM updated
@@ -337,7 +322,6 @@ type UpdateTaskScheduleByTaskAndUserParams struct {
 	IntervalWeeks int32
 	StartAt       pgtype.Timestamptz
 	EndAt         pgtype.Timestamptz
-	DueAt         pgtype.Timestamptz
 	ID            string
 	TaskID        string
 	UserID        string
@@ -354,7 +338,6 @@ type UpdateTaskScheduleByTaskAndUserRow struct {
 	Frequencies   []string
 	StartAt       pgtype.Timestamptz
 	EndAt         pgtype.Timestamptz
-	DueAt         pgtype.Timestamptz
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 }
@@ -367,7 +350,6 @@ func (q *Queries) UpdateTaskScheduleByTaskAndUser(ctx context.Context, arg Updat
 		arg.IntervalWeeks,
 		arg.StartAt,
 		arg.EndAt,
-		arg.DueAt,
 		arg.ID,
 		arg.TaskID,
 		arg.UserID,
@@ -384,7 +366,6 @@ func (q *Queries) UpdateTaskScheduleByTaskAndUser(ctx context.Context, arg Updat
 		&i.Frequencies,
 		&i.StartAt,
 		&i.EndAt,
-		&i.DueAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

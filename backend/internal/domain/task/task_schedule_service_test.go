@@ -55,18 +55,16 @@ func TestTaskScheduleServiceCreatePropagatesTaskNotFound(t *testing.T) {
 	}
 }
 
-func TestTaskScheduleServiceUpdateMergesPartialFieldsAndResetsDueAt(t *testing.T) {
+func TestTaskScheduleServiceUpdateMergesPartialFields(t *testing.T) {
 	startAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	endAt := startAt.Add(time.Hour)
-	dueAt := startAt.Add(2 * time.Hour)
 	repo := &fakeTaskScheduleRepository{
-		scheduleByTaskAndUser: mustExistingTaskScheduleForService(t, "schedule-1", "task-1", "Old title", "Old description", "Office", 4, []string{"mon"}, startAt, endAt, dueAt),
+		scheduleByTaskAndUser: mustExistingTaskScheduleForService(t, "schedule-1", "task-1", "Old title", "Old description", "Office", 4, []string{"mon"}, startAt, endAt),
 	}
 	service := NewTaskScheduleService(repo)
 	title := "New title"
 	location := ""
 	frequencies := []string{"sat"}
-	resetDueAt := time.Time{}
 
 	got, err := service.Update(context.Background(), TaskScheduleUpdateParams{
 		UserID:          "user-1",
@@ -75,14 +73,13 @@ func TestTaskScheduleServiceUpdateMergesPartialFieldsAndResetsDueAt(t *testing.T
 		Title:           &title,
 		Location:        &location,
 		FrequencyValues: &frequencies,
-		DueAt:           &resetDueAt,
 	})
 	if err != nil {
 		t.Fatalf("Update() error = %v", err)
 	}
 
-	if got.Title != "New title" || got.Location != "" || !got.DueAt.IsZero() {
-		t.Fatalf("task schedule = %+v, want requested fields updated and due_at reset", got)
+	if got.Title != "New title" || got.Location != "" {
+		t.Fatalf("task schedule = %+v, want requested fields updated", got)
 	}
 	if got.Description != "Old description" || got.IntervalWeeks != 4 || got.StartAt != startAt || got.EndAt != endAt {
 		t.Fatalf("task schedule = %+v, want omitted fields preserved", got)
@@ -98,7 +95,7 @@ func TestTaskScheduleServiceUpdateMergesPartialFieldsAndResetsDueAt(t *testing.T
 func TestTaskScheduleServiceUpdateRejectsInvalidFrequency(t *testing.T) {
 	startAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	repo := &fakeTaskScheduleRepository{
-		scheduleByTaskAndUser: mustExistingTaskScheduleForService(t, "schedule-1", "task-1", "Schedule", "", "", 1, nil, startAt, startAt.Add(time.Hour), time.Time{}),
+		scheduleByTaskAndUser: mustExistingTaskScheduleForService(t, "schedule-1", "task-1", "Schedule", "", "", 1, nil, startAt, startAt.Add(time.Hour)),
 	}
 	service := NewTaskScheduleService(repo)
 	frequencies := []string{"daily"}
@@ -210,7 +207,6 @@ func mustExistingTaskScheduleForService(
 	frequencyValues []string,
 	startAt time.Time,
 	endAt time.Time,
-	dueAt time.Time,
 ) TaskSchedule {
 	t.Helper()
 	frequencies := make(TaskFrequencies, 0, len(frequencyValues))
@@ -227,7 +223,6 @@ func mustExistingTaskScheduleForService(
 		frequencies,
 		startAt,
 		endAt,
-		dueAt,
 		startAt.Add(-time.Hour),
 		startAt.Add(-time.Minute),
 	)

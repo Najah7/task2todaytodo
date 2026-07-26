@@ -25,16 +25,15 @@ func TestNewTaskSchedule(t *testing.T) {
 func TestNewTaskScheduleWithDetails(t *testing.T) {
 	startAt := time.Date(2026, 7, 18, 9, 0, 0, 0, time.UTC)
 	endAt := startAt.Add(time.Hour)
-	dueAt := startAt.Add(2 * time.Hour)
 	frequencies := TaskFrequencies{mustTaskFrequencyForService(t, "mon")}
 
-	schedule, err := NewTaskScheduleWithDetails("schedule-1", "task-1", "Focus block", "Deep work", "Home", 2, frequencies, startAt, endAt, dueAt)
+	schedule, err := NewTaskScheduleWithDetails("schedule-1", "task-1", "Focus block", "Deep work", "Home", 2, frequencies, startAt, endAt)
 	if err != nil {
 		t.Fatalf("NewTaskScheduleWithDetails() error = %v", err)
 	}
 
-	if schedule.ID != "schedule-1" || schedule.TaskID != "task-1" || schedule.IntervalWeeks != 2 || !schedule.Frequencies.IsWeekday() || schedule.DueAt != dueAt {
-		t.Errorf("task schedule = %+v, want IDs, interval, frequencies, and due time to be set", schedule)
+	if schedule.ID != "schedule-1" || schedule.TaskID != "task-1" || schedule.IntervalWeeks != 2 || !schedule.Frequencies.IsWeekday() {
+		t.Errorf("task schedule = %+v, want IDs, interval, and frequencies to be set", schedule)
 	}
 }
 
@@ -63,7 +62,7 @@ func TestNewTaskScheduleValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewTaskScheduleWithDetails(tt.id, tt.taskID, tt.title, "", "", tt.intervalWeeks, nil, tt.startAt, tt.endAt, time.Time{})
+			got, err := NewTaskScheduleWithDetails(tt.id, tt.taskID, tt.title, "", "", tt.intervalWeeks, nil, tt.startAt, tt.endAt)
 			assertTaskDomainErrorIs(t, err, tt.wantErr)
 			if got.ID != tt.id || got.TaskID != tt.taskID || got.Title != tt.title {
 				t.Errorf("task schedule = %+v, want input values to be preserved", got)
@@ -88,7 +87,7 @@ func TestNewTaskScheduleWithDetailsValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewTaskScheduleWithDetails("schedule-1", "task-1", "Schedule", "", "", 1, nil, tt.startAt, tt.endAt, time.Time{})
+			got, err := NewTaskScheduleWithDetails("schedule-1", "task-1", "Schedule", "", "", 1, nil, tt.startAt, tt.endAt)
 			assertTaskDomainErrorIs(t, err, tt.wantErr)
 			if got.StartAt != tt.startAt || got.EndAt != tt.endAt {
 				t.Errorf("task schedule = %+v, want input details to be preserved", got)
@@ -102,7 +101,7 @@ func TestTaskScheduleRepeatPattern(t *testing.T) {
 	endAt := startAt.Add(time.Hour)
 	weekday := TaskFrequencies{mustTaskFrequencyForService(t, "mon")}
 
-	once, err := NewTaskScheduleWithDetails("schedule-1", "task-1", "Focus block", "", "", 0, nil, startAt, endAt, time.Time{})
+	once, err := NewTaskScheduleWithDetails("schedule-1", "task-1", "Focus block", "", "", 0, nil, startAt, endAt)
 	if err != nil {
 		t.Fatalf("NewTaskScheduleWithDetails() once error = %v", err)
 	}
@@ -110,7 +109,7 @@ func TestTaskScheduleRepeatPattern(t *testing.T) {
 		t.Errorf("task schedule = %+v, want interval 0 to mean once", once)
 	}
 
-	weekly, err := NewTaskScheduleWithDetails("schedule-1", "task-1", "Focus block", "", "", 1, weekday, startAt, endAt, time.Time{})
+	weekly, err := NewTaskScheduleWithDetails("schedule-1", "task-1", "Focus block", "", "", 1, weekday, startAt, endAt)
 	if err != nil {
 		t.Fatalf("NewTaskScheduleWithDetails() weekly error = %v", err)
 	}

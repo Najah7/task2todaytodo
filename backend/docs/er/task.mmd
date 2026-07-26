@@ -49,6 +49,7 @@ erDiagram
         text title
         text goal
         text description
+        date due_date
         smallint progress
         text priority FK
         timestamptz start_at
@@ -63,6 +64,7 @@ erDiagram
         text project_id FK
         text title
         text description
+        date due_date
         integer estimated_minutes
         integer actual_minutes
         smallint progress
@@ -103,7 +105,6 @@ erDiagram
         integer interval_weeks
         timestamptz start_at
         timestamptz end_at
-        timestamptz due_at
         timestamptz created_at
         timestamptz updated_at
     }
@@ -119,6 +120,7 @@ erDiagram
         text task_id FK
         text title
         text description
+        date due_date
         boolean completed
         integer position
         integer interval_weeks

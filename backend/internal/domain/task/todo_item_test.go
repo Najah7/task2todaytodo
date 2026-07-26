@@ -1,6 +1,9 @@
 package task
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestNewTodoItem(t *testing.T) {
 	item, err := NewTodoItem("todo-item-1", "task-1", "Buy milk")
@@ -18,13 +21,14 @@ func TestNewTodoItem(t *testing.T) {
 
 func TestNewTodoItemWithDetails(t *testing.T) {
 	frequencies := TaskFrequencies{mustTaskFrequencyForService(t, "mon")}
+	dueDate := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 
-	item, err := NewTodoItemWithDetails("todo-item-1", "task-1", "Buy milk", "At the store", true, 2, 3, frequencies)
+	item, err := NewTodoItemWithDetails("todo-item-1", "task-1", "Buy milk", "At the store", dueDate, true, 2, 3, frequencies)
 	if err != nil {
 		t.Fatalf("NewTodoItemWithDetails() error = %v", err)
 	}
 
-	if item.Description != "At the store" || !item.Completed || item.Position != 2 || item.IntervalWeeks != 3 || !item.Frequencies.IsWeekday() {
+	if item.Description != "At the store" || item.DueDate != dueDate || !item.Completed || item.Position != 2 || item.IntervalWeeks != 3 || !item.Frequencies.IsWeekday() {
 		t.Errorf("todo item = %+v, want details to be set", item)
 	}
 }
@@ -48,7 +52,7 @@ func TestNewTodoItemValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewTodoItemWithDetails(tt.id, tt.taskID, tt.title, "", false, tt.position, tt.intervalWeeks, nil)
+			got, err := NewTodoItemWithDetails(tt.id, tt.taskID, tt.title, "", time.Time{}, false, tt.position, tt.intervalWeeks, nil)
 			assertTaskDomainErrorIs(t, err, tt.wantErr)
 			if got.ID != tt.id || got.TaskID != tt.taskID || got.Title != tt.title {
 				t.Errorf("todo item = %+v, want input values to be preserved", got)
@@ -58,7 +62,7 @@ func TestNewTodoItemValidation(t *testing.T) {
 }
 
 func TestTodoItemRepeatPattern(t *testing.T) {
-	once, err := NewTodoItemWithDetails("todo-item-1", "task-1", "Buy milk", "", false, 0, 0, nil)
+	once, err := NewTodoItemWithDetails("todo-item-1", "task-1", "Buy milk", "", time.Time{}, false, 0, 0, nil)
 	if err != nil {
 		t.Fatalf("NewTodoItemWithDetails() once error = %v", err)
 	}
@@ -66,7 +70,7 @@ func TestTodoItemRepeatPattern(t *testing.T) {
 		t.Errorf("todo item = %+v, want interval 0 to mean once", once)
 	}
 
-	weekly, err := NewTodoItemWithDetails("todo-item-1", "task-1", "Buy milk", "", false, 0, 1, TaskFrequencies{mustTaskFrequencyForService(t, "mon")})
+	weekly, err := NewTodoItemWithDetails("todo-item-1", "task-1", "Buy milk", "", time.Time{}, false, 0, 1, TaskFrequencies{mustTaskFrequencyForService(t, "mon")})
 	if err != nil {
 		t.Fatalf("NewTodoItemWithDetails() weekly error = %v", err)
 	}

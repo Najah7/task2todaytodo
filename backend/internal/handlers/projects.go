@@ -31,6 +31,7 @@ type ProjectResponse struct {
 	Title       string    `json:"title"`
 	Goal        string    `json:"goal"`
 	Description string    `json:"description"`
+	DueDate     *string   `json:"due_date" format:"date"`
 	Progress    int       `json:"progress"`
 	Priority    string    `json:"priority"`
 	StartAt     time.Time `json:"start_at"`
@@ -49,6 +50,7 @@ type ProjectTaskResponse struct {
 	ProjectID        string    `json:"project_id"`
 	Title            string    `json:"title"`
 	Description      string    `json:"description"`
+	DueDate          *string   `json:"due_date" format:"date"`
 	EstimatedMinutes *int      `json:"estimated_minutes"`
 	ActualMinutes    *int      `json:"actual_minutes"`
 	Progress         int       `json:"progress"`
@@ -65,6 +67,7 @@ func newProjectResponse(project domain.Project) ProjectResponse {
 		Title:       project.Title,
 		Goal:        project.Goal,
 		Description: project.Description,
+		DueDate:     dateOnlyResponse(project.DueDate),
 		Progress:    project.Progress,
 		Priority:    project.Priority.String(),
 		StartAt:     project.StartAt,
@@ -82,6 +85,7 @@ func newProjectAggregateResponse(aggregate domain.ProjectAggregate) ProjectAggre
 			ProjectID:        string(task.ProjectID),
 			Title:            task.Title,
 			Description:      task.Description,
+			DueDate:          dateOnlyResponse(task.DueDate),
 			EstimatedMinutes: task.EstimatedMinutes,
 			ActualMinutes:    task.ActualMinutes,
 			Progress:         task.Progress,
@@ -104,6 +108,7 @@ type ProjectCreateRequest struct {
 	Title       string    `json:"title"`
 	Goal        string    `json:"goal"`
 	Description string    `json:"description"`
+	DueDate     *string   `json:"due_date" format:"date"`
 	StartAt     time.Time `json:"start_at"`
 	EndAt       time.Time `json:"end_at"`
 }
@@ -137,7 +142,13 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	project, err := h.svc.Create(ctx, h.idGen.Generate, userID, req.Type, req.Priority, req.Title, req.Goal, req.Description, req.StartAt, req.EndAt)
+	dueDate, err := parseOptionalDateOnly(req.DueDate)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, ErrSpecProjectsCreateFailed, errDetailInvalidDateOnly("due_date"))
+		return
+	}
+
+	project, err := h.svc.Create(ctx, h.idGen.Generate, userID, req.Type, req.Priority, req.Title, req.Goal, req.Description, dueDate, req.StartAt, req.EndAt)
 	if err != nil {
 		status, detail := projectErrToErrResponse(err)
 		WriteError(w, status, ErrSpecProjectsCreateFailed, detail)
@@ -184,20 +195,50 @@ type ProjectUpdateRequest struct {
 	Title       *string    `json:"title"`
 	Goal        *string    `json:"goal"`
 	Description *string    `json:"description"`
+	DueDate     *string    `json:"due_date" format:"date"`
+	DueDateSet  bool       `json:"-"`
 	StartAt     *time.Time `json:"start_at"`
 	EndAt       *time.Time `json:"end_at"`
 }
 
-func (req ProjectUpdateRequest) toDomainUpdate() domain.ProjectUpdate {
+func (req ProjectUpdateRequest) toDomainUpdate() (domain.ProjectUpdate, error) {
+	dueDate, err := parseDateOnlyPatch(req.DueDate, req.DueDateSet)
+	if err != nil {
+		return domain.ProjectUpdate{}, err
+	}
+
 	return domain.ProjectUpdate{
 		Type:        req.Type,
 		Priority:    req.Priority,
 		Title:       req.Title,
 		Goal:        req.Goal,
 		Description: req.Description,
+		DueDate:     dueDate,
 		StartAt:     req.StartAt,
 		EndAt:       req.EndAt,
+	}, nil
+}
+
+func (req *ProjectUpdateRequest) UnmarshalJSON(data []byte) error {
+	type requestAlias ProjectUpdateRequest
+	var alias requestAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
 	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	dueDate, dueDateSet, err := decodeNullableDateOnly(raw, "due_date")
+	if err != nil {
+		return err
+	}
+	alias.DueDate = dueDate
+	alias.DueDateSet = dueDateSet
+
+	*req = ProjectUpdateRequest(alias)
+	return nil
 }
 
 // Update godoc
@@ -230,7 +271,13 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	project, err := h.svc.Update(ctx, userID, projectIDFromRequest(r), req.toDomainUpdate())
+	update, err := req.toDomainUpdate()
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, ErrSpecProjectsUpdateFailed, errDetailInvalidDateOnly("due_date"))
+		return
+	}
+
+	project, err := h.svc.Update(ctx, userID, projectIDFromRequest(r), update)
 	if err != nil {
 		status, detail := projectErrToErrResponse(err)
 		WriteError(w, status, ErrSpecProjectsUpdateFailed, detail)
