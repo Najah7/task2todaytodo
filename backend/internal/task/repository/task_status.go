@@ -2,9 +2,10 @@ package repository
 
 import (
 	"context"
+
 	usecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
 
-	"github.com/Najah7/task2todaytodo/internal/repositories/sqlc"
+	"github.com/Najah7/task2todaytodo/db/sqlc"
 	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
 	"github.com/jackc/pgx/v5"
 )
