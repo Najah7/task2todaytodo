@@ -50,6 +50,7 @@ domain concepts.
 
 ### VO
 
+- File suffix `_value.go`.
 - One validated concept.
 - Validate in constructor.
 - Keep representation work, e.g. hash, here.
@@ -57,6 +58,7 @@ domain concepts.
 
 ### Entity
 
+- File suffix `_entity.go`.
 - Factory create. No external struct literal.
 - Own invariant, state change, state query.
 - New-state and restored-state factory may differ.
@@ -68,14 +70,15 @@ domain concepts.
 
 ### Aggregate
 
+- File suffix `_aggregate.go`.
 - Use Aggregate for read models that span multiple tables or entity collections.
 - JOIN-based queries should return repository-mapped Aggregates, e.g. `ProjectAggregate` for Project + Tasks or `TaskAggregate` for Task + TodoItems + TaskSchedules.
 - Keep SQL/JOIN details inside repository implementations. Domain Aggregates describe the composed domain result, not database mechanics.
 - Do not force a single-table Entity to carry child collections only because one API response needs them.
 
-### Service
+### Application Service
 
-- Service means Application Service unless explicitly stated otherwise.
+- File suffix `_service.go`.
 - Orchestrate domain object load, domain method call, repository save, and transaction boundary.
 - Keep repository interfaces in the usecase package, close to the Application Service that needs them.
 - No duplicate VO/entity validation.
