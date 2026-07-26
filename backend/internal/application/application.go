@@ -22,6 +22,10 @@ type logger interface{}
 type Store struct {
 	Users           *repositories.UserRepository
 	AccessTokens    *repositories.AccessTokenRepository
+	Projects        *repositories.ProjectRepository
+	Tasks           *repositories.TaskRepository
+	TodoItems       *repositories.TodoItemRepository
+	TaskSchedules   *repositories.TaskScheduleRepository
 	ProjectTypes    *repositories.ProjectTypeRepository
 	TaskFrequencies *repositories.TaskFrequencyRepository
 	TaskPriorities  *repositories.TaskPriorityRepository
@@ -49,6 +53,10 @@ func NewStore(ctx context.Context) Store {
 
 	userRepo := repositories.NewUserRepository(pool)
 	accessTokenRepo := repositories.NewAccessTokenRepository(pool)
+	projectRepo := repositories.NewProjectRepository(pool)
+	taskRepo := repositories.NewTaskRepository(pool)
+	todoItemRepo := repositories.NewTodoItemRepository(pool)
+	taskScheduleRepo := repositories.NewTaskScheduleRepository(pool)
 	projectTypeRepo := repositories.NewProjectTypeRepository(pool)
 	taskFrequencyRepo := repositories.NewTaskFrequencyRepository(pool)
 	taskPriorityRepo := repositories.NewTaskPriorityRepository(pool)
@@ -57,6 +65,10 @@ func NewStore(ctx context.Context) Store {
 	return Store{
 		Users:           userRepo,
 		AccessTokens:    accessTokenRepo,
+		Projects:        projectRepo,
+		Tasks:           taskRepo,
+		TodoItems:       todoItemRepo,
+		TaskSchedules:   taskScheduleRepo,
 		ProjectTypes:    projectTypeRepo,
 		TaskFrequencies: taskFrequencyRepo,
 		TaskPriorities:  taskPriorityRepo,
@@ -97,6 +109,10 @@ func getenv(key, fallback string) string {
 type Service struct {
 	User          *auth.UserService
 	AccessToken   *auth.AccessTokenService
+	Project       *task.ProjectService
+	Task          *task.TaskService
+	TodoItem      *task.TodoItemService
+	TaskSchedule  *task.TaskScheduleService
 	ProjectType   *task.ProjectTypeService
 	TaskFrequency *task.TaskFrequencyService
 	TaskPriority  *task.TaskPriorityService
@@ -106,6 +122,10 @@ type Service struct {
 func NewService(store Store) Service {
 	userService := auth.NewUserService(store.Users)
 	accessTokenService := auth.NewAccessTokenService(store.AccessTokens)
+	projectService := task.NewProjectService(store.Projects)
+	taskService := task.NewTaskService(store.Tasks)
+	todoItemService := task.NewTodoItemService(store.TodoItems)
+	taskScheduleService := task.NewTaskScheduleService(store.TaskSchedules)
 	projectTypeService := task.NewProjectTypeService(store.ProjectTypes)
 	taskFrequencyService := task.NewTaskFrequencyService(store.TaskFrequencies)
 	taskPriorityService := task.NewTaskPriorityService(store.TaskPriorities)
@@ -114,6 +134,10 @@ func NewService(store Store) Service {
 	return Service{
 		User:          userService,
 		AccessToken:   accessTokenService,
+		Project:       projectService,
+		Task:          taskService,
+		TodoItem:      todoItemService,
+		TaskSchedule:  taskScheduleService,
 		ProjectType:   projectTypeService,
 		TaskFrequency: taskFrequencyService,
 		TaskPriority:  taskPriorityService,
