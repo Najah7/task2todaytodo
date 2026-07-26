@@ -70,9 +70,19 @@ INSERT INTO tasks (
     id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
     priority, status
 )
-SELECT $1, $2, p.id, $4, $5, $6, $7, $8, $9, $10
+SELECT
+    $1,
+    $2,
+    p.id,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9
 FROM projects AS p
-WHERE p.id = $3
+WHERE p.id = $10
   AND p.user_id = $2
 RETURNING id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
           priority, status, created_at, updated_at
@@ -81,7 +91,6 @@ RETURNING id, user_id, project_id, title, description, estimated_minutes, actual
 type CreateTaskInProjectParams struct {
 	ID               string
 	UserID           string
-	ID_2             string
 	Title            string
 	Description      pgtype.Text
 	EstimatedMinutes pgtype.Int4
@@ -89,13 +98,13 @@ type CreateTaskInProjectParams struct {
 	Progress         int16
 	Priority         string
 	Status           string
+	ProjectID        string
 }
 
 func (q *Queries) CreateTaskInProject(ctx context.Context, arg CreateTaskInProjectParams) (Task, error) {
 	row := q.db.QueryRow(ctx, createTaskInProject,
 		arg.ID,
 		arg.UserID,
-		arg.ID_2,
 		arg.Title,
 		arg.Description,
 		arg.EstimatedMinutes,
@@ -103,6 +112,7 @@ func (q *Queries) CreateTaskInProject(ctx context.Context, arg CreateTaskInProje
 		arg.Progress,
 		arg.Priority,
 		arg.Status,
+		arg.ProjectID,
 	)
 	var i Task
 	err := row.Scan(

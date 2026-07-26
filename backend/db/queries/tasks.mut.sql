@@ -13,10 +13,20 @@ INSERT INTO tasks (
     id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
     priority, status
 )
-SELECT $1, $2, p.id, $4, $5, $6, $7, $8, $9, $10
+SELECT
+    sqlc.arg(id),
+    sqlc.arg(user_id),
+    p.id,
+    sqlc.arg(title),
+    sqlc.arg(description),
+    sqlc.arg(estimated_minutes),
+    sqlc.arg(actual_minutes),
+    sqlc.arg(progress),
+    sqlc.arg(priority),
+    sqlc.arg(status)
 FROM projects AS p
-WHERE p.id = $3
-  AND p.user_id = $2
+WHERE p.id = sqlc.arg(project_id)
+  AND p.user_id = sqlc.arg(user_id)
 RETURNING id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
           priority, status, created_at, updated_at;
 
