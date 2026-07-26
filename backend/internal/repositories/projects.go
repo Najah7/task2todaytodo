@@ -2,9 +2,11 @@ package repositories
 
 import (
 	"context"
+	"errors"
 
 	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
 	"github.com/Najah7/task2todaytodo/internal/repositories/sqlc"
+	"github.com/jackc/pgx/v5"
 )
 
 var _ domain.ProjectRepository = ProjectRepository{}
@@ -19,12 +21,40 @@ func NewProjectRepository(db sqlc.DBTX) *ProjectRepository {
 	}
 }
 
-func (r ProjectRepository) Get(ctx context.Context, id domain.ProjectID) (domain.Project, error) {
-	record, err := r.queries.GetProject(ctx, string(id))
+func (r ProjectRepository) GetByUser(ctx context.Context, userID domain.UserID, id domain.ProjectID) (domain.Project, error) {
+	record, err := r.queries.GetProjectByUser(ctx, sqlc.GetProjectByUserParams{
+		ID:     string(id),
+		UserID: string(userID),
+	})
 	if err != nil {
-		return domain.NewZeroProject(), err
+		return domain.NewZeroProject(), projectRepositoryError(err)
 	}
 	return recordToProject(record)
+}
+
+func (r ProjectRepository) GetAggregateByUser(ctx context.Context, userID domain.UserID, id domain.ProjectID) (domain.ProjectAggregate, error) {
+	project, err := r.GetByUser(ctx, userID, id)
+	if err != nil {
+		return domain.ProjectAggregate{}, err
+	}
+
+	taskRecords, err := r.queries.ListProjectTasksByUser(ctx, sqlc.ListProjectTasksByUserParams{
+		ProjectID: stringToPgText(string(id)),
+		UserID:    string(userID),
+	})
+	if err != nil {
+		return domain.ProjectAggregate{}, err
+	}
+
+	tasks, err := recordsToTasks(taskRecords)
+	if err != nil {
+		return domain.ProjectAggregate{}, err
+	}
+
+	return domain.ProjectAggregate{
+		Project: project,
+		Tasks:   tasks,
+	}, nil
 }
 
 func (r ProjectRepository) Create(ctx context.Context, project domain.Project) (domain.Project, error) {
@@ -45,9 +75,10 @@ func (r ProjectRepository) Create(ctx context.Context, project domain.Project) (
 	return recordToProject(record)
 }
 
-func (r ProjectRepository) Update(ctx context.Context, project domain.Project) (domain.Project, error) {
-	record, err := r.queries.UpdateProject(ctx, sqlc.UpdateProjectParams{
+func (r ProjectRepository) UpdateByUser(ctx context.Context, userID domain.UserID, project domain.Project) (domain.Project, error) {
+	record, err := r.queries.UpdateProjectByUser(ctx, sqlc.UpdateProjectByUserParams{
 		ID:          string(project.ID),
+		UserID:      string(userID),
 		Type:        project.Type.String(),
 		Title:       project.Title,
 		Goal:        stringToPgText(project.Goal),
@@ -57,11 +88,28 @@ func (r ProjectRepository) Update(ctx context.Context, project domain.Project) (
 		EndAt:       timeToPgTime(project.EndAt),
 	})
 	if err != nil {
-		return domain.NewZeroProject(), err
+		return domain.NewZeroProject(), projectRepositoryError(err)
 	}
 	return recordToProject(record)
 }
 
-func (r ProjectRepository) Delete(ctx context.Context, id domain.ProjectID) error {
-	return r.queries.DeleteProject(ctx, string(id))
+func (r ProjectRepository) DeleteByUser(ctx context.Context, userID domain.UserID, id domain.ProjectID) error {
+	rowsAffected, err := r.queries.DeleteProjectByUser(ctx, sqlc.DeleteProjectByUserParams{
+		ID:     string(id),
+		UserID: string(userID),
+	})
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return domain.ErrProjectNotFound
+	}
+	return nil
+}
+
+func projectRepositoryError(err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ErrProjectNotFound
+	}
+	return err
 }

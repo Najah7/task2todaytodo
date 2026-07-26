@@ -14,6 +14,7 @@ var (
 	ErrProjectEndAtEmpty              = errors.New("project end time must be set")
 	ErrProjectProgressInvalid         = errors.New("project progress must be between 0 and 100")
 	ErrProjectEndAtMustBeAfterStartAt = errors.New("project end time must be after start time")
+	ErrProjectNotFound                = errors.New("project not found")
 )
 
 type Project struct {
@@ -28,6 +29,11 @@ type Project struct {
 	EndAt       time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+}
+
+type ProjectAggregate struct {
+	Project Project
+	Tasks   []Task
 }
 
 func NewProject(

@@ -4,6 +4,70 @@ SELECT id, user_id, project_id, title, description, estimated_minutes, actual_mi
 FROM tasks
 WHERE id = $1;
 
+-- name: GetTaskByUser :one
+SELECT id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
+       priority, status, created_at, updated_at
+FROM tasks
+WHERE id = $1
+  AND user_id = $2;
+
+-- name: ListTasksByProjectAndUser :many
+SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.estimated_minutes, t.actual_minutes, t.progress,
+       t.priority, t.status, t.created_at, t.updated_at
+FROM tasks AS t
+JOIN projects AS p ON p.id = t.project_id
+WHERE t.project_id = $1
+  AND p.user_id = $2
+ORDER BY t.created_at ASC;
+
+-- name: ListTodoItemsByTaskForUser :many
+SELECT
+    ti.id,
+    ti.task_id,
+    ti.title,
+    ti.description,
+    ti.completed,
+    ti.position,
+    ti.interval_weeks,
+    ARRAY(
+        SELECT tif.frequency
+        FROM todo_item_frequencies AS tif
+        WHERE tif.todo_item_id = ti.id
+        ORDER BY tif.frequency
+    )::text[] AS frequencies,
+    ti.created_at,
+    ti.updated_at
+FROM todo_items AS ti
+JOIN tasks AS t ON t.id = ti.task_id
+WHERE ti.task_id = $1
+  AND t.user_id = $2
+ORDER BY ti.position ASC;
+
+-- name: ListTaskSchedulesByTaskForUser :many
+SELECT
+    ts.id,
+    ts.task_id,
+    ts.title,
+    ts.description,
+    ts.location,
+    ts.interval_weeks,
+    ARRAY(
+        SELECT tsf.frequency
+        FROM task_schedule_frequencies AS tsf
+        WHERE tsf.task_schedule_id = ts.id
+        ORDER BY tsf.frequency
+    )::text[] AS frequencies,
+    ts.start_at,
+    ts.end_at,
+    ts.due_at,
+    ts.created_at,
+    ts.updated_at
+FROM task_schedules AS ts
+JOIN tasks AS t ON t.id = ts.task_id
+WHERE ts.task_id = $1
+  AND t.user_id = $2
+ORDER BY ts.start_at ASC;
+
 -- name: GetTaskByTag :many
 SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.estimated_minutes, t.actual_minutes, t.progress,
        t.priority, t.status, t.created_at, t.updated_at

@@ -16,6 +16,8 @@ var (
 	ErrTaskScheduleStartAtEmpty            = errors.New("task schedule start time must be set")
 	ErrTaskScheduleEndAtEmpty              = errors.New("task schedule end time must be set")
 	ErrTaskScheduleEndAtMustBeAfterStartAt = errors.New("task schedule end time must be after start time")
+	ErrTaskScheduleTaskNotFound            = errors.New("task not found")
+	ErrTaskScheduleNotFound                = errors.New("task schedule not found")
 )
 
 type TaskScheduleID shared.ID
