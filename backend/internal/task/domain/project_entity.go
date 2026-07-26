@@ -33,7 +33,6 @@ type Project struct {
 	UpdatedAt   time.Time
 }
 
-
 func NewProject(
 	id ProjectID,
 	userID UserID,
