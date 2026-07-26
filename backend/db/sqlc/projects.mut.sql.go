@@ -12,9 +12,9 @@ import (
 )
 
 const createProject = `-- name: CreateProject :one
-INSERT INTO projects (id, user_id, type, title, goal, description, due_date, progress, priority, start_at, end_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, user_id, type, title, goal, description, due_date, progress, priority, start_at, end_at, created_at, updated_at
+INSERT INTO projects (id, user_id, type, title, goal, description, progress, priority, start_at, end_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
 `
 
 type CreateProjectParams struct {
@@ -24,7 +24,6 @@ type CreateProjectParams struct {
 	Title       string
 	Goal        pgtype.Text
 	Description pgtype.Text
-	DueDate     pgtype.Date
 	Progress    int16
 	Priority    string
 	StartAt     pgtype.Timestamptz
@@ -39,7 +38,6 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		arg.Title,
 		arg.Goal,
 		arg.Description,
-		arg.DueDate,
 		arg.Progress,
 		arg.Priority,
 		arg.StartAt,
@@ -53,7 +51,6 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.Title,
 		&i.Goal,
 		&i.Description,
-		&i.DueDate,
 		&i.Progress,
 		&i.Priority,
 		&i.StartAt,
@@ -99,14 +96,13 @@ SET type = $2,
     title = $3,
     goal = $4,
     description = $5,
-    due_date = $6,
-    progress = $7,
-    priority = $8,
-    start_at = $9,
-    end_at = $10,
+    progress = $6,
+    priority = $7,
+    start_at = $8,
+    end_at = $9,
     updated_at = now()
 WHERE id = $1
-RETURNING id, user_id, type, title, goal, description, due_date, progress, priority, start_at, end_at, created_at, updated_at
+RETURNING id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
 `
 
 type UpdateProjectParams struct {
@@ -115,7 +111,6 @@ type UpdateProjectParams struct {
 	Title       string
 	Goal        pgtype.Text
 	Description pgtype.Text
-	DueDate     pgtype.Date
 	Progress    int16
 	Priority    string
 	StartAt     pgtype.Timestamptz
@@ -129,7 +124,6 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		arg.Title,
 		arg.Goal,
 		arg.Description,
-		arg.DueDate,
 		arg.Progress,
 		arg.Priority,
 		arg.StartAt,
@@ -143,7 +137,6 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.Title,
 		&i.Goal,
 		&i.Description,
-		&i.DueDate,
 		&i.Progress,
 		&i.Priority,
 		&i.StartAt,
@@ -160,15 +153,14 @@ SET type = $3,
     title = $4,
     goal = $5,
     description = $6,
-    due_date = $7,
-    progress = $8,
-    priority = $9,
-    start_at = $10,
-    end_at = $11,
+    progress = $7,
+    priority = $8,
+    start_at = $9,
+    end_at = $10,
     updated_at = now()
 WHERE id = $1
   AND user_id = $2
-RETURNING id, user_id, type, title, goal, description, due_date, progress, priority, start_at, end_at, created_at, updated_at
+RETURNING id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
 `
 
 type UpdateProjectByUserParams struct {
@@ -178,7 +170,6 @@ type UpdateProjectByUserParams struct {
 	Title       string
 	Goal        pgtype.Text
 	Description pgtype.Text
-	DueDate     pgtype.Date
 	Progress    int16
 	Priority    string
 	StartAt     pgtype.Timestamptz
@@ -193,7 +184,6 @@ func (q *Queries) UpdateProjectByUser(ctx context.Context, arg UpdateProjectByUs
 		arg.Title,
 		arg.Goal,
 		arg.Description,
-		arg.DueDate,
 		arg.Progress,
 		arg.Priority,
 		arg.StartAt,
@@ -207,7 +197,6 @@ func (q *Queries) UpdateProjectByUser(ctx context.Context, arg UpdateProjectByUs
 		&i.Title,
 		&i.Goal,
 		&i.Description,
-		&i.DueDate,
 		&i.Progress,
 		&i.Priority,
 		&i.StartAt,

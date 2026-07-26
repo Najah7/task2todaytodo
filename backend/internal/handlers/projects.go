@@ -32,7 +32,6 @@ type ProjectResponse struct {
 	Title       string    `json:"title"`
 	Goal        string    `json:"goal"`
 	Description string    `json:"description"`
-	DueDate     *string   `json:"due_date" format:"date"`
 	Progress    int       `json:"progress"`
 	Priority    string    `json:"priority"`
 	StartAt     time.Time `json:"start_at"`
@@ -68,7 +67,6 @@ func newProjectResponse(project domain.Project) ProjectResponse {
 		Title:       project.Title,
 		Goal:        project.Goal,
 		Description: project.Description,
-		DueDate:     dateOnlyResponse(project.DueDate),
 		Progress:    project.Progress,
 		Priority:    project.Priority.String(),
 		StartAt:     project.StartAt,
@@ -109,7 +107,6 @@ type ProjectCreateRequest struct {
 	Title       string    `json:"title"`
 	Goal        string    `json:"goal"`
 	Description string    `json:"description"`
-	DueDate     *string   `json:"due_date" format:"date"`
 	StartAt     time.Time `json:"start_at"`
 	EndAt       time.Time `json:"end_at"`
 }
@@ -143,13 +140,7 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dueDate, err := parseOptionalDateOnly(req.DueDate)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecProjectsCreateFailed, errDetailInvalidDateOnly("due_date"))
-		return
-	}
-
-	project, err := h.svc.Create(ctx, h.idGen.Generate, userID, req.Type, req.Priority, req.Title, req.Goal, req.Description, dueDate, req.StartAt, req.EndAt)
+	project, err := h.svc.Create(ctx, h.idGen.Generate, userID, req.Type, req.Priority, req.Title, req.Goal, req.Description, req.StartAt, req.EndAt)
 	if err != nil {
 		status, detail := projectErrToErrResponse(err)
 		WriteError(w, status, ErrSpecProjectsCreateFailed, detail)
@@ -191,67 +182,40 @@ func (h *ProjectHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 type ProjectUpdateRequest struct {
-	Type        *string    `json:"type"`
-	Priority    *string    `json:"priority"`
-	Title       *string    `json:"title"`
-	Goal        *string    `json:"goal"`
-	Description *string    `json:"description"`
-	DueDate     *string    `json:"due_date" format:"date"`
-	DueDateSet  bool       `json:"-"`
-	StartAt     *time.Time `json:"start_at"`
-	EndAt       *time.Time `json:"end_at"`
+	Type        *string `json:"type"`
+	Title       *string `json:"title"`
+	Goal        *string `json:"goal"`
+	Description *string `json:"description"`
 }
 
-func (req ProjectUpdateRequest) toDomainUpdate() (taskusecase.ProjectUpdate, error) {
-	dueDate, err := parseDateOnlyPatch(req.DueDate, req.DueDateSet)
-	if err != nil {
-		return taskusecase.ProjectUpdate{}, err
-	}
+type ProjectScheduleUpdateRequest struct {
+	StartAt *time.Time `json:"start_at"`
+	EndAt   *time.Time `json:"end_at"`
+}
 
-	return taskusecase.ProjectUpdate{
+type ProjectPriorityUpdateRequest struct {
+	Priority string `json:"priority"`
+}
+
+func (req ProjectUpdateRequest) toDomainUpdate() taskusecase.ProjectBasicUpdate {
+	return taskusecase.ProjectBasicUpdate{
 		Type:        req.Type,
-		Priority:    req.Priority,
 		Title:       req.Title,
 		Goal:        req.Goal,
 		Description: req.Description,
-		DueDate:     dueDate,
-		StartAt:     req.StartAt,
-		EndAt:       req.EndAt,
-	}, nil
-}
-
-func (req *ProjectUpdateRequest) UnmarshalJSON(data []byte) error {
-	type requestAlias ProjectUpdateRequest
-	var alias requestAlias
-	if err := json.Unmarshal(data, &alias); err != nil {
-		return err
 	}
-
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	dueDate, dueDateSet, err := decodeNullableDateOnly(raw, "due_date")
-	if err != nil {
-		return err
-	}
-	alias.DueDate = dueDate
-	alias.DueDateSet = dueDateSet
-
-	*req = ProjectUpdateRequest(alias)
-	return nil
 }
 
 // Update godoc
 //
-//	@Summary		Update project
+//	@Summary		Update project basic information
 //	@Description	Partially updates owned Project basic information.
 //	@Tags			Projects
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Param			project_id	path		string					true	"Project ID"
-//	@Param			request		body		ProjectUpdateRequest	true	"Project update request"
+//	@Param			request		body		ProjectUpdateRequest	true	"Project basic update request"
 //	@Success		200			{object}	ProjectResponse
 //	@Failure		400			{object}	ErrResponse	"Invalid request body"
 //	@Failure		401			{object}	ErrResponse	"Unauthorized"
@@ -272,13 +236,90 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	update, err := req.toDomainUpdate()
+	project, err := h.svc.UpdateBasic(ctx, userID, projectIDFromRequest(r), req.toDomainUpdate())
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecProjectsUpdateFailed, errDetailInvalidDateOnly("due_date"))
+		status, detail := projectErrToErrResponse(err)
+		WriteError(w, status, ErrSpecProjectsUpdateFailed, detail)
 		return
 	}
 
-	project, err := h.svc.Update(ctx, userID, projectIDFromRequest(r), update)
+	WriteJSON(w, http.StatusOK, newProjectResponse(project))
+}
+
+// UpdateSchedule godoc
+//
+//	@Summary		Update project schedule
+//	@Description	Partially updates owned Project schedule.
+//	@Tags			Projects
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			project_id	path		string							true	"Project ID"
+//	@Param			request		body		ProjectScheduleUpdateRequest	true	"Project schedule update request"
+//	@Success		200			{object}	ProjectResponse
+//	@Failure		400			{object}	ErrResponse	"Invalid request body"
+//	@Failure		401			{object}	ErrResponse	"Unauthorized"
+//	@Failure		404			{object}	ErrResponse	"Project not found"
+//	@Failure		500			{object}	ErrResponse	"Failed to update project"
+//	@Router			/projects/{project_id}/schedule [patch]
+func (h *ProjectHandler) UpdateSchedule(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID, ok := projectUserIDFromContext(ctx)
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, ErrSpecProjectsUpdateFailed, ErrDetailUnauthorized)
+		return
+	}
+
+	var req ProjectScheduleUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteError(w, http.StatusBadRequest, ErrSpecProjectsUpdateFailed, ErrDetailInvalidRequestBody)
+		return
+	}
+
+	project, err := h.svc.UpdateSchedule(ctx, userID, projectIDFromRequest(r), taskusecase.ProjectScheduleUpdate{
+		StartAt: req.StartAt,
+		EndAt:   req.EndAt,
+	})
+	if err != nil {
+		status, detail := projectErrToErrResponse(err)
+		WriteError(w, status, ErrSpecProjectsUpdateFailed, detail)
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, newProjectResponse(project))
+}
+
+// UpdatePriority godoc
+//
+//	@Summary		Update project priority
+//	@Description	Updates owned Project priority.
+//	@Tags			Projects
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			project_id	path		string							true	"Project ID"
+//	@Param			request		body		ProjectPriorityUpdateRequest	true	"Project priority update request"
+//	@Success		200			{object}	ProjectResponse
+//	@Failure		400			{object}	ErrResponse	"Invalid request body"
+//	@Failure		401			{object}	ErrResponse	"Unauthorized"
+//	@Failure		404			{object}	ErrResponse	"Project not found"
+//	@Failure		500			{object}	ErrResponse	"Failed to update project"
+//	@Router			/projects/{project_id}/priority [patch]
+func (h *ProjectHandler) UpdatePriority(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID, ok := projectUserIDFromContext(ctx)
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, ErrSpecProjectsUpdateFailed, ErrDetailUnauthorized)
+		return
+	}
+
+	var req ProjectPriorityUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteError(w, http.StatusBadRequest, ErrSpecProjectsUpdateFailed, ErrDetailInvalidRequestBody)
+		return
+	}
+
+	project, err := h.svc.UpdatePriority(ctx, userID, projectIDFromRequest(r), req.Priority)
 	if err != nil {
 		status, detail := projectErrToErrResponse(err)
 		WriteError(w, status, ErrSpecProjectsUpdateFailed, detail)

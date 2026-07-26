@@ -84,7 +84,6 @@ func (s *TaskService) UpdateTaskBasic(
 	taskID domain.TaskID,
 	title *string,
 	description *string,
-	statusValue *string,
 	dueDate *time.Time,
 ) (domain.Task, error) {
 	existing, err := s.repo.GetByUser(ctx, userID, taskID)
@@ -99,16 +98,29 @@ func (s *TaskService) UpdateTaskBasic(
 	if description != nil {
 		updated.Description = *description
 	}
-	if statusValue != nil {
-		status, err := domain.NewTaskStatus(*statusValue)
-		if err != nil {
-			return domain.NewZeroTask(), err
-		}
-		updated.Status = status
-	}
 	if dueDate != nil {
 		updated.DueDate = *dueDate
 	}
+	if err := updated.Validate(); err != nil {
+		return domain.NewZeroTask(), err
+	}
+
+	return s.repo.UpdateByUser(ctx, updated)
+}
+
+func (s *TaskService) UpdateTaskStatus(ctx context.Context, userID domain.UserID, taskID domain.TaskID, statusValue string) (domain.Task, error) {
+	existing, err := s.repo.GetByUser(ctx, userID, taskID)
+	if err != nil {
+		return domain.NewZeroTask(), err
+	}
+
+	status, err := domain.NewTaskStatus(statusValue)
+	if err != nil {
+		return domain.NewZeroTask(), err
+	}
+
+	updated := existing
+	updated.Status = status
 	if err := updated.Validate(); err != nil {
 		return domain.NewZeroTask(), err
 	}

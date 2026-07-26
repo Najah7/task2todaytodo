@@ -38,7 +38,6 @@ CREATE TABLE projects (
     title text NOT NULL CHECK (btrim(title) <> ''),
     goal text,
     description text,
-    due_date date,
     progress smallint NOT NULL DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
     priority text NOT NULL DEFAULT 'low' REFERENCES priority_master(priority) ON DELETE RESTRICT,
     start_at timestamptz NOT NULL,

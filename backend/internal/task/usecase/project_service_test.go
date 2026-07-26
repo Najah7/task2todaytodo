@@ -14,7 +14,7 @@ func TestProjectServiceCreateDefaultsTypeAndProgress(t *testing.T) {
 	startAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	endAt := startAt.Add(24 * time.Hour)
 
-	got, err := service.Create(context.Background(), fixedTaskIDGen("project-1"), "user-1", "", "", "Build API", "", "", time.Time{}, startAt, endAt)
+	got, err := service.Create(context.Background(), fixedTaskIDGen("project-1"), "user-1", "", "", "Build API", "", "", startAt, endAt)
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -54,38 +54,31 @@ func TestProjectServiceGetAggregateScopesByUser(t *testing.T) {
 	}
 }
 
-func TestProjectServiceUpdateMergesAllowedFields(t *testing.T) {
+func TestProjectServiceUpdateBasicMergesAllowedFields(t *testing.T) {
 	startAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	endAt := startAt.Add(24 * time.Hour)
 	project := mustExistingProjectWithTimesForService(t, "project-1", "user-1", "work", "Old title", "Old goal", "Old description", 42, "low", startAt, endAt)
-	project.DueDate = time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	repo := &fakeProjectRepository{
 		projectByUser: project,
 	}
 	service := NewProjectService(repo)
 	projectType := "study"
-	priority := "high"
 	title := "New title"
 	description := "New description"
-	newEndAt := endAt.Add(24 * time.Hour)
-	resetDueDate := time.Time{}
 
-	got, err := service.Update(context.Background(), "user-1", "project-1", ProjectUpdate{
+	got, err := service.UpdateBasic(context.Background(), "user-1", "project-1", ProjectBasicUpdate{
 		Type:        &projectType,
-		Priority:    &priority,
 		Title:       &title,
 		Description: &description,
-		DueDate:     &resetDueDate,
-		EndAt:       &newEndAt,
 	})
 	if err != nil {
-		t.Fatalf("Update() error = %v", err)
+		t.Fatalf("UpdateBasic() error = %v", err)
 	}
 
-	if got.Type.String() != "study" || got.Priority.String() != "high" || got.Title != "New title" || got.Description != "New description" || !got.DueDate.IsZero() || got.EndAt != newEndAt {
+	if got.Type.String() != "study" || got.Title != "New title" || got.Description != "New description" {
 		t.Fatalf("project = %+v, want requested fields updated", got)
 	}
-	if got.Goal != "Old goal" || got.Progress != 42 || got.StartAt != startAt {
+	if got.Goal != "Old goal" || got.Progress != 42 || got.Priority.String() != "low" || got.StartAt != startAt || got.EndAt != endAt {
 		t.Fatalf("project = %+v, want omitted fields preserved", got)
 	}
 	if repo.getByUserID != "user-1" || repo.getByProjectID != "project-1" || repo.updateByUserID != "user-1" {
@@ -93,13 +86,66 @@ func TestProjectServiceUpdateMergesAllowedFields(t *testing.T) {
 	}
 }
 
-func TestProjectServiceUpdatePropagatesProjectNotFound(t *testing.T) {
+func TestProjectServiceUpdateScheduleMergesAllowedFields(t *testing.T) {
+	startAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
+	endAt := startAt.Add(24 * time.Hour)
+	project := mustExistingProjectWithTimesForService(t, "project-1", "user-1", "work", "Old title", "Old goal", "Old description", 42, "low", startAt, endAt)
+	repo := &fakeProjectRepository{
+		projectByUser: project,
+	}
+	service := NewProjectService(repo)
+	newEndAt := endAt.Add(24 * time.Hour)
+
+	got, err := service.UpdateSchedule(context.Background(), "user-1", "project-1", ProjectScheduleUpdate{
+		EndAt: &newEndAt,
+	})
+	if err != nil {
+		t.Fatalf("UpdateSchedule() error = %v", err)
+	}
+
+	if got.EndAt != newEndAt {
+		t.Fatalf("project = %+v, want requested schedule updated", got)
+	}
+	if got.Type != project.Type || got.Priority != project.Priority || got.Title != project.Title || got.StartAt != startAt {
+		t.Fatalf("project = %+v, want non-schedule fields preserved", got)
+	}
+	if repo.getByUserID != "user-1" || repo.getByProjectID != "project-1" || repo.updateByUserID != "user-1" {
+		t.Fatalf("repo calls = %+v, want user-scoped get/update", repo)
+	}
+}
+
+func TestProjectServiceUpdatePriorityMergesAllowedFields(t *testing.T) {
+	startAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
+	endAt := startAt.Add(24 * time.Hour)
+	project := mustExistingProjectWithTimesForService(t, "project-1", "user-1", "work", "Old title", "Old goal", "Old description", 42, "low", startAt, endAt)
+	repo := &fakeProjectRepository{
+		projectByUser: project,
+	}
+	service := NewProjectService(repo)
+
+	got, err := service.UpdatePriority(context.Background(), "user-1", "project-1", "high")
+	if err != nil {
+		t.Fatalf("UpdatePriority() error = %v", err)
+	}
+
+	if got.Priority.String() != "high" {
+		t.Fatalf("project = %+v, want requested priority updated", got)
+	}
+	if got.Type != project.Type || got.Title != project.Title || got.StartAt != startAt || got.EndAt != endAt {
+		t.Fatalf("project = %+v, want non-priority fields preserved", got)
+	}
+	if repo.getByUserID != "user-1" || repo.getByProjectID != "project-1" || repo.updateByUserID != "user-1" {
+		t.Fatalf("repo calls = %+v, want user-scoped get/update", repo)
+	}
+}
+
+func TestProjectServiceUpdateBasicPropagatesProjectNotFound(t *testing.T) {
 	repo := &fakeProjectRepository{getByUserErr: domain.ErrProjectNotFound}
 	service := NewProjectService(repo)
 
-	_, err := service.Update(context.Background(), "user-1", "project-1", ProjectUpdate{})
+	_, err := service.UpdateBasic(context.Background(), "user-1", "project-1", ProjectBasicUpdate{})
 	if !errors.Is(err, domain.ErrProjectNotFound) {
-		t.Fatalf("Update() error = %v, want domain.ErrProjectNotFound", err)
+		t.Fatalf("UpdateBasic() error = %v, want domain.ErrProjectNotFound", err)
 	}
 }
 
@@ -203,7 +249,6 @@ func mustExistingProjectWithTimesForService(
 		title,
 		goal,
 		description,
-		time.Time{},
 		progress,
 		mustTaskPriority(t, priorityValue),
 		startAt,
