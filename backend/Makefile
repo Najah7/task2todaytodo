@@ -124,7 +124,7 @@ _migrate-action:
 
 .PHONY: sqlc-gen
 sqlc-gen:
-	rm -rf internal/repositories/sqlc
+	rm -rf db/sqlc
 	@docker compose run --rm --no-deps sqlc generate
 
 ###############################################
