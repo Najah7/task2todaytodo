@@ -14,7 +14,6 @@ SELECT
     )::text[] AS frequencies,
     ts.start_at,
     ts.end_at,
-    ts.due_at,
     ts.created_at,
     ts.updated_at
 FROM task_schedules AS ts
@@ -36,7 +35,6 @@ SELECT
     )::text[] AS frequencies,
     ts.start_at,
     ts.end_at,
-    ts.due_at,
     ts.created_at,
     ts.updated_at
 FROM task_schedules AS ts
@@ -61,7 +59,6 @@ SELECT
     )::text[] AS frequencies,
     ts.start_at,
     ts.end_at,
-    ts.due_at,
     ts.created_at,
     ts.updated_at
 FROM task_schedules AS ts

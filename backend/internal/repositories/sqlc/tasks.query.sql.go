@@ -12,7 +12,7 @@ import (
 )
 
 const getTask = `-- name: GetTask :one
-SELECT id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
+SELECT id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, progress,
        priority, status, created_at, updated_at
 FROM tasks
 WHERE id = $1
@@ -27,6 +27,7 @@ func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
 		&i.ProjectID,
 		&i.Title,
 		&i.Description,
+		&i.DueDate,
 		&i.EstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Progress,
@@ -39,7 +40,7 @@ func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
 }
 
 const getTaskByFrequency = `-- name: GetTaskByFrequency :many
-SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.estimated_minutes, t.actual_minutes, t.progress,
+SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.progress,
        t.priority, t.status, t.created_at, t.updated_at
 FROM tasks AS t
 WHERE EXISTS (
@@ -73,6 +74,7 @@ func (q *Queries) GetTaskByFrequency(ctx context.Context, frequency string) ([]T
 			&i.ProjectID,
 			&i.Title,
 			&i.Description,
+			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Progress,
@@ -92,7 +94,7 @@ func (q *Queries) GetTaskByFrequency(ctx context.Context, frequency string) ([]T
 }
 
 const getTaskByPriority = `-- name: GetTaskByPriority :many
-SELECT id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
+SELECT id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, progress,
        priority, status, created_at, updated_at
 FROM tasks
 WHERE priority = $1
@@ -113,6 +115,7 @@ func (q *Queries) GetTaskByPriority(ctx context.Context, priority string) ([]Tas
 			&i.ProjectID,
 			&i.Title,
 			&i.Description,
+			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Progress,
@@ -132,7 +135,7 @@ func (q *Queries) GetTaskByPriority(ctx context.Context, priority string) ([]Tas
 }
 
 const getTaskByProject = `-- name: GetTaskByProject :many
-SELECT id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
+SELECT id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, progress,
        priority, status, created_at, updated_at
 FROM tasks
 WHERE project_id = $1::text
@@ -153,6 +156,7 @@ func (q *Queries) GetTaskByProject(ctx context.Context, projectID string) ([]Tas
 			&i.ProjectID,
 			&i.Title,
 			&i.Description,
+			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Progress,
@@ -172,7 +176,7 @@ func (q *Queries) GetTaskByProject(ctx context.Context, projectID string) ([]Tas
 }
 
 const getTaskByProjectType = `-- name: GetTaskByProjectType :many
-SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.estimated_minutes, t.actual_minutes, t.progress,
+SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.progress,
        t.priority, t.status, t.created_at, t.updated_at
 FROM tasks AS t
 JOIN projects AS p ON p.id = t.project_id
@@ -194,6 +198,7 @@ func (q *Queries) GetTaskByProjectType(ctx context.Context, type_ string) ([]Tas
 			&i.ProjectID,
 			&i.Title,
 			&i.Description,
+			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Progress,
@@ -213,7 +218,7 @@ func (q *Queries) GetTaskByProjectType(ctx context.Context, type_ string) ([]Tas
 }
 
 const getTaskByStatus = `-- name: GetTaskByStatus :many
-SELECT id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
+SELECT id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, progress,
        priority, status, created_at, updated_at
 FROM tasks
 WHERE status = $1
@@ -234,6 +239,7 @@ func (q *Queries) GetTaskByStatus(ctx context.Context, status string) ([]Task, e
 			&i.ProjectID,
 			&i.Title,
 			&i.Description,
+			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Progress,
@@ -253,7 +259,7 @@ func (q *Queries) GetTaskByStatus(ctx context.Context, status string) ([]Task, e
 }
 
 const getTaskByTag = `-- name: GetTaskByTag :many
-SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.estimated_minutes, t.actual_minutes, t.progress,
+SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.progress,
        t.priority, t.status, t.created_at, t.updated_at
 FROM tasks AS t
 JOIN task_tag_assignments AS tta ON tta.task_id = t.id
@@ -275,6 +281,7 @@ func (q *Queries) GetTaskByTag(ctx context.Context, tagID string) ([]Task, error
 			&i.ProjectID,
 			&i.Title,
 			&i.Description,
+			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Progress,
@@ -294,7 +301,7 @@ func (q *Queries) GetTaskByTag(ctx context.Context, tagID string) ([]Task, error
 }
 
 const getTaskByUser = `-- name: GetTaskByUser :one
-SELECT id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
+SELECT id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, progress,
        priority, status, created_at, updated_at
 FROM tasks
 WHERE id = $1
@@ -315,6 +322,7 @@ func (q *Queries) GetTaskByUser(ctx context.Context, arg GetTaskByUserParams) (T
 		&i.ProjectID,
 		&i.Title,
 		&i.Description,
+		&i.DueDate,
 		&i.EstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Progress,
@@ -342,7 +350,6 @@ SELECT
     )::text[] AS frequencies,
     ts.start_at,
     ts.end_at,
-    ts.due_at,
     ts.created_at,
     ts.updated_at
 FROM task_schedules AS ts
@@ -367,7 +374,6 @@ type ListTaskSchedulesByTaskForUserRow struct {
 	Frequencies   []string
 	StartAt       pgtype.Timestamptz
 	EndAt         pgtype.Timestamptz
-	DueAt         pgtype.Timestamptz
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 }
@@ -391,7 +397,6 @@ func (q *Queries) ListTaskSchedulesByTaskForUser(ctx context.Context, arg ListTa
 			&i.Frequencies,
 			&i.StartAt,
 			&i.EndAt,
-			&i.DueAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -406,7 +411,7 @@ func (q *Queries) ListTaskSchedulesByTaskForUser(ctx context.Context, arg ListTa
 }
 
 const listTasksByProjectAndUser = `-- name: ListTasksByProjectAndUser :many
-SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.estimated_minutes, t.actual_minutes, t.progress,
+SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.progress,
        t.priority, t.status, t.created_at, t.updated_at
 FROM tasks AS t
 JOIN projects AS p ON p.id = t.project_id
@@ -435,6 +440,7 @@ func (q *Queries) ListTasksByProjectAndUser(ctx context.Context, arg ListTasksBy
 			&i.ProjectID,
 			&i.Title,
 			&i.Description,
+			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Progress,
@@ -459,6 +465,7 @@ SELECT
     ti.task_id,
     ti.title,
     ti.description,
+    ti.due_date,
     ti.completed,
     ti.position,
     ti.interval_weeks,
@@ -487,6 +494,7 @@ type ListTodoItemsByTaskForUserRow struct {
 	TaskID        string
 	Title         string
 	Description   pgtype.Text
+	DueDate       pgtype.Date
 	Completed     bool
 	Position      int32
 	IntervalWeeks int32
@@ -509,6 +517,7 @@ func (q *Queries) ListTodoItemsByTaskForUser(ctx context.Context, arg ListTodoIt
 			&i.TaskID,
 			&i.Title,
 			&i.Description,
+			&i.DueDate,
 			&i.Completed,
 			&i.Position,
 			&i.IntervalWeeks,

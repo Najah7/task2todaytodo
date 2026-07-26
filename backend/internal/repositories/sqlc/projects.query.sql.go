@@ -12,7 +12,7 @@ import (
 )
 
 const getProject = `-- name: GetProject :one
-SELECT id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
+SELECT id, user_id, type, title, goal, description, due_date, progress, priority, start_at, end_at, created_at, updated_at
 FROM projects
 WHERE id = $1
 `
@@ -27,6 +27,7 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 		&i.Title,
 		&i.Goal,
 		&i.Description,
+		&i.DueDate,
 		&i.Progress,
 		&i.Priority,
 		&i.StartAt,
@@ -38,7 +39,7 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 }
 
 const getProjectByUser = `-- name: GetProjectByUser :one
-SELECT id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
+SELECT id, user_id, type, title, goal, description, due_date, progress, priority, start_at, end_at, created_at, updated_at
 FROM projects
 WHERE id = $1
   AND user_id = $2
@@ -59,6 +60,7 @@ func (q *Queries) GetProjectByUser(ctx context.Context, arg GetProjectByUserPara
 		&i.Title,
 		&i.Goal,
 		&i.Description,
+		&i.DueDate,
 		&i.Progress,
 		&i.Priority,
 		&i.StartAt,
@@ -70,7 +72,7 @@ func (q *Queries) GetProjectByUser(ctx context.Context, arg GetProjectByUserPara
 }
 
 const listProjectTasksByUser = `-- name: ListProjectTasksByUser :many
-SELECT id, user_id, project_id, title, description, estimated_minutes, actual_minutes, progress,
+SELECT id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, progress,
        priority, status, created_at, updated_at
 FROM tasks
 WHERE project_id = $1
@@ -98,6 +100,7 @@ func (q *Queries) ListProjectTasksByUser(ctx context.Context, arg ListProjectTas
 			&i.ProjectID,
 			&i.Title,
 			&i.Description,
+			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Progress,

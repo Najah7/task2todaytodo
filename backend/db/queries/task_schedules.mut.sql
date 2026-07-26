@@ -1,11 +1,11 @@
 -- name: CreateTaskSchedule :one
-INSERT INTO task_schedules (id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at, created_at, updated_at;
+INSERT INTO task_schedules (id, task_id, title, description, location, interval_weeks, start_at, end_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, created_at, updated_at;
 
 -- name: CreateTaskScheduleByTaskAndUser :one
 WITH inserted AS (
-    INSERT INTO task_schedules (id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at)
+    INSERT INTO task_schedules (id, task_id, title, description, location, interval_weeks, start_at, end_at)
     SELECT
         sqlc.arg(id),
         sqlc.arg(task_id),
@@ -14,12 +14,11 @@ WITH inserted AS (
         sqlc.arg(location),
         sqlc.arg(interval_weeks),
         sqlc.arg(start_at),
-        sqlc.arg(end_at),
-        sqlc.arg(due_at)
+        sqlc.arg(end_at)
     FROM tasks AS t
     WHERE t.id = sqlc.arg(task_id)
       AND t.user_id = sqlc.arg(user_id)
-    RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at, created_at, updated_at
+    RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, created_at, updated_at
 ),
 inserted_frequencies AS (
     INSERT INTO task_schedule_frequencies (task_schedule_id, frequency)
@@ -42,7 +41,6 @@ SELECT
     )::text[] AS frequencies,
     inserted.start_at,
     inserted.end_at,
-    inserted.due_at,
     inserted.created_at,
     inserted.updated_at
 FROM inserted;
@@ -56,10 +54,9 @@ SET task_id = $2,
     interval_weeks = $6,
     start_at = $7,
     end_at = $8,
-    due_at = $9,
     updated_at = now()
 WHERE id = $1
-RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, due_at, created_at, updated_at;
+RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, created_at, updated_at;
 
 -- name: UpdateTaskScheduleByTaskAndUser :one
 WITH updated AS (
@@ -70,14 +67,13 @@ WITH updated AS (
         interval_weeks = sqlc.arg(interval_weeks),
         start_at = sqlc.arg(start_at),
         end_at = sqlc.arg(end_at),
-        due_at = sqlc.arg(due_at),
         updated_at = now()
     FROM tasks AS t
     WHERE ts.id = sqlc.arg(id)
       AND ts.task_id = sqlc.arg(task_id)
       AND t.id = ts.task_id
       AND t.user_id = sqlc.arg(user_id)
-    RETURNING ts.id, ts.task_id, ts.title, ts.description, ts.location, ts.interval_weeks, ts.start_at, ts.end_at, ts.due_at, ts.created_at, ts.updated_at
+    RETURNING ts.id, ts.task_id, ts.title, ts.description, ts.location, ts.interval_weeks, ts.start_at, ts.end_at, ts.created_at, ts.updated_at
 ),
 deleted_frequencies AS (
     DELETE FROM task_schedule_frequencies AS tsf
@@ -107,7 +103,6 @@ SELECT
     )::text[] AS frequencies,
     updated.start_at,
     updated.end_at,
-    updated.due_at,
     updated.created_at,
     updated.updated_at
 FROM updated;

@@ -17,6 +17,7 @@ SELECT
     ti.task_id,
     ti.title,
     ti.description,
+    ti.due_date,
     ti.completed,
     ti.position,
     ti.interval_weeks,
@@ -37,6 +38,7 @@ type GetTodoItemRow struct {
 	TaskID        string
 	Title         string
 	Description   pgtype.Text
+	DueDate       pgtype.Date
 	Completed     bool
 	Position      int32
 	IntervalWeeks int32
@@ -53,6 +55,7 @@ func (q *Queries) GetTodoItem(ctx context.Context, id string) (GetTodoItemRow, e
 		&i.TaskID,
 		&i.Title,
 		&i.Description,
+		&i.DueDate,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
@@ -69,6 +72,7 @@ SELECT
     ti.task_id,
     ti.title,
     ti.description,
+    ti.due_date,
     ti.completed,
     ti.position,
     ti.interval_weeks,
@@ -98,6 +102,7 @@ type GetTodoItemByTaskAndUserRow struct {
 	TaskID        string
 	Title         string
 	Description   pgtype.Text
+	DueDate       pgtype.Date
 	Completed     bool
 	Position      int32
 	IntervalWeeks int32
@@ -114,6 +119,7 @@ func (q *Queries) GetTodoItemByTaskAndUser(ctx context.Context, arg GetTodoItemB
 		&i.TaskID,
 		&i.Title,
 		&i.Description,
+		&i.DueDate,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
@@ -130,6 +136,7 @@ SELECT
     ti.task_id,
     ti.title,
     ti.description,
+    ti.due_date,
     ti.completed,
     ti.position,
     ti.interval_weeks,
@@ -158,6 +165,7 @@ type ListTodoItemsByTaskAndUserRow struct {
 	TaskID        string
 	Title         string
 	Description   pgtype.Text
+	DueDate       pgtype.Date
 	Completed     bool
 	Position      int32
 	IntervalWeeks int32
@@ -180,6 +188,7 @@ func (q *Queries) ListTodoItemsByTaskAndUser(ctx context.Context, arg ListTodoIt
 			&i.TaskID,
 			&i.Title,
 			&i.Description,
+			&i.DueDate,
 			&i.Completed,
 			&i.Position,
 			&i.IntervalWeeks,
