@@ -135,6 +135,7 @@ func (r TaskRepository) Create(ctx context.Context, task domain.Task) (domain.Ta
 		EstimatedMinutes: intPointerToPgInt(task.EstimatedMinutes),
 		ActualMinutes:    intPointerToPgInt(task.ActualMinutes),
 		Progress:         int16(task.Progress),
+		DueDate:          timeToPgDate(task.DueDate),
 		Priority:         taskPriorityString(task.Priority),
 		Status:           taskStatusString(task.Status),
 	})
@@ -154,6 +155,7 @@ func (r TaskRepository) CreateInProject(ctx context.Context, task domain.Task) (
 		EstimatedMinutes: intPointerToPgInt(task.EstimatedMinutes),
 		ActualMinutes:    intPointerToPgInt(task.ActualMinutes),
 		Progress:         int16(task.Progress),
+		DueDate:          timeToPgDate(task.DueDate),
 		Priority:         taskPriorityString(task.Priority),
 		Status:           taskStatusString(task.Status),
 	})
@@ -173,6 +175,7 @@ func (r TaskRepository) Update(ctx context.Context, task domain.Task) (domain.Ta
 		EstimatedMinutes: intPointerToPgInt(task.EstimatedMinutes),
 		ActualMinutes:    intPointerToPgInt(task.ActualMinutes),
 		Progress:         int16(task.Progress),
+		DueDate:          timeToPgDate(task.DueDate),
 		Priority:         taskPriorityString(task.Priority),
 		Status:           taskStatusString(task.Status),
 	})
@@ -192,6 +195,7 @@ func (r TaskRepository) UpdateByUser(ctx context.Context, task domain.Task) (dom
 		EstimatedMinutes: intPointerToPgInt(task.EstimatedMinutes),
 		ActualMinutes:    intPointerToPgInt(task.ActualMinutes),
 		Progress:         int16(task.Progress),
+		DueDate:          timeToPgDate(task.DueDate),
 		Priority:         taskPriorityString(task.Priority),
 		Status:           taskStatusString(task.Status),
 	})

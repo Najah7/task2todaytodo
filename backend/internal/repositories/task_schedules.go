@@ -51,7 +51,6 @@ func (r TaskScheduleRepository) Create(ctx context.Context, schedule domain.Task
 		IntervalWeeks: int32(schedule.IntervalWeeks),
 		StartAt:       timeToPgTime(schedule.StartAt),
 		EndAt:         timeToPgTime(schedule.EndAt),
-		DueAt:         timeToPgTime(schedule.DueAt),
 	})
 	if err != nil {
 		return domain.NewZeroTaskSchedule(), err
@@ -70,7 +69,6 @@ func (r TaskScheduleRepository) CreateByTaskAndUser(ctx context.Context, userID 
 		IntervalWeeks: int32(schedule.IntervalWeeks),
 		StartAt:       timeToPgTime(schedule.StartAt),
 		EndAt:         timeToPgTime(schedule.EndAt),
-		DueAt:         timeToPgTime(schedule.DueAt),
 		Frequencies:   taskFrequencyStrings(schedule.Frequencies),
 	})
 	if err != nil {
@@ -89,7 +87,6 @@ func (r TaskScheduleRepository) Update(ctx context.Context, schedule domain.Task
 		IntervalWeeks: int32(schedule.IntervalWeeks),
 		StartAt:       timeToPgTime(schedule.StartAt),
 		EndAt:         timeToPgTime(schedule.EndAt),
-		DueAt:         timeToPgTime(schedule.DueAt),
 	})
 	if err != nil {
 		return domain.NewZeroTaskSchedule(), err
@@ -108,7 +105,6 @@ func (r TaskScheduleRepository) UpdateByTaskAndUser(ctx context.Context, userID 
 		IntervalWeeks: int32(schedule.IntervalWeeks),
 		StartAt:       timeToPgTime(schedule.StartAt),
 		EndAt:         timeToPgTime(schedule.EndAt),
-		DueAt:         timeToPgTime(schedule.DueAt),
 		Frequencies:   taskFrequencyStrings(schedule.Frequencies),
 	})
 	if err != nil {
