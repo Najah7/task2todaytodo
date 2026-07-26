@@ -2,8 +2,6 @@ package application
 
 import (
 	"context"
-	"errors"
-
 	"fmt"
 	"net"
 	"net/url"
@@ -44,12 +42,30 @@ func newPool(ctx context.Context) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-type Store struct {
-	Users           *authrepo.UserRepository
-	AccessTokens    *authrepo.AccessTokenRepository
+type authStore struct {
+	Users        *authrepo.UserRepository
+	AccessTokens *authrepo.AccessTokenRepository
+}
+
+func newAuthStore(pool *pgxpool.Pool) authStore {
+	return authStore{
+		Users:        authrepo.NewUserRepository(pool),
+		AccessTokens: authrepo.NewAccessTokenRepository(pool),
+	}
+}
+
+func (s authStore) WithTx(tx pgx.Tx) authStore {
+	return authStore{
+		Users:        s.Users.WithTx(tx),
+		AccessTokens: s.AccessTokens.WithTx(tx),
+	}
+}
+
+type taskStore struct {
 	Projects        *taskrepo.ProjectRepository
 	Tasks           *taskrepo.TaskRepository
 	TodoItems       *taskrepo.TodoItemRepository
+	TodoLists       *taskrepo.TodoListRepository
 	TaskSchedules   *taskrepo.TaskScheduleRepository
 	ProjectTypes    *taskrepo.ProjectTypeRepository
 	TaskFrequencies *taskrepo.TaskFrequencyRepository
@@ -57,39 +73,26 @@ type Store struct {
 	TaskStatuses    *taskrepo.TaskStatusRepository
 }
 
-func newStore(pool *pgxpool.Pool) Store {
-	userRepo := authrepo.NewUserRepository(pool)
-	accessTokenRepo := authrepo.NewAccessTokenRepository(pool)
-	projectRepo := taskrepo.NewProjectRepository(pool)
-	taskRepo := taskrepo.NewTaskRepository(pool)
-	todoItemRepo := taskrepo.NewTodoItemRepository(pool)
-	taskScheduleRepo := taskrepo.NewTaskScheduleRepository(pool)
-	projectTypeRepo := taskrepo.NewProjectTypeRepository(pool)
-	taskFrequencyRepo := taskrepo.NewTaskFrequencyRepository(pool)
-	taskPriorityRepo := taskrepo.NewTaskPriorityRepository(pool)
-	taskStatusRepo := taskrepo.NewTaskStatusRepository(pool)
-
-	return Store{
-		Users:           userRepo,
-		AccessTokens:    accessTokenRepo,
-		Projects:        projectRepo,
-		Tasks:           taskRepo,
-		TodoItems:       todoItemRepo,
-		TaskSchedules:   taskScheduleRepo,
-		ProjectTypes:    projectTypeRepo,
-		TaskFrequencies: taskFrequencyRepo,
-		TaskPriorities:  taskPriorityRepo,
-		TaskStatuses:    taskStatusRepo,
+func newTaskStore(pool *pgxpool.Pool) taskStore {
+	return taskStore{
+		Projects:        taskrepo.NewProjectRepository(pool),
+		Tasks:           taskrepo.NewTaskRepository(pool),
+		TodoItems:       taskrepo.NewTodoItemRepository(pool),
+		TodoLists:       taskrepo.NewTodoListRepository(pool),
+		TaskSchedules:   taskrepo.NewTaskScheduleRepository(pool),
+		ProjectTypes:    taskrepo.NewProjectTypeRepository(pool),
+		TaskFrequencies: taskrepo.NewTaskFrequencyRepository(pool),
+		TaskPriorities:  taskrepo.NewTaskPriorityRepository(pool),
+		TaskStatuses:    taskrepo.NewTaskStatusRepository(pool),
 	}
 }
 
-func (s Store) WithTx(tx pgx.Tx) Store {
-	return Store{
-		Users:           s.Users.WithTx(tx),
-		AccessTokens:    s.AccessTokens.WithTx(tx),
+func (s taskStore) WithTx(tx pgx.Tx) taskStore {
+	return taskStore{
 		Projects:        s.Projects.WithTx(tx),
 		Tasks:           s.Tasks.WithTx(tx),
 		TodoItems:       s.TodoItems.WithTx(tx),
+		TodoLists:       s.TodoLists.WithTx(tx),
 		TaskSchedules:   s.TaskSchedules.WithTx(tx),
 		ProjectTypes:    s.ProjectTypes.WithTx(tx),
 		TaskFrequencies: s.TaskFrequencies.WithTx(tx),
@@ -128,54 +131,6 @@ func getenv(key, fallback string) string {
 	return value
 }
 
-type Transaction struct {
-	pool  *pgxpool.Pool
-	store Store
-}
-
-func newTransaction(pool *pgxpool.Pool, store Store) *Transaction {
-	return &Transaction{
-		pool:  pool,
-		store: store,
-	}
-}
-
-func (t *Transaction) Run(
-	ctx context.Context,
-	fn func(ctx context.Context, store Store) error,
-) error {
-	tx, err := t.pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return fmt.Errorf("begin transaction: %w", err)
-	}
-
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			_ = tx.Rollback(ctx)
-			panic(recovered)
-		}
-	}()
-
-	if err := fn(ctx, t.store.WithTx(tx)); err != nil {
-		rollbackErr := tx.Rollback(ctx)
-
-		if rollbackErr != nil && !errors.Is(rollbackErr, pgx.ErrTxClosed) {
-			return errors.Join(
-				err,
-				fmt.Errorf("rollback transaction: %w", rollbackErr),
-			)
-		}
-
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit transaction: %w", err)
-	}
-
-	return nil
-}
-
 type Service struct {
 	User          *authusecase.UserService
 	AccessToken   *authusecase.AccessTokenService
@@ -189,17 +144,17 @@ type Service struct {
 	TaskStatus    *taskusecase.TaskStatusService
 }
 
-func newService(store Store) Service {
-	userService := authusecase.NewUserService(store.Users)
-	accessTokenService := authusecase.NewAccessTokenService(store.AccessTokens)
-	projectService := taskusecase.NewProjectService(store.Projects)
-	taskService := taskusecase.NewTaskService(store.Tasks, store.Projects)
-	todoItemService := taskusecase.NewTodoItemService(store.TodoItems)
-	taskScheduleService := taskusecase.NewTaskScheduleService(store.TaskSchedules)
-	projectTypeService := taskusecase.NewProjectTypeService(store.ProjectTypes)
-	taskFrequencyService := taskusecase.NewTaskFrequencyService(store.TaskFrequencies)
-	taskPriorityService := taskusecase.NewTaskPriorityService(store.TaskPriorities)
-	taskStatusService := taskusecase.NewTaskStatusService(store.TaskStatuses)
+func newService(authStore authStore, taskStore taskStore) Service {
+	userService := authusecase.NewUserService(authStore.Users)
+	accessTokenService := authusecase.NewAccessTokenService(authStore.AccessTokens)
+	projectService := taskusecase.NewProjectService(taskStore.Projects)
+	taskService := taskusecase.NewTaskService(taskStore.Tasks, taskStore.Projects)
+	todoItemService := taskusecase.NewTodoItemService(taskStore.TodoItems)
+	taskScheduleService := taskusecase.NewTaskScheduleService(taskStore.TaskSchedules)
+	projectTypeService := taskusecase.NewProjectTypeService(taskStore.ProjectTypes)
+	taskFrequencyService := taskusecase.NewTaskFrequencyService(taskStore.TaskFrequencies)
+	taskPriorityService := taskusecase.NewTaskPriorityService(taskStore.TaskPriorities)
+	taskStatusService := taskusecase.NewTaskStatusService(taskStore.TaskStatuses)
 
 	return Service{
 		User:          userService,
@@ -215,12 +170,23 @@ func newService(store Store) Service {
 	}
 }
 
+type UnitOfWork struct {
+	Auth authusecase.UnitOfWork
+	Task taskusecase.UnitOfWork
+}
+
+func newUnitOfWork(pool *pgxpool.Pool, authStore authStore, taskStore taskStore) UnitOfWork {
+	return UnitOfWork{
+		Auth: newAuthUnitOfWork(pool, authStore),
+		Task: newTaskUnitOfWork(pool, taskStore),
+	}
+}
+
 type Application struct {
-	config  config
-	logger  logger
-	Store   Store
-	Service Service
-	Tx      *Transaction
+	config     config
+	logger     logger
+	Service    Service
+	UnitOfWork UnitOfWork
 }
 
 func New() *Application {
@@ -231,14 +197,15 @@ func New() *Application {
 		panic(fmt.Errorf("failed to create connection pool: %w", err))
 	}
 
-	store := newStore(pool)
-	service := newService(store)
+	authStore := newAuthStore(pool)
+	taskStore := newTaskStore(pool)
+	service := newService(authStore, taskStore)
+	unitOfWork := newUnitOfWork(pool, authStore, taskStore)
 
 	return &Application{
-		config:  config{},
-		logger:  nil,
-		Store:   store,
-		Service: service,
-		Tx:      newTransaction(pool, store),
+		config:     config{},
+		logger:     nil,
+		Service:    service,
+		UnitOfWork: unitOfWork,
 	}
 }
