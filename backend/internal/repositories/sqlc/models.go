@@ -16,6 +16,23 @@ type AccessToken struct {
 	CreatedAt pgtype.Timestamptz
 }
 
+type FrequencyMaster struct {
+	Frequency string
+	Label     string
+	LabelJp   string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type PriorityMaster struct {
+	Priority  string
+	Label     string
+	LabelJp   string
+	Weight    int32
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type Project struct {
 	ID          string
 	UserID      string
@@ -24,6 +41,7 @@ type Project struct {
 	Goal        pgtype.Text
 	Description pgtype.Text
 	Progress    int16
+	Priority    string
 	StartAt     pgtype.Timestamptz
 	EndAt       pgtype.Timestamptz
 	CreatedAt   pgtype.Timestamptz
@@ -51,23 +69,6 @@ type Task struct {
 	Status           string
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
-}
-
-type TaskFrequencyMaster struct {
-	Frequency string
-	Label     string
-	LabelJp   string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-}
-
-type TaskPriorityMaster struct {
-	Priority  string
-	Label     string
-	LabelJp   string
-	Weight    int32
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
 }
 
 type TaskSchedule struct {
