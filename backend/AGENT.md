@@ -56,6 +56,13 @@ service, tests there. No domain source direct under `internal/domain`.
 - `NewExistingXXX`: restore persisted state. Accept all stored fields, including timestamps.
 - `NewZeroXXX`: explicit absent/invalid return value.
 
+### Aggregate
+
+- Use Aggregate for read models that span multiple tables or entity collections.
+- JOIN-based queries should return repository-mapped Aggregates, e.g. `ProjectAggregate` for Project + Tasks or `TaskAggregate` for Task + TodoItems + TaskSchedules.
+- Keep SQL/JOIN details inside repository implementations. Domain Aggregates describe the composed domain result, not database mechanics.
+- Do not force a single-table Entity to carry child collections only because one API response needs them.
+
 ### Service
 
 - Orchestrate entity + repository interface.
