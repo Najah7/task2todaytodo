@@ -21,6 +21,12 @@ func NewTaskScheduleRepository(db sqlc.DBTX) *TaskScheduleRepository {
 	}
 }
 
+func (r *TaskScheduleRepository) WithTx(tx pgx.Tx) *TaskScheduleRepository {
+	return &TaskScheduleRepository{
+		queries: r.queries.WithTx(tx),
+	}
+}
+
 func (r TaskScheduleRepository) Get(ctx context.Context, id domain.TaskScheduleID) (domain.TaskSchedule, error) {
 	record, err := r.queries.GetTaskSchedule(ctx, string(id))
 	if err != nil {

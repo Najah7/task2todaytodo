@@ -7,6 +7,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/domain/auth"
 	"github.com/Najah7/task2todaytodo/internal/domain/shared"
 	"github.com/Najah7/task2todaytodo/internal/repositories/sqlc"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -20,6 +21,12 @@ func NewAccessTokenRepository(db sqlc.DBTX) *AccessTokenRepository {
 	queries := sqlc.New(db)
 	return &AccessTokenRepository{
 		queries: queries,
+	}
+}
+
+func (r *AccessTokenRepository) WithTx(tx pgx.Tx) *AccessTokenRepository {
+	return &AccessTokenRepository{
+		queries: r.queries.WithTx(tx),
 	}
 }
 

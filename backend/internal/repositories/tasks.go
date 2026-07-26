@@ -21,6 +21,12 @@ func NewTaskRepository(db sqlc.DBTX) *TaskRepository {
 	}
 }
 
+func (r *TaskRepository) WithTx(tx pgx.Tx) *TaskRepository {
+	return &TaskRepository{
+		queries: r.queries.WithTx(tx),
+	}
+}
+
 func (r TaskRepository) Get(ctx context.Context, id domain.TaskID) (domain.Task, error) {
 	record, err := r.queries.GetTask(ctx, string(id))
 	if err != nil {

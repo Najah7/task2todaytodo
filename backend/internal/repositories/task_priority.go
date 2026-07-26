@@ -5,6 +5,7 @@ import (
 
 	domain "github.com/Najah7/task2todaytodo/internal/domain/task"
 	"github.com/Najah7/task2todaytodo/internal/repositories/sqlc"
+	"github.com/jackc/pgx/v5"
 )
 
 var _ domain.TaskPriorityRepository = TaskPriorityRepository{}
@@ -16,6 +17,12 @@ type TaskPriorityRepository struct {
 func NewTaskPriorityRepository(db sqlc.DBTX) *TaskPriorityRepository {
 	return &TaskPriorityRepository{
 		queries: sqlc.New(db),
+	}
+}
+
+func (r *TaskPriorityRepository) WithTx(tx pgx.Tx) *TaskPriorityRepository {
+	return &TaskPriorityRepository{
+		queries: r.queries.WithTx(tx),
 	}
 }
 
