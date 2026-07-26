@@ -9,7 +9,7 @@ import (
 
 func TestTaskServiceCreateStandaloneTask(t *testing.T) {
 	repo := &fakeTaskRepository{}
-	service := NewTaskService(repo)
+	service := NewTaskService(repo, &fakeProjectRepository{})
 	estimated := 30
 
 	got, err := service.CreateStandaloneTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "Write tests", "Cover service", &estimated, nil, "", "")
@@ -30,7 +30,7 @@ func TestTaskServiceCreateStandaloneTask(t *testing.T) {
 
 func TestTaskServiceCreateProjectTask(t *testing.T) {
 	repo := &fakeTaskRepository{}
-	service := NewTaskService(repo)
+	service := NewTaskService(repo, &fakeProjectRepository{})
 
 	got, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", nil, nil, "high", "in_progress")
 	if err != nil {
@@ -45,13 +45,47 @@ func TestTaskServiceCreateProjectTask(t *testing.T) {
 	}
 }
 
+func TestTaskServiceCreateProjectTaskInheritsProjectPriority(t *testing.T) {
+	repo := &fakeTaskRepository{}
+	projectRepo := &fakeProjectRepository{
+		projectByUser: mustExistingProjectForService(t, "project-1", "user-1", "work", "Project", "", "", 0, "urgent"),
+	}
+	service := NewTaskService(repo, projectRepo)
+
+	got, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", nil, nil, "", "")
+	if err != nil {
+		t.Fatalf("CreateProjectTask() error = %v", err)
+	}
+
+	if got.Priority.String() != "urgent" {
+		t.Fatalf("task = %+v, want project priority inherited", got)
+	}
+	if projectRepo.getByUserID != "user-1" || projectRepo.getByProjectID != "project-1" {
+		t.Fatalf("project lookup user=%q project=%q, want scoped lookup", projectRepo.getByUserID, projectRepo.getByProjectID)
+	}
+}
+
 func TestTaskServiceCreateProjectTaskNotFound(t *testing.T) {
 	repo := &fakeTaskRepository{createInProjectErr: ErrTaskProjectNotFound}
-	service := NewTaskService(repo)
+	service := NewTaskService(repo, &fakeProjectRepository{})
 
 	_, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", nil, nil, "", "")
 	if !errors.Is(err, ErrTaskProjectNotFound) {
 		t.Fatalf("CreateProjectTask() error = %v, want ErrTaskProjectNotFound", err)
+	}
+}
+
+func TestTaskServiceCreateProjectTaskInheritPriorityProjectNotFound(t *testing.T) {
+	repo := &fakeTaskRepository{}
+	projectRepo := &fakeProjectRepository{getByUserErr: ErrProjectNotFound}
+	service := NewTaskService(repo, projectRepo)
+
+	_, err := service.CreateProjectTask(context.Background(), fixedTaskIDGen("task-1"), "user-1", "project-1", "Write API", "", nil, nil, "", "")
+	if !errors.Is(err, ErrProjectNotFound) {
+		t.Fatalf("CreateProjectTask() error = %v, want ErrProjectNotFound", err)
+	}
+	if repo.createdInProject.ID != "" {
+		t.Fatalf("createdInProject = %+v, want repository create not called", repo.createdInProject)
 	}
 }
 
@@ -67,7 +101,7 @@ func TestTaskServiceGetTaskReturnsAggregate(t *testing.T) {
 			},
 		},
 	}
-	service := NewTaskService(repo)
+	service := NewTaskService(repo, &fakeProjectRepository{})
 
 	got, err := service.GetTask(context.Background(), "user-1", "task-1")
 	if err != nil {
@@ -88,7 +122,7 @@ func TestTaskServiceUpdateTaskBasicPreservesDisallowedFields(t *testing.T) {
 	repo := &fakeTaskRepository{
 		taskByUser: mustExistingTask(t, "task-1", "user-1", "project-1", "Old", "Old description", &estimated, &actual, 42, "urgent", "open"),
 	}
-	service := NewTaskService(repo)
+	service := NewTaskService(repo, &fakeProjectRepository{})
 	title := "New title"
 	description := "New description"
 	status := "done"
@@ -114,7 +148,7 @@ func TestTaskServiceUpdateTaskPriorityPreservesOtherFields(t *testing.T) {
 	repo := &fakeTaskRepository{
 		taskByUser: mustExistingTask(t, "task-1", "user-1", "project-1", "Task", "", &estimated, nil, 50, "low", "in_progress"),
 	}
-	service := NewTaskService(repo)
+	service := NewTaskService(repo, &fakeProjectRepository{})
 
 	got, err := service.UpdateTaskPriority(context.Background(), "user-1", "task-1", "high")
 	if err != nil {
@@ -136,7 +170,7 @@ func TestTaskServiceUpdateTaskEstimation(t *testing.T) {
 	repo := &fakeTaskRepository{
 		taskByUser: mustExistingTask(t, "task-1", "user-1", "", "Task", "", &estimated, &actual, 10, "low", "open"),
 	}
-	service := NewTaskService(repo)
+	service := NewTaskService(repo, &fakeProjectRepository{})
 
 	got, err := service.UpdateTaskEstimation(context.Background(), "user-1", "task-1", nil, &newActual)
 	if err != nil {
@@ -155,7 +189,7 @@ func TestTaskServiceUpdateTaskEstimation(t *testing.T) {
 }
 
 func TestTaskServiceUpdateTaskEstimationRejectsEmptyRequest(t *testing.T) {
-	service := NewTaskService(&fakeTaskRepository{})
+	service := NewTaskService(&fakeTaskRepository{}, &fakeProjectRepository{})
 
 	_, err := service.UpdateTaskEstimation(context.Background(), "user-1", "task-1", nil, nil)
 	if !errors.Is(err, ErrTaskEstimationUpdateEmpty) {
@@ -165,7 +199,7 @@ func TestTaskServiceUpdateTaskEstimationRejectsEmptyRequest(t *testing.T) {
 
 func TestTaskServiceDeleteTaskScopesByUser(t *testing.T) {
 	repo := &fakeTaskRepository{}
-	service := NewTaskService(repo)
+	service := NewTaskService(repo, &fakeProjectRepository{})
 
 	if err := service.DeleteTask(context.Background(), "user-1", "task-1"); err != nil {
 		t.Fatalf("DeleteTask() error = %v", err)

@@ -25,6 +25,7 @@ type Project struct {
 	Goal        string
 	Description string
 	Progress    int
+	Priority    TaskPriority
 	StartAt     time.Time
 	EndAt       time.Time
 	CreatedAt   time.Time
@@ -40,17 +41,19 @@ func NewProject(
 	id ProjectID,
 	userID UserID,
 	projectType ProjectType,
+	priority TaskPriority,
 	title string,
 	startAt time.Time,
 	endAt time.Time,
 ) (Project, error) {
 	p := Project{
-		ID:      id,
-		UserID:  userID,
-		Type:    projectType,
-		Title:   title,
-		StartAt: startAt,
-		EndAt:   endAt,
+		ID:       id,
+		UserID:   userID,
+		Type:     projectType,
+		Priority: priority,
+		Title:    title,
+		StartAt:  startAt,
+		EndAt:    endAt,
 	}
 	return p, p.Validate()
 }
@@ -63,6 +66,7 @@ func NewProjectWithDetails(
 	goal string,
 	description string,
 	progress int,
+	priority TaskPriority,
 	startAt time.Time,
 	endAt time.Time,
 ) (Project, error) {
@@ -74,6 +78,7 @@ func NewProjectWithDetails(
 		Goal:        goal,
 		Description: description,
 		Progress:    progress,
+		Priority:    priority,
 		StartAt:     startAt,
 		EndAt:       endAt,
 	}
@@ -88,6 +93,7 @@ func NewExistingProject(
 	goal string,
 	description string,
 	progress int,
+	priority TaskPriority,
 	startAt time.Time,
 	endAt time.Time,
 	createdAt time.Time,
@@ -101,6 +107,7 @@ func NewExistingProject(
 		Goal:        goal,
 		Description: description,
 		Progress:    progress,
+		Priority:    priority,
 		StartAt:     startAt,
 		EndAt:       endAt,
 		CreatedAt:   createdAt,
@@ -130,6 +137,11 @@ func (p Project) Validate() error {
 	}
 	if err := p.Type.validate(); err != nil {
 		return err
+	}
+	if p.Priority != (TaskPriority{}) {
+		if err := p.Priority.validate(); err != nil {
+			return err
+		}
 	}
 	if strings.TrimSpace(p.Title) == "" {
 		return ErrProjectTitleEmpty
