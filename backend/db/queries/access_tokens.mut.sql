@@ -1,8 +1,3 @@
--- name: GetAccessTokenByToken :one
-SELECT token, user_id, expires_at, revoked_at, created_at
-FROM access_tokens
-WHERE token = $1;
-
 -- name: CreateAccessToken :one
 INSERT INTO access_tokens (token, user_id, expires_at)
 VALUES ($1, $2, $3)
