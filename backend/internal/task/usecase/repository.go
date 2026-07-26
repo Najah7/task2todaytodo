@@ -71,6 +71,7 @@ type TaskScheduleRepository interface {
 
 type TodoItemRepository interface {
 	Get(ctx context.Context, id domain.TodoItemID) (domain.TodoItem, error)
+	ListByTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID) (domain.TodoItems, error)
 	Create(ctx context.Context, item domain.TodoItem) (domain.TodoItem, error)
 	CreateForOwnedTask(ctx context.Context, userID domain.UserID, item domain.TodoItem, appendToTail bool) (domain.TodoItem, error)
 	Update(ctx context.Context, item domain.TodoItem) (domain.TodoItem, error)

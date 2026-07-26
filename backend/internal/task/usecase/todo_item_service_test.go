@@ -139,6 +139,11 @@ type fakeTodoItemRepository struct {
 	created           domain.TodoItem
 	appendToTail      bool
 	createErr         error
+	listByTaskCalls   int
+	listByTaskUserID  domain.UserID
+	listByTaskTaskID  domain.TaskID
+	listByTaskItems   domain.TodoItems
+	listByTaskErr     error
 	checkUserID       domain.UserID
 	checkTaskID       domain.TaskID
 	checkTodoItemID   domain.TodoItemID
@@ -160,6 +165,16 @@ func (r *fakeTodoItemRepository) CreateForOwnedTask(_ context.Context, userID do
 		return domain.NewZeroTodoItem(), r.createErr
 	}
 	return item, nil
+}
+
+func (r *fakeTodoItemRepository) ListByTask(_ context.Context, userID domain.UserID, taskID domain.TaskID) (domain.TodoItems, error) {
+	r.listByTaskCalls++
+	r.listByTaskUserID = userID
+	r.listByTaskTaskID = taskID
+	if r.listByTaskErr != nil {
+		return nil, r.listByTaskErr
+	}
+	return r.listByTaskItems, nil
 }
 
 func (r *fakeTodoItemRepository) CheckForOwnedTask(_ context.Context, userID domain.UserID, taskID domain.TaskID, id domain.TodoItemID) error {

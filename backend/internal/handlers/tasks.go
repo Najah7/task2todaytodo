@@ -535,6 +535,8 @@ func taskErrToErrResponse(err error) (int, ErrDetail) {
 		return http.StatusNotFound, NewErrDetail("project_id", "project_not_found", "Project not found")
 	case errors.Is(err, taskusecase.ErrTaskEstimationUpdateEmpty):
 		return http.StatusBadRequest, NewErrDetail("", "empty_estimation_update", "Estimated minutes or actual minutes must be provided")
+	case errors.Is(err, taskusecase.ErrTaskHasIncompleteTodoItems):
+		return http.StatusBadRequest, NewErrDetail("", "task_has_incomplete_todo_items", "Cannot mark task as done while it has incomplete todo items")
 	case errors.Is(err, domain.ErrTaskIDEmpty):
 		return http.StatusBadRequest, NewErrDetail("task_id", "invalid_task_id", "Task ID is required")
 	case errors.Is(err, domain.ErrTaskTitleEmpty):
