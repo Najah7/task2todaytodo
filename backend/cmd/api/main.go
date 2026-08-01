@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	_ "github.com/Najah7/task2todaytodo/docs"
-	"github.com/Najah7/task2todaytodo/internal/adapters"
+	"github.com/Najah7/task2todaytodo/internal/shared/adapters"
 	"github.com/Najah7/task2todaytodo/internal/application"
 	authhandlers "github.com/Najah7/task2todaytodo/internal/auth/handlers"
 	authmiddlewares "github.com/Najah7/task2todaytodo/internal/auth/middlewares"
