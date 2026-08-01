@@ -8,7 +8,8 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/adapters"
 	"github.com/Najah7/task2todaytodo/internal/application"
 	authhandlers "github.com/Najah7/task2todaytodo/internal/auth/handlers"
-	"github.com/Najah7/task2todaytodo/internal/middlewares"
+	authmiddlewares "github.com/Najah7/task2todaytodo/internal/auth/middlewares"
+	sharedmiddlewares "github.com/Najah7/task2todaytodo/internal/shared/middlewares"
 	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 	taskhandlers "github.com/Najah7/task2todaytodo/internal/task/handlers"
 	"github.com/go-chi/chi/v5"
@@ -25,7 +26,7 @@ import (
 // @name						Authorization
 func main() {
 	r := chi.NewRouter()
-	r.Use(middlewares.StripTrailingSlash)
+	r.Use(sharedmiddlewares.StripTrailingSlash)
 
 	app := application.New()
 
@@ -58,7 +59,7 @@ func main() {
 		r.Get("/tasks/priorities", taskPriorityHandler.List)
 		r.Get("/tasks/statuses", taskStatusHandler.List)
 
-		authRoutes := r.With(middlewares.AuthMiddleware(*app.Service.AccessToken))
+		authRoutes := r.With(authmiddlewares.AuthMiddleware(*app.Service.AccessToken))
 		authRoutes.Get("/users/me", userHandler.Get)
 		authRoutes.Patch("/users/me", userHandler.UpdateBasicInfo)
 		authRoutes.Patch("/users/me/password", userHandler.UpdatePassword)
