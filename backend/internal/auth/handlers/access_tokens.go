@@ -3,11 +3,12 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 	"net/http"
 
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
+
 	authusecase "github.com/Najah7/task2todaytodo/internal/auth/usecase"
-	"github.com/Najah7/task2todaytodo/internal/utils"
+	"github.com/Najah7/task2todaytodo/internal/shared/helpers"
 )
 
 var (
@@ -78,7 +79,7 @@ func (h *AccessTokenHandler) Generate(w http.ResponseWriter, r *http.Request) {
 
 	sharedhandlers.WriteJSON(w, http.StatusOK, AccessTokenResponse{
 		Token:     t.Token,
-		ExpiresAt: utils.UnixToJST(t.ExpiresAt),
+		ExpiresAt: helpers.UnixToJST(t.ExpiresAt),
 	})
 }
 
