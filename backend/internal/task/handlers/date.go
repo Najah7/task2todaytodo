@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 	"time"
 )
 
@@ -52,6 +53,6 @@ func decodeNullableDateOnly(raw map[string]json.RawMessage, field string) (*stri
 	return &date, true, nil
 }
 
-func errDetailInvalidDateOnly(field string) ErrDetail {
-	return NewErrDetail(field, "invalid_date", "Date must use YYYY-MM-DD format")
+func errDetailInvalidDateOnly(field string) sharedhandlers.ErrDetail {
+	return sharedhandlers.NewErrDetail(field, "invalid_date", "Date must use YYYY-MM-DD format")
 }

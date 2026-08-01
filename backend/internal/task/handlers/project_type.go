@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 	"net/http"
 
 	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
@@ -34,16 +35,16 @@ type ProjectTypeListResponse struct {
 //	@Tags			Projects
 //	@Produce		json
 //	@Success		200	{object}	ProjectTypeListResponse
-//	@Failure		500	{object}	ErrResponse	"Failed to list project types"
+//	@Failure		500	{object}	sharedhandlers.ErrResponse	"Failed to list project types"
 //	@Router			/projects/types [get]
 func (h *ProjectTypeHandler) List(w http.ResponseWriter, r *http.Request) {
 	projectTypes, err := h.service.List(r.Context())
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, ErrSpecProjectTypesListFailed)
+		sharedhandlers.WriteError(w, http.StatusInternalServerError, sharedhandlers.ErrSpecProjectTypesListFailed)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, ProjectTypeListResponse{Data: newProjectTypeResponses(projectTypes)})
+	sharedhandlers.WriteJSON(w, http.StatusOK, ProjectTypeListResponse{Data: newProjectTypeResponses(projectTypes)})
 }
 
 func newProjectTypeResponses(projectTypes []domain.ProjectType) []ProjectTypeResponse {

@@ -3,13 +3,12 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 	"net/http"
 
 	authusecase "github.com/Najah7/task2todaytodo/internal/auth/usecase"
 	"github.com/Najah7/task2todaytodo/internal/utils"
 )
-
-const AccessTokenContextKey = "accessToken"
 
 var (
 	ErrUnauthorizedError = errors.New("unauthorized access")
@@ -46,9 +45,9 @@ type AccessTokenGenerateRequest struct {
 //	@Produce		json
 //	@Param			request	body		AccessTokenGenerateRequest	true	"Access token generate request"
 //	@Success		200		{object}	AccessTokenResponse
-//	@Failure		400		{object}	ErrResponse	"Invalid request body"
-//	@Failure		401		{object}	ErrResponse	"Invalid email or password"
-//	@Failure		500		{object}	ErrResponse	"Failed to generate access token"
+//	@Failure		400		{object}	sharedhandlers.ErrResponse	"Invalid request body"
+//	@Failure		401		{object}	sharedhandlers.ErrResponse	"Invalid email or password"
+//	@Failure		500		{object}	sharedhandlers.ErrResponse	"Failed to generate access token"
 //	@Router			/access-tokens [post]
 func (h *AccessTokenHandler) Generate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -56,28 +55,28 @@ func (h *AccessTokenHandler) Generate(w http.ResponseWriter, r *http.Request) {
 	var req AccessTokenGenerateRequest
 	requestBody := json.NewDecoder(r.Body)
 	if err := requestBody.Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecAccessTokensGenerateFailed, ErrDetailInvalidRequestBody)
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecAccessTokensGenerateFailed, sharedhandlers.ErrDetailInvalidRequestBody)
 		return
 	}
 
 	u, err := h.userService.Login(ctx, req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, authusecase.ErrInvalidCredentials) {
-			WriteError(w, http.StatusUnauthorized, ErrSpecAccessTokensGenerateFailed, ErrDetailInvalidCredentials)
+			sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecAccessTokensGenerateFailed, sharedhandlers.ErrDetailInvalidCredentials)
 			return
 		}
 
-		WriteError(w, http.StatusInternalServerError, ErrSpecAccessTokensGenerateFailed, ErrDetailFailedUserLookup)
+		sharedhandlers.WriteError(w, http.StatusInternalServerError, sharedhandlers.ErrSpecAccessTokensGenerateFailed, sharedhandlers.ErrDetailFailedUserLookup)
 		return
 	}
 
 	t, err := h.accessTokenService.Generate(ctx, u.ID)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, ErrSpecAccessTokensGenerateFailed)
+		sharedhandlers.WriteError(w, http.StatusInternalServerError, sharedhandlers.ErrSpecAccessTokensGenerateFailed)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, AccessTokenResponse{
+	sharedhandlers.WriteJSON(w, http.StatusOK, AccessTokenResponse{
 		Token:     t.Token,
 		ExpiresAt: utils.UnixToJST(t.ExpiresAt),
 	})
@@ -90,23 +89,23 @@ func (h *AccessTokenHandler) Generate(w http.ResponseWriter, r *http.Request) {
 //	@Tags			Access Tokens
 //	@Security		BearerAuth
 //	@Success		200	{object}	MessageResponse	"OK"
-//	@Failure		401	{object}	ErrResponse		"Missing or invalid access token"
-//	@Failure		500	{object}	ErrResponse		"Failed to revoke access token"
+//	@Failure		401	{object}	sharedhandlers.ErrResponse		"Missing or invalid access token"
+//	@Failure		500	{object}	sharedhandlers.ErrResponse		"Failed to revoke access token"
 //	@Router			/access-token/current [delete]
 func (h *AccessTokenHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	token, ok := ctx.Value(AccessTokenContextKey).(string)
+	token, ok := ctx.Value(sharedhandlers.AccessTokenContextKey).(string)
 	if !ok || token == "" {
-		WriteError(w, http.StatusUnauthorized, ErrSpecAccessTokensRevokeFailed, ErrDetailMissingOrInvalidAccessToken)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecAccessTokensRevokeFailed, sharedhandlers.ErrDetailMissingOrInvalidAccessToken)
 		return
 	}
 
 	err := h.accessTokenService.Revoke(ctx, token)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, ErrSpecAccessTokensRevokeFailed)
+		sharedhandlers.WriteError(w, http.StatusInternalServerError, sharedhandlers.ErrSpecAccessTokensRevokeFailed)
 		return
 	}
 
-	WriteMessage(w, http.StatusOK, "OK")
+	sharedhandlers.WriteMessage(w, http.StatusOK, "OK")
 }

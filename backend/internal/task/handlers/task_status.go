@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 	"net/http"
 
 	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
@@ -34,16 +35,16 @@ type TaskStatusListResponse struct {
 //	@Tags			Tasks
 //	@Produce		json
 //	@Success		200	{object}	TaskStatusListResponse
-//	@Failure		500	{object}	ErrResponse	"Failed to list task statuses"
+//	@Failure		500	{object}	sharedhandlers.ErrResponse	"Failed to list task statuses"
 //	@Router			/tasks/statuses [get]
 func (h *TaskStatusHandler) List(w http.ResponseWriter, r *http.Request) {
 	statuses, err := h.service.List(r.Context())
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, ErrSpecTaskStatusesListFailed)
+		sharedhandlers.WriteError(w, http.StatusInternalServerError, sharedhandlers.ErrSpecTaskStatusesListFailed)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, TaskStatusListResponse{Data: newTaskStatusResponses(statuses)})
+	sharedhandlers.WriteJSON(w, http.StatusOK, TaskStatusListResponse{Data: newTaskStatusResponses(statuses)})
 }
 
 func newTaskStatusResponses(statuses []domain.TaskStatus) []TaskStatusResponse {

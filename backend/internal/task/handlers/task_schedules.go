@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 	"net/http"
 	"time"
 
@@ -41,21 +42,21 @@ type TaskScheduleCreateRequest struct {
 //	@Param			task_id	path		string						true	"Task ID"
 //	@Param			request	body		TaskScheduleCreateRequest	true	"TaskSchedule create request"
 //	@Success		201		{object}	TaskScheduleResponse
-//	@Failure		400		{object}	ErrResponse	"Invalid request body"
-//	@Failure		401		{object}	ErrResponse	"Unauthorized"
-//	@Failure		404		{object}	ErrResponse	"Task not found"
-//	@Failure		500		{object}	ErrResponse	"Failed to create task schedule"
+//	@Failure		400		{object}	sharedhandlers.ErrResponse	"Invalid request body"
+//	@Failure		401		{object}	sharedhandlers.ErrResponse	"Unauthorized"
+//	@Failure		404		{object}	sharedhandlers.ErrResponse	"Task not found"
+//	@Failure		500		{object}	sharedhandlers.ErrResponse	"Failed to create task schedule"
 //	@Router			/tasks/{task_id}/schedules [post]
 func (h *TaskScheduleHandler) Create(w http.ResponseWriter, r *http.Request) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTaskSchedulesCreateFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTaskSchedulesCreateFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
 	var req TaskScheduleCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecTaskSchedulesCreateFailed, ErrDetailInvalidRequestBody)
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecTaskSchedulesCreateFailed, sharedhandlers.ErrDetailInvalidRequestBody)
 		return
 	}
 
@@ -72,11 +73,11 @@ func (h *TaskScheduleHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		status, detail := taskScheduleErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTaskSchedulesCreateFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTaskSchedulesCreateFailed, detail)
 		return
 	}
 
-	WriteJSON(w, http.StatusCreated, newTaskScheduleResponse(schedule))
+	sharedhandlers.WriteJSON(w, http.StatusCreated, newTaskScheduleResponse(schedule))
 }
 
 type TaskScheduleUpdateRequest struct {
@@ -101,21 +102,21 @@ type TaskScheduleUpdateRequest struct {
 //	@Param			task_schedule_id	path		string						true	"TaskSchedule ID"
 //	@Param			request				body		TaskScheduleUpdateRequest	true	"TaskSchedule update request"
 //	@Success		200					{object}	TaskScheduleResponse
-//	@Failure		400					{object}	ErrResponse	"Invalid request body"
-//	@Failure		401					{object}	ErrResponse	"Unauthorized"
-//	@Failure		404					{object}	ErrResponse	"TaskSchedule not found"
-//	@Failure		500					{object}	ErrResponse	"Failed to update task schedule"
+//	@Failure		400					{object}	sharedhandlers.ErrResponse	"Invalid request body"
+//	@Failure		401					{object}	sharedhandlers.ErrResponse	"Unauthorized"
+//	@Failure		404					{object}	sharedhandlers.ErrResponse	"TaskSchedule not found"
+//	@Failure		500					{object}	sharedhandlers.ErrResponse	"Failed to update task schedule"
 //	@Router			/tasks/{task_id}/schedules/{task_schedule_id} [patch]
 func (h *TaskScheduleHandler) Update(w http.ResponseWriter, r *http.Request) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTaskSchedulesUpdateFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTaskSchedulesUpdateFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
 	var req TaskScheduleUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecTaskSchedulesUpdateFailed, ErrDetailInvalidRequestBody)
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecTaskSchedulesUpdateFailed, sharedhandlers.ErrDetailInvalidRequestBody)
 		return
 	}
 
@@ -133,11 +134,11 @@ func (h *TaskScheduleHandler) Update(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		status, detail := taskScheduleErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTaskSchedulesUpdateFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTaskSchedulesUpdateFailed, detail)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, newTaskScheduleResponse(schedule))
+	sharedhandlers.WriteJSON(w, http.StatusOK, newTaskScheduleResponse(schedule))
 }
 
 // Delete godoc
@@ -150,45 +151,45 @@ func (h *TaskScheduleHandler) Update(w http.ResponseWriter, r *http.Request) {
 //	@Param			task_id				path		string			true	"Task ID"
 //	@Param			task_schedule_id	path		string			true	"TaskSchedule ID"
 //	@Success		200					{object}	MessageResponse	"OK"
-//	@Failure		401					{object}	ErrResponse		"Unauthorized"
-//	@Failure		404					{object}	ErrResponse		"TaskSchedule not found"
-//	@Failure		500					{object}	ErrResponse		"Failed to delete task schedule"
+//	@Failure		401					{object}	sharedhandlers.ErrResponse		"Unauthorized"
+//	@Failure		404					{object}	sharedhandlers.ErrResponse		"TaskSchedule not found"
+//	@Failure		500					{object}	sharedhandlers.ErrResponse		"Failed to delete task schedule"
 //	@Router			/tasks/{task_id}/schedules/{task_schedule_id} [delete]
 func (h *TaskScheduleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTaskSchedulesDeleteFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTaskSchedulesDeleteFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
 	if err := h.svc.Delete(r.Context(), userID, taskIDFromRequest(r), taskScheduleIDFromRequest(r)); err != nil {
 		status, detail := taskScheduleErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTaskSchedulesDeleteFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTaskSchedulesDeleteFailed, detail)
 		return
 	}
 
-	WriteMessage(w, http.StatusOK, "OK")
+	sharedhandlers.WriteMessage(w, http.StatusOK, "OK")
 }
 
-func taskScheduleErrToErrResponse(err error) (int, ErrDetail) {
+func taskScheduleErrToErrResponse(err error) (int, sharedhandlers.ErrDetail) {
 	switch {
 	case errors.Is(err, domain.ErrTaskScheduleNotFound):
-		return http.StatusNotFound, NewErrDetail("task_schedule_id", "task_schedule_not_found", "Task schedule not found")
+		return http.StatusNotFound, sharedhandlers.NewErrDetail("task_schedule_id", "task_schedule_not_found", "Task schedule not found")
 	case errors.Is(err, domain.ErrTaskScheduleTaskNotFound):
-		return http.StatusNotFound, NewErrDetail("task_id", "task_not_found", "Task not found")
+		return http.StatusNotFound, sharedhandlers.NewErrDetail("task_id", "task_not_found", "Task not found")
 	case errors.Is(err, domain.ErrTaskScheduleTitleEmpty):
-		return http.StatusBadRequest, NewErrDetail("title", "task_schedule_title_required", "Task schedule title is required")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("title", "task_schedule_title_required", "Task schedule title is required")
 	case errors.Is(err, domain.ErrTaskScheduleIntervalWeeksLess):
-		return http.StatusBadRequest, NewErrDetail("interval_weeks", "invalid_interval_weeks", "Interval weeks must be greater than or equal to 0")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("interval_weeks", "invalid_interval_weeks", "Interval weeks must be greater than or equal to 0")
 	case errors.Is(err, domain.ErrTaskScheduleStartAtEmpty):
-		return http.StatusBadRequest, NewErrDetail("start_at", "task_schedule_start_at_required", "Task schedule start time is required")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("start_at", "task_schedule_start_at_required", "Task schedule start time is required")
 	case errors.Is(err, domain.ErrTaskScheduleEndAtEmpty):
-		return http.StatusBadRequest, NewErrDetail("end_at", "task_schedule_end_at_required", "Task schedule end time is required")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("end_at", "task_schedule_end_at_required", "Task schedule end time is required")
 	case errors.Is(err, domain.ErrTaskScheduleEndAtMustBeAfterStartAt):
-		return http.StatusBadRequest, NewErrDetail("end_at", "invalid_task_schedule_date_range", "Task schedule end time must be after start time")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("end_at", "invalid_task_schedule_date_range", "Task schedule end time must be after start time")
 	case errors.Is(err, domain.ErrTaskFrequencyInvalid), errors.Is(err, domain.ErrTaskFrequencyEmpty):
-		return http.StatusBadRequest, NewErrDetail("frequencies", "invalid_task_frequency", "Frequencies must be supported weekday values")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("frequencies", "invalid_task_frequency", "Frequencies must be supported weekday values")
 	default:
-		return http.StatusInternalServerError, ErrDetailInternalServerError
+		return http.StatusInternalServerError, sharedhandlers.ErrDetailInternalServerError
 	}
 }

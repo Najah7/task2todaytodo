@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 	"net/http"
 	"testing"
 
@@ -16,34 +17,34 @@ func TestUserServiceErrorResponse(t *testing.T) {
 		err        error
 		field      string
 		wantStatus int
-		wantDetail ErrDetail
+		wantDetail sharedhandlers.ErrDetail
 	}{
 		{
 			name:       "duplicate email",
 			err:        authusecase.ErrUserEmailAlreadyExists,
 			field:      "password",
 			wantStatus: http.StatusConflict,
-			wantDetail: NewErrDetail("email", "email_already_exists", "Email is already registered"),
+			wantDetail: sharedhandlers.NewErrDetail("email", "email_already_exists", "Email is already registered"),
 		},
 		{
 			name:       "duplicate email from database",
 			err:        &pgconn.PgError{Code: "23505", ConstraintName: "users_email_key"},
 			field:      "password",
 			wantStatus: http.StatusConflict,
-			wantDetail: NewErrDetail("email", "email_already_exists", "Email is already registered"),
+			wantDetail: sharedhandlers.NewErrDetail("email", "email_already_exists", "Email is already registered"),
 		},
 		{
 			name:       "invalid password",
 			err:        auth.ErrPasswordTooShort,
 			field:      "new_password",
 			wantStatus: http.StatusBadRequest,
-			wantDetail: NewErrDetail("new_password", "invalid_password", "Password does not meet the required format"),
+			wantDetail: sharedhandlers.NewErrDetail("new_password", "invalid_password", "Password does not meet the required format"),
 		},
 		{
 			name:       "unknown error",
 			err:        errors.New("database unavailable"),
 			wantStatus: http.StatusInternalServerError,
-			wantDetail: ErrDetailInternalServerError,
+			wantDetail: sharedhandlers.ErrDetailInternalServerError,
 		},
 	}
 

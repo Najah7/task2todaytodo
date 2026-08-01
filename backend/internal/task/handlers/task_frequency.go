@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 	"net/http"
 
 	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
@@ -34,16 +35,16 @@ type TaskFrequencyListResponse struct {
 //	@Tags			Tasks
 //	@Produce		json
 //	@Success		200	{object}	TaskFrequencyListResponse
-//	@Failure		500	{object}	ErrResponse	"Failed to list task frequencies"
+//	@Failure		500	{object}	sharedhandlers.ErrResponse	"Failed to list task frequencies"
 //	@Router			/tasks/frequencies [get]
 func (h *TaskFrequencyHandler) List(w http.ResponseWriter, r *http.Request) {
 	frequencies, err := h.service.List(r.Context())
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, ErrSpecTaskFrequenciesListFailed)
+		sharedhandlers.WriteError(w, http.StatusInternalServerError, sharedhandlers.ErrSpecTaskFrequenciesListFailed)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, TaskFrequencyListResponse{Data: newTaskFrequencyResponses(frequencies)})
+	sharedhandlers.WriteJSON(w, http.StatusOK, TaskFrequencyListResponse{Data: newTaskFrequencyResponses(frequencies)})
 }
 
 func newTaskFrequencyResponses(frequencies []domain.TaskFrequency) []TaskFrequencyResponse {

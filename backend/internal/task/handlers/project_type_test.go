@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -48,12 +49,12 @@ func TestProjectTypeHandlerListError(t *testing.T) {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusInternalServerError)
 	}
 
-	var got ErrResponse
+	var got sharedhandlers.ErrResponse
 	if err := json.Unmarshal(recorder.Body.Bytes(), &got); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v", err)
 	}
-	if got.Error.Code != ErrSpecProjectTypesListFailed.Code {
-		t.Errorf("code = %q, want %q", got.Error.Code, ErrSpecProjectTypesListFailed.Code)
+	if got.Error.Code != sharedhandlers.ErrSpecProjectTypesListFailed.Code {
+		t.Errorf("code = %q, want %q", got.Error.Code, sharedhandlers.ErrSpecProjectTypesListFailed.Code)
 	}
 }
 

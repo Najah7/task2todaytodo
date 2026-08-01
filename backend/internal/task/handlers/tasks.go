@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 	"net/http"
 	"time"
 
@@ -166,37 +167,37 @@ type TaskCreateRequest struct {
 //	@Security		BearerAuth
 //	@Param			request	body		TaskCreateRequest	true	"Task create request"
 //	@Success		201		{object}	TaskResponse
-//	@Failure		400		{object}	ErrResponse	"Invalid request body"
-//	@Failure		401		{object}	ErrResponse	"Unauthorized"
-//	@Failure		500		{object}	ErrResponse	"Failed to create task"
+//	@Failure		400		{object}	sharedhandlers.ErrResponse	"Invalid request body"
+//	@Failure		401		{object}	sharedhandlers.ErrResponse	"Unauthorized"
+//	@Failure		500		{object}	sharedhandlers.ErrResponse	"Failed to create task"
 //	@Router			/tasks [post]
 func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTasksCreateFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTasksCreateFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
 	var req TaskCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecTasksCreateFailed, ErrDetailInvalidRequestBody)
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecTasksCreateFailed, sharedhandlers.ErrDetailInvalidRequestBody)
 		return
 	}
 
 	dueDate, err := parseOptionalDateOnly(req.DueDate)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecTasksCreateFailed, errDetailInvalidDateOnly("due_date"))
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecTasksCreateFailed, errDetailInvalidDateOnly("due_date"))
 		return
 	}
 
 	task, err := h.svc.CreateStandaloneTask(r.Context(), h.idGen.Generate, userID, req.Title, req.Description, dueDate, req.EstimatedMinutes, req.ActualMinutes, req.Priority, req.Status)
 	if err != nil {
 		status, detail := taskErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTasksCreateFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTasksCreateFailed, detail)
 		return
 	}
 
-	WriteJSON(w, http.StatusCreated, newTaskResponse(task))
+	sharedhandlers.WriteJSON(w, http.StatusCreated, newTaskResponse(task))
 }
 
 // CreateInProject godoc
@@ -210,38 +211,38 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 //	@Param			project_id	path		string				true	"Project ID"
 //	@Param			request		body		TaskCreateRequest	true	"Task create request"
 //	@Success		201			{object}	TaskResponse
-//	@Failure		400			{object}	ErrResponse	"Invalid request body"
-//	@Failure		401			{object}	ErrResponse	"Unauthorized"
-//	@Failure		404			{object}	ErrResponse	"Project not found"
-//	@Failure		500			{object}	ErrResponse	"Failed to create task"
+//	@Failure		400			{object}	sharedhandlers.ErrResponse	"Invalid request body"
+//	@Failure		401			{object}	sharedhandlers.ErrResponse	"Unauthorized"
+//	@Failure		404			{object}	sharedhandlers.ErrResponse	"Project not found"
+//	@Failure		500			{object}	sharedhandlers.ErrResponse	"Failed to create task"
 //	@Router			/projects/{project_id}/tasks [post]
 func (h *TaskHandler) CreateInProject(w http.ResponseWriter, r *http.Request) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTasksCreateFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTasksCreateFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
 	var req TaskCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecTasksCreateFailed, ErrDetailInvalidRequestBody)
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecTasksCreateFailed, sharedhandlers.ErrDetailInvalidRequestBody)
 		return
 	}
 
 	dueDate, err := parseOptionalDateOnly(req.DueDate)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecTasksCreateFailed, errDetailInvalidDateOnly("due_date"))
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecTasksCreateFailed, errDetailInvalidDateOnly("due_date"))
 		return
 	}
 
 	task, err := h.svc.CreateProjectTask(r.Context(), h.idGen.Generate, userID, projectIDFromRequest(r), req.Title, req.Description, dueDate, req.EstimatedMinutes, req.ActualMinutes, req.Priority, req.Status)
 	if err != nil {
 		status, detail := taskErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTasksCreateFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTasksCreateFailed, detail)
 		return
 	}
 
-	WriteJSON(w, http.StatusCreated, newTaskResponse(task))
+	sharedhandlers.WriteJSON(w, http.StatusCreated, newTaskResponse(task))
 }
 
 // Get godoc
@@ -253,25 +254,25 @@ func (h *TaskHandler) CreateInProject(w http.ResponseWriter, r *http.Request) {
 //	@Security		BearerAuth
 //	@Param			task_id	path		string	true	"Task ID"
 //	@Success		200		{object}	TaskAggregateResponse
-//	@Failure		401		{object}	ErrResponse	"Unauthorized"
-//	@Failure		404		{object}	ErrResponse	"Task not found"
-//	@Failure		500		{object}	ErrResponse	"Failed to get task"
+//	@Failure		401		{object}	sharedhandlers.ErrResponse	"Unauthorized"
+//	@Failure		404		{object}	sharedhandlers.ErrResponse	"Task not found"
+//	@Failure		500		{object}	sharedhandlers.ErrResponse	"Failed to get task"
 //	@Router			/tasks/{task_id} [get]
 func (h *TaskHandler) Get(w http.ResponseWriter, r *http.Request) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTasksGetFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTasksGetFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
 	aggregate, err := h.svc.GetTask(r.Context(), userID, taskIDFromRequest(r))
 	if err != nil {
 		status, detail := taskErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTasksGetFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTasksGetFailed, detail)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, newTaskAggregateResponse(aggregate))
+	sharedhandlers.WriteJSON(w, http.StatusOK, newTaskAggregateResponse(aggregate))
 }
 
 type TaskUpdateRequest struct {
@@ -314,38 +315,38 @@ func (req *TaskUpdateRequest) UnmarshalJSON(data []byte) error {
 //	@Param			task_id	path		string				true	"Task ID"
 //	@Param			request	body		TaskUpdateRequest	true	"Task update request"
 //	@Success		200		{object}	TaskResponse
-//	@Failure		400		{object}	ErrResponse	"Invalid request body"
-//	@Failure		401		{object}	ErrResponse	"Unauthorized"
-//	@Failure		404		{object}	ErrResponse	"Task not found"
-//	@Failure		500		{object}	ErrResponse	"Failed to update task"
+//	@Failure		400		{object}	sharedhandlers.ErrResponse	"Invalid request body"
+//	@Failure		401		{object}	sharedhandlers.ErrResponse	"Unauthorized"
+//	@Failure		404		{object}	sharedhandlers.ErrResponse	"Task not found"
+//	@Failure		500		{object}	sharedhandlers.ErrResponse	"Failed to update task"
 //	@Router			/tasks/{task_id} [patch]
 func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTasksUpdateFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTasksUpdateFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
 	var req TaskUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecTasksUpdateFailed, ErrDetailInvalidRequestBody)
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecTasksUpdateFailed, sharedhandlers.ErrDetailInvalidRequestBody)
 		return
 	}
 
 	dueDate, err := parseDateOnlyPatch(req.DueDate, req.DueDateSet)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecTasksUpdateFailed, errDetailInvalidDateOnly("due_date"))
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecTasksUpdateFailed, errDetailInvalidDateOnly("due_date"))
 		return
 	}
 
 	task, err := h.svc.UpdateTaskBasic(r.Context(), userID, taskIDFromRequest(r), req.Title, req.Description, dueDate)
 	if err != nil {
 		status, detail := taskErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTasksUpdateFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTasksUpdateFailed, detail)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, newTaskResponse(task))
+	sharedhandlers.WriteJSON(w, http.StatusOK, newTaskResponse(task))
 }
 
 type TaskStatusUpdateRequest struct {
@@ -363,32 +364,32 @@ type TaskStatusUpdateRequest struct {
 //	@Param			task_id	path		string					true	"Task ID"
 //	@Param			request	body		TaskStatusUpdateRequest	true	"Task status update request"
 //	@Success		200		{object}	TaskResponse
-//	@Failure		400		{object}	ErrResponse	"Invalid request body"
-//	@Failure		401		{object}	ErrResponse	"Unauthorized"
-//	@Failure		404		{object}	ErrResponse	"Task not found"
-//	@Failure		500		{object}	ErrResponse	"Failed to update task"
+//	@Failure		400		{object}	sharedhandlers.ErrResponse	"Invalid request body"
+//	@Failure		401		{object}	sharedhandlers.ErrResponse	"Unauthorized"
+//	@Failure		404		{object}	sharedhandlers.ErrResponse	"Task not found"
+//	@Failure		500		{object}	sharedhandlers.ErrResponse	"Failed to update task"
 //	@Router			/tasks/{task_id}/status [patch]
 func (h *TaskHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTasksUpdateFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTasksUpdateFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
 	var req TaskStatusUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecTasksUpdateFailed, ErrDetailInvalidRequestBody)
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecTasksUpdateFailed, sharedhandlers.ErrDetailInvalidRequestBody)
 		return
 	}
 
 	task, err := h.svc.UpdateTaskStatus(r.Context(), userID, taskIDFromRequest(r), req.Status)
 	if err != nil {
 		status, detail := taskErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTasksUpdateFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTasksUpdateFailed, detail)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, newTaskResponse(task))
+	sharedhandlers.WriteJSON(w, http.StatusOK, newTaskResponse(task))
 }
 
 type TaskPriorityUpdateRequest struct {
@@ -406,32 +407,32 @@ type TaskPriorityUpdateRequest struct {
 //	@Param			task_id	path		string						true	"Task ID"
 //	@Param			request	body		TaskPriorityUpdateRequest	true	"Task priority update request"
 //	@Success		200		{object}	TaskResponse
-//	@Failure		400		{object}	ErrResponse	"Invalid request body"
-//	@Failure		401		{object}	ErrResponse	"Unauthorized"
-//	@Failure		404		{object}	ErrResponse	"Task not found"
-//	@Failure		500		{object}	ErrResponse	"Failed to update task"
+//	@Failure		400		{object}	sharedhandlers.ErrResponse	"Invalid request body"
+//	@Failure		401		{object}	sharedhandlers.ErrResponse	"Unauthorized"
+//	@Failure		404		{object}	sharedhandlers.ErrResponse	"Task not found"
+//	@Failure		500		{object}	sharedhandlers.ErrResponse	"Failed to update task"
 //	@Router			/tasks/{task_id}/priority [patch]
 func (h *TaskHandler) UpdatePriority(w http.ResponseWriter, r *http.Request) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTasksUpdateFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTasksUpdateFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
 	var req TaskPriorityUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecTasksUpdateFailed, ErrDetailInvalidRequestBody)
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecTasksUpdateFailed, sharedhandlers.ErrDetailInvalidRequestBody)
 		return
 	}
 
 	task, err := h.svc.UpdateTaskPriority(r.Context(), userID, taskIDFromRequest(r), req.Priority)
 	if err != nil {
 		status, detail := taskErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTasksUpdateFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTasksUpdateFailed, detail)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, newTaskResponse(task))
+	sharedhandlers.WriteJSON(w, http.StatusOK, newTaskResponse(task))
 }
 
 type TaskEstimationUpdateRequest struct {
@@ -450,32 +451,32 @@ type TaskEstimationUpdateRequest struct {
 //	@Param			task_id	path		string						true	"Task ID"
 //	@Param			request	body		TaskEstimationUpdateRequest	true	"Task estimation update request"
 //	@Success		200		{object}	TaskResponse
-//	@Failure		400		{object}	ErrResponse	"Invalid request body"
-//	@Failure		401		{object}	ErrResponse	"Unauthorized"
-//	@Failure		404		{object}	ErrResponse	"Task not found"
-//	@Failure		500		{object}	ErrResponse	"Failed to update task"
+//	@Failure		400		{object}	sharedhandlers.ErrResponse	"Invalid request body"
+//	@Failure		401		{object}	sharedhandlers.ErrResponse	"Unauthorized"
+//	@Failure		404		{object}	sharedhandlers.ErrResponse	"Task not found"
+//	@Failure		500		{object}	sharedhandlers.ErrResponse	"Failed to update task"
 //	@Router			/tasks/{task_id}/estimation [patch]
 func (h *TaskHandler) UpdateEstimation(w http.ResponseWriter, r *http.Request) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTasksUpdateFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTasksUpdateFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
 	var req TaskEstimationUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecTasksUpdateFailed, ErrDetailInvalidRequestBody)
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecTasksUpdateFailed, sharedhandlers.ErrDetailInvalidRequestBody)
 		return
 	}
 
 	task, err := h.svc.UpdateTaskEstimation(r.Context(), userID, taskIDFromRequest(r), req.EstimatedMinutes, req.ActualMinutes)
 	if err != nil {
 		status, detail := taskErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTasksUpdateFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTasksUpdateFailed, detail)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, newTaskResponse(task))
+	sharedhandlers.WriteJSON(w, http.StatusOK, newTaskResponse(task))
 }
 
 // Delete godoc
@@ -487,28 +488,28 @@ func (h *TaskHandler) UpdateEstimation(w http.ResponseWriter, r *http.Request) {
 //	@Security		BearerAuth
 //	@Param			task_id	path		string			true	"Task ID"
 //	@Success		200		{object}	MessageResponse	"OK"
-//	@Failure		401		{object}	ErrResponse		"Unauthorized"
-//	@Failure		404		{object}	ErrResponse		"Task not found"
-//	@Failure		500		{object}	ErrResponse		"Failed to delete task"
+//	@Failure		401		{object}	sharedhandlers.ErrResponse		"Unauthorized"
+//	@Failure		404		{object}	sharedhandlers.ErrResponse		"Task not found"
+//	@Failure		500		{object}	sharedhandlers.ErrResponse		"Failed to delete task"
 //	@Router			/tasks/{task_id} [delete]
 func (h *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTasksDeleteFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTasksDeleteFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
 	if err := h.svc.DeleteTask(r.Context(), userID, taskIDFromRequest(r)); err != nil {
 		status, detail := taskErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTasksDeleteFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTasksDeleteFailed, detail)
 		return
 	}
 
-	WriteMessage(w, http.StatusOK, "OK")
+	sharedhandlers.WriteMessage(w, http.StatusOK, "OK")
 }
 
 func taskUserIDFromRequest(r *http.Request) (domain.UserID, bool) {
-	userID, ok := r.Context().Value(UserIDContextKey).(auth.UserID)
+	userID, ok := r.Context().Value(sharedhandlers.UserIDContextKey).(auth.UserID)
 	if !ok || userID == "" {
 		return "", false
 	}
@@ -527,29 +528,29 @@ func taskScheduleIDFromRequest(r *http.Request) domain.TaskScheduleID {
 	return domain.TaskScheduleID(chi.URLParam(r, "task_schedule_id"))
 }
 
-func taskErrToErrResponse(err error) (int, ErrDetail) {
+func taskErrToErrResponse(err error) (int, sharedhandlers.ErrDetail) {
 	switch {
 	case errors.Is(err, taskusecase.ErrTaskNotFound):
-		return http.StatusNotFound, NewErrDetail("task_id", "task_not_found", "Task not found")
+		return http.StatusNotFound, sharedhandlers.NewErrDetail("task_id", "task_not_found", "Task not found")
 	case errors.Is(err, taskusecase.ErrTaskProjectNotFound), errors.Is(err, domain.ErrProjectNotFound):
-		return http.StatusNotFound, NewErrDetail("project_id", "project_not_found", "Project not found")
+		return http.StatusNotFound, sharedhandlers.NewErrDetail("project_id", "project_not_found", "Project not found")
 	case errors.Is(err, taskusecase.ErrTaskEstimationUpdateEmpty):
-		return http.StatusBadRequest, NewErrDetail("", "empty_estimation_update", "Estimated minutes or actual minutes must be provided")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("", "empty_estimation_update", "Estimated minutes or actual minutes must be provided")
 	case errors.Is(err, taskusecase.ErrTaskHasIncompleteTodoItems):
-		return http.StatusBadRequest, NewErrDetail("", "task_has_incomplete_todo_items", "Cannot mark task as done while it has incomplete todo items")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("", "task_has_incomplete_todo_items", "Cannot mark task as done while it has incomplete todo items")
 	case errors.Is(err, domain.ErrTaskIDEmpty):
-		return http.StatusBadRequest, NewErrDetail("task_id", "invalid_task_id", "Task ID is required")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("task_id", "invalid_task_id", "Task ID is required")
 	case errors.Is(err, domain.ErrTaskTitleEmpty):
-		return http.StatusBadRequest, NewErrDetail("title", "task_title_required", "Task title is required")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("title", "task_title_required", "Task title is required")
 	case errors.Is(err, domain.ErrTaskEstimatedMinutesInvalid):
-		return http.StatusBadRequest, NewErrDetail("estimated_minutes", "invalid_estimated_minutes", "Estimated minutes must be greater than or equal to 0")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("estimated_minutes", "invalid_estimated_minutes", "Estimated minutes must be greater than or equal to 0")
 	case errors.Is(err, domain.ErrTaskActualMinutesInvalid):
-		return http.StatusBadRequest, NewErrDetail("actual_minutes", "invalid_actual_minutes", "Actual minutes must be greater than or equal to 0")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("actual_minutes", "invalid_actual_minutes", "Actual minutes must be greater than or equal to 0")
 	case errors.Is(err, domain.ErrTaskPriorityEmpty), errors.Is(err, domain.ErrTaskPriorityInvalid):
-		return http.StatusBadRequest, NewErrDetail("priority", "invalid_task_priority", "Task priority must be one of the supported values")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("priority", "invalid_task_priority", "Task priority must be one of the supported values")
 	case errors.Is(err, domain.ErrTaskStatusEmpty), errors.Is(err, domain.ErrTaskStatusInvalid):
-		return http.StatusBadRequest, NewErrDetail("status", "invalid_task_status", "Task status must be one of the supported values")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("status", "invalid_task_status", "Task status must be one of the supported values")
 	default:
-		return http.StatusInternalServerError, ErrDetailInternalServerError
+		return http.StatusInternalServerError, sharedhandlers.ErrDetailInternalServerError
 	}
 }

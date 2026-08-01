@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	authusecase "github.com/Najah7/task2todaytodo/internal/auth/usecase"
-	"github.com/Najah7/task2todaytodo/internal/handlers"
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 )
 
 const bearerPrefix = "Bearer "
@@ -16,25 +16,25 @@ func AuthMiddleware(accessTokenService authusecase.AccessTokenService) func(http
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
 			if !strings.HasPrefix(authHeader, bearerPrefix) {
-				handlers.WriteError(w, http.StatusUnauthorized, handlers.ErrSpecAuthAuthenticateFailed, handlers.ErrDetailMissingAccessToken)
+				sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecAuthAuthenticateFailed, sharedhandlers.ErrDetailMissingAccessToken)
 				return
 			}
 
 			token := strings.TrimSpace(strings.TrimPrefix(authHeader, bearerPrefix))
 			if token == "" {
-				handlers.WriteError(w, http.StatusUnauthorized, handlers.ErrSpecAuthAuthenticateFailed, handlers.ErrDetailMissingAccessToken)
+				sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecAuthAuthenticateFailed, sharedhandlers.ErrDetailMissingAccessToken)
 				return
 			}
 
 			ctx := r.Context()
 			t, err := accessTokenService.GetByToken(ctx, token)
 			if err != nil {
-				handlers.WriteError(w, http.StatusUnauthorized, handlers.ErrSpecAuthAuthenticateFailed, handlers.ErrDetailInvalidAccessToken)
+				sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecAuthAuthenticateFailed, sharedhandlers.ErrDetailInvalidAccessToken)
 				return
 			}
 
-			ctx = context.WithValue(ctx, handlers.UserIDContextKey, t.UserID)
-			ctx = context.WithValue(ctx, handlers.AccessTokenContextKey, token)
+			ctx = context.WithValue(ctx, sharedhandlers.UserIDContextKey, t.UserID)
+			ctx = context.WithValue(ctx, sharedhandlers.AccessTokenContextKey, token)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

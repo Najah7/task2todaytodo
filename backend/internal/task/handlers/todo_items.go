@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 	"net/http"
 
 	"github.com/Najah7/task2todaytodo/internal/shared"
@@ -39,28 +40,28 @@ type TodoItemCreateRequest struct {
 //	@Param			task_id	path		string					true	"Task ID"
 //	@Param			request	body		TodoItemCreateRequest	true	"TodoItem create request"
 //	@Success		201		{object}	TodoItemResponse
-//	@Failure		400		{object}	ErrResponse	"Invalid request body"
-//	@Failure		401		{object}	ErrResponse	"Unauthorized"
-//	@Failure		404		{object}	ErrResponse	"Task not found"
-//	@Failure		409		{object}	ErrResponse	"Position conflict"
-//	@Failure		500		{object}	ErrResponse	"Failed to create todo item"
+//	@Failure		400		{object}	sharedhandlers.ErrResponse	"Invalid request body"
+//	@Failure		401		{object}	sharedhandlers.ErrResponse	"Unauthorized"
+//	@Failure		404		{object}	sharedhandlers.ErrResponse	"Task not found"
+//	@Failure		409		{object}	sharedhandlers.ErrResponse	"Position conflict"
+//	@Failure		500		{object}	sharedhandlers.ErrResponse	"Failed to create todo item"
 //	@Router			/tasks/{task_id}/todo-items [post]
 func (h *TodoItemHandler) Create(w http.ResponseWriter, r *http.Request) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTodoItemsCreateFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTodoItemsCreateFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
 	var req TodoItemCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecTodoItemsCreateFailed, ErrDetailInvalidRequestBody)
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecTodoItemsCreateFailed, sharedhandlers.ErrDetailInvalidRequestBody)
 		return
 	}
 
 	dueDate, err := parseOptionalDateOnly(req.DueDate)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecTodoItemsCreateFailed, errDetailInvalidDateOnly("due_date"))
+		sharedhandlers.WriteError(w, http.StatusBadRequest, sharedhandlers.ErrSpecTodoItemsCreateFailed, errDetailInvalidDateOnly("due_date"))
 		return
 	}
 
@@ -76,11 +77,11 @@ func (h *TodoItemHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		status, detail := todoItemErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTodoItemsCreateFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTodoItemsCreateFailed, detail)
 		return
 	}
 
-	WriteJSON(w, http.StatusCreated, newTodoItemResponse(item))
+	sharedhandlers.WriteJSON(w, http.StatusCreated, newTodoItemResponse(item))
 }
 
 // Check godoc
@@ -93,9 +94,9 @@ func (h *TodoItemHandler) Create(w http.ResponseWriter, r *http.Request) {
 //	@Param			task_id			path		string			true	"Task ID"
 //	@Param			todo_item_id	path		string			true	"TodoItem ID"
 //	@Success		200				{object}	MessageResponse	"OK"
-//	@Failure		401				{object}	ErrResponse		"Unauthorized"
-//	@Failure		404				{object}	ErrResponse		"TodoItem not found"
-//	@Failure		500				{object}	ErrResponse		"Failed to update todo item"
+//	@Failure		401				{object}	sharedhandlers.ErrResponse		"Unauthorized"
+//	@Failure		404				{object}	sharedhandlers.ErrResponse		"TodoItem not found"
+//	@Failure		500				{object}	sharedhandlers.ErrResponse		"Failed to update todo item"
 //	@Router			/tasks/{task_id}/todo-items/{todo_item_id}:checked [post]
 func (h *TodoItemHandler) Check(w http.ResponseWriter, r *http.Request) {
 	h.setCompleted(w, r, true)
@@ -111,9 +112,9 @@ func (h *TodoItemHandler) Check(w http.ResponseWriter, r *http.Request) {
 //	@Param			task_id			path		string			true	"Task ID"
 //	@Param			todo_item_id	path		string			true	"TodoItem ID"
 //	@Success		200				{object}	MessageResponse	"OK"
-//	@Failure		401				{object}	ErrResponse		"Unauthorized"
-//	@Failure		404				{object}	ErrResponse		"TodoItem not found"
-//	@Failure		500				{object}	ErrResponse		"Failed to update todo item"
+//	@Failure		401				{object}	sharedhandlers.ErrResponse		"Unauthorized"
+//	@Failure		404				{object}	sharedhandlers.ErrResponse		"TodoItem not found"
+//	@Failure		500				{object}	sharedhandlers.ErrResponse		"Failed to update todo item"
 //	@Router			/tasks/{task_id}/todo-items/{todo_item_id}:unchecked [post]
 func (h *TodoItemHandler) Uncheck(w http.ResponseWriter, r *http.Request) {
 	h.setCompleted(w, r, false)
@@ -122,7 +123,7 @@ func (h *TodoItemHandler) Uncheck(w http.ResponseWriter, r *http.Request) {
 func (h *TodoItemHandler) setCompleted(w http.ResponseWriter, r *http.Request, completed bool) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTodoItemsUpdateFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTodoItemsUpdateFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
@@ -134,11 +135,11 @@ func (h *TodoItemHandler) setCompleted(w http.ResponseWriter, r *http.Request, c
 	}
 	if err != nil {
 		status, detail := todoItemErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTodoItemsUpdateFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTodoItemsUpdateFailed, detail)
 		return
 	}
 
-	WriteMessage(w, http.StatusOK, "OK")
+	sharedhandlers.WriteMessage(w, http.StatusOK, "OK")
 }
 
 // Delete godoc
@@ -151,43 +152,43 @@ func (h *TodoItemHandler) setCompleted(w http.ResponseWriter, r *http.Request, c
 //	@Param			task_id			path		string			true	"Task ID"
 //	@Param			todo_item_id	path		string			true	"TodoItem ID"
 //	@Success		200				{object}	MessageResponse	"OK"
-//	@Failure		401				{object}	ErrResponse		"Unauthorized"
-//	@Failure		404				{object}	ErrResponse		"TodoItem not found"
-//	@Failure		500				{object}	ErrResponse		"Failed to delete todo item"
+//	@Failure		401				{object}	sharedhandlers.ErrResponse		"Unauthorized"
+//	@Failure		404				{object}	sharedhandlers.ErrResponse		"TodoItem not found"
+//	@Failure		500				{object}	sharedhandlers.ErrResponse		"Failed to delete todo item"
 //	@Router			/tasks/{task_id}/todo-items/{todo_item_id} [delete]
 func (h *TodoItemHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	userID, ok := taskUserIDFromRequest(r)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecTodoItemsDeleteFailed, ErrDetailUnauthorized)
+		sharedhandlers.WriteError(w, http.StatusUnauthorized, sharedhandlers.ErrSpecTodoItemsDeleteFailed, sharedhandlers.ErrDetailUnauthorized)
 		return
 	}
 
 	if err := h.svc.Delete(r.Context(), userID, taskIDFromRequest(r), todoItemIDFromRequest(r)); err != nil {
 		status, detail := todoItemErrToErrResponse(err)
-		WriteError(w, status, ErrSpecTodoItemsDeleteFailed, detail)
+		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecTodoItemsDeleteFailed, detail)
 		return
 	}
 
-	WriteMessage(w, http.StatusOK, "OK")
+	sharedhandlers.WriteMessage(w, http.StatusOK, "OK")
 }
 
-func todoItemErrToErrResponse(err error) (int, ErrDetail) {
+func todoItemErrToErrResponse(err error) (int, sharedhandlers.ErrDetail) {
 	switch {
 	case errors.Is(err, taskusecase.ErrTodoItemTaskNotFound):
-		return http.StatusNotFound, NewErrDetail("task_id", "task_not_found", "Task not found")
+		return http.StatusNotFound, sharedhandlers.NewErrDetail("task_id", "task_not_found", "Task not found")
 	case errors.Is(err, taskusecase.ErrTodoItemNotFound):
-		return http.StatusNotFound, NewErrDetail("todo_item_id", "todo_item_not_found", "Todo item not found")
+		return http.StatusNotFound, sharedhandlers.NewErrDetail("todo_item_id", "todo_item_not_found", "Todo item not found")
 	case errors.Is(err, taskusecase.ErrTodoItemPositionConflict):
-		return http.StatusConflict, NewErrDetail("position", "todo_item_position_conflict", "Todo item position already exists")
+		return http.StatusConflict, sharedhandlers.NewErrDetail("position", "todo_item_position_conflict", "Todo item position already exists")
 	case errors.Is(err, domain.ErrTodoItemTitleEmpty):
-		return http.StatusBadRequest, NewErrDetail("title", "todo_item_title_required", "Todo item title is required")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("title", "todo_item_title_required", "Todo item title is required")
 	case errors.Is(err, domain.ErrTodoItemPositionLess):
-		return http.StatusBadRequest, NewErrDetail("position", "invalid_todo_item_position", "Todo item position must be greater than or equal to 0")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("position", "invalid_todo_item_position", "Todo item position must be greater than or equal to 0")
 	case errors.Is(err, domain.ErrTodoItemIntervalWeeksLess):
-		return http.StatusBadRequest, NewErrDetail("interval_weeks", "invalid_interval_weeks", "Interval weeks must be greater than or equal to 0")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("interval_weeks", "invalid_interval_weeks", "Interval weeks must be greater than or equal to 0")
 	case errors.Is(err, domain.ErrTaskFrequencyInvalid), errors.Is(err, domain.ErrTaskFrequencyEmpty):
-		return http.StatusBadRequest, NewErrDetail("frequencies", "invalid_task_frequency", "Frequencies must be supported weekday values")
+		return http.StatusBadRequest, sharedhandlers.NewErrDetail("frequencies", "invalid_task_frequency", "Frequencies must be supported weekday values")
 	default:
-		return http.StatusInternalServerError, ErrDetailInternalServerError
+		return http.StatusInternalServerError, sharedhandlers.ErrDetailInternalServerError
 	}
 }

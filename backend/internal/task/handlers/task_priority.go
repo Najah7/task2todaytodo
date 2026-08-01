@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 	"net/http"
 
 	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
@@ -35,16 +36,16 @@ type TaskPriorityListResponse struct {
 //	@Tags			Tasks
 //	@Produce		json
 //	@Success		200	{object}	TaskPriorityListResponse
-//	@Failure		500	{object}	ErrResponse	"Failed to list task priorities"
+//	@Failure		500	{object}	sharedhandlers.ErrResponse	"Failed to list task priorities"
 //	@Router			/tasks/priorities [get]
 func (h *TaskPriorityHandler) List(w http.ResponseWriter, r *http.Request) {
 	priorities, err := h.service.List(r.Context())
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, ErrSpecTaskPrioritiesListFailed)
+		sharedhandlers.WriteError(w, http.StatusInternalServerError, sharedhandlers.ErrSpecTaskPrioritiesListFailed)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, TaskPriorityListResponse{Data: newTaskPriorityResponses(priorities)})
+	sharedhandlers.WriteJSON(w, http.StatusOK, TaskPriorityListResponse{Data: newTaskPriorityResponses(priorities)})
 }
 
 func newTaskPriorityResponses(priorities []domain.TaskPriority) []TaskPriorityResponse {

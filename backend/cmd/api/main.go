@@ -7,8 +7,10 @@ import (
 	_ "github.com/Najah7/task2todaytodo/docs"
 	"github.com/Najah7/task2todaytodo/internal/adapters"
 	"github.com/Najah7/task2todaytodo/internal/application"
-	"github.com/Najah7/task2todaytodo/internal/handlers"
+	authhandlers "github.com/Najah7/task2todaytodo/internal/auth/handlers"
 	"github.com/Najah7/task2todaytodo/internal/middlewares"
+	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
+	taskhandlers "github.com/Najah7/task2todaytodo/internal/task/handlers"
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
@@ -29,23 +31,23 @@ func main() {
 
 	ulidGen := adapters.NewULIDGenerator()
 
-	userHandler := handlers.NewUserHandler(app.Service.User, ulidGen)
-	accessTokenHandler := handlers.NewAccessTokenHandler(app.Service.AccessToken, app.Service.User)
-	projectHandler := handlers.NewProjectHandler(app.Service.Project, ulidGen)
-	taskHandler := handlers.NewTaskHandler(app.Service.Task, ulidGen)
-	todoItemHandler := handlers.NewTodoItemHandler(app.Service.TodoItem, ulidGen)
-	taskScheduleHandler := handlers.NewTaskScheduleHandler(app.Service.TaskSchedule, ulidGen)
-	projectTypeHandler := handlers.NewProjectTypeHandler(app.Service.ProjectType)
-	taskFrequencyHandler := handlers.NewTaskFrequencyHandler(app.Service.TaskFrequency)
-	taskPriorityHandler := handlers.NewTaskPriorityHandler(app.Service.TaskPriority)
-	taskStatusHandler := handlers.NewTaskStatusHandler(app.Service.TaskStatus)
+	userHandler := authhandlers.NewUserHandler(app.Service.User, ulidGen)
+	accessTokenHandler := authhandlers.NewAccessTokenHandler(app.Service.AccessToken, app.Service.User)
+	projectHandler := taskhandlers.NewProjectHandler(app.Service.Project, ulidGen)
+	taskHandler := taskhandlers.NewTaskHandler(app.Service.Task, ulidGen)
+	todoItemHandler := taskhandlers.NewTodoItemHandler(app.Service.TodoItem, ulidGen)
+	taskScheduleHandler := taskhandlers.NewTaskScheduleHandler(app.Service.TaskSchedule, ulidGen)
+	projectTypeHandler := taskhandlers.NewProjectTypeHandler(app.Service.ProjectType)
+	taskFrequencyHandler := taskhandlers.NewTaskFrequencyHandler(app.Service.TaskFrequency)
+	taskPriorityHandler := taskhandlers.NewTaskPriorityHandler(app.Service.TaskPriority)
+	taskStatusHandler := taskhandlers.NewTaskStatusHandler(app.Service.TaskStatus)
 
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("http://localhost:8080/swagger/doc.json"),
 	))
 
 	r.Route("/monitor", func(r chi.Router) {
-		r.Get("/health", handlers.HealthCheckHandler)
+		r.Get("/health", sharedhandlers.HealthCheckHandler)
 	})
 
 	r.Route("/api", func(r chi.Router) {
