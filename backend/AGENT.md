@@ -24,12 +24,26 @@ internal/<domain>/adapters/ External adapters
 
 ## Commands
 
-- `make go-fmt` — format.
-- `make test` — test before handoff.
-- `make build` — validate API binary.
-- `make swagger-gen` — after Swagger/public response change. Commit `docs` output.
-
-Live reload build fail = app stale. Check build log, binary, port-owning process.
+```bash
+$ make help
+Available commands:
+  make go-fmt                  Format Go source files.
+  make test                    Run Go tests.
+  make build                   Build the API binary.
+  make run                     Run the app service with Docker Compose.
+  make dev                     Run the API with Air live reload in Docker.
+  make env-up                  Start the database service.
+  make env-down                Stop the database service.
+  make env-cleanup             Remove the database volume after confirmation.
+  make cleanup-logs            Remove application logs after confirmation.
+  make db-shell                Open a psql shell in the database container.
+  make migrate-up              Run database migrations.
+  make migrate-down            Roll back database migrations.
+  make migrate-create name=... Create a new SQL migration.
+  make sqlc-gen                Generate sqlc repository code.
+  make swagger-gen             Generate Swagger documentation.
+  make swagger-fmt             Format Swagger annotations.
+```
 
 ## Layer rule
 
