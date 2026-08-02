@@ -54,7 +54,7 @@ func newUserResponse(u auth.User) UserResponse {
 //	@Router			/users/me [get]
 func (h UserHandler) Get(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := ctx.Value(sharedhandlers.UserIDContextKey).(auth.UserID)
+	userID := auth.UserID(ctx.Value(sharedhandlers.UserIDContextKey).(shared.ID))
 
 	u, err := h.svc.GetUser(ctx, userID)
 	if err != nil {
@@ -138,7 +138,7 @@ func (h UserHandler) UpdateBasicInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := h.svc.UpdateUserName(ctx, userID, req.FirstName, req.LastName)
+	u, err := h.svc.UpdateUserName(ctx, auth.UserID(userID), req.FirstName, req.LastName)
 	if err != nil {
 		status, detail := errToErrResponse(err, "")
 		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecUsersUpdateBasicInfoFailed, detail)
@@ -181,7 +181,7 @@ func (h UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.svc.UpdateUserPassword(ctx, userID, req.NewPassword)
+	err = h.svc.UpdateUserPassword(ctx, auth.UserID(userID), req.NewPassword)
 	if err != nil {
 		status, detail := errToErrResponse(err, "new_password")
 		sharedhandlers.WriteError(w, status, sharedhandlers.ErrSpecUsersUpdatePasswordFailed, detail)

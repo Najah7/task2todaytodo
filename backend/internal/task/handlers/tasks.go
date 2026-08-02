@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	auth "github.com/Najah7/task2todaytodo/internal/auth/domain"
 	"github.com/Najah7/task2todaytodo/internal/shared"
 	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
@@ -509,7 +508,7 @@ func (h *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func taskUserIDFromRequest(r *http.Request) (domain.UserID, bool) {
-	userID, ok := r.Context().Value(sharedhandlers.UserIDContextKey).(auth.UserID)
+	userID, ok := r.Context().Value(sharedhandlers.UserIDContextKey).(shared.ID)
 	if !ok || userID == "" {
 		return "", false
 	}

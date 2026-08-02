@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	authusecase "github.com/Najah7/task2todaytodo/internal/auth/usecase"
+	"github.com/Najah7/task2todaytodo/internal/shared"
 	sharedhandlers "github.com/Najah7/task2todaytodo/internal/shared/handlers"
 )
 
@@ -33,7 +34,7 @@ func AuthMiddleware(accessTokenService authusecase.AccessTokenService) func(http
 				return
 			}
 
-			ctx = context.WithValue(ctx, sharedhandlers.UserIDContextKey, t.UserID)
+			ctx = context.WithValue(ctx, sharedhandlers.UserIDContextKey, shared.ID(t.UserID))
 			ctx = context.WithValue(ctx, sharedhandlers.AccessTokenContextKey, token)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

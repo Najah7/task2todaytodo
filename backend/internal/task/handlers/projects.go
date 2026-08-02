@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	auth "github.com/Najah7/task2todaytodo/internal/auth/domain"
 	"github.com/Najah7/task2todaytodo/internal/shared"
 	domain "github.com/Najah7/task2todaytodo/internal/task/domain"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/task/usecase"
@@ -361,7 +360,7 @@ func (h *ProjectHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func projectUserIDFromContext(ctx context.Context) (domain.UserID, bool) {
-	userID, ok := ctx.Value(sharedhandlers.UserIDContextKey).(auth.UserID)
+	userID, ok := ctx.Value(sharedhandlers.UserIDContextKey).(shared.ID)
 	if !ok || userID == "" {
 		return "", false
 	}
