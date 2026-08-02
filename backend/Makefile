@@ -19,6 +19,7 @@ help:
 	@printf '  %-28s %s\n' 'make test' 'Run Go tests.'
 	@printf '  %-28s %s\n' 'make build' 'Build the API binary.'
 	@printf '  %-28s %s\n' 'make run' 'Run the app service with Docker Compose.'
+	@printf '  %-28s %s\n' 'make dev' 'Run the API with Air live reload in Docker.'
 	@printf '  %-28s %s\n' 'make env-up' 'Start the database service.'
 	@printf '  %-28s %s\n' 'make env-down' 'Stop the database service.'
 	@printf '  %-28s %s\n' 'make env-cleanup' 'Remove the database volume after confirmation.'
@@ -50,6 +51,10 @@ build:
 .PHONY: run
 run:
 	@docker compose up --build $(APP_SERVICE_NAME)
+
+.PHONY: dev
+dev:
+	@docker compose up air
 
 .PHONY: env-up
 env-up:
