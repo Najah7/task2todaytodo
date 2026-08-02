@@ -48,6 +48,21 @@ Application wires concrete repositories into usecases.
 inside that context. `internal/domain/shared` is only for cross-context shared
 domain concepts.
 
+### Context dependencies
+
+```text
+auth, task -> shared
+main.go, application.go -> auth, task, shared
+```
+
+- Do not import one domain from another: `task -> auth`, `auth -> task`, and
+  `shared -> auth/task` are forbidden.
+- Any domain may import `shared`, but `shared` must not depend on a domain.
+- If a cross-domain reference is unavoidable, define the required interface on
+  the importing side and inject the implementation from `main.go` or
+  `application.go`.
+- These rules exist to prevent circular imports.
+
 ### VO
 
 - File prefix `value_`.
