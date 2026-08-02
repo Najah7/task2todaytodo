@@ -6,20 +6,19 @@
 cmd/api/                 API entry
 db/migrations/           PostgreSQL schema
 db/queries/              sqlc SQL source
+db/sqlc/                 Generated sqlc package
 docs/                    Generated Swagger
-internal/adapters/       External adapters
 internal/application/    Wiring, config
-internal/auth/domain/    Auth VO, entity, domain tests
-internal/auth/usecase/   Auth application services, repository ports, usecase tests
-internal/auth/repository/ Auth DB adapters, sqlc mapping
-internal/task/domain/    Task VO, entity, aggregate, domain tests
-internal/task/usecase/   Task application services, repository ports, usecase tests
-internal/task/repository/ Task DB adapters, sqlc mapping
-internal/domain/shared/  Shared VO/helpers used by multiple contexts
-internal/handlers/       HTTP boundary
-internal/middlewares/    HTTP middleware
-/db/sqlc/ Generated sqlc package
+internal/shared/         Cross-context ID and shared packages
+internal/<domain>/domain/ Domain VO, entity, aggregate, domain tests
+internal/<domain>/handlers/ HTTP boundary
+internal/<domain>/middlewares/ HTTP middleware
+internal/<domain>/repository/ DB adapters, sqlc mapping
+internal/<domain>/usecase/ Application services, repository ports, usecase tests
+internal/<domain>/adapters/ External adapters
 ```
+
+`<domain>` is `auth` or `task`.
 
 `db/queries` + `sqlc.yml` = sqlc source. `/db/sqlc` = generated.
 
