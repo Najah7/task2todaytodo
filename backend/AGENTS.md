@@ -78,7 +78,7 @@ main.go, application.go -> auth, task, shared
 
 ### VO
 
-- File prefix `value_`.
+- File suffix `_value`.
 - One validated concept.
 - Validate in constructor.
 - Keep representation work, e.g. hash, here.
@@ -86,7 +86,7 @@ main.go, application.go -> auth, task, shared
 
 ### Entity
 
-- File prefix `entity_`.
+- File suffix `_entity`.
 - Factory create. No external struct literal.
 - Own invariant, state change, state query.
 - New-state and restored-state factory may differ.
@@ -98,7 +98,7 @@ main.go, application.go -> auth, task, shared
 
 ### Aggregate
 
-- File prefix `aggregate_`.
+- File suffix `_aggregate`.
 - Use Aggregate for read models that span multiple tables or entity collections.
 - JOIN-based queries should return repository-mapped Aggregates, e.g. `ProjectAggregate` for Project + Tasks or `TaskAggregate` for Task + TodoItems + TaskSchedules.
 - Keep SQL/JOIN details inside repository implementations. Domain Aggregates describe the composed domain result, not database mechanics.
@@ -106,7 +106,7 @@ main.go, application.go -> auth, task, shared
 
 ### Application Service
 
-- File prefix `service_`.
+- File suffix `_service`.
 - Orchestrate domain object load, domain method call, repository save, and transaction boundary.
 - Keep repository interfaces in the usecase package, close to the Application Service that needs them.
 - No duplicate VO/entity validation.

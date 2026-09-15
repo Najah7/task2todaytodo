@@ -32,7 +32,7 @@ By separating long-lived task and schedule management from day-by-day execution,
 # Repository Layout
 
 .
-├── AGENT.md: Root project context and high-level product specification.
+├── AGENTS.md: Root project context and high-level product specification.
 ├── backend: Backend source code and backend-specific guidance. See `backend/AGENT.md` when working there.
 ├── docs: Development-time documentation and reference notes.
 ├── frontend: Frontend source code and frontend-specific guidance. See files under `frontend/` when working there.
