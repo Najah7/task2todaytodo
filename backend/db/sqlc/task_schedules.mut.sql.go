@@ -11,86 +11,121 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const addTaskScheduleFrequency = `-- name: AddTaskScheduleFrequency :exec
-INSERT INTO task_schedule_frequencies (task_schedule_id, frequency)
-VALUES ($1, $2)
-`
-
-type AddTaskScheduleFrequencyParams struct {
-	TaskScheduleID string
-	Frequency      string
-}
-
-func (q *Queries) AddTaskScheduleFrequency(ctx context.Context, arg AddTaskScheduleFrequencyParams) error {
-	_, err := q.db.Exec(ctx, addTaskScheduleFrequency, arg.TaskScheduleID, arg.Frequency)
-	return err
-}
-
 const createTaskSchedule = `-- name: CreateTaskSchedule :one
-INSERT INTO task_schedules (id, task_id, title, description, location, interval_weeks, start_at, end_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, created_at, updated_at
+WITH inserted AS (
+    INSERT INTO task_schedules (id, task_id, title, description, location, series_id, occurrence_date, timezone, is_exception, start_at, end_at, repeat_state, frequency_anchor_date, interval_weeks)
+    VALUES ($2, $3, $4, $5, $6,
+        $7, $8, $9, $10, $11, $12,
+        CASE WHEN $1::integer > 0 THEN 'active' ELSE 'one_off' END,
+        CASE WHEN $1::integer > 0 THEN $8::date ELSE NULL END,
+        $1::integer)
+    RETURNING id, task_id, title, description, location, series_id, occurrence_date, timezone, is_exception, completed,
+        (deleted_at IS NOT NULL) AS deleted, start_at, end_at, created_at, updated_at
+)
+SELECT inserted.id, inserted.task_id, inserted.title, inserted.description, inserted.location, inserted.series_id, inserted.occurrence_date, inserted.timezone, inserted.is_exception, inserted.completed, inserted.deleted, inserted.start_at, inserted.end_at, inserted.created_at, inserted.updated_at, $1::integer AS interval_weeks FROM inserted
 `
 
 type CreateTaskScheduleParams struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	Location      pgtype.Text
-	IntervalWeeks int32
-	StartAt       pgtype.Timestamptz
-	EndAt         pgtype.Timestamptz
+	IntervalWeeks  int32
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	Location       pgtype.Text
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	StartAt        pgtype.Timestamptz
+	EndAt          pgtype.Timestamptz
 }
 
-func (q *Queries) CreateTaskSchedule(ctx context.Context, arg CreateTaskScheduleParams) (TaskSchedule, error) {
+type CreateTaskScheduleRow struct {
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	Location       pgtype.Text
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	Completed      bool
+	Deleted        interface{}
+	StartAt        pgtype.Timestamptz
+	EndAt          pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	IntervalWeeks  int32
+}
+
+func (q *Queries) CreateTaskSchedule(ctx context.Context, arg CreateTaskScheduleParams) (CreateTaskScheduleRow, error) {
 	row := q.db.QueryRow(ctx, createTaskSchedule,
+		arg.IntervalWeeks,
 		arg.ID,
 		arg.TaskID,
 		arg.Title,
 		arg.Description,
 		arg.Location,
-		arg.IntervalWeeks,
+		arg.SeriesID,
+		arg.OccurrenceDate,
+		arg.Timezone,
+		arg.IsException,
 		arg.StartAt,
 		arg.EndAt,
 	)
-	var i TaskSchedule
+	var i CreateTaskScheduleRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
 		&i.Title,
 		&i.Description,
 		&i.Location,
-		&i.IntervalWeeks,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Completed,
+		&i.Deleted,
 		&i.StartAt,
 		&i.EndAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IntervalWeeks,
 	)
 	return i, err
 }
 
-const createTaskScheduleByTaskAndUser = `-- name: CreateTaskScheduleByTaskAndUser :one
+const createTaskScheduleByTaskAndUserID = `-- name: CreateTaskScheduleByTaskAndUserID :one
 WITH inserted AS (
-    INSERT INTO task_schedules (id, task_id, title, description, location, interval_weeks, start_at, end_at)
+    INSERT INTO task_schedules (id, task_id, title, description, location, series_id, occurrence_date, timezone, is_exception, start_at, end_at, repeat_state, frequency_anchor_date, interval_weeks)
     SELECT
-        $1,
         $2,
         $3,
         $4,
         $5,
         $6,
         $7,
-        $8
+        $8,
+        $9,
+        $10,
+        $11,
+        $12,
+        CASE WHEN $1::integer > 0 THEN 'active' ELSE 'one_off' END,
+        CASE WHEN $1::integer > 0 THEN $8::date ELSE NULL END,
+        $1::integer
     FROM tasks AS t
-    WHERE t.id = $2
-      AND t.user_id = $9
-    RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, created_at, updated_at
+    WHERE t.id = $3
+      AND t.deleted_at IS NULL
+      AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+      AND task_has_permission(t.id, $13::text, 'task_schedule', 'create')
+    RETURNING id, task_id, title, description, location, series_id, occurrence_date, timezone, is_exception, interval_weeks, completed, (deleted_at IS NOT NULL) AS deleted, start_at, end_at, created_at, updated_at
 ),
 inserted_frequencies AS (
     INSERT INTO task_schedule_frequencies (task_schedule_id, frequency)
-    SELECT inserted.id, unnest($10::text[])
+    SELECT inserted.id, unnest($14::text[])
     FROM inserted
+    WHERE inserted.id = inserted.series_id AND inserted.interval_weeks > 0
     ON CONFLICT DO NOTHING
 )
 SELECT
@@ -99,7 +134,13 @@ SELECT
     inserted.title,
     inserted.description,
     inserted.location,
-    inserted.interval_weeks,
+    $1::integer AS interval_weeks,
+    inserted.series_id,
+    inserted.occurrence_date,
+    inserted.timezone,
+    inserted.is_exception,
+    inserted.completed,
+    false AS deleted,
     ARRAY(
         SELECT tsf.frequency
         FROM task_schedule_frequencies AS tsf
@@ -113,47 +154,61 @@ SELECT
 FROM inserted
 `
 
-type CreateTaskScheduleByTaskAndUserParams struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	Location      pgtype.Text
-	IntervalWeeks int32
-	StartAt       pgtype.Timestamptz
-	EndAt         pgtype.Timestamptz
-	UserID        string
-	Frequencies   []string
+type CreateTaskScheduleByTaskAndUserIDParams struct {
+	IntervalWeeks  int32
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	Location       pgtype.Text
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	StartAt        pgtype.Timestamptz
+	EndAt          pgtype.Timestamptz
+	UserID         string
+	Frequencies    []string
 }
 
-type CreateTaskScheduleByTaskAndUserRow struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	Location      pgtype.Text
-	IntervalWeeks int32
-	Frequencies   []string
-	StartAt       pgtype.Timestamptz
-	EndAt         pgtype.Timestamptz
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+type CreateTaskScheduleByTaskAndUserIDRow struct {
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	Location       pgtype.Text
+	IntervalWeeks  int32
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	Completed      bool
+	Deleted        bool
+	Frequencies    []string
+	StartAt        pgtype.Timestamptz
+	EndAt          pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
 }
 
-func (q *Queries) CreateTaskScheduleByTaskAndUser(ctx context.Context, arg CreateTaskScheduleByTaskAndUserParams) (CreateTaskScheduleByTaskAndUserRow, error) {
-	row := q.db.QueryRow(ctx, createTaskScheduleByTaskAndUser,
+func (q *Queries) CreateTaskScheduleByTaskAndUserID(ctx context.Context, arg CreateTaskScheduleByTaskAndUserIDParams) (CreateTaskScheduleByTaskAndUserIDRow, error) {
+	row := q.db.QueryRow(ctx, createTaskScheduleByTaskAndUserID,
+		arg.IntervalWeeks,
 		arg.ID,
 		arg.TaskID,
 		arg.Title,
 		arg.Description,
 		arg.Location,
-		arg.IntervalWeeks,
+		arg.SeriesID,
+		arg.OccurrenceDate,
+		arg.Timezone,
+		arg.IsException,
 		arg.StartAt,
 		arg.EndAt,
 		arg.UserID,
 		arg.Frequencies,
 	)
-	var i CreateTaskScheduleByTaskAndUserRow
+	var i CreateTaskScheduleByTaskAndUserIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
@@ -161,6 +216,120 @@ func (q *Queries) CreateTaskScheduleByTaskAndUser(ctx context.Context, arg Creat
 		&i.Description,
 		&i.Location,
 		&i.IntervalWeeks,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Completed,
+		&i.Deleted,
+		&i.Frequencies,
+		&i.StartAt,
+		&i.EndAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createTaskScheduleOccurrenceByTaskAndUserID = `-- name: CreateTaskScheduleOccurrenceByTaskAndUserID :one
+INSERT INTO task_schedules (
+    id, task_id, title, description, location,
+    series_id, occurrence_date, timezone, is_exception, start_at, end_at,
+    repeat_state, frequency_anchor_date, interval_weeks
+)
+SELECT
+    $1, $2,
+    source.title,
+    source.description,
+    source.location,
+    $3,
+    $4, $5, $6,
+    $7, $8, NULL, NULL, 0
+FROM tasks AS t
+JOIN task_schedules AS source ON source.id = $3
+WHERE t.id = $2
+  AND source.task_id = t.id
+  AND source.series_id = source.id
+  AND source.repeat_state = 'active'
+  AND source.frequency_anchor_date <= $4::date
+  AND source.deleted_at IS NULL
+  AND t.user_id = $9
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND t.status <> 'done'
+ON CONFLICT (series_id, occurrence_date) WHERE id <> series_id DO UPDATE
+SET id = task_schedules.id
+WHERE task_schedules.deleted_at IS NULL
+  AND task_schedules.task_id = $2
+RETURNING id, task_id, title, description, location, COALESCE((SELECT r.interval_weeks FROM task_schedules r WHERE r.id = task_schedules.series_id ), 0)::integer AS interval_weeks,
+    series_id, occurrence_date, timezone, is_exception, completed, (deleted_at IS NOT NULL) AS deleted,
+    ARRAY(
+        SELECT tsf.frequency
+        FROM task_schedule_frequencies AS tsf
+        WHERE tsf.task_schedule_id = task_schedules.series_id
+        ORDER BY tsf.frequency
+    )::text[] AS frequencies,
+    start_at, end_at, created_at, updated_at
+`
+
+type CreateTaskScheduleOccurrenceByTaskAndUserIDParams struct {
+	ID             string
+	TaskID         string
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	StartAt        pgtype.Timestamptz
+	EndAt          pgtype.Timestamptz
+	UserID         string
+}
+
+type CreateTaskScheduleOccurrenceByTaskAndUserIDRow struct {
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	Location       pgtype.Text
+	IntervalWeeks  int32
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	Completed      bool
+	Deleted        interface{}
+	Frequencies    []string
+	StartAt        pgtype.Timestamptz
+	EndAt          pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) CreateTaskScheduleOccurrenceByTaskAndUserID(ctx context.Context, arg CreateTaskScheduleOccurrenceByTaskAndUserIDParams) (CreateTaskScheduleOccurrenceByTaskAndUserIDRow, error) {
+	row := q.db.QueryRow(ctx, createTaskScheduleOccurrenceByTaskAndUserID,
+		arg.ID,
+		arg.TaskID,
+		arg.SeriesID,
+		arg.OccurrenceDate,
+		arg.Timezone,
+		arg.IsException,
+		arg.StartAt,
+		arg.EndAt,
+		arg.UserID,
+	)
+	var i CreateTaskScheduleOccurrenceByTaskAndUserIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.TaskID,
+		&i.Title,
+		&i.Description,
+		&i.Location,
+		&i.IntervalWeeks,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Completed,
+		&i.Deleted,
 		&i.Frequencies,
 		&i.StartAt,
 		&i.EndAt,
@@ -171,7 +340,8 @@ func (q *Queries) CreateTaskScheduleByTaskAndUser(ctx context.Context, arg Creat
 }
 
 const deleteTaskSchedule = `-- name: DeleteTaskSchedule :exec
-DELETE FROM task_schedules
+UPDATE task_schedules
+SET deleted_at = COALESCE(deleted_at, now()), updated_at = now()
 WHERE id = $1
 `
 
@@ -180,37 +350,160 @@ func (q *Queries) DeleteTaskSchedule(ctx context.Context, id string) error {
 	return err
 }
 
-const deleteTaskScheduleByTaskAndUser = `-- name: DeleteTaskScheduleByTaskAndUser :one
-DELETE FROM task_schedules AS ts
-USING tasks AS t
+const deleteTaskScheduleByTaskAndUserID = `-- name: DeleteTaskScheduleByTaskAndUserID :one
+UPDATE task_schedules AS ts
+SET deleted_at = COALESCE(ts.deleted_at, now()), updated_at = now()
+FROM tasks AS t
 WHERE ts.id = $1
   AND ts.task_id = $2
   AND t.id = ts.task_id
-  AND t.user_id = $3
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $3, 'task_schedule', 'delete')
+  AND ts.deleted_at IS NULL
 RETURNING ts.id
 `
 
-type DeleteTaskScheduleByTaskAndUserParams struct {
-	ID     string
-	TaskID string
-	UserID string
+type DeleteTaskScheduleByTaskAndUserIDParams struct {
+	ID       string
+	TaskID   string
+	ActorKey string
 }
 
-func (q *Queries) DeleteTaskScheduleByTaskAndUser(ctx context.Context, arg DeleteTaskScheduleByTaskAndUserParams) (string, error) {
-	row := q.db.QueryRow(ctx, deleteTaskScheduleByTaskAndUser, arg.ID, arg.TaskID, arg.UserID)
+func (q *Queries) DeleteTaskScheduleByTaskAndUserID(ctx context.Context, arg DeleteTaskScheduleByTaskAndUserIDParams) (string, error) {
+	row := q.db.QueryRow(ctx, deleteTaskScheduleByTaskAndUserID, arg.ID, arg.TaskID, arg.ActorKey)
 	var id string
 	err := row.Scan(&id)
 	return id, err
 }
 
-const deleteTaskScheduleFrequencies = `-- name: DeleteTaskScheduleFrequencies :exec
-DELETE FROM task_schedule_frequencies
-WHERE task_schedule_id = $1
+const deleteUneditedFutureTaskSchedulesBySeries = `-- name: DeleteUneditedFutureTaskSchedulesBySeries :execrows
+UPDATE task_schedules AS ts
+SET deleted_at = COALESCE(ts.deleted_at, now()), updated_at = now()
+FROM tasks AS t
+WHERE ts.task_id = $1
+  AND t.id = ts.task_id
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $2::text, 'task_schedule', 'update')
+  AND ts.series_id = $3
+  AND ts.id <> ts.series_id
+  AND ts.start_at > $4::timestamptz
+  AND ts.is_exception = false
+  AND ts.completed = false
+  AND ts.deleted_at IS NULL
 `
 
-func (q *Queries) DeleteTaskScheduleFrequencies(ctx context.Context, taskScheduleID string) error {
-	_, err := q.db.Exec(ctx, deleteTaskScheduleFrequencies, taskScheduleID)
-	return err
+type DeleteUneditedFutureTaskSchedulesBySeriesParams struct {
+	TaskID   string
+	UserID   string
+	SeriesID string
+	FromAt   pgtype.Timestamptz
+}
+
+func (q *Queries) DeleteUneditedFutureTaskSchedulesBySeries(ctx context.Context, arg DeleteUneditedFutureTaskSchedulesBySeriesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUneditedFutureTaskSchedulesBySeries,
+		arg.TaskID,
+		arg.UserID,
+		arg.SeriesID,
+		arg.FromAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteUneditedFutureTaskSchedulesByTask = `-- name: DeleteUneditedFutureTaskSchedulesByTask :execrows
+UPDATE task_schedules AS ts
+SET deleted_at = COALESCE(ts.deleted_at, now()), updated_at = now()
+FROM tasks AS t
+WHERE ts.task_id = $1
+  AND t.id = ts.task_id
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $2::text, 'task_schedule', 'update')
+  AND ts.id <> ts.series_id
+  AND ts.start_at > $3::timestamptz
+  AND ts.is_exception = false
+  AND ts.completed = false
+  AND ts.deleted_at IS NULL
+`
+
+type DeleteUneditedFutureTaskSchedulesByTaskParams struct {
+	TaskID string
+	UserID string
+	FromAt pgtype.Timestamptz
+}
+
+func (q *Queries) DeleteUneditedFutureTaskSchedulesByTask(ctx context.Context, arg DeleteUneditedFutureTaskSchedulesByTaskParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUneditedFutureTaskSchedulesByTask, arg.TaskID, arg.UserID, arg.FromAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setTaskScheduleCompletedByTaskAndUserID = `-- name: SetTaskScheduleCompletedByTaskAndUserID :execrows
+UPDATE task_schedules AS ts
+SET completed = $1,
+    is_exception = CASE WHEN ts.id = ts.series_id THEN ts.is_exception ELSE true END,
+    updated_at = now()
+FROM tasks AS t
+WHERE ts.id = $2
+  AND ts.task_id = $3
+  AND t.id = ts.task_id
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $4::text, 'task_schedule', 'update')
+  AND ts.deleted_at IS NULL
+`
+
+type SetTaskScheduleCompletedByTaskAndUserIDParams struct {
+	Completed bool
+	ID        string
+	TaskID    string
+	UserID    string
+}
+
+func (q *Queries) SetTaskScheduleCompletedByTaskAndUserID(ctx context.Context, arg SetTaskScheduleCompletedByTaskAndUserIDParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setTaskScheduleCompletedByTaskAndUserID,
+		arg.Completed,
+		arg.ID,
+		arg.TaskID,
+		arg.UserID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const tombstoneTaskScheduleByTaskAndUserID = `-- name: TombstoneTaskScheduleByTaskAndUserID :one
+UPDATE task_schedules AS ts
+SET deleted_at = COALESCE(ts.deleted_at, now()), updated_at = now()
+FROM tasks AS t
+WHERE ts.id = $1
+  AND ts.task_id = $2
+  AND t.id = ts.task_id
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $3::text, 'task_schedule', 'delete')
+  AND ts.deleted_at IS NULL
+RETURNING ts.id
+`
+
+type TombstoneTaskScheduleByTaskAndUserIDParams struct {
+	ID     string
+	TaskID string
+	UserID string
+}
+
+func (q *Queries) TombstoneTaskScheduleByTaskAndUserID(ctx context.Context, arg TombstoneTaskScheduleByTaskAndUserIDParams) (string, error) {
+	row := q.db.QueryRow(ctx, tombstoneTaskScheduleByTaskAndUserID, arg.ID, arg.TaskID, arg.UserID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const updateTaskSchedule = `-- name: UpdateTaskSchedule :one
@@ -219,37 +512,54 @@ SET task_id = $2,
     title = $3,
     description = $4,
     location = $5,
-    interval_weeks = $6,
-    start_at = $7,
-    end_at = $8,
+    start_at = $6,
+    end_at = $7,
     updated_at = now()
-WHERE id = $1
-RETURNING id, task_id, title, description, location, interval_weeks, start_at, end_at, created_at, updated_at
+WHERE task_schedules.id = $1
+  AND task_schedules.deleted_at IS NULL
+RETURNING id, task_id, title, description, location, COALESCE((SELECT r.interval_weeks FROM task_schedules r WHERE r.id = task_schedules.series_id ), 0)::integer AS interval_weeks, series_id, occurrence_date, timezone, is_exception, completed, (deleted_at IS NOT NULL) AS deleted, start_at, end_at, created_at, updated_at
 `
 
 type UpdateTaskScheduleParams struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	Location      pgtype.Text
-	IntervalWeeks int32
-	StartAt       pgtype.Timestamptz
-	EndAt         pgtype.Timestamptz
+	ID          string
+	TaskID      string
+	Title       string
+	Description pgtype.Text
+	Location    pgtype.Text
+	StartAt     pgtype.Timestamptz
+	EndAt       pgtype.Timestamptz
 }
 
-func (q *Queries) UpdateTaskSchedule(ctx context.Context, arg UpdateTaskScheduleParams) (TaskSchedule, error) {
+type UpdateTaskScheduleRow struct {
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	Location       pgtype.Text
+	IntervalWeeks  int32
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	Completed      bool
+	Deleted        interface{}
+	StartAt        pgtype.Timestamptz
+	EndAt          pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateTaskSchedule(ctx context.Context, arg UpdateTaskScheduleParams) (UpdateTaskScheduleRow, error) {
 	row := q.db.QueryRow(ctx, updateTaskSchedule,
 		arg.ID,
 		arg.TaskID,
 		arg.Title,
 		arg.Description,
 		arg.Location,
-		arg.IntervalWeeks,
 		arg.StartAt,
 		arg.EndAt,
 	)
-	var i TaskSchedule
+	var i UpdateTaskScheduleRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
@@ -257,6 +567,12 @@ func (q *Queries) UpdateTaskSchedule(ctx context.Context, arg UpdateTaskSchedule
 		&i.Description,
 		&i.Location,
 		&i.IntervalWeeks,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Completed,
+		&i.Deleted,
 		&i.StartAt,
 		&i.EndAt,
 		&i.CreatedAt,
@@ -265,35 +581,25 @@ func (q *Queries) UpdateTaskSchedule(ctx context.Context, arg UpdateTaskSchedule
 	return i, err
 }
 
-const updateTaskScheduleByTaskAndUser = `-- name: UpdateTaskScheduleByTaskAndUser :one
+const updateTaskScheduleByTaskAndUserID = `-- name: UpdateTaskScheduleByTaskAndUserID :one
 WITH updated AS (
     UPDATE task_schedules AS ts
     SET title = $1,
         description = $2,
         location = $3,
-        interval_weeks = $4,
-        start_at = $5,
-        end_at = $6,
+        start_at = $4,
+        end_at = $5,
+        is_exception = true,
         updated_at = now()
     FROM tasks AS t
-    WHERE ts.id = $7
-      AND ts.task_id = $8
+    WHERE ts.id = $6
+      AND ts.task_id = $7
       AND t.id = ts.task_id
-      AND t.user_id = $9
-    RETURNING ts.id, ts.task_id, ts.title, ts.description, ts.location, ts.interval_weeks, ts.start_at, ts.end_at, ts.created_at, ts.updated_at
-),
-deleted_frequencies AS (
-    DELETE FROM task_schedule_frequencies AS tsf
-    USING updated
-    WHERE tsf.task_schedule_id = updated.id
-    RETURNING tsf.task_schedule_id
-),
-inserted_frequencies AS (
-    INSERT INTO task_schedule_frequencies (task_schedule_id, frequency)
-    SELECT updated.id, unnest($10::text[])
-    FROM updated
-    LEFT JOIN (SELECT count(*) AS deleted_count FROM deleted_frequencies) AS deleted ON true
-    ON CONFLICT DO NOTHING
+      AND t.deleted_at IS NULL
+      AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+      AND task_has_permission(t.id, $8::text, 'task_schedule', 'update')
+      AND ts.deleted_at IS NULL
+    RETURNING ts.id, ts.task_id, ts.title, ts.description, ts.location, COALESCE((SELECT r.interval_weeks FROM task_schedules r WHERE r.id = ts.series_id ), 0)::integer AS interval_weeks, ts.series_id, ts.occurrence_date, ts.timezone, ts.is_exception, ts.completed, (ts.deleted_at IS NOT NULL) AS deleted, ts.start_at, ts.end_at, ts.created_at, ts.updated_at
 )
 SELECT
     updated.id,
@@ -301,11 +607,17 @@ SELECT
     updated.title,
     updated.description,
     updated.location,
-    updated.interval_weeks,
+    COALESCE((SELECT r.interval_weeks FROM task_schedules r WHERE r.id = updated.series_id ), 0)::integer AS interval_weeks,
+    updated.series_id,
+    updated.occurrence_date,
+    updated.timezone,
+    updated.is_exception,
+    updated.completed,
+    false AS deleted,
     ARRAY(
         SELECT tsf.frequency
         FROM task_schedule_frequencies AS tsf
-        WHERE tsf.task_schedule_id = updated.id
+        WHERE tsf.task_schedule_id = updated.series_id
         ORDER BY tsf.frequency
     )::text[] AS frequencies,
     updated.start_at,
@@ -315,47 +627,49 @@ SELECT
 FROM updated
 `
 
-type UpdateTaskScheduleByTaskAndUserParams struct {
-	Title         string
-	Description   pgtype.Text
-	Location      pgtype.Text
-	IntervalWeeks int32
-	StartAt       pgtype.Timestamptz
-	EndAt         pgtype.Timestamptz
-	ID            string
-	TaskID        string
-	UserID        string
-	Frequencies   []string
+type UpdateTaskScheduleByTaskAndUserIDParams struct {
+	Title       string
+	Description pgtype.Text
+	Location    pgtype.Text
+	StartAt     pgtype.Timestamptz
+	EndAt       pgtype.Timestamptz
+	ID          string
+	TaskID      string
+	UserID      string
 }
 
-type UpdateTaskScheduleByTaskAndUserRow struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	Location      pgtype.Text
-	IntervalWeeks int32
-	Frequencies   []string
-	StartAt       pgtype.Timestamptz
-	EndAt         pgtype.Timestamptz
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+type UpdateTaskScheduleByTaskAndUserIDRow struct {
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	Location       pgtype.Text
+	IntervalWeeks  int32
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	Completed      bool
+	Deleted        bool
+	Frequencies    []string
+	StartAt        pgtype.Timestamptz
+	EndAt          pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
 }
 
-func (q *Queries) UpdateTaskScheduleByTaskAndUser(ctx context.Context, arg UpdateTaskScheduleByTaskAndUserParams) (UpdateTaskScheduleByTaskAndUserRow, error) {
-	row := q.db.QueryRow(ctx, updateTaskScheduleByTaskAndUser,
+func (q *Queries) UpdateTaskScheduleByTaskAndUserID(ctx context.Context, arg UpdateTaskScheduleByTaskAndUserIDParams) (UpdateTaskScheduleByTaskAndUserIDRow, error) {
+	row := q.db.QueryRow(ctx, updateTaskScheduleByTaskAndUserID,
 		arg.Title,
 		arg.Description,
 		arg.Location,
-		arg.IntervalWeeks,
 		arg.StartAt,
 		arg.EndAt,
 		arg.ID,
 		arg.TaskID,
 		arg.UserID,
-		arg.Frequencies,
 	)
-	var i UpdateTaskScheduleByTaskAndUserRow
+	var i UpdateTaskScheduleByTaskAndUserIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
@@ -363,6 +677,12 @@ func (q *Queries) UpdateTaskScheduleByTaskAndUser(ctx context.Context, arg Updat
 		&i.Description,
 		&i.Location,
 		&i.IntervalWeeks,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Completed,
+		&i.Deleted,
 		&i.Frequencies,
 		&i.StartAt,
 		&i.EndAt,

@@ -18,11 +18,19 @@ SELECT
     ts.title,
     ts.description,
     ts.location,
-    ts.interval_weeks,
+    COALESCE((SELECT r.interval_weeks FROM task_schedules r WHERE r.id = ts.series_id ), 0)::integer AS interval_weeks,
+    (SELECT r.repeat_state FROM task_schedules r WHERE r.id = ts.series_id) AS repeat_state,
+    (SELECT r.frequency_anchor_date FROM task_schedules r WHERE r.id = ts.series_id) AS frequency_anchor_date,
+    ts.series_id,
+    ts.occurrence_date,
+    ts.timezone,
+    ts.is_exception,
+    ts.completed,
+    (ts.deleted_at IS NOT NULL) AS deleted,
     ARRAY(
         SELECT tsf.frequency
         FROM task_schedule_frequencies AS tsf
-        WHERE tsf.task_schedule_id = ts.id
+        WHERE tsf.task_schedule_id = ts.series_id
         ORDER BY tsf.frequency
     )::text[] AS frequencies,
     ts.start_at,
@@ -31,20 +39,29 @@ SELECT
     ts.updated_at
 FROM task_schedules AS ts
 WHERE ts.id = $1
+  AND ts.deleted_at IS NULL
 `
 
 type GetTaskScheduleRow struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	Location      pgtype.Text
-	IntervalWeeks int32
-	Frequencies   []string
-	StartAt       pgtype.Timestamptz
-	EndAt         pgtype.Timestamptz
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	ID                  string
+	TaskID              string
+	Title               string
+	Description         pgtype.Text
+	Location            pgtype.Text
+	IntervalWeeks       int32
+	RepeatState         pgtype.Text
+	FrequencyAnchorDate pgtype.Date
+	SeriesID            string
+	OccurrenceDate      pgtype.Date
+	Timezone            string
+	IsException         bool
+	Completed           bool
+	Deleted             interface{}
+	Frequencies         []string
+	StartAt             pgtype.Timestamptz
+	EndAt               pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
 }
 
 func (q *Queries) GetTaskSchedule(ctx context.Context, id string) (GetTaskScheduleRow, error) {
@@ -57,6 +74,14 @@ func (q *Queries) GetTaskSchedule(ctx context.Context, id string) (GetTaskSchedu
 		&i.Description,
 		&i.Location,
 		&i.IntervalWeeks,
+		&i.RepeatState,
+		&i.FrequencyAnchorDate,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Completed,
+		&i.Deleted,
 		&i.Frequencies,
 		&i.StartAt,
 		&i.EndAt,
@@ -66,18 +91,26 @@ func (q *Queries) GetTaskSchedule(ctx context.Context, id string) (GetTaskSchedu
 	return i, err
 }
 
-const getTaskScheduleByTaskAndUser = `-- name: GetTaskScheduleByTaskAndUser :one
+const getTaskScheduleByTaskAndUserID = `-- name: GetTaskScheduleByTaskAndUserID :one
 SELECT
     ts.id,
     ts.task_id,
     ts.title,
     ts.description,
     ts.location,
-    ts.interval_weeks,
+    COALESCE((SELECT r.interval_weeks FROM task_schedules r WHERE r.id = ts.series_id ), 0)::integer AS interval_weeks,
+    (SELECT r.repeat_state FROM task_schedules r WHERE r.id = ts.series_id) AS repeat_state,
+    (SELECT r.frequency_anchor_date FROM task_schedules r WHERE r.id = ts.series_id) AS frequency_anchor_date,
+    ts.series_id,
+    ts.occurrence_date,
+    ts.timezone,
+    ts.is_exception,
+    ts.completed,
+    (ts.deleted_at IS NOT NULL) AS deleted,
     ARRAY(
         SELECT tsf.frequency
         FROM task_schedule_frequencies AS tsf
-        WHERE tsf.task_schedule_id = ts.id
+        WHERE tsf.task_schedule_id = ts.series_id
         ORDER BY tsf.frequency
     )::text[] AS frequencies,
     ts.start_at,
@@ -88,32 +121,43 @@ FROM task_schedules AS ts
 JOIN tasks AS t ON t.id = ts.task_id
 WHERE ts.id = $1
   AND ts.task_id = $2
-  AND t.user_id = $3
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $3, 'task_schedule', 'read')
+  AND ts.deleted_at IS NULL
 `
 
-type GetTaskScheduleByTaskAndUserParams struct {
-	ID     string
-	TaskID string
-	UserID string
+type GetTaskScheduleByTaskAndUserIDParams struct {
+	ID       string
+	TaskID   string
+	ActorKey string
 }
 
-type GetTaskScheduleByTaskAndUserRow struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	Location      pgtype.Text
-	IntervalWeeks int32
-	Frequencies   []string
-	StartAt       pgtype.Timestamptz
-	EndAt         pgtype.Timestamptz
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+type GetTaskScheduleByTaskAndUserIDRow struct {
+	ID                  string
+	TaskID              string
+	Title               string
+	Description         pgtype.Text
+	Location            pgtype.Text
+	IntervalWeeks       int32
+	RepeatState         pgtype.Text
+	FrequencyAnchorDate pgtype.Date
+	SeriesID            string
+	OccurrenceDate      pgtype.Date
+	Timezone            string
+	IsException         bool
+	Completed           bool
+	Deleted             interface{}
+	Frequencies         []string
+	StartAt             pgtype.Timestamptz
+	EndAt               pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
 }
 
-func (q *Queries) GetTaskScheduleByTaskAndUser(ctx context.Context, arg GetTaskScheduleByTaskAndUserParams) (GetTaskScheduleByTaskAndUserRow, error) {
-	row := q.db.QueryRow(ctx, getTaskScheduleByTaskAndUser, arg.ID, arg.TaskID, arg.UserID)
-	var i GetTaskScheduleByTaskAndUserRow
+func (q *Queries) GetTaskScheduleByTaskAndUserID(ctx context.Context, arg GetTaskScheduleByTaskAndUserIDParams) (GetTaskScheduleByTaskAndUserIDRow, error) {
+	row := q.db.QueryRow(ctx, getTaskScheduleByTaskAndUserID, arg.ID, arg.TaskID, arg.ActorKey)
+	var i GetTaskScheduleByTaskAndUserIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
@@ -121,6 +165,14 @@ func (q *Queries) GetTaskScheduleByTaskAndUser(ctx context.Context, arg GetTaskS
 		&i.Description,
 		&i.Location,
 		&i.IntervalWeeks,
+		&i.RepeatState,
+		&i.FrequencyAnchorDate,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Completed,
+		&i.Deleted,
 		&i.Frequencies,
 		&i.StartAt,
 		&i.EndAt,
@@ -130,18 +182,224 @@ func (q *Queries) GetTaskScheduleByTaskAndUser(ctx context.Context, arg GetTaskS
 	return i, err
 }
 
-const listTaskSchedulesByTaskAndUser = `-- name: ListTaskSchedulesByTaskAndUser :many
+const getTaskScheduleByTaskAndUserIDForCommand = `-- name: GetTaskScheduleByTaskAndUserIDForCommand :one
 SELECT
     ts.id,
     ts.task_id,
     ts.title,
     ts.description,
     ts.location,
-    ts.interval_weeks,
+    COALESCE((SELECT r.interval_weeks FROM task_schedules r WHERE r.id = ts.series_id), 0)::integer AS interval_weeks,
+    (SELECT r.repeat_state FROM task_schedules r WHERE r.id = ts.series_id) AS repeat_state,
+    (SELECT r.frequency_anchor_date FROM task_schedules r WHERE r.id = ts.series_id) AS frequency_anchor_date,
+    ts.series_id,
+    ts.occurrence_date,
+    ts.timezone,
+    ts.is_exception,
+    ts.completed,
+    (ts.deleted_at IS NOT NULL) AS deleted,
     ARRAY(
         SELECT tsf.frequency
         FROM task_schedule_frequencies AS tsf
-        WHERE tsf.task_schedule_id = ts.id
+        WHERE tsf.task_schedule_id = ts.series_id
+        ORDER BY tsf.frequency
+    )::text[] AS frequencies,
+    ts.start_at,
+    ts.end_at,
+    ts.created_at,
+    ts.updated_at
+FROM task_schedules AS ts
+JOIN tasks AS t ON t.id = ts.task_id
+WHERE ts.id = $1::text
+  AND ts.task_id = $2::text
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $3::text, $4::text, $5::permission_action)
+`
+
+type GetTaskScheduleByTaskAndUserIDForCommandParams struct {
+	ID         string
+	TaskID     string
+	ActorID    string
+	ResourceID string
+	Action     PermissionAction
+}
+
+type GetTaskScheduleByTaskAndUserIDForCommandRow struct {
+	ID                  string
+	TaskID              string
+	Title               string
+	Description         pgtype.Text
+	Location            pgtype.Text
+	IntervalWeeks       int32
+	RepeatState         pgtype.Text
+	FrequencyAnchorDate pgtype.Date
+	SeriesID            string
+	OccurrenceDate      pgtype.Date
+	Timezone            string
+	IsException         bool
+	Completed           bool
+	Deleted             interface{}
+	Frequencies         []string
+	StartAt             pgtype.Timestamptz
+	EndAt               pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+}
+
+func (q *Queries) GetTaskScheduleByTaskAndUserIDForCommand(ctx context.Context, arg GetTaskScheduleByTaskAndUserIDForCommandParams) (GetTaskScheduleByTaskAndUserIDForCommandRow, error) {
+	row := q.db.QueryRow(ctx, getTaskScheduleByTaskAndUserIDForCommand,
+		arg.ID,
+		arg.TaskID,
+		arg.ActorID,
+		arg.ResourceID,
+		arg.Action,
+	)
+	var i GetTaskScheduleByTaskAndUserIDForCommandRow
+	err := row.Scan(
+		&i.ID,
+		&i.TaskID,
+		&i.Title,
+		&i.Description,
+		&i.Location,
+		&i.IntervalWeeks,
+		&i.RepeatState,
+		&i.FrequencyAnchorDate,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Completed,
+		&i.Deleted,
+		&i.Frequencies,
+		&i.StartAt,
+		&i.EndAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const listActiveTaskScheduleSeriesByUserID = `-- name: ListActiveTaskScheduleSeriesByUserID :many
+SELECT
+    ts.id,
+    ts.task_id,
+    ts.title,
+    ts.description,
+    ts.location,
+    COALESCE((SELECT r.interval_weeks FROM task_schedules r WHERE r.id = ts.series_id ), 0)::integer AS interval_weeks,
+    (SELECT r.repeat_state FROM task_schedules r WHERE r.id = ts.series_id) AS repeat_state,
+    (SELECT r.frequency_anchor_date FROM task_schedules r WHERE r.id = ts.series_id) AS frequency_anchor_date,
+    ts.series_id,
+    ts.occurrence_date,
+    ts.timezone,
+    ts.is_exception,
+    ts.completed,
+    (ts.deleted_at IS NOT NULL) AS deleted,
+    ARRAY(
+        SELECT tsf.frequency
+        FROM task_schedule_frequencies AS tsf
+        WHERE tsf.task_schedule_id = ts.series_id
+        ORDER BY tsf.frequency
+    )::text[] AS frequencies,
+    ts.start_at,
+    ts.end_at,
+    ts.created_at,
+    ts.updated_at
+FROM task_schedules AS ts
+JOIN tasks AS t ON t.id = ts.task_id
+WHERE t.user_id = $1
+AND t.deleted_at IS NULL
+AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND t.status <> 'done'
+  AND ts.id = ts.series_id
+  AND EXISTS (SELECT 1 FROM task_schedules r WHERE r.id = ts.series_id AND r.repeat_state = 'active')
+  AND ts.deleted_at IS NULL
+ORDER BY ts.start_at ASC
+`
+
+type ListActiveTaskScheduleSeriesByUserIDRow struct {
+	ID                  string
+	TaskID              string
+	Title               string
+	Description         pgtype.Text
+	Location            pgtype.Text
+	IntervalWeeks       int32
+	RepeatState         pgtype.Text
+	FrequencyAnchorDate pgtype.Date
+	SeriesID            string
+	OccurrenceDate      pgtype.Date
+	Timezone            string
+	IsException         bool
+	Completed           bool
+	Deleted             interface{}
+	Frequencies         []string
+	StartAt             pgtype.Timestamptz
+	EndAt               pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+}
+
+func (q *Queries) ListActiveTaskScheduleSeriesByUserID(ctx context.Context, userID string) ([]ListActiveTaskScheduleSeriesByUserIDRow, error) {
+	rows, err := q.db.Query(ctx, listActiveTaskScheduleSeriesByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActiveTaskScheduleSeriesByUserIDRow
+	for rows.Next() {
+		var i ListActiveTaskScheduleSeriesByUserIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.Title,
+			&i.Description,
+			&i.Location,
+			&i.IntervalWeeks,
+			&i.RepeatState,
+			&i.FrequencyAnchorDate,
+			&i.SeriesID,
+			&i.OccurrenceDate,
+			&i.Timezone,
+			&i.IsException,
+			&i.Completed,
+			&i.Deleted,
+			&i.Frequencies,
+			&i.StartAt,
+			&i.EndAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTaskSchedulesByTaskAndUserID = `-- name: ListTaskSchedulesByTaskAndUserID :many
+SELECT
+    ts.id,
+    ts.task_id,
+    ts.title,
+    ts.description,
+    ts.location,
+    COALESCE((SELECT r.interval_weeks FROM task_schedules r WHERE r.id = ts.series_id ), 0)::integer AS interval_weeks,
+    (SELECT r.repeat_state FROM task_schedules r WHERE r.id = ts.series_id) AS repeat_state,
+    (SELECT r.frequency_anchor_date FROM task_schedules r WHERE r.id = ts.series_id) AS frequency_anchor_date,
+    ts.series_id,
+    ts.occurrence_date,
+    ts.timezone,
+    ts.is_exception,
+    ts.completed,
+    (ts.deleted_at IS NOT NULL) AS deleted,
+    ARRAY(
+        SELECT tsf.frequency
+        FROM task_schedule_frequencies AS tsf
+        WHERE tsf.task_schedule_id = ts.series_id
         ORDER BY tsf.frequency
     )::text[] AS frequencies,
     ts.start_at,
@@ -151,38 +409,49 @@ SELECT
 FROM task_schedules AS ts
 JOIN tasks AS t ON t.id = ts.task_id
 WHERE ts.task_id = $1
-  AND t.user_id = $2
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $2, 'task_schedule', 'read')
+  AND ts.deleted_at IS NULL
 ORDER BY ts.start_at ASC
 `
 
-type ListTaskSchedulesByTaskAndUserParams struct {
-	TaskID string
-	UserID string
+type ListTaskSchedulesByTaskAndUserIDParams struct {
+	TaskID   string
+	ActorKey string
 }
 
-type ListTaskSchedulesByTaskAndUserRow struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	Location      pgtype.Text
-	IntervalWeeks int32
-	Frequencies   []string
-	StartAt       pgtype.Timestamptz
-	EndAt         pgtype.Timestamptz
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+type ListTaskSchedulesByTaskAndUserIDRow struct {
+	ID                  string
+	TaskID              string
+	Title               string
+	Description         pgtype.Text
+	Location            pgtype.Text
+	IntervalWeeks       int32
+	RepeatState         pgtype.Text
+	FrequencyAnchorDate pgtype.Date
+	SeriesID            string
+	OccurrenceDate      pgtype.Date
+	Timezone            string
+	IsException         bool
+	Completed           bool
+	Deleted             interface{}
+	Frequencies         []string
+	StartAt             pgtype.Timestamptz
+	EndAt               pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
 }
 
-func (q *Queries) ListTaskSchedulesByTaskAndUser(ctx context.Context, arg ListTaskSchedulesByTaskAndUserParams) ([]ListTaskSchedulesByTaskAndUserRow, error) {
-	rows, err := q.db.Query(ctx, listTaskSchedulesByTaskAndUser, arg.TaskID, arg.UserID)
+func (q *Queries) ListTaskSchedulesByTaskAndUserID(ctx context.Context, arg ListTaskSchedulesByTaskAndUserIDParams) ([]ListTaskSchedulesByTaskAndUserIDRow, error) {
+	rows, err := q.db.Query(ctx, listTaskSchedulesByTaskAndUserID, arg.TaskID, arg.ActorKey)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListTaskSchedulesByTaskAndUserRow
+	var items []ListTaskSchedulesByTaskAndUserIDRow
 	for rows.Next() {
-		var i ListTaskSchedulesByTaskAndUserRow
+		var i ListTaskSchedulesByTaskAndUserIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TaskID,
@@ -190,6 +459,339 @@ func (q *Queries) ListTaskSchedulesByTaskAndUser(ctx context.Context, arg ListTa
 			&i.Description,
 			&i.Location,
 			&i.IntervalWeeks,
+			&i.RepeatState,
+			&i.FrequencyAnchorDate,
+			&i.SeriesID,
+			&i.OccurrenceDate,
+			&i.Timezone,
+			&i.IsException,
+			&i.Completed,
+			&i.Deleted,
+			&i.Frequencies,
+			&i.StartAt,
+			&i.EndAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTaskSchedulesByTaskAndUserIDCursorPage = `-- name: ListTaskSchedulesByTaskAndUserIDCursorPage :many
+SELECT
+    ts.id,
+    ts.task_id,
+    ts.title,
+    ts.description,
+    ts.location,
+    COALESCE((SELECT r.interval_weeks FROM task_schedules r WHERE r.id = ts.series_id ), 0)::integer AS interval_weeks,
+    (SELECT r.repeat_state FROM task_schedules r WHERE r.id = ts.series_id) AS repeat_state,
+    (SELECT r.frequency_anchor_date FROM task_schedules r WHERE r.id = ts.series_id) AS frequency_anchor_date,
+    ts.series_id,
+    ts.occurrence_date,
+    ts.timezone,
+    ts.is_exception,
+    ts.completed,
+    (ts.deleted_at IS NOT NULL) AS deleted,
+    ARRAY(
+        SELECT tsf.frequency
+        FROM task_schedule_frequencies AS tsf
+        WHERE tsf.task_schedule_id = ts.series_id
+        ORDER BY tsf.frequency
+    )::text[] AS frequencies,
+    ts.start_at,
+    ts.end_at,
+    ts.created_at,
+    ts.updated_at
+FROM task_schedules AS ts
+JOIN tasks AS t ON t.id = ts.task_id
+WHERE ts.task_id = $1
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $2, 'task_schedule', 'read')
+  AND ts.deleted_at IS NULL
+  AND ($3::timestamptz IS NULL OR (ts.start_at, ts.id) > ($3::timestamptz, $4::text))
+ORDER BY ts.start_at ASC, ts.id ASC
+LIMIT $5::integer
+`
+
+type ListTaskSchedulesByTaskAndUserIDCursorPageParams struct {
+	TaskID    string
+	ActorKey  string
+	CursorAt  pgtype.Timestamptz
+	CursorID  pgtype.Text
+	PageLimit int32
+}
+
+type ListTaskSchedulesByTaskAndUserIDCursorPageRow struct {
+	ID                  string
+	TaskID              string
+	Title               string
+	Description         pgtype.Text
+	Location            pgtype.Text
+	IntervalWeeks       int32
+	RepeatState         pgtype.Text
+	FrequencyAnchorDate pgtype.Date
+	SeriesID            string
+	OccurrenceDate      pgtype.Date
+	Timezone            string
+	IsException         bool
+	Completed           bool
+	Deleted             interface{}
+	Frequencies         []string
+	StartAt             pgtype.Timestamptz
+	EndAt               pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+}
+
+func (q *Queries) ListTaskSchedulesByTaskAndUserIDCursorPage(ctx context.Context, arg ListTaskSchedulesByTaskAndUserIDCursorPageParams) ([]ListTaskSchedulesByTaskAndUserIDCursorPageRow, error) {
+	rows, err := q.db.Query(ctx, listTaskSchedulesByTaskAndUserIDCursorPage,
+		arg.TaskID,
+		arg.ActorKey,
+		arg.CursorAt,
+		arg.CursorID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTaskSchedulesByTaskAndUserIDCursorPageRow
+	for rows.Next() {
+		var i ListTaskSchedulesByTaskAndUserIDCursorPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.Title,
+			&i.Description,
+			&i.Location,
+			&i.IntervalWeeks,
+			&i.RepeatState,
+			&i.FrequencyAnchorDate,
+			&i.SeriesID,
+			&i.OccurrenceDate,
+			&i.Timezone,
+			&i.IsException,
+			&i.Completed,
+			&i.Deleted,
+			&i.Frequencies,
+			&i.StartAt,
+			&i.EndAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTaskSchedulesForOccurrenceCommandByTaskAndUserID = `-- name: ListTaskSchedulesForOccurrenceCommandByTaskAndUserID :many
+SELECT
+    ts.id,
+    ts.task_id,
+    ts.title,
+    ts.description,
+    ts.location,
+    COALESCE((SELECT r.interval_weeks FROM task_schedules r WHERE r.id = ts.series_id), 0)::integer AS interval_weeks,
+    (SELECT r.repeat_state FROM task_schedules r WHERE r.id = ts.series_id) AS repeat_state,
+    (SELECT r.frequency_anchor_date FROM task_schedules r WHERE r.id = ts.series_id) AS frequency_anchor_date,
+    ts.series_id,
+    ts.occurrence_date,
+    ts.timezone,
+    ts.is_exception,
+    ts.completed,
+    (ts.deleted_at IS NOT NULL) AS deleted,
+    ARRAY(
+        SELECT tsf.frequency
+        FROM task_schedule_frequencies AS tsf
+        WHERE tsf.task_schedule_id = ts.series_id
+        ORDER BY tsf.frequency
+    )::text[] AS frequencies,
+    ts.start_at,
+    ts.end_at,
+    ts.created_at,
+    ts.updated_at
+FROM task_schedules AS ts
+JOIN tasks AS t ON t.id = ts.task_id
+WHERE ts.task_id = $1::text
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $2::text, $3::text, $4::permission_action)
+ORDER BY ts.start_at ASC, ts.occurrence_date ASC
+`
+
+type ListTaskSchedulesForOccurrenceCommandByTaskAndUserIDParams struct {
+	TaskID     string
+	ActorID    string
+	ResourceID string
+	Action     PermissionAction
+}
+
+type ListTaskSchedulesForOccurrenceCommandByTaskAndUserIDRow struct {
+	ID                  string
+	TaskID              string
+	Title               string
+	Description         pgtype.Text
+	Location            pgtype.Text
+	IntervalWeeks       int32
+	RepeatState         pgtype.Text
+	FrequencyAnchorDate pgtype.Date
+	SeriesID            string
+	OccurrenceDate      pgtype.Date
+	Timezone            string
+	IsException         bool
+	Completed           bool
+	Deleted             interface{}
+	Frequencies         []string
+	StartAt             pgtype.Timestamptz
+	EndAt               pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+}
+
+func (q *Queries) ListTaskSchedulesForOccurrenceCommandByTaskAndUserID(ctx context.Context, arg ListTaskSchedulesForOccurrenceCommandByTaskAndUserIDParams) ([]ListTaskSchedulesForOccurrenceCommandByTaskAndUserIDRow, error) {
+	rows, err := q.db.Query(ctx, listTaskSchedulesForOccurrenceCommandByTaskAndUserID,
+		arg.TaskID,
+		arg.ActorID,
+		arg.ResourceID,
+		arg.Action,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTaskSchedulesForOccurrenceCommandByTaskAndUserIDRow
+	for rows.Next() {
+		var i ListTaskSchedulesForOccurrenceCommandByTaskAndUserIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.Title,
+			&i.Description,
+			&i.Location,
+			&i.IntervalWeeks,
+			&i.RepeatState,
+			&i.FrequencyAnchorDate,
+			&i.SeriesID,
+			&i.OccurrenceDate,
+			&i.Timezone,
+			&i.IsException,
+			&i.Completed,
+			&i.Deleted,
+			&i.Frequencies,
+			&i.StartAt,
+			&i.EndAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTaskSchedulesForOccurrenceProjectionByTaskAndUserID = `-- name: ListTaskSchedulesForOccurrenceProjectionByTaskAndUserID :many
+SELECT
+    ts.id,
+    ts.task_id,
+    ts.title,
+    ts.description,
+    ts.location,
+    COALESCE((SELECT r.interval_weeks FROM task_schedules r WHERE r.id = ts.series_id ), 0)::integer AS interval_weeks,
+    (SELECT r.repeat_state FROM task_schedules r WHERE r.id = ts.series_id) AS repeat_state,
+    (SELECT r.frequency_anchor_date FROM task_schedules r WHERE r.id = ts.series_id) AS frequency_anchor_date,
+    ts.series_id,
+    ts.occurrence_date,
+    ts.timezone,
+    ts.is_exception,
+    ts.completed,
+    (ts.deleted_at IS NOT NULL) AS deleted,
+    ARRAY(
+        SELECT tsf.frequency
+        FROM task_schedule_frequencies AS tsf
+        WHERE tsf.task_schedule_id = ts.series_id
+        ORDER BY tsf.frequency
+    )::text[] AS frequencies,
+    ts.start_at,
+    ts.end_at,
+    ts.created_at,
+    ts.updated_at
+FROM task_schedules AS ts
+JOIN tasks AS t ON t.id = ts.task_id
+WHERE ts.task_id = $1
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $2, 'task_schedule', 'read')
+ORDER BY ts.start_at ASC
+`
+
+type ListTaskSchedulesForOccurrenceProjectionByTaskAndUserIDParams struct {
+	TaskID   string
+	ActorKey string
+}
+
+type ListTaskSchedulesForOccurrenceProjectionByTaskAndUserIDRow struct {
+	ID                  string
+	TaskID              string
+	Title               string
+	Description         pgtype.Text
+	Location            pgtype.Text
+	IntervalWeeks       int32
+	RepeatState         pgtype.Text
+	FrequencyAnchorDate pgtype.Date
+	SeriesID            string
+	OccurrenceDate      pgtype.Date
+	Timezone            string
+	IsException         bool
+	Completed           bool
+	Deleted             interface{}
+	Frequencies         []string
+	StartAt             pgtype.Timestamptz
+	EndAt               pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+}
+
+func (q *Queries) ListTaskSchedulesForOccurrenceProjectionByTaskAndUserID(ctx context.Context, arg ListTaskSchedulesForOccurrenceProjectionByTaskAndUserIDParams) ([]ListTaskSchedulesForOccurrenceProjectionByTaskAndUserIDRow, error) {
+	rows, err := q.db.Query(ctx, listTaskSchedulesForOccurrenceProjectionByTaskAndUserID, arg.TaskID, arg.ActorKey)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTaskSchedulesForOccurrenceProjectionByTaskAndUserIDRow
+	for rows.Next() {
+		var i ListTaskSchedulesForOccurrenceProjectionByTaskAndUserIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.Title,
+			&i.Description,
+			&i.Location,
+			&i.IntervalWeeks,
+			&i.RepeatState,
+			&i.FrequencyAnchorDate,
+			&i.SeriesID,
+			&i.OccurrenceDate,
+			&i.Timezone,
+			&i.IsException,
+			&i.Completed,
+			&i.Deleted,
 			&i.Frequencies,
 			&i.StartAt,
 			&i.EndAt,

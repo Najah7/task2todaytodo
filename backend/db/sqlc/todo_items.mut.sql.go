@@ -11,40 +11,62 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const addTodoItemFrequency = `-- name: AddTodoItemFrequency :exec
-INSERT INTO todo_item_frequencies (todo_item_id, frequency)
-VALUES ($1, $2)
-`
-
-type AddTodoItemFrequencyParams struct {
-	TodoItemID string
-	Frequency  string
-}
-
-func (q *Queries) AddTodoItemFrequency(ctx context.Context, arg AddTodoItemFrequencyParams) error {
-	_, err := q.db.Exec(ctx, addTodoItemFrequency, arg.TodoItemID, arg.Frequency)
-	return err
-}
-
 const createTodoItem = `-- name: CreateTodoItem :one
-INSERT INTO todo_items (id, task_id, title, description, due_date, completed, position, interval_weeks)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, task_id, title, description, due_date, completed, position, interval_weeks, created_at, updated_at
+WITH inserted AS (
+    INSERT INTO todo_items (
+        id, task_id, title, description, due_date, completed, position,
+        series_id, occurrence_date, timezone, is_exception, repeat_state,
+        frequency_anchor_date, interval_weeks
+    )
+    VALUES ($2, $3, $4, $5,
+        $6, $7, $8,
+        $9, $10, $11, $12,
+        CASE WHEN $1::integer > 0 THEN 'active' ELSE 'one_off' END,
+        CASE WHEN $1::integer > 0 THEN $10::date ELSE NULL END,
+        $1::integer)
+    RETURNING id, task_id, title, description, due_date, completed, position,
+        series_id, occurrence_date, timezone, is_exception, (deleted_at IS NOT NULL) AS deleted,
+        created_at, updated_at
+)
+SELECT inserted.id, inserted.task_id, inserted.title, inserted.description, inserted.due_date, inserted.completed, inserted.position, inserted.series_id, inserted.occurrence_date, inserted.timezone, inserted.is_exception, inserted.deleted, inserted.created_at, inserted.updated_at, $1::integer AS interval_weeks FROM inserted
 `
 
 type CreateTodoItemParams struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	DueDate       pgtype.Date
-	Completed     bool
-	Position      int32
-	IntervalWeeks int32
+	IntervalWeeks  int32
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	DueDate        pgtype.Date
+	Completed      bool
+	Position       int32
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
 }
 
-func (q *Queries) CreateTodoItem(ctx context.Context, arg CreateTodoItemParams) (TodoItem, error) {
+type CreateTodoItemRow struct {
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	DueDate        pgtype.Date
+	Completed      bool
+	Position       int32
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	Deleted        interface{}
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	IntervalWeeks  int32
+}
+
+func (q *Queries) CreateTodoItem(ctx context.Context, arg CreateTodoItemParams) (CreateTodoItemRow, error) {
 	row := q.db.QueryRow(ctx, createTodoItem,
+		arg.IntervalWeeks,
 		arg.ID,
 		arg.TaskID,
 		arg.Title,
@@ -52,9 +74,12 @@ func (q *Queries) CreateTodoItem(ctx context.Context, arg CreateTodoItemParams) 
 		arg.DueDate,
 		arg.Completed,
 		arg.Position,
-		arg.IntervalWeeks,
+		arg.SeriesID,
+		arg.OccurrenceDate,
+		arg.Timezone,
+		arg.IsException,
 	)
-	var i TodoItem
+	var i CreateTodoItemRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
@@ -63,44 +88,67 @@ func (q *Queries) CreateTodoItem(ctx context.Context, arg CreateTodoItemParams) 
 		&i.DueDate,
 		&i.Completed,
 		&i.Position,
-		&i.IntervalWeeks,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Deleted,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IntervalWeeks,
 	)
 	return i, err
 }
 
-const createTodoItemByTaskAndUser = `-- name: CreateTodoItemByTaskAndUser :one
+const createTodoItemByTaskAndUserID = `-- name: CreateTodoItemByTaskAndUserID :one
 WITH owned_task AS (
     SELECT tasks.id
     FROM tasks
-    WHERE tasks.id = $1
-      AND tasks.user_id = $2
+    WHERE tasks.id = $2
+      AND tasks.deleted_at IS NULL
+      AND (tasks.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = tasks.project_id AND p.deleted_at IS NULL))
+      AND task_has_permission(tasks.id, $3::text, 'todo_item', 'create')
+      AND tasks.status <> 'done'
 ),
 next_position AS (
-    SELECT COALESCE($3::integer, COALESCE(MAX(ti.position), -1)::integer + 1) AS position
+    SELECT COALESCE($4::integer, COALESCE(MAX(ti.position), -1)::integer + 1) AS position
     FROM owned_task AS ot
     LEFT JOIN todo_items AS ti ON ti.task_id = ot.id
+      AND ti.occurrence_date = $5::date
+      AND ti.deleted_at IS NULL
 ),
 inserted AS (
-    INSERT INTO todo_items (id, task_id, title, description, due_date, completed, position, interval_weeks)
+    INSERT INTO todo_items (
+        id, task_id, title, description, due_date, completed, position,
+        series_id, occurrence_date, timezone, is_exception, repeat_state,
+        frequency_anchor_date, interval_weeks
+    )
     SELECT
-        $4,
-        owned_task.id,
-        $5,
         $6,
+        owned_task.id,
         $7,
+        $8,
+        $9,
         false,
         next_position.position,
-        $8
+        $10,
+        $5,
+        $11,
+        $12,
+        CASE WHEN $1::integer > 0 THEN 'active' ELSE 'one_off' END,
+        CASE WHEN $1::integer > 0 THEN $5::date ELSE NULL END,
+        $1::integer
     FROM owned_task
     CROSS JOIN next_position
-    RETURNING id, task_id, title, description, due_date, completed, position, interval_weeks, created_at, updated_at
+    RETURNING id, task_id, title, description, due_date, completed, position,
+        series_id, occurrence_date, timezone, is_exception, interval_weeks, (deleted_at IS NOT NULL) AS deleted,
+        created_at, updated_at
 ),
 inserted_frequencies AS (
     INSERT INTO todo_item_frequencies (todo_item_id, frequency)
-    SELECT inserted.id, unnest($9::text[])
+    SELECT inserted.id, unnest($13::text[])
     FROM inserted
+    WHERE inserted.id = inserted.series_id AND inserted.interval_weeks > 0
     ON CONFLICT DO NOTHING
 )
 SELECT
@@ -111,7 +159,12 @@ SELECT
     inserted.due_date,
     inserted.completed,
     inserted.position,
-    inserted.interval_weeks,
+    $1::integer AS interval_weeks,
+    inserted.series_id,
+    inserted.occurrence_date,
+    inserted.timezone,
+    inserted.is_exception,
+    inserted.deleted,
     ARRAY(
         SELECT tif.frequency
         FROM todo_item_frequencies AS tif
@@ -123,45 +176,58 @@ SELECT
 FROM inserted
 `
 
-type CreateTodoItemByTaskAndUserParams struct {
-	TaskID        string
-	UserID        string
-	Position      pgtype.Int4
-	ID            string
-	Title         string
-	Description   pgtype.Text
-	DueDate       pgtype.Date
-	IntervalWeeks int32
-	Frequencies   []string
+type CreateTodoItemByTaskAndUserIDParams struct {
+	IntervalWeeks  int32
+	TaskID         string
+	UserID         string
+	Position       pgtype.Int4
+	OccurrenceDate pgtype.Date
+	ID             string
+	Title          string
+	Description    pgtype.Text
+	DueDate        pgtype.Date
+	SeriesID       string
+	Timezone       string
+	IsException    bool
+	Frequencies    []string
 }
 
-type CreateTodoItemByTaskAndUserRow struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	DueDate       pgtype.Date
-	Completed     bool
-	Position      int32
-	IntervalWeeks int32
-	Frequencies   []string
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+type CreateTodoItemByTaskAndUserIDRow struct {
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	DueDate        pgtype.Date
+	Completed      bool
+	Position       int32
+	IntervalWeeks  int32
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	Deleted        interface{}
+	Frequencies    []string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
 }
 
-func (q *Queries) CreateTodoItemByTaskAndUser(ctx context.Context, arg CreateTodoItemByTaskAndUserParams) (CreateTodoItemByTaskAndUserRow, error) {
-	row := q.db.QueryRow(ctx, createTodoItemByTaskAndUser,
+func (q *Queries) CreateTodoItemByTaskAndUserID(ctx context.Context, arg CreateTodoItemByTaskAndUserIDParams) (CreateTodoItemByTaskAndUserIDRow, error) {
+	row := q.db.QueryRow(ctx, createTodoItemByTaskAndUserID,
+		arg.IntervalWeeks,
 		arg.TaskID,
 		arg.UserID,
 		arg.Position,
+		arg.OccurrenceDate,
 		arg.ID,
 		arg.Title,
 		arg.Description,
 		arg.DueDate,
-		arg.IntervalWeeks,
+		arg.SeriesID,
+		arg.Timezone,
+		arg.IsException,
 		arg.Frequencies,
 	)
-	var i CreateTodoItemByTaskAndUserRow
+	var i CreateTodoItemByTaskAndUserIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
@@ -171,6 +237,145 @@ func (q *Queries) CreateTodoItemByTaskAndUser(ctx context.Context, arg CreateTod
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Deleted,
+		&i.Frequencies,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createTodoItemOccurrenceByTaskAndUserID = `-- name: CreateTodoItemOccurrenceByTaskAndUserID :one
+WITH inserted AS (
+    INSERT INTO todo_items (
+        id, task_id, title, description, due_date, completed, position,
+        series_id, occurrence_date, timezone, is_exception, repeat_state,
+        frequency_anchor_date, interval_weeks
+    )
+    SELECT
+        $1, source.task_id,
+        source.title,
+        source.description,
+        $2, false,
+        source.position,
+        source.series_id, $3, source.timezone, false, NULL, NULL, 0
+    FROM todo_items AS source
+    JOIN tasks AS t ON t.id = source.task_id
+    WHERE source.id = $4
+      AND source.series_id = source.id
+      AND source.repeat_state = 'active'
+      AND source.frequency_anchor_date <= $3::date
+      AND source.deleted_at IS NULL
+      AND t.id = source.task_id
+      AND t.user_id = $5
+      AND t.deleted_at IS NULL
+      AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+      AND t.status <> 'done'
+    ON CONFLICT (series_id, occurrence_date) WHERE id <> series_id DO NOTHING
+    RETURNING id, task_id, title, description, due_date, completed, position,
+        series_id, occurrence_date, timezone, is_exception, (deleted_at IS NOT NULL) AS deleted,
+        created_at, updated_at
+),
+candidate AS (
+    SELECT id, task_id, title, description, due_date, completed, position, series_id, occurrence_date, timezone, is_exception, deleted, created_at, updated_at FROM inserted
+    UNION ALL
+    SELECT existing.id, existing.task_id, existing.title, existing.description, existing.due_date,
+        existing.completed, existing.position, existing.series_id,
+        existing.occurrence_date, existing.timezone, existing.is_exception,
+        (existing.deleted_at IS NOT NULL) AS deleted, existing.created_at, existing.updated_at
+    FROM todo_items AS existing
+    JOIN tasks AS t ON t.id = existing.task_id
+    WHERE existing.series_id = $4
+      AND existing.occurrence_date = $3
+      AND existing.id <> existing.series_id
+      AND existing.deleted_at IS NULL
+      AND t.user_id = $5
+      AND t.deleted_at IS NULL
+      AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+      AND t.status <> 'done'
+      AND NOT EXISTS (SELECT 1 FROM inserted)
+    ORDER BY existing.id
+    LIMIT 1
+)
+SELECT
+    candidate.id,
+    candidate.task_id,
+    candidate.title,
+    candidate.description,
+    candidate.due_date,
+    candidate.completed,
+    candidate.position,
+    COALESCE((SELECT r.interval_weeks FROM todo_items r WHERE r.id = candidate.series_id ), 0)::integer AS interval_weeks,
+    candidate.series_id,
+    candidate.occurrence_date,
+    candidate.timezone,
+    candidate.is_exception,
+    candidate.deleted,
+    ARRAY(
+        SELECT tif.frequency
+        FROM todo_item_frequencies AS tif
+        WHERE tif.todo_item_id = candidate.series_id
+        ORDER BY tif.frequency
+    )::text[] AS frequencies,
+    candidate.created_at,
+    candidate.updated_at
+FROM candidate
+`
+
+type CreateTodoItemOccurrenceByTaskAndUserIDParams struct {
+	ID             string
+	DueDate        pgtype.Date
+	OccurrenceDate pgtype.Date
+	SeriesID       string
+	UserID         string
+}
+
+type CreateTodoItemOccurrenceByTaskAndUserIDRow struct {
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	DueDate        pgtype.Date
+	Completed      bool
+	Position       int32
+	IntervalWeeks  int32
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	Deleted        interface{}
+	Frequencies    []string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) CreateTodoItemOccurrenceByTaskAndUserID(ctx context.Context, arg CreateTodoItemOccurrenceByTaskAndUserIDParams) (CreateTodoItemOccurrenceByTaskAndUserIDRow, error) {
+	row := q.db.QueryRow(ctx, createTodoItemOccurrenceByTaskAndUserID,
+		arg.ID,
+		arg.DueDate,
+		arg.OccurrenceDate,
+		arg.SeriesID,
+		arg.UserID,
+	)
+	var i CreateTodoItemOccurrenceByTaskAndUserIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.TaskID,
+		&i.Title,
+		&i.Description,
+		&i.DueDate,
+		&i.Completed,
+		&i.Position,
+		&i.IntervalWeeks,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Deleted,
 		&i.Frequencies,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -179,8 +384,10 @@ func (q *Queries) CreateTodoItemByTaskAndUser(ctx context.Context, arg CreateTod
 }
 
 const deleteTodoItem = `-- name: DeleteTodoItem :exec
-DELETE FROM todo_items
+UPDATE todo_items
+SET deleted_at = COALESCE(deleted_at, now()), updated_at = now()
 WHERE id = $1
+  AND deleted_at IS NULL
 `
 
 func (q *Queries) DeleteTodoItem(ctx context.Context, id string) error {
@@ -188,66 +395,220 @@ func (q *Queries) DeleteTodoItem(ctx context.Context, id string) error {
 	return err
 }
 
-const deleteTodoItemByTaskAndUser = `-- name: DeleteTodoItemByTaskAndUser :one
-DELETE FROM todo_items AS ti
-USING tasks AS t
+const deleteTodoItemByTaskAndUserID = `-- name: DeleteTodoItemByTaskAndUserID :one
+UPDATE todo_items AS ti
+SET deleted_at = COALESCE(ti.deleted_at, now()), updated_at = now()
+FROM tasks AS t
 WHERE ti.id = $1
   AND ti.task_id = $2
   AND t.id = ti.task_id
-  AND t.user_id = $3
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $3, 'todo_item', 'delete')
+  AND ti.deleted_at IS NULL
 RETURNING ti.id
 `
 
-type DeleteTodoItemByTaskAndUserParams struct {
-	ID     string
-	TaskID string
-	UserID string
+type DeleteTodoItemByTaskAndUserIDParams struct {
+	ID       string
+	TaskID   string
+	ActorKey string
 }
 
-func (q *Queries) DeleteTodoItemByTaskAndUser(ctx context.Context, arg DeleteTodoItemByTaskAndUserParams) (string, error) {
-	row := q.db.QueryRow(ctx, deleteTodoItemByTaskAndUser, arg.ID, arg.TaskID, arg.UserID)
+func (q *Queries) DeleteTodoItemByTaskAndUserID(ctx context.Context, arg DeleteTodoItemByTaskAndUserIDParams) (string, error) {
+	row := q.db.QueryRow(ctx, deleteTodoItemByTaskAndUserID, arg.ID, arg.TaskID, arg.ActorKey)
 	var id string
 	err := row.Scan(&id)
 	return id, err
 }
 
-const deleteTodoItemFrequencies = `-- name: DeleteTodoItemFrequencies :exec
-DELETE FROM todo_item_frequencies
-WHERE todo_item_id = $1
-`
-
-func (q *Queries) DeleteTodoItemFrequencies(ctx context.Context, todoItemID string) error {
-	_, err := q.db.Exec(ctx, deleteTodoItemFrequencies, todoItemID)
-	return err
-}
-
-const setTodoItemCompletedByTaskAndUser = `-- name: SetTodoItemCompletedByTaskAndUser :one
+const deleteUneditedFutureTodoItemsBySeries = `-- name: DeleteUneditedFutureTodoItemsBySeries :execrows
 UPDATE todo_items AS ti
-SET completed = $4,
-    updated_at = now()
+SET deleted_at = COALESCE(ti.deleted_at, now()), updated_at = now()
 FROM tasks AS t
-WHERE ti.id = $1
-  AND ti.task_id = $2
+WHERE ti.task_id = $1
   AND t.id = ti.task_id
-  AND t.user_id = $3
-RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.completed, ti.position, ti.interval_weeks, ti.created_at, ti.updated_at
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $2::text, 'todo_item', 'update')
+  AND ti.series_id = $3
+  AND ti.id <> ti.series_id
+  AND ti.occurrence_date >= $4
+  AND ti.completed = false
+  AND ti.is_exception = false
+  AND ti.deleted_at IS NULL
 `
 
-type SetTodoItemCompletedByTaskAndUserParams struct {
-	ID        string
-	TaskID    string
-	UserID    string
-	Completed bool
+type DeleteUneditedFutureTodoItemsBySeriesParams struct {
+	TaskID   string
+	UserID   string
+	SeriesID string
+	FromDate pgtype.Date
 }
 
-func (q *Queries) SetTodoItemCompletedByTaskAndUser(ctx context.Context, arg SetTodoItemCompletedByTaskAndUserParams) (TodoItem, error) {
-	row := q.db.QueryRow(ctx, setTodoItemCompletedByTaskAndUser,
+func (q *Queries) DeleteUneditedFutureTodoItemsBySeries(ctx context.Context, arg DeleteUneditedFutureTodoItemsBySeriesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUneditedFutureTodoItemsBySeries,
+		arg.TaskID,
+		arg.UserID,
+		arg.SeriesID,
+		arg.FromDate,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteUneditedFutureTodoItemsByTask = `-- name: DeleteUneditedFutureTodoItemsByTask :execrows
+UPDATE todo_items AS ti
+SET deleted_at = COALESCE(ti.deleted_at, now()), updated_at = now()
+FROM tasks AS t
+WHERE ti.task_id = $1
+  AND t.id = ti.task_id
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $2::text, 'todo_item', 'update')
+  AND ti.id <> ti.series_id
+  AND ti.occurrence_date >= ($3::timestamptz AT TIME ZONE ti.timezone)::date
+  AND ti.completed = false
+  AND ti.is_exception = false
+  AND ti.deleted_at IS NULL
+`
+
+type DeleteUneditedFutureTodoItemsByTaskParams struct {
+	TaskID string
+	UserID string
+	FromAt pgtype.Timestamptz
+}
+
+func (q *Queries) DeleteUneditedFutureTodoItemsByTask(ctx context.Context, arg DeleteUneditedFutureTodoItemsByTaskParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUneditedFutureTodoItemsByTask, arg.TaskID, arg.UserID, arg.FromAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const reorderTodoItemsByTaskAndUserID = `-- name: ReorderTodoItemsByTaskAndUserID :one
+WITH target AS (
+    SELECT ti.id, ti.task_id, ti.occurrence_date, ti.position AS old_position,
+        $1::integer AS requested_position,
+        (SELECT count(*) FROM todo_items AS all_items
+         WHERE all_items.task_id = ti.task_id
+           AND all_items.occurrence_date = ti.occurrence_date
+           AND all_items.deleted_at IS NULL) AS group_size,
+        (SELECT count(*) FROM todo_items AS before_items
+         WHERE before_items.task_id = ti.task_id
+           AND before_items.occurrence_date = ti.occurrence_date
+           AND before_items.deleted_at IS NULL
+           AND before_items.position < ti.position) AS old_rank
+    FROM todo_items AS ti
+    JOIN tasks AS t ON t.id = ti.task_id
+    WHERE ti.id = $2
+      AND ti.task_id = $3
+      AND t.deleted_at IS NULL
+      AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+      AND task_has_permission(t.id, $4::text, 'todo_item', 'update')
+      AND ti.deleted_at IS NULL
+    FOR UPDATE OF ti
+), locked_group AS (
+    SELECT ti.id, ti.task_id, ti.occurrence_date, ti.position,
+        target.id AS target_id,
+        target.requested_position,
+        target.old_rank AS target_rank
+    FROM todo_items AS ti
+    CROSS JOIN target
+    WHERE ti.task_id = target.task_id
+      AND ti.occurrence_date = target.occurrence_date
+      AND ti.deleted_at IS NULL
+    FOR UPDATE OF ti
+), ranked_group AS (
+    SELECT locked_group.id, locked_group.task_id, locked_group.occurrence_date, locked_group.position, locked_group.target_id, locked_group.requested_position, locked_group.target_rank,
+        row_number() OVER (ORDER BY locked_group.position, locked_group.id)::integer - 1 AS old_rank
+    FROM locked_group
+), reordered AS (
+    SELECT ranked_group.id,
+        CASE WHEN ranked_group.id = ranked_group.target_id THEN ranked_group.requested_position
+             ELSE CASE
+                 WHEN ranked_group.old_rank - CASE WHEN ranked_group.old_rank > ranked_group.target_rank THEN 1 ELSE 0 END >= target.requested_position
+                 THEN ranked_group.old_rank - CASE WHEN ranked_group.old_rank > ranked_group.target_rank THEN 1 ELSE 0 END + 1
+                 ELSE ranked_group.old_rank - CASE WHEN ranked_group.old_rank > ranked_group.target_rank THEN 1 ELSE 0 END
+             END
+        END AS new_position
+    FROM ranked_group
+    JOIN target ON true
+    WHERE target.requested_position >= 0 AND target.requested_position < target.group_size
+), updated AS (
+    UPDATE todo_items AS ti
+    SET position = reordered.new_position,
+        is_exception = CASE WHEN ti.position IS DISTINCT FROM reordered.new_position THEN true ELSE ti.is_exception END,
+        updated_at = now()
+    FROM reordered
+    WHERE ti.id = reordered.id
+    RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.completed, ti.position,
+        COALESCE((SELECT r.interval_weeks FROM todo_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks, ti.series_id, ti.occurrence_date, ti.timezone, ti.is_exception,
+        (ti.deleted_at IS NOT NULL) AS deleted, ti.created_at, ti.updated_at
+)
+SELECT
+    updated.id,
+    updated.task_id,
+    updated.title,
+    updated.description,
+    updated.due_date,
+    updated.completed,
+    updated.position,
+    COALESCE((SELECT r.interval_weeks FROM todo_items r WHERE r.id = updated.series_id ), 0)::integer AS interval_weeks,
+    updated.series_id,
+    updated.occurrence_date,
+    updated.timezone,
+    updated.is_exception,
+    updated.deleted,
+    ARRAY(
+        SELECT tif.frequency
+        FROM todo_item_frequencies AS tif
+        WHERE tif.todo_item_id = updated.series_id
+        ORDER BY tif.frequency
+    )::text[] AS frequencies,
+    updated.created_at,
+    updated.updated_at
+FROM updated
+JOIN target ON target.id = updated.id
+`
+
+type ReorderTodoItemsByTaskAndUserIDParams struct {
+	Position int32
+	ID       string
+	TaskID   string
+	UserID   string
+}
+
+type ReorderTodoItemsByTaskAndUserIDRow struct {
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	DueDate        pgtype.Date
+	Completed      bool
+	Position       int32
+	IntervalWeeks  int32
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	Deleted        interface{}
+	Frequencies    []string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) ReorderTodoItemsByTaskAndUserID(ctx context.Context, arg ReorderTodoItemsByTaskAndUserIDParams) (ReorderTodoItemsByTaskAndUserIDRow, error) {
+	row := q.db.QueryRow(ctx, reorderTodoItemsByTaskAndUserID,
+		arg.Position,
 		arg.ID,
 		arg.TaskID,
 		arg.UserID,
-		arg.Completed,
 	)
-	var i TodoItem
+	var i ReorderTodoItemsByTaskAndUserIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
@@ -257,10 +618,114 @@ func (q *Queries) SetTodoItemCompletedByTaskAndUser(ctx context.Context, arg Set
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Deleted,
+		&i.Frequencies,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const setTodoItemCompletedByTaskAndUserID = `-- name: SetTodoItemCompletedByTaskAndUserID :one
+UPDATE todo_items AS ti
+SET completed = $4,
+    is_exception = CASE WHEN ti.id = ti.series_id THEN ti.is_exception ELSE true END,
+    updated_at = now()
+FROM tasks AS t
+WHERE ti.id = $1
+  AND ti.task_id = $2
+  AND t.id = ti.task_id
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $3, 'todo_item', 'update')
+  AND ti.deleted_at IS NULL
+RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.completed, ti.position,
+    COALESCE((SELECT r.interval_weeks FROM todo_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks, ti.series_id, ti.occurrence_date, ti.timezone, ti.is_exception,
+    (ti.deleted_at IS NOT NULL) AS deleted, ti.created_at, ti.updated_at
+`
+
+type SetTodoItemCompletedByTaskAndUserIDParams struct {
+	ID        string
+	TaskID    string
+	ActorKey  string
+	Completed bool
+}
+
+type SetTodoItemCompletedByTaskAndUserIDRow struct {
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	DueDate        pgtype.Date
+	Completed      bool
+	Position       int32
+	IntervalWeeks  int32
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	Deleted        interface{}
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) SetTodoItemCompletedByTaskAndUserID(ctx context.Context, arg SetTodoItemCompletedByTaskAndUserIDParams) (SetTodoItemCompletedByTaskAndUserIDRow, error) {
+	row := q.db.QueryRow(ctx, setTodoItemCompletedByTaskAndUserID,
+		arg.ID,
+		arg.TaskID,
+		arg.ActorKey,
+		arg.Completed,
+	)
+	var i SetTodoItemCompletedByTaskAndUserIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.TaskID,
+		&i.Title,
+		&i.Description,
+		&i.DueDate,
+		&i.Completed,
+		&i.Position,
+		&i.IntervalWeeks,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Deleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const tombstoneTodoItemByTaskAndUserID = `-- name: TombstoneTodoItemByTaskAndUserID :one
+UPDATE todo_items AS ti
+SET deleted_at = COALESCE(ti.deleted_at, now()), updated_at = now()
+FROM tasks AS t
+WHERE ti.id = $1
+  AND ti.task_id = $2
+  AND t.id = ti.task_id
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $3::text, 'todo_item', 'delete')
+  AND ti.deleted_at IS NULL
+RETURNING ti.id
+`
+
+type TombstoneTodoItemByTaskAndUserIDParams struct {
+	ID     string
+	TaskID string
+	UserID string
+}
+
+func (q *Queries) TombstoneTodoItemByTaskAndUserID(ctx context.Context, arg TombstoneTodoItemByTaskAndUserIDParams) (string, error) {
+	row := q.db.QueryRow(ctx, tombstoneTodoItemByTaskAndUserID, arg.ID, arg.TaskID, arg.UserID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const updateTodoItem = `-- name: UpdateTodoItem :one
@@ -271,24 +736,51 @@ SET task_id = $2,
     due_date = $5,
     completed = $6,
     position = $7,
-    interval_weeks = $8,
+    series_id = $8,
+    occurrence_date = $9,
+    timezone = $10,
+    is_exception = $11,
     updated_at = now()
-WHERE id = $1
-RETURNING id, task_id, title, description, due_date, completed, position, interval_weeks, created_at, updated_at
+WHERE todo_items.id = $1
+  AND todo_items.deleted_at IS NULL
+RETURNING id, task_id, title, description, due_date, completed, position, COALESCE((SELECT r.interval_weeks FROM todo_items r WHERE r.id = todo_items.series_id ), 0)::integer AS interval_weeks,
+    series_id, occurrence_date, timezone, is_exception, (deleted_at IS NOT NULL) AS deleted,
+    created_at, updated_at
 `
 
 type UpdateTodoItemParams struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	DueDate       pgtype.Date
-	Completed     bool
-	Position      int32
-	IntervalWeeks int32
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	DueDate        pgtype.Date
+	Completed      bool
+	Position       int32
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
 }
 
-func (q *Queries) UpdateTodoItem(ctx context.Context, arg UpdateTodoItemParams) (TodoItem, error) {
+type UpdateTodoItemRow struct {
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	DueDate        pgtype.Date
+	Completed      bool
+	Position       int32
+	IntervalWeeks  int32
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	Deleted        interface{}
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateTodoItem(ctx context.Context, arg UpdateTodoItemParams) (UpdateTodoItemRow, error) {
 	row := q.db.QueryRow(ctx, updateTodoItem,
 		arg.ID,
 		arg.TaskID,
@@ -297,9 +789,12 @@ func (q *Queries) UpdateTodoItem(ctx context.Context, arg UpdateTodoItemParams) 
 		arg.DueDate,
 		arg.Completed,
 		arg.Position,
-		arg.IntervalWeeks,
+		arg.SeriesID,
+		arg.OccurrenceDate,
+		arg.Timezone,
+		arg.IsException,
 	)
-	var i TodoItem
+	var i UpdateTodoItemRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
@@ -309,8 +804,155 @@ func (q *Queries) UpdateTodoItem(ctx context.Context, arg UpdateTodoItemParams) 
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Deleted,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateTodoItemByTaskAndUserID = `-- name: UpdateTodoItemByTaskAndUserID :one
+WITH updated AS (
+    UPDATE todo_items AS ti
+    SET title = $1,
+        description = $2,
+        due_date = $3,
+        position = $4,
+        is_exception = true,
+        updated_at = now()
+    FROM tasks AS t
+    WHERE ti.id = $5
+      AND ti.task_id = $6
+      AND t.id = ti.task_id
+      AND t.deleted_at IS NULL
+      AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+      AND task_has_permission(t.id, $7::text, 'todo_item', 'update')
+      AND ti.deleted_at IS NULL
+    RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.completed, ti.position,
+        COALESCE((SELECT r.interval_weeks FROM todo_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks, ti.series_id, ti.occurrence_date, ti.timezone, ti.is_exception,
+        (ti.deleted_at IS NOT NULL) AS deleted, ti.created_at, ti.updated_at
+)
+SELECT
+    updated.id,
+    updated.task_id,
+    updated.title,
+    updated.description,
+    updated.due_date,
+    updated.completed,
+    updated.position,
+    COALESCE((SELECT r.interval_weeks FROM todo_items r WHERE r.id = updated.series_id ), 0)::integer AS interval_weeks,
+    updated.series_id,
+    updated.occurrence_date,
+    updated.timezone,
+    updated.is_exception,
+    updated.deleted,
+    ARRAY(
+        SELECT tif.frequency
+        FROM todo_item_frequencies AS tif
+        WHERE tif.todo_item_id = updated.series_id
+        ORDER BY tif.frequency
+    )::text[] AS frequencies,
+    updated.created_at,
+    updated.updated_at
+FROM updated
+`
+
+type UpdateTodoItemByTaskAndUserIDParams struct {
+	Title       string
+	Description pgtype.Text
+	DueDate     pgtype.Date
+	Position    int32
+	ID          string
+	TaskID      string
+	UserID      string
+}
+
+type UpdateTodoItemByTaskAndUserIDRow struct {
+	ID             string
+	TaskID         string
+	Title          string
+	Description    pgtype.Text
+	DueDate        pgtype.Date
+	Completed      bool
+	Position       int32
+	IntervalWeeks  int32
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+	Timezone       string
+	IsException    bool
+	Deleted        interface{}
+	Frequencies    []string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateTodoItemByTaskAndUserID(ctx context.Context, arg UpdateTodoItemByTaskAndUserIDParams) (UpdateTodoItemByTaskAndUserIDRow, error) {
+	row := q.db.QueryRow(ctx, updateTodoItemByTaskAndUserID,
+		arg.Title,
+		arg.Description,
+		arg.DueDate,
+		arg.Position,
+		arg.ID,
+		arg.TaskID,
+		arg.UserID,
+	)
+	var i UpdateTodoItemByTaskAndUserIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.TaskID,
+		&i.Title,
+		&i.Description,
+		&i.DueDate,
+		&i.Completed,
+		&i.Position,
+		&i.IntervalWeeks,
+		&i.SeriesID,
+		&i.OccurrenceDate,
+		&i.Timezone,
+		&i.IsException,
+		&i.Deleted,
+		&i.Frequencies,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateTodoItemPositionByTaskAndUserID = `-- name: UpdateTodoItemPositionByTaskAndUserID :one
+UPDATE todo_items AS ti
+SET position = $1,
+    is_exception = CASE WHEN ti.id = ti.series_id THEN ti.is_exception ELSE true END,
+    updated_at = now()
+FROM tasks AS t
+WHERE ti.id = $2
+  AND ti.task_id = $3
+  AND t.id = ti.task_id
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $4::text, 'todo_item', 'update')
+  AND ti.deleted_at IS NULL
+RETURNING ti.id
+`
+
+type UpdateTodoItemPositionByTaskAndUserIDParams struct {
+	Position int32
+	ID       string
+	TaskID   string
+	UserID   string
+}
+
+func (q *Queries) UpdateTodoItemPositionByTaskAndUserID(ctx context.Context, arg UpdateTodoItemPositionByTaskAndUserIDParams) (string, error) {
+	row := q.db.QueryRow(ctx, updateTodoItemPositionByTaskAndUserID,
+		arg.Position,
+		arg.ID,
+		arg.TaskID,
+		arg.UserID,
+	)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }

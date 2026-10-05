@@ -1,7 +1,7 @@
 -- name: CreateProject :one
-INSERT INTO projects (id, user_id, type, title, goal, description, progress, priority, start_at, end_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at;
+INSERT INTO projects (id, user_id, type, title, goal, description, priority, start_date, end_date, changed_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $2)
+RETURNING *;
 
 -- name: UpdateProject :one
 UPDATE projects
@@ -9,34 +9,55 @@ SET type = $2,
     title = $3,
     goal = $4,
     description = $5,
-    progress = $6,
-    priority = $7,
-    start_at = $8,
-    end_at = $9,
-    updated_at = now()
+    priority = $6,
+    start_date = $7,
+    end_date = $8,
+    changed_by = $9
 WHERE id = $1
-RETURNING id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at;
+RETURNING *;
 
--- name: UpdateProjectByUser :one
+-- name: UpdateProjectByUserID :one
 UPDATE projects
 SET type = $3,
     title = $4,
     goal = $5,
     description = $6,
-    progress = $7,
-    priority = $8,
-    start_at = $9,
-    end_at = $10,
-    updated_at = now()
+    priority = $7,
+    start_date = $8,
+    end_date = $9,
+    changed_by = $2
 WHERE id = $1
-  AND user_id = $2
-RETURNING id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at;
+  AND deleted_at IS NULL
+  AND revision = sqlc.arg(expected_revision)::integer
+  AND project_has_permission(id, sqlc.arg(user_id)::text, 'project', 'update')
+RETURNING *;
 
--- name: DeleteProject :exec
-DELETE FROM projects
-WHERE id = $1;
+-- name: DeleteProject :execrows
+UPDATE projects
+SET deleted_at = now(), changed_by = user_id
+WHERE id = $1 AND deleted_at IS NULL;
 
--- name: DeleteProjectByUser :execrows
-DELETE FROM projects
-WHERE id = $1
-  AND user_id = $2;
+-- name: DeleteProjectByUserID :one
+WITH deleted_project AS (
+    UPDATE projects
+    SET deleted_at = now(), changed_by = sqlc.arg(user_id)::text
+    WHERE id = sqlc.arg(id)::text
+      AND deleted_at IS NULL
+      AND revision = sqlc.arg(expected_revision)::integer
+      AND project_has_permission(id, sqlc.arg(user_id)::text, 'project', 'delete')
+    RETURNING id
+), deleted_tasks AS (
+    UPDATE tasks
+    SET deleted_at = now(), changed_by = sqlc.arg(user_id)::text
+    WHERE project_id IN (SELECT id FROM deleted_project) AND deleted_at IS NULL
+    RETURNING id
+), deleted_items AS (
+    UPDATE todo_items SET deleted_at = now(), updated_at = now()
+    WHERE task_id IN (SELECT id FROM deleted_tasks) AND deleted_at IS NULL
+    RETURNING id
+), deleted_schedules AS (
+    UPDATE task_schedules SET deleted_at = now(), updated_at = now()
+    WHERE task_id IN (SELECT id FROM deleted_tasks) AND deleted_at IS NULL
+    RETURNING id
+)
+SELECT id FROM deleted_project;

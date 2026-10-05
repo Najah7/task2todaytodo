@@ -12,7 +12,7 @@ import (
 )
 
 const getProject = `-- name: GetProject :one
-SELECT id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
+SELECT id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 FROM projects
 WHERE id = $1
 `
@@ -27,30 +27,33 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 		&i.Title,
 		&i.Goal,
 		&i.Description,
-		&i.Progress,
 		&i.Priority,
-		&i.StartAt,
-		&i.EndAt,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Revision,
+		&i.DeletedAt,
+		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const getProjectByUser = `-- name: GetProjectByUser :one
-SELECT id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
+const getProjectByUserID = `-- name: GetProjectByUserID :one
+SELECT id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 FROM projects
 WHERE id = $1
-  AND user_id = $2
+  AND deleted_at IS NULL
+  AND project_has_permission(id, $2, 'project', 'read')
 `
 
-type GetProjectByUserParams struct {
-	ID     string
-	UserID string
+type GetProjectByUserIDParams struct {
+	ID       string
+	ActorKey string
 }
 
-func (q *Queries) GetProjectByUser(ctx context.Context, arg GetProjectByUserParams) (Project, error) {
-	row := q.db.QueryRow(ctx, getProjectByUser, arg.ID, arg.UserID)
+func (q *Queries) GetProjectByUserID(ctx context.Context, arg GetProjectByUserIDParams) (Project, error) {
+	row := q.db.QueryRow(ctx, getProjectByUserID, arg.ID, arg.ActorKey)
 	var i Project
 	err := row.Scan(
 		&i.ID,
@@ -59,32 +62,77 @@ func (q *Queries) GetProjectByUser(ctx context.Context, arg GetProjectByUserPara
 		&i.Title,
 		&i.Goal,
 		&i.Description,
-		&i.Progress,
 		&i.Priority,
-		&i.StartAt,
-		&i.EndAt,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Revision,
+		&i.DeletedAt,
+		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const listProjectTasksByUser = `-- name: ListProjectTasksByUser :many
-SELECT id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, progress,
-       priority, status, created_at, updated_at
-FROM tasks
-WHERE project_id = $1
-  AND user_id = $2
-ORDER BY created_at ASC
+const getProjectByUserIDForPermission = `-- name: GetProjectByUserIDForPermission :one
+SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at
+FROM projects AS p
+WHERE p.id = $1::text
+  AND p.deleted_at IS NULL
+  AND project_has_permission(p.id, $2::text, $3::text, $4::permission_action)
 `
 
-type ListProjectTasksByUserParams struct {
-	ProjectID pgtype.Text
-	UserID    string
+type GetProjectByUserIDForPermissionParams struct {
+	ID         string
+	ActorID    string
+	ResourceID string
+	Action     PermissionAction
 }
 
-func (q *Queries) ListProjectTasksByUser(ctx context.Context, arg ListProjectTasksByUserParams) ([]Task, error) {
-	rows, err := q.db.Query(ctx, listProjectTasksByUser, arg.ProjectID, arg.UserID)
+func (q *Queries) GetProjectByUserIDForPermission(ctx context.Context, arg GetProjectByUserIDForPermissionParams) (Project, error) {
+	row := q.db.QueryRow(ctx, getProjectByUserIDForPermission,
+		arg.ID,
+		arg.ActorID,
+		arg.ResourceID,
+		arg.Action,
+	)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Type,
+		&i.Title,
+		&i.Goal,
+		&i.Description,
+		&i.Priority,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Revision,
+		&i.DeletedAt,
+		&i.ChangedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const listProjectTasksByUserID = `-- name: ListProjectTasksByUserID :many
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
+FROM tasks AS t
+WHERE t.project_id = $1
+  AND t.deleted_at IS NULL
+  AND task_has_permission(t.id, $2, 'task', 'read')
+  AND EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL)
+ORDER BY t.created_at ASC
+`
+
+type ListProjectTasksByUserIDParams struct {
+	ProjectID pgtype.Text
+	ActorKey  string
+}
+
+func (q *Queries) ListProjectTasksByUserID(ctx context.Context, arg ListProjectTasksByUserIDParams) ([]Task, error) {
+	rows, err := q.db.Query(ctx, listProjectTasksByUserID, arg.ProjectID, arg.ActorKey)
 	if err != nil {
 		return nil, err
 	}
@@ -96,14 +144,17 @@ func (q *Queries) ListProjectTasksByUser(ctx context.Context, arg ListProjectTas
 			&i.ID,
 			&i.UserID,
 			&i.ProjectID,
+			&i.AssigneeID,
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
-			&i.Progress,
 			&i.Priority,
 			&i.Status,
+			&i.Revision,
+			&i.DeletedAt,
+			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -115,4 +166,176 @@ func (q *Queries) ListProjectTasksByUser(ctx context.Context, arg ListProjectTas
 		return nil, err
 	}
 	return items, nil
+}
+
+const listProjectsByUserID = `-- name: ListProjectsByUserID :many
+SELECT id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
+FROM projects
+WHERE deleted_at IS NULL
+  AND project_has_permission(projects.id, $1::text, 'project', 'read')
+ORDER BY created_at DESC, id DESC
+`
+
+func (q *Queries) ListProjectsByUserID(ctx context.Context, userID string) ([]Project, error) {
+	rows, err := q.db.Query(ctx, listProjectsByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Project
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Type,
+			&i.Title,
+			&i.Goal,
+			&i.Description,
+			&i.Priority,
+			&i.StartDate,
+			&i.EndDate,
+			&i.Revision,
+			&i.DeletedAt,
+			&i.ChangedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProjectsByUserIDPage = `-- name: ListProjectsByUserIDPage :many
+SELECT id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
+FROM projects
+WHERE deleted_at IS NULL
+  AND project_has_permission(projects.id, $1::text, 'project', 'read')
+  AND ($2::timestamptz IS NULL OR (created_at, id) < ($2::timestamptz, $3::text))
+ORDER BY created_at DESC, id DESC
+LIMIT $4::integer
+`
+
+type ListProjectsByUserIDPageParams struct {
+	UserID    string
+	CursorAt  pgtype.Timestamptz
+	CursorID  pgtype.Text
+	PageLimit int32
+}
+
+func (q *Queries) ListProjectsByUserIDPage(ctx context.Context, arg ListProjectsByUserIDPageParams) ([]Project, error) {
+	rows, err := q.db.Query(ctx, listProjectsByUserIDPage,
+		arg.UserID,
+		arg.CursorAt,
+		arg.CursorID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Project
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Type,
+			&i.Title,
+			&i.Goal,
+			&i.Description,
+			&i.Priority,
+			&i.StartDate,
+			&i.EndDate,
+			&i.Revision,
+			&i.DeletedAt,
+			&i.ChangedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockActiveProjectTasksForDeletion = `-- name: LockActiveProjectTasksForDeletion :many
+SELECT id
+FROM tasks
+WHERE project_id = $1::text
+  AND deleted_at IS NULL
+ORDER BY id
+FOR UPDATE
+`
+
+func (q *Queries) LockActiveProjectTasksForDeletion(ctx context.Context, projectID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, lockActiveProjectTasksForDeletion, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockProjectByUserIDForPermission = `-- name: LockProjectByUserIDForPermission :one
+SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at
+FROM projects AS p
+WHERE p.id = $1::text
+  AND p.deleted_at IS NULL
+  AND project_has_permission(p.id, $2::text, $3::text, $4::permission_action)
+FOR UPDATE
+`
+
+type LockProjectByUserIDForPermissionParams struct {
+	ID         string
+	UserID     string
+	ResourceID string
+	Action     PermissionAction
+}
+
+func (q *Queries) LockProjectByUserIDForPermission(ctx context.Context, arg LockProjectByUserIDForPermissionParams) (Project, error) {
+	row := q.db.QueryRow(ctx, lockProjectByUserIDForPermission,
+		arg.ID,
+		arg.UserID,
+		arg.ResourceID,
+		arg.Action,
+	)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Type,
+		&i.Title,
+		&i.Goal,
+		&i.Description,
+		&i.Priority,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Revision,
+		&i.DeletedAt,
+		&i.ChangedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

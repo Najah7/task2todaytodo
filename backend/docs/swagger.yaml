@@ -1,33 +1,26 @@
 basePath: /api
 definitions:
-  handlers.AccessTokenGenerateRequest:
-    properties:
-      email:
-        type: string
-      password:
-        type: string
-    type: object
-  handlers.AccessTokenResponse:
+  internal_port_rest.AccessTokenResponse:
     properties:
       expires_at:
         type: string
       token:
         type: string
     type: object
-  handlers.Err:
+  internal_port_rest.Err:
     properties:
       code:
         type: string
       details:
         items:
-          $ref: '#/definitions/handlers.ErrDetail'
+          $ref: '#/definitions/internal_port_rest.ErrDetail'
         type: array
       message:
         type: string
       request_id:
         type: string
     type: object
-  handlers.ErrDetail:
+  internal_port_rest.ErrDetail:
     properties:
       code:
         type: string
@@ -36,616 +29,965 @@ definitions:
       message:
         type: string
     type: object
-  handlers.ErrResponse:
+  internal_port_rest.ErrResponse:
     properties:
       error:
-        $ref: '#/definitions/handlers.Err'
+        $ref: '#/definitions/internal_port_rest.Err'
     type: object
-  handlers.HealthResponse:
+  internal_port_rest.HealthResponse:
     properties:
       status:
         type: string
     type: object
-  handlers.MessageResponse:
-    properties:
-      message:
-        type: string
-    type: object
-  handlers.ProjectAggregateResponse:
-    properties:
-      created_at:
-        type: string
-      description:
-        type: string
-      end_at:
-        type: string
-      goal:
-        type: string
-      id:
-        type: string
-      priority:
-        type: string
-      progress:
-        type: integer
-      start_at:
-        type: string
-      tasks:
-        items:
-          $ref: '#/definitions/handlers.ProjectTaskResponse'
-        type: array
-      title:
-        type: string
-      type:
-        type: string
-      updated_at:
-        type: string
-    type: object
-  handlers.ProjectCreateRequest:
-    properties:
-      description:
-        type: string
-      end_at:
-        type: string
-      goal:
-        type: string
-      priority:
-        type: string
-      start_at:
-        type: string
-      title:
-        type: string
-      type:
-        type: string
-    type: object
-  handlers.ProjectPriorityUpdateRequest:
-    properties:
-      priority:
-        type: string
-    type: object
-  handlers.ProjectResponse:
-    properties:
-      created_at:
-        type: string
-      description:
-        type: string
-      end_at:
-        type: string
-      goal:
-        type: string
-      id:
-        type: string
-      priority:
-        type: string
-      progress:
-        type: integer
-      start_at:
-        type: string
-      title:
-        type: string
-      type:
-        type: string
-      updated_at:
-        type: string
-    type: object
-  handlers.ProjectScheduleUpdateRequest:
-    properties:
-      end_at:
-        type: string
-      start_at:
-        type: string
-    type: object
-  handlers.ProjectTaskResponse:
-    properties:
-      actual_minutes:
-        type: integer
-      created_at:
-        type: string
-      description:
-        type: string
-      due_date:
-        format: date
-        type: string
-      estimated_minutes:
-        type: integer
-      id:
-        type: string
-      priority:
-        type: string
-      progress:
-        type: integer
-      project_id:
-        type: string
-      status:
-        type: string
-      title:
-        type: string
-      updated_at:
-        type: string
-    type: object
-  handlers.ProjectTypeListResponse:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/handlers.ProjectTypeResponse'
-        type: array
-    type: object
-  handlers.ProjectTypeResponse:
-    properties:
-      label:
-        type: string
-      label_jp:
-        type: string
-      type:
-        type: string
-    type: object
-  handlers.ProjectUpdateRequest:
-    properties:
-      description:
-        type: string
-      goal:
-        type: string
-      title:
-        type: string
-      type:
-        type: string
-    type: object
-  handlers.TaskAggregateResponse:
-    properties:
-      actual_minutes:
-        type: integer
-      created_at:
-        type: string
-      description:
-        type: string
-      due_date:
-        format: date
-        type: string
-      estimated_minutes:
-        type: integer
-      id:
-        type: string
-      priority:
-        type: string
-      progress:
-        type: integer
-      project_id:
-        type: string
-      status:
-        type: string
-      task_schedules:
-        items:
-          $ref: '#/definitions/handlers.TaskScheduleResponse'
-        type: array
-      title:
-        type: string
-      todo_items:
-        items:
-          $ref: '#/definitions/handlers.TodoItemResponse'
-        type: array
-      updated_at:
-        type: string
-    type: object
-  handlers.TaskCreateRequest:
-    properties:
-      actual_minutes:
-        type: integer
-      description:
-        type: string
-      due_date:
-        format: date
-        type: string
-      estimated_minutes:
-        type: integer
-      priority:
-        type: string
-      status:
-        type: string
-      title:
-        type: string
-    type: object
-  handlers.TaskEstimationUpdateRequest:
-    properties:
-      actual_minutes:
-        type: integer
-      estimated_minutes:
-        type: integer
-    type: object
-  handlers.TaskFrequencyListResponse:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/handlers.TaskFrequencyResponse'
-        type: array
-    type: object
-  handlers.TaskFrequencyResponse:
-    properties:
-      frequency:
-        type: string
-      label:
-        type: string
-      label_jp:
-        type: string
-    type: object
-  handlers.TaskPriorityListResponse:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/handlers.TaskPriorityResponse'
-        type: array
-    type: object
-  handlers.TaskPriorityResponse:
-    properties:
-      label:
-        type: string
-      label_jp:
-        type: string
-      priority:
-        type: string
-      weight:
-        type: integer
-    type: object
-  handlers.TaskPriorityUpdateRequest:
-    properties:
-      priority:
-        type: string
-    type: object
-  handlers.TaskResponse:
-    properties:
-      actual_minutes:
-        type: integer
-      created_at:
-        type: string
-      description:
-        type: string
-      due_date:
-        format: date
-        type: string
-      estimated_minutes:
-        type: integer
-      id:
-        type: string
-      priority:
-        type: string
-      progress:
-        type: integer
-      project_id:
-        type: string
-      status:
-        type: string
-      title:
-        type: string
-      updated_at:
-        type: string
-    type: object
-  handlers.TaskScheduleCreateRequest:
-    properties:
-      description:
-        type: string
-      end_at:
-        type: string
-      frequencies:
-        items:
-          type: string
-        type: array
-      interval_weeks:
-        type: integer
-      location:
-        type: string
-      start_at:
-        type: string
-      title:
-        type: string
-    type: object
-  handlers.TaskScheduleResponse:
-    properties:
-      created_at:
-        type: string
-      description:
-        type: string
-      end_at:
-        type: string
-      frequencies:
-        items:
-          type: string
-        type: array
-      id:
-        type: string
-      interval_weeks:
-        type: integer
-      location:
-        type: string
-      start_at:
-        type: string
-      task_id:
-        type: string
-      title:
-        type: string
-      updated_at:
-        type: string
-    type: object
-  handlers.TaskScheduleUpdateRequest:
-    properties:
-      description:
-        type: string
-      end_at:
-        type: string
-      frequencies:
-        items:
-          type: string
-        type: array
-      interval_weeks:
-        type: integer
-      location:
-        type: string
-      start_at:
-        type: string
-      title:
-        type: string
-    type: object
-  handlers.TaskStatusListResponse:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/handlers.TaskStatusResponse'
-        type: array
-    type: object
-  handlers.TaskStatusResponse:
-    properties:
-      label:
-        type: string
-      label_jp:
-        type: string
-      status:
-        type: string
-    type: object
-  handlers.TaskStatusUpdateRequest:
-    properties:
-      status:
-        type: string
-    type: object
-  handlers.TaskUpdateRequest:
-    properties:
-      description:
-        type: string
-      due_date:
-        format: date
-        type: string
-      title:
-        type: string
-    type: object
-  handlers.TodoItemCreateRequest:
-    properties:
-      description:
-        type: string
-      due_date:
-        format: date
-        type: string
-      frequencies:
-        items:
-          type: string
-        type: array
-      interval_weeks:
-        type: integer
-      position:
-        type: integer
-      title:
-        type: string
-    type: object
-  handlers.TodoItemResponse:
-    properties:
-      completed:
-        type: boolean
-      created_at:
-        type: string
-      description:
-        type: string
-      due_date:
-        format: date
-        type: string
-      frequencies:
-        items:
-          type: string
-        type: array
-      id:
-        type: string
-      interval_weeks:
-        type: integer
-      position:
-        type: integer
-      task_id:
-        type: string
-      title:
-        type: string
-      updated_at:
-        type: string
-    type: object
-  handlers.UserCreateRequest:
+  internal_port_rest.LoginRequest:
     properties:
       email:
         type: string
       password:
         type: string
     type: object
-  handlers.UserInfoUpdateRequest:
+  internal_port_rest.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  internal_port_rest.PermissionListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_port_rest.PermissionResponse'
+        type: array
+    type: object
+  internal_port_rest.PermissionResponse:
+    properties:
+      action:
+        type: string
+      description:
+        type: string
+      effect:
+        type: string
+      id:
+        type: integer
+      resource_id:
+        type: string
+      resource_name:
+        type: string
+    type: object
+  internal_port_rest.ProjectCreateRequest:
+    properties:
+      description:
+        type: string
+      end_date:
+        type: string
+      goal:
+        type: string
+      priority:
+        type: string
+      start_date:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  internal_port_rest.ProjectListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_port_rest.ProjectResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
+  internal_port_rest.ProjectMemberListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_port_rest.ProjectMemberResponse'
+        type: array
+    type: object
+  internal_port_rest.ProjectMemberResponse:
+    properties:
+      added_by:
+        type: string
+      created_at:
+        type: integer
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      project_id:
+        type: string
+      role_id:
+        type: string
+      role_name:
+        type: string
+      updated_at:
+        type: integer
+      user_id:
+        type: string
+    type: object
+  internal_port_rest.ProjectMemberUpsertRequest:
+    properties:
+      role_id:
+        type: string
+    type: object
+  internal_port_rest.ProjectPriorityResponse:
+    properties:
+      label:
+        type: string
+      label_jp:
+        type: string
+      value:
+        type: string
+      weight:
+        type: integer
+    type: object
+  internal_port_rest.ProjectResponse:
+    properties:
+      created_at:
+        type: integer
+      description:
+        type: string
+      end_date:
+        type: string
+      goal:
+        type: string
+      id:
+        type: string
+      priority:
+        $ref: '#/definitions/internal_port_rest.ProjectPriorityResponse'
+      progress:
+        type: integer
+      revision:
+        type: integer
+      start_date:
+        type: string
+      title:
+        type: string
+      type:
+        $ref: '#/definitions/internal_port_rest.ProjectTypeResponse'
+      updated_at:
+        type: integer
+      user_id:
+        type: string
+    type: object
+  internal_port_rest.ProjectRevisionListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_port_rest.ProjectRevisionResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
+  internal_port_rest.ProjectRevisionResponse:
+    properties:
+      changed_at:
+        type: integer
+      changed_by:
+        type: string
+      created_at:
+        type: integer
+      deleted_at:
+        type: integer
+      description:
+        type: string
+      end_date:
+        type: string
+      goal:
+        type: string
+      id:
+        type: string
+      priority:
+        type: string
+      revision:
+        type: integer
+      start_date:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: integer
+      user_id:
+        type: string
+    type: object
+  internal_port_rest.ProjectTaskAssignmentRequest:
+    properties:
+      task_id:
+        type: string
+    type: object
+  internal_port_rest.ProjectTaskCreateRequest:
+    properties:
+      description:
+        type: string
+      due_date:
+        type: string
+      estimated_minutes:
+        type: integer
+      priority:
+        type: string
+      title:
+        type: string
+    type: object
+  internal_port_rest.ProjectTaskPageResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_port_rest.ProjectTaskResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
+  internal_port_rest.ProjectTaskResponse:
+    properties:
+      actual_minutes:
+        type: integer
+      assignee_id:
+        type: string
+      created_at:
+        type: integer
+      description:
+        type: string
+      due_date:
+        type: string
+      estimated_minutes:
+        type: integer
+      id:
+        type: string
+      priority:
+        $ref: '#/definitions/internal_port_rest.ProjectPriorityResponse'
+      progress:
+        type: integer
+      project_id:
+        type: string
+      revision:
+        type: integer
+      status:
+        $ref: '#/definitions/internal_port_rest.ProjectTaskStatusResponse'
+      title:
+        type: string
+      updated_at:
+        type: integer
+      user_id:
+        type: string
+    type: object
+  internal_port_rest.ProjectTaskStatusResponse:
+    properties:
+      label:
+        type: string
+      label_jp:
+        type: string
+      value:
+        type: string
+    type: object
+  internal_port_rest.ProjectTypeResponse:
+    properties:
+      label:
+        type: string
+      label_jp:
+        type: string
+      value:
+        type: string
+    type: object
+  internal_port_rest.ProjectUpdateRequest:
+    additionalProperties:
+      items:
+        format: int32
+        type: integer
+      type: array
+    type: object
+  internal_port_rest.RoleListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_port_rest.RoleResponse'
+        type: array
+    type: object
+  internal_port_rest.RoleResponse:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      permissions:
+        items:
+          $ref: '#/definitions/internal_port_rest.PermissionResponse'
+        type: array
+    type: object
+  internal_port_rest.SignupRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  internal_port_rest.TaskAssignedTagResponse:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  internal_port_rest.TaskAssigneeListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_port_rest.TaskAssigneeResponse'
+        type: array
+    type: object
+  internal_port_rest.TaskAssigneeResponse:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: string
+      last_name:
+        type: string
+      project_owner:
+        type: boolean
+    type: object
+  internal_port_rest.TaskAssignmentRequest:
+    properties:
+      assignee_id:
+        type: string
+    type: object
+  internal_port_rest.TaskCreateRequest:
+    properties:
+      description:
+        type: string
+      due_date:
+        type: string
+      estimated_minutes:
+        type: integer
+      priority:
+        type: string
+      title:
+        type: string
+    type: object
+  internal_port_rest.TaskDetailsResponse:
+    properties:
+      tags:
+        items:
+          $ref: '#/definitions/internal_port_rest.TaskAssignedTagResponse'
+        type: array
+      task:
+        $ref: '#/definitions/internal_port_rest.TaskResponse'
+    type: object
+  internal_port_rest.TaskListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_port_rest.TaskResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
+  internal_port_rest.TaskResponse:
+    properties:
+      actual_minutes:
+        type: integer
+      assignee_id:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      due_date:
+        type: string
+      estimated_minutes:
+        type: integer
+      id:
+        type: string
+      priority:
+        type: string
+      progress:
+        type: integer
+      project_id:
+        type: string
+      revision:
+        type: integer
+      status:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  internal_port_rest.TaskRevisionListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_port_rest.TaskRevisionResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
+  internal_port_rest.TaskRevisionResponse:
+    properties:
+      actual_minutes:
+        type: integer
+      assignee_id:
+        type: string
+      changed_at:
+        type: integer
+      changed_by:
+        type: string
+      created_at:
+        type: integer
+      deleted_at:
+        type: integer
+      description:
+        type: string
+      due_date:
+        type: string
+      estimated_minutes:
+        type: integer
+      id:
+        type: string
+      priority:
+        type: string
+      project_id:
+        type: string
+      revision:
+        type: integer
+      status:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: integer
+      user_id:
+        type: string
+    type: object
+  internal_port_rest.TaskScheduleCreateRequest:
+    properties:
+      description:
+        type: string
+      end_at:
+        type: string
+      frequencies:
+        items:
+          type: string
+        type: array
+      interval_weeks:
+        type: integer
+      location:
+        type: string
+      start_at:
+        type: string
+      title:
+        type: string
+    type: object
+  internal_port_rest.TaskScheduleFrequencyRequest:
+    properties:
+      frequencies:
+        items:
+          type: string
+        type: array
+      interval_weeks:
+        type: integer
+    required:
+    - frequencies
+    - interval_weeks
+    type: object
+  internal_port_rest.TaskScheduleFrequencyResponse:
+    properties:
+      label:
+        type: string
+      label_jp:
+        type: string
+      value:
+        type: string
+    type: object
+  internal_port_rest.TaskScheduleListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_port_rest.TaskScheduleResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
+  internal_port_rest.TaskScheduleOccurrenceRequest:
+    properties:
+      occurrence_date:
+        type: string
+    type: object
+  internal_port_rest.TaskScheduleRescheduleRequest:
+    properties:
+      end_at:
+        type: string
+      occurrence_date:
+        type: string
+      scope:
+        type: string
+      start_at:
+        type: string
+    type: object
+  internal_port_rest.TaskScheduleResponse:
+    properties:
+      completed:
+        type: boolean
+      created_at:
+        type: integer
+      description:
+        type: string
+      end_at:
+        type: string
+      frequencies:
+        items:
+          $ref: '#/definitions/internal_port_rest.TaskScheduleFrequencyResponse'
+        type: array
+      frequency_anchor_date:
+        type: string
+      id:
+        type: string
+      interval_weeks:
+        type: integer
+      is_exception:
+        type: boolean
+      location:
+        type: string
+      occurrence_date:
+        type: string
+      repeat_state:
+        type: string
+      series_id:
+        type: string
+      start_at:
+        type: string
+      task_id:
+        type: string
+      timezone:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: integer
+    type: object
+  internal_port_rest.TaskScheduleUpdateRequest:
+    properties:
+      description:
+        type: string
+      location:
+        type: string
+      occurrence_date:
+        type: string
+      scope:
+        type: string
+      title:
+        type: string
+    type: object
+  internal_port_rest.TaskTagAssignmentRequest:
+    properties:
+      tag_id:
+        type: string
+    type: object
+  internal_port_rest.TaskTagCreateRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  internal_port_rest.TaskTagListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_port_rest.TaskTagResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
+  internal_port_rest.TaskTagRenameRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  internal_port_rest.TaskTagResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  internal_port_rest.TaskUpdateRequest:
+    properties:
+      actual_minutes:
+        $ref: '#/definitions/internal_port_rest.optionalJSON-int'
+      description:
+        $ref: '#/definitions/internal_port_rest.optionalJSON-string'
+      due_date:
+        $ref: '#/definitions/internal_port_rest.optionalJSON-string'
+      estimated_minutes:
+        $ref: '#/definitions/internal_port_rest.optionalJSON-int'
+      title:
+        $ref: '#/definitions/internal_port_rest.optionalJSON-string'
+    type: object
+  internal_port_rest.TodoItemCreateRequest:
+    properties:
+      description:
+        type: string
+      due_date:
+        type: string
+      frequencies:
+        items:
+          type: string
+        type: array
+      interval_weeks:
+        type: integer
+      title:
+        type: string
+    type: object
+  internal_port_rest.TodoItemFrequencyUpdateRequest:
+    properties:
+      frequencies:
+        items:
+          type: string
+        type: array
+      interval_weeks:
+        type: integer
+    required:
+    - frequencies
+    - interval_weeks
+    type: object
+  internal_port_rest.TodoItemListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_port_rest.TodoItemResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
+  internal_port_rest.TodoItemOccurrenceRequest:
+    properties:
+      occurrence_date:
+        type: string
+    type: object
+  internal_port_rest.TodoItemReorderRequest:
+    properties:
+      occurrence_date:
+        type: string
+      position:
+        type: integer
+    type: object
+  internal_port_rest.TodoItemResponse:
+    properties:
+      completed:
+        type: boolean
+      created_at:
+        type: integer
+      description:
+        type: string
+      due_date:
+        type: string
+      frequencies:
+        items:
+          type: string
+        type: array
+      frequency_anchor_date:
+        type: string
+      id:
+        type: string
+      interval_weeks:
+        type: integer
+      is_exception:
+        type: boolean
+      occurrence_date:
+        type: string
+      position:
+        type: integer
+      repeat_state:
+        type: string
+      series_id:
+        type: string
+      task_id:
+        type: string
+      timezone:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: integer
+    type: object
+  internal_port_rest.TodoItemUpdateRequest:
+    properties:
+      description:
+        type: string
+      due_date:
+        type: string
+      occurrence_date:
+        type: string
+      scope:
+        enum:
+        - current
+        - future
+        type: string
+      title:
+        type: string
+    required:
+    - scope
+    type: object
+  internal_port_rest.UserInfoUpdateRequest:
     properties:
       first_name:
         type: string
       last_name:
         type: string
     type: object
-  handlers.UserPasswordUpdateRequest:
+  internal_port_rest.UserPasswordUpdateRequest:
     properties:
       new_password:
         type: string
     type: object
-  handlers.UserResponse:
+  internal_port_rest.UserResponse:
     properties:
       email:
+        type: string
+      timezone:
         type: string
       user_id:
         type: string
       user_name:
         type: string
     type: object
-host: localhost:8080
+  internal_port_rest.UserTimezoneUpdateRequest:
+    properties:
+      timezone:
+        type: string
+    type: object
+  internal_port_rest.optionalJSON-int:
+    properties:
+      present:
+        type: boolean
+      value:
+        type: integer
+    type: object
+  internal_port_rest.optionalJSON-string:
+    properties:
+      present:
+        type: boolean
+      value:
+        type: string
+    type: object
 info:
   contact: {}
   description: Task scheduling API server.
   title: task2todaytodo API
   version: "1.0"
 paths:
-  /access-token/current:
+  /access-token:revoke:
     delete:
       description: Revokes the current access token from the Authorization header.
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.MessageResponse'
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
         "401":
           description: Missing or invalid access token
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
           description: Failed to revoke access token
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Revoke access token
       tags:
       - Access Tokens
-  /access-tokens:
+  /login:
     post:
       consumes:
       - application/json
-      description: Generates a new access token for a user.
+      description: Authenticates a user and generates an access token.
       parameters:
-      - description: Access token generate request
+      - description: Login request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.AccessTokenGenerateRequest'
+          $ref: '#/definitions/internal_port_rest.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.AccessTokenResponse'
+            $ref: '#/definitions/internal_port_rest.AccessTokenResponse'
         "400":
           description: Invalid request body
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Invalid email or password
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
           description: Failed to generate access token
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-      summary: Generate access token
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      summary: Log in
       tags:
       - Access Tokens
-  /monitor/health:
+  /permissions:
     get:
-      description: Returns the API health status.
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.HealthResponse'
-        "500":
-          description: Failed to marshal response
+            $ref: '#/definitions/internal_port_rest.PermissionListResponse'
+        "401":
+          description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-      summary: Check API health
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: List permissions
       tags:
-      - Monitor
+      - Authorization
   /projects:
+    get:
+      parameters:
+      - description: Items per page (default 50, maximum 100)
+        in: query
+        name: page_size
+        type: integer
+      - description: Opaque next page token
+        in: query
+        name: page_token
+        type: string
+      - description: Response field mask
+        in: query
+        name: fields
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.ProjectListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: List projects
+      tags:
+      - Projects
     post:
       consumes:
       - application/json
-      description: Creates a Project for the authenticated user.
       parameters:
-      - description: Project create request
+      - description: Project
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.ProjectCreateRequest'
+          $ref: '#/definitions/internal_port_rest.ProjectCreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.ProjectResponse'
+            $ref: '#/definitions/internal_port_rest.ProjectResponse'
         "400":
-          description: Invalid request body
+          description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "409":
-          description: Project ID already exists
+          description: Conflict
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
-          description: Failed to create project
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Create project
       tags:
       - Projects
-  /projects/{project_id}:
+  /projects/{id}:
     delete:
-      description: Deletes an owned Project. Existing Tasks are kept and detached
-        by database constraints.
       parameters:
-      - description: Project ID
-        in: path
-        name: project_id
+      - description: Current project ETag, for example \
+        in: header
+        name: If-Match
         required: true
         type: string
-      produces:
-      - application/json
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
       responses:
-        "200":
-          description: OK
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.MessageResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
-          description: Project not found
+          description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Revision conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "428":
+          description: If-Match is required
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
-          description: Failed to delete project
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Delete project
       tags:
       - Projects
     get:
-      description: Returns an owned Project with its Tasks ordered by creation time.
       parameters:
       - description: Project ID
         in: path
-        name: project_id
+        name: id
         required: true
         type: string
       produces:
@@ -654,19 +996,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.ProjectAggregateResponse'
+            $ref: '#/definitions/internal_port_rest.ProjectResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
-          description: Project not found
+          description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
-          description: Failed to get project
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Get project
@@ -675,274 +1021,768 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Partially updates owned Project basic information.
       parameters:
-      - description: Project ID
-        in: path
-        name: project_id
+      - description: Current project ETag, for example \
+        in: header
+        name: If-Match
         required: true
         type: string
-      - description: Project basic update request
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Project fields to update
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.ProjectUpdateRequest'
+          $ref: '#/definitions/internal_port_rest.ProjectUpdateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.ProjectResponse'
+            $ref: '#/definitions/internal_port_rest.ProjectResponse'
         "400":
-          description: Invalid request body
+          description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
-          description: Project not found
+          description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Revision conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "428":
+          description: If-Match is required
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
-          description: Failed to update project
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Update project basic information
+      summary: Update project
       tags:
       - Projects
-  /projects/{project_id}/priority:
-    patch:
+  /projects/{id}/members:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.ProjectMemberListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: List project members
+      tags:
+      - Projects
+  /projects/{id}/members/{user_id}:
+    delete:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Member user ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove a project member
+      tags:
+      - Projects
+    put:
       consumes:
       - application/json
-      description: Updates owned Project priority.
       parameters:
       - description: Project ID
         in: path
-        name: project_id
+        name: id
         required: true
         type: string
-      - description: Project priority update request
+      - description: Member user ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Member role
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.ProjectPriorityUpdateRequest'
+          $ref: '#/definitions/internal_port_rest.ProjectMemberUpsertRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Add or update a project member
+      tags:
+      - Projects
+  /projects/{id}/revisions:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Items per page
+        in: query
+        name: page_size
+        type: integer
+      - description: Opaque next page token
+        in: query
+        name: page_token
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.ProjectResponse'
+            $ref: '#/definitions/internal_port_rest.ProjectRevisionListResponse'
         "400":
-          description: Invalid request body
+          description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
-          description: Project not found
+          description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-        "500":
-          description: Failed to update project
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Update project priority
+      summary: List project revisions
       tags:
       - Projects
-  /projects/{project_id}/schedule:
-    patch:
-      consumes:
-      - application/json
-      description: Partially updates owned Project schedule.
+  /projects/{id}/tasks:
+    get:
       parameters:
       - description: Project ID
         in: path
-        name: project_id
+        name: id
         required: true
         type: string
-      - description: Project schedule update request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.ProjectScheduleUpdateRequest'
+      - description: Items per page (default 50, maximum 100)
+        in: query
+        name: page_size
+        type: integer
+      - description: Opaque next page token
+        in: query
+        name: page_token
+        type: string
+      - description: Response field mask
+        in: query
+        name: fields
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.ProjectResponse'
+            $ref: '#/definitions/internal_port_rest.ProjectTaskPageResponse'
         "400":
-          description: Invalid request body
+          description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
-          description: Project not found
+          description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
-          description: Failed to update project
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Update project schedule
+      summary: List project tasks
       tags:
       - Projects
-  /projects/{project_id}/tasks:
     post:
       consumes:
       - application/json
-      description: Creates a Task under an owned Project.
       parameters:
       - description: Project ID
         in: path
-        name: project_id
+        name: id
         required: true
         type: string
-      - description: Task create request
+      - description: Task
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.TaskCreateRequest'
+          $ref: '#/definitions/internal_port_rest.ProjectTaskCreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.TaskResponse'
+            $ref: '#/definitions/internal_port_rest.ProjectTaskResponse'
         "400":
-          description: Invalid request body
+          description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
-          description: Project not found
+          description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
-          description: Failed to create task
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Create project task
+      summary: Create task in project
+      tags:
+      - Projects
+  /projects/{id}/tasks:add:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Current task ETag, for example \
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Single task ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.ProjectTaskAssignmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.ProjectTaskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "428":
+          description: If-Match is required
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Add task to project
+      tags:
+      - Projects
+  /projects/{id}/tasks:remove:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Current task ETag, for example \
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Single task ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.ProjectTaskAssignmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.ProjectTaskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Revision conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "428":
+          description: If-Match is required
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove task from project
+      tags:
+      - Projects
+  /roles:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.RoleListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: List roles
+      tags:
+      - Authorization
+  /signup:
+    post:
+      consumes:
+      - application/json
+      description: Creates a user with an email address and password.
+      parameters:
+      - description: Signup request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.SignupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_port_rest.UserResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to create user
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      summary: Sign up
+      tags:
+      - Users
+  /task-tags:
+    get:
+      description: Returns task tags owned by the authenticated user.
+      parameters:
+      - description: Items per page (default 50, maximum 100)
+        in: query
+        name: page_size
+        type: integer
+      - description: Opaque next page token
+        in: query
+        name: page_token
+        type: string
+      - description: Response field mask
+        in: query
+        name: fields
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.TaskTagListResponse'
+        "400":
+          description: Invalid pagination or fields
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to list task tags
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: List task tags
+      tags:
+      - Task Tags
+    post:
+      consumes:
+      - application/json
+      description: Creates a task tag for the authenticated user.
+      parameters:
+      - description: Task tag create request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.TaskTagCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_port_rest.TaskTagResponse'
+        "400":
+          description: Invalid request body or name
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Tag name already exists
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to create task tag
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Create task tag
+      tags:
+      - Task Tags
+  /task-tags/{id}:
+    delete:
+      description: Deletes a task tag owned by the authenticated user.
+      parameters:
+      - description: Task tag ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Task tag deleted
+        "400":
+          description: Invalid task tag ID
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Task tag not found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to delete task tag
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete task tag
+      tags:
+      - Task Tags
+    patch:
+      consumes:
+      - application/json
+      description: Renames a task tag owned by the authenticated user.
+      parameters:
+      - description: Task tag ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Task tag rename request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.TaskTagRenameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.TaskTagResponse'
+        "400":
+          description: Invalid request body or name
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Task tag not found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Tag name already exists
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to update task tag
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Rename task tag
+      tags:
+      - Task Tags
+  /tasks:
+    get:
+      description: Returns a page of tasks assigned to the authenticated user, including
+        tasks in projects.
+      parameters:
+      - description: Items per page (default 50, maximum 100)
+        in: query
+        name: page_size
+        type: integer
+      - description: Opaque next page token
+        in: query
+        name: page_token
+        type: string
+      - description: Response field mask
+        in: query
+        name: fields
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.TaskListResponse'
+        "400":
+          description: Invalid pagination
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to list tasks
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: List tasks
       tags:
       - Tasks
-  /projects/types:
-    get:
-      description: Returns all project type master data.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.ProjectTypeListResponse'
-        "500":
-          description: Failed to list project types
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-      summary: List project types
-      tags:
-      - Projects
-  /tasks:
     post:
       consumes:
       - application/json
-      description: Creates a standalone Task for the authenticated user.
+      description: Creates a task without project membership.
       parameters:
       - description: Task create request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.TaskCreateRequest'
+          $ref: '#/definitions/internal_port_rest.TaskCreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.TaskResponse'
+            $ref: '#/definitions/internal_port_rest.TaskResponse'
         "400":
-          description: Invalid request body
+          description: Invalid request
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Task ID conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
           description: Failed to create task
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Create task
       tags:
       - Tasks
-  /tasks/{task_id}:
+  /tasks/{id}:
     delete:
-      description: Deletes an owned Task.
+      description: Logically deletes a task the caller may delete and its child items
+        and schedules.
       parameters:
-      - description: Task ID
-        in: path
-        name: task_id
+      - description: Current task ETag, for example \
+        in: header
+        name: If-Match
         required: true
         type: string
-      produces:
-      - application/json
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
       responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.MessageResponse'
+        "204":
+          description: No Content
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
           description: Task not found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Revision conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "428":
+          description: If-Match is required
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
           description: Failed to delete task
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Delete task
       tags:
       - Tasks
     get:
-      description: Returns an owned Task with TodoItems and TaskSchedules.
+      description: Returns a task the caller may read and its assigned tags.
       parameters:
       - description: Task ID
         in: path
-        name: task_id
+        name: id
         required: true
         type: string
       produces:
@@ -951,19 +1791,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.TaskAggregateResponse'
+            $ref: '#/definitions/internal_port_rest.TaskDetailsResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
           description: Task not found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
           description: Failed to get task
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Get task
@@ -972,11 +1812,17 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Partially updates owned Task basic information.
+      description: Partially updates basic task fields. Project membership, status,
+        and progress cannot be changed here.
       parameters:
+      - description: Current task ETag, for example \
+        in: header
+        name: If-Match
+        required: true
+        type: string
       - description: Task ID
         in: path
-        name: task_id
+        name: id
         required: true
         type: string
       - description: Task update request
@@ -984,546 +1830,1485 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.TaskUpdateRequest'
+          $ref: '#/definitions/internal_port_rest.TaskUpdateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.TaskResponse'
+            $ref: '#/definitions/internal_port_rest.TaskResponse'
         "400":
-          description: Invalid request body
+          description: Invalid request
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
           description: Task not found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Task conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "428":
+          description: If-Match is required
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
           description: Failed to update task
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Update task
       tags:
       - Tasks
-  /tasks/{task_id}/estimation:
-    patch:
-      consumes:
-      - application/json
-      description: Updates estimated and/or actual minutes for an owned Task.
+  /tasks/{id}/assignees:
+    get:
       parameters:
       - description: Task ID
         in: path
-        name: task_id
+        name: id
         required: true
         type: string
-      - description: Task estimation update request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.TaskEstimationUpdateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.TaskResponse'
-        "400":
-          description: Invalid request body
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.TaskAssigneeListResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
-          description: Task not found
+          description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-        "500":
-          description: Failed to update task
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Update task estimation
+      summary: List task assignees
       tags:
       - Tasks
-  /tasks/{task_id}/priority:
     patch:
       consumes:
       - application/json
-      description: Updates priority for an owned Task.
       parameters:
       - description: Task ID
         in: path
-        name: task_id
+        name: id
         required: true
         type: string
-      - description: Task priority update request
+      - description: Current task ETag, for example \
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Assignee
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.TaskPriorityUpdateRequest'
+          $ref: '#/definitions/internal_port_rest.TaskAssignmentRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.TaskResponse'
+            $ref: '#/definitions/internal_port_rest.TaskResponse'
         "400":
-          description: Invalid request body
+          description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
-          description: Task not found
+          description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-        "500":
-          description: Failed to update task
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Conflict
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "428":
+          description: Precondition Required
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Update task priority
+      summary: Assign task
       tags:
       - Tasks
-  /tasks/{task_id}/schedules:
+  /tasks/{id}/revisions:
+    get:
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Items per page
+        in: query
+        name: page_size
+        type: integer
+      - description: Opaque next page token
+        in: query
+        name: page_token
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.TaskRevisionListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: List task revisions
+      tags:
+      - Tasks
+  /tasks/{id}/tags:add:
     post:
       consumes:
       - application/json
-      description: Creates a TaskSchedule under an owned Task.
+      description: Assigns one user-owned tag to a task owned by the authenticated
+        user.
       parameters:
       - description: Task ID
         in: path
-        name: task_id
+        name: id
         required: true
         type: string
-      - description: TaskSchedule create request
+      - description: Tag assignment request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.TaskScheduleCreateRequest'
+          $ref: '#/definitions/internal_port_rest.TaskTagAssignmentRequest'
+      responses:
+        "204":
+          description: Tag assigned
+        "400":
+          description: Invalid request body or task ID
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Task or tag not found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to add tag to task
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Add tag to task
+      tags:
+      - Task Tags
+  /tasks/{id}/tags:remove:
+    post:
+      consumes:
+      - application/json
+      description: Removes one user-owned tag from a task owned by the authenticated
+        user.
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tag assignment request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.TaskTagAssignmentRequest'
+      responses:
+        "204":
+          description: Tag removed
+        "400":
+          description: Invalid request body or task ID
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Task or tag not found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to remove tag from task
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove tag from task
+      tags:
+      - Task Tags
+  /tasks/{id}:complete:
+    post:
+      description: Marks task done and stops future recurrence generation.
+      parameters:
+      - description: Current task ETag, for example \
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Revision conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "428":
+          description: If-Match is required
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to complete task
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Complete task
+      tags:
+      - Tasks
+  /tasks/{id}:hold:
+    post:
+      description: Moves task to pending, regardless of current status.
+      parameters:
+      - description: Current task ETag, for example \
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Revision conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "428":
+          description: If-Match is required
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to hold task
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Hold task
+      tags:
+      - Tasks
+  /tasks/{id}:reopen:
+    post:
+      description: Moves task to open, regardless of current status.
+      parameters:
+      - description: Current task ETag, for example \
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Revision conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "428":
+          description: If-Match is required
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to reopen task
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Reopen task
+      tags:
+      - Tasks
+  /tasks/{id}:start:
+    post:
+      description: Moves task to in progress, regardless of current status.
+      parameters:
+      - description: Current task ETag, for example \
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Revision conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "428":
+          description: If-Match is required
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to start task
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Start task
+      tags:
+      - Tasks
+  /tasks/{id}:wait:
+    post:
+      description: Moves task to waiting on others, regardless of current status.
+      parameters:
+      - description: Current task ETag, for example \
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Revision conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "428":
+          description: If-Match is required
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to wait on task
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Wait on task
+      tags:
+      - Tasks
+  /tasks/{taskId}/schedules:
+    get:
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: Items per page (default 50, maximum 100)
+        in: query
+        name: page_size
+        type: integer
+      - description: Opaque next page token
+        in: query
+        name: page_token
+        type: string
+      - description: First occurrence date (YYYY-MM-DD); defaults to today in each
+          series timezone
+        in: query
+        name: from_date
+        type: string
+      - description: Response field mask
+        in: query
+        name: fields
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.TaskScheduleListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: List task schedules
+      tags:
+      - Task Schedules
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: Task schedule
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.TaskScheduleCreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.TaskScheduleResponse'
+            $ref: '#/definitions/internal_port_rest.TaskScheduleResponse'
         "400":
-          description: Invalid request body
+          description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
-          description: Task not found
+          description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
-          description: Failed to create task schedule
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Create task schedule
       tags:
-      - TaskSchedules
-  /tasks/{task_id}/schedules/{task_schedule_id}:
+      - Task Schedules
+  /tasks/{taskId}/schedules/{id}:
     delete:
-      description: Deletes an owned TaskSchedule.
       parameters:
       - description: Task ID
         in: path
-        name: task_id
+        name: taskId
         required: true
         type: string
-      - description: TaskSchedule ID
+      - description: Task schedule series ID
         in: path
-        name: task_schedule_id
+        name: id
         required: true
         type: string
-      produces:
-      - application/json
       responses:
-        "200":
-          description: OK
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.MessageResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
-          description: TaskSchedule not found
+          description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
-          description: Failed to delete task schedule
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Delete task schedule
       tags:
-      - TaskSchedules
+      - Task Schedules
     patch:
       consumes:
       - application/json
-      description: Partially updates an owned TaskSchedule.
       parameters:
       - description: Task ID
         in: path
-        name: task_id
+        name: taskId
         required: true
         type: string
-      - description: TaskSchedule ID
+      - description: Task schedule series ID
         in: path
-        name: task_schedule_id
+        name: id
         required: true
         type: string
-      - description: TaskSchedule update request
+      - description: Schedule fields
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.TaskScheduleUpdateRequest'
+          $ref: '#/definitions/internal_port_rest.TaskScheduleUpdateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.TaskScheduleResponse'
+            $ref: '#/definitions/internal_port_rest.TaskScheduleResponse'
         "400":
-          description: Invalid request body
+          description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
-          description: TaskSchedule not found
+          description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
-          description: Failed to update task schedule
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Update task schedule
+      summary: Update task schedule details
       tags:
-      - TaskSchedules
-  /tasks/{task_id}/status:
-    patch:
+      - Task Schedules
+  /tasks/{taskId}/schedules/{id}/frequency:
+    put:
       consumes:
       - application/json
-      description: Updates status for an owned Task.
+      description: Changes recurrence settings immediately on the root schedule. frequencies
+        selects weekdays and interval_weeks sets the number of weeks between matching
+        weeks. Use this endpoint to change recurrence weekdays. interval_weeks zero
+        stops future generation; occurrence_date is not part of this request.
       parameters:
       - description: Task ID
         in: path
-        name: task_id
+        name: taskId
         required: true
         type: string
-      - description: Task status update request
+      - description: Task schedule series ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Recurrence settings
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.TaskStatusUpdateRequest'
-      produces:
-      - application/json
+          $ref: '#/definitions/internal_port_rest.TaskScheduleFrequencyRequest'
       responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.TaskResponse'
+        "204":
+          description: No Content
         "400":
-          description: Invalid request body
+          description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
-          description: Task not found
+          description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
-          description: Failed to update task
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Update task status
+      summary: Update task schedule frequency
       tags:
-      - Tasks
-  /tasks/{task_id}/todo-items:
+      - Task Schedules
+  /tasks/{taskId}/schedules/{id}:complete:
     post:
       consumes:
       - application/json
-      description: Creates a TodoItem under an owned Task.
+      description: Marks one TaskSchedule occurrence complete. Recurring schedules
+        require occurrence_date; one-off schedules may omit it. occurrence_date identifies
+        scheduled occurrence and may differ from start_at after an edit.
       parameters:
       - description: Task ID
         in: path
-        name: task_id
+        name: taskId
         required: true
         type: string
-      - description: TodoItem create request
+      - description: Task schedule series ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stable occurrence date; required for recurring schedules
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/internal_port_rest.TaskScheduleOccurrenceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Complete task schedule
+      tags:
+      - Task Schedules
+  /tasks/{taskId}/schedules/{id}:reopen:
+    post:
+      consumes:
+      - application/json
+      description: Reopens one TaskSchedule occurrence. Recurring schedules require
+        occurrence_date; one-off schedules may omit it. occurrence_date identifies
+        scheduled occurrence and may differ from start_at after an edit.
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: Task schedule series ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stable occurrence date; required for recurring schedules
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/internal_port_rest.TaskScheduleOccurrenceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Reopen task schedule
+      tags:
+      - Task Schedules
+  /tasks/{taskId}/schedules/{id}:reschedule:
+    post:
+      consumes:
+      - application/json
+      description: Future scope updates the root template immediately and does not
+        require occurrence_date. Current scope changes selected occurrence. occurrence_date
+        is stable occurrence identity and may differ from start_at after an edit.
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: Task schedule series ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New schedule times
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.TodoItemCreateRequest'
+          $ref: '#/definitions/internal_port_rest.TaskScheduleRescheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.TaskScheduleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Reschedule task schedule
+      tags:
+      - Task Schedules
+  /tasks/{taskId}/schedules/{id}:restore:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: Task schedule series ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stable recurring occurrence date
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.TaskScheduleOccurrenceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Restore task schedule occurrence
+      tags:
+      - Task Schedules
+  /tasks/{taskId}/schedules/{id}:skip:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: Task schedule series ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stable recurring occurrence date
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.TaskScheduleOccurrenceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Completed occurrence cannot be skipped
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Skip task schedule occurrence
+      tags:
+      - Task Schedules
+  /tasks/{taskId}/todo-items:
+    get:
+      description: Returns TodoItems for the authenticated user's task.
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: Items per page (default 50, maximum 100)
+        in: query
+        name: page_size
+        type: integer
+      - description: Opaque next page token
+        in: query
+        name: page_token
+        type: string
+      - description: First occurrence date (YYYY-MM-DD); defaults to today in each
+          series timezone
+        in: query
+        name: from_date
+        type: string
+      - description: Response field mask
+        in: query
+        name: fields
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.TodoItemListResponse'
+        "400":
+          description: Invalid task ID
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to list todo items
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: List todo items
+      tags:
+      - TodoItems
+    post:
+      consumes:
+      - application/json
+      description: Creates a one-off or recurring TodoItem owned by the authenticated
+        user.
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: TodoItem fields
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.TodoItemCreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.TodoItemResponse'
+            $ref: '#/definitions/internal_port_rest.TodoItemResponse'
         "400":
-          description: Invalid request body
+          description: Invalid request
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
           description: Task not found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-        "409":
-          description: Position conflict
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
           description: Failed to create todo item
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Create todo item
       tags:
       - TodoItems
-  /tasks/{task_id}/todo-items/{todo_item_id}:
+  /tasks/{taskId}/todo-items/{id}:
     delete:
-      description: Deletes an owned TodoItem.
+      description: Deletes the entire TodoItem series, or one-off TodoItem.
       parameters:
       - description: Task ID
         in: path
-        name: task_id
+        name: taskId
         required: true
         type: string
-      - description: TodoItem ID
+      - description: TodoItem series ID
         in: path
-        name: todo_item_id
+        name: id
         required: true
         type: string
-      produces:
-      - application/json
       responses:
-        "200":
-          description: OK
+        "204":
+          description: No Content
+        "400":
+          description: Invalid IDs
           schema:
-            $ref: '#/definitions/handlers.MessageResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "404":
-          description: TodoItem not found
+          description: Task or todo item not found
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
           description: Failed to delete todo item
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Delete todo item
       tags:
       - TodoItems
-  /tasks/{task_id}/todo-items/{todo_item_id}:checked:
-    post:
-      description: Marks an owned TodoItem as completed.
-      parameters:
-      - description: Task ID
-        in: path
-        name: task_id
-        required: true
-        type: string
-      - description: TodoItem ID
-        in: path
-        name: todo_item_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.MessageResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-        "404":
-          description: TodoItem not found
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-        "500":
-          description: Failed to update todo item
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Check todo item
-      tags:
-      - TodoItems
-  /tasks/{task_id}/todo-items/{todo_item_id}:unchecked:
-    post:
-      description: Marks an owned TodoItem as incomplete.
-      parameters:
-      - description: Task ID
-        in: path
-        name: task_id
-        required: true
-        type: string
-      - description: TodoItem ID
-        in: path
-        name: todo_item_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.MessageResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-        "404":
-          description: TodoItem not found
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-        "500":
-          description: Failed to update todo item
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Uncheck todo item
-      tags:
-      - TodoItems
-  /tasks/frequencies:
-    get:
-      description: Returns all task frequency master data.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.TaskFrequencyListResponse'
-        "500":
-          description: Failed to list task frequencies
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-      summary: List task frequencies
-      tags:
-      - Tasks
-  /tasks/priorities:
-    get:
-      description: Returns all task priority master data.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.TaskPriorityListResponse'
-        "500":
-          description: Failed to list task priorities
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-      summary: List task priorities
-      tags:
-      - Tasks
-  /tasks/statuses:
-    get:
-      description: Returns all task status master data.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.TaskStatusListResponse'
-        "500":
-          description: Failed to list task statuses
-          schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-      summary: List task statuses
-      tags:
-      - Tasks
-  /users:
-    post:
+    patch:
       consumes:
       - application/json
-      description: Creates a user with an email address and password.
+      description: Updates one occurrence with current scope and occurrence_date.
+        Future scope updates the root template immediately and does not require occurrence_date.
+        due_date cannot be changed with future scope; use the frequency endpoint to
+        change recurrence weekdays. occurrence_date is stable occurrence identity
+        and may differ from due_date after an edit.
       parameters:
-      - description: User create request
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: TodoItem series ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.UserCreateRequest'
+          $ref: '#/definitions/internal_port_rest.TodoItemUpdateRequest'
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
-            $ref: '#/definitions/handlers.UserResponse'
+            $ref: '#/definitions/internal_port_rest.TodoItemResponse'
         "400":
-          description: Invalid request body
+          description: Invalid request or scope
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Task or todo item not found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Position conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
-          description: Failed to create user
+          description: Failed to update todo item
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
-      summary: Create user
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update todo item
       tags:
-      - Users
+      - TodoItems
+  /tasks/{taskId}/todo-items/{id}/frequency:
+    put:
+      consumes:
+      - application/json
+      description: Changes recurrence settings immediately on the root item. frequencies
+        selects weekdays and interval_weeks sets the number of weeks between matching
+        weeks. Use this endpoint to change recurrence weekdays. interval_weeks zero
+        stops future generation; occurrence_date is not part of this request.
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: TodoItem root ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Frequency settings
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.TodoItemFrequencyUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "400":
+          description: Invalid frequency settings
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Task or series root not found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Position conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to update todo item frequency
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update todo item frequency
+      tags:
+      - TodoItems
+  /tasks/{taskId}/todo-items/{id}:complete:
+    post:
+      consumes:
+      - application/json
+      description: Marks one TodoItem occurrence complete. Recurring items require
+        occurrence_date; one-off items may omit it. occurrence_date identifies scheduled
+        occurrence and may differ from due_date after an edit.
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: TodoItem series ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stable occurrence date; required for recurring items
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/internal_port_rest.TodoItemOccurrenceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Complete todo item
+      tags:
+      - TodoItems
+  /tasks/{taskId}/todo-items/{id}:reopen:
+    post:
+      consumes:
+      - application/json
+      description: Reopens one TodoItem occurrence. Recurring items require occurrence_date;
+        one-off items may omit it. occurrence_date identifies scheduled occurrence
+        and may differ from due_date after an edit.
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: TodoItem series ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stable occurrence date; required for recurring items
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/internal_port_rest.TodoItemOccurrenceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Reopen todo item
+      tags:
+      - TodoItems
+  /tasks/{taskId}/todo-items/{id}:reorder:
+    post:
+      consumes:
+      - application/json
+      description: Moves the TodoItem to a new zero-based position for the same occurrence
+        date.
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: TodoItem series ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Target position
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.TodoItemReorderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.TodoItemResponse'
+        "400":
+          description: Invalid position
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Task or todo item not found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Concurrent position conflict
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to reorder todo item
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Reorder todo item
+      tags:
+      - TodoItems
+  /tasks/{taskId}/todo-items/{id}:restore:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: TodoItem series ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stable recurring occurrence date
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.TodoItemOccurrenceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Restore todo item occurrence
+      tags:
+      - TodoItems
+  /tasks/{taskId}/todo-items/{id}:skip:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: TodoItem series ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stable recurring occurrence date
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.TodoItemOccurrenceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "409":
+          description: Completed occurrence cannot be skipped
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Skip todo item occurrence
+      tags:
+      - TodoItems
   /users/me:
     get:
       description: Returns the authenticated user's profile.
@@ -1533,15 +3318,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.UserResponse'
+            $ref: '#/definitions/internal_port_rest.UserResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
           description: Failed to get user
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Get current user
@@ -1557,26 +3342,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.UserInfoUpdateRequest'
+          $ref: '#/definitions/internal_port_rest.UserInfoUpdateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.UserResponse'
+            $ref: '#/definitions/internal_port_rest.UserResponse'
         "400":
           description: Invalid request body
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
           description: Failed to update user
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Update current user basic info
@@ -1593,27 +3378,63 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.UserPasswordUpdateRequest'
+          $ref: '#/definitions/internal_port_rest.UserPasswordUpdateRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.MessageResponse'
+            $ref: '#/definitions/internal_port_rest.MessageResponse'
         "400":
           description: Invalid request body
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
         "500":
           description: Failed to update password
           schema:
-            $ref: '#/definitions/handlers.ErrResponse'
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: Update current user password
+      tags:
+      - Users
+  /users/me/timezone:
+    patch:
+      consumes:
+      - application/json
+      description: Updates the authenticated user's IANA timezone.
+      parameters:
+      - description: User timezone update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_port_rest.UserTimezoneUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_port_rest.UserResponse'
+        "400":
+          description: Invalid request body or timezone
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+        "500":
+          description: Failed to update user timezone
+          schema:
+            $ref: '#/definitions/internal_port_rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update current user timezone
       tags:
       - Users
 securityDefinitions:

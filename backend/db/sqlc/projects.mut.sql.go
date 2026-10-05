@@ -12,9 +12,9 @@ import (
 )
 
 const createProject = `-- name: CreateProject :one
-INSERT INTO projects (id, user_id, type, title, goal, description, progress, priority, start_at, end_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
+INSERT INTO projects (id, user_id, type, title, goal, description, priority, start_date, end_date, changed_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $2)
+RETURNING id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type CreateProjectParams struct {
@@ -24,10 +24,9 @@ type CreateProjectParams struct {
 	Title       string
 	Goal        pgtype.Text
 	Description pgtype.Text
-	Progress    int16
 	Priority    string
-	StartAt     pgtype.Timestamptz
-	EndAt       pgtype.Timestamptz
+	StartDate   pgtype.Date
+	EndDate     pgtype.Date
 }
 
 func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error) {
@@ -38,10 +37,9 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		arg.Title,
 		arg.Goal,
 		arg.Description,
-		arg.Progress,
 		arg.Priority,
-		arg.StartAt,
-		arg.EndAt,
+		arg.StartDate,
+		arg.EndDate,
 	)
 	var i Project
 	err := row.Scan(
@@ -51,43 +49,69 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.Title,
 		&i.Goal,
 		&i.Description,
-		&i.Progress,
 		&i.Priority,
-		&i.StartAt,
-		&i.EndAt,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Revision,
+		&i.DeletedAt,
+		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const deleteProject = `-- name: DeleteProject :exec
-DELETE FROM projects
-WHERE id = $1
+const deleteProject = `-- name: DeleteProject :execrows
+UPDATE projects
+SET deleted_at = now(), changed_by = user_id
+WHERE id = $1 AND deleted_at IS NULL
 `
 
-func (q *Queries) DeleteProject(ctx context.Context, id string) error {
-	_, err := q.db.Exec(ctx, deleteProject, id)
-	return err
-}
-
-const deleteProjectByUser = `-- name: DeleteProjectByUser :execrows
-DELETE FROM projects
-WHERE id = $1
-  AND user_id = $2
-`
-
-type DeleteProjectByUserParams struct {
-	ID     string
-	UserID string
-}
-
-func (q *Queries) DeleteProjectByUser(ctx context.Context, arg DeleteProjectByUserParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteProjectByUser, arg.ID, arg.UserID)
+func (q *Queries) DeleteProject(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteProject, id)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const deleteProjectByUserID = `-- name: DeleteProjectByUserID :one
+WITH deleted_project AS (
+    UPDATE projects
+    SET deleted_at = now(), changed_by = $1::text
+    WHERE id = $2::text
+      AND deleted_at IS NULL
+      AND revision = $3::integer
+      AND project_has_permission(id, $1::text, 'project', 'delete')
+    RETURNING id
+), deleted_tasks AS (
+    UPDATE tasks
+    SET deleted_at = now(), changed_by = $1::text
+    WHERE project_id IN (SELECT id FROM deleted_project) AND deleted_at IS NULL
+    RETURNING id
+), deleted_items AS (
+    UPDATE todo_items SET deleted_at = now(), updated_at = now()
+    WHERE task_id IN (SELECT id FROM deleted_tasks) AND deleted_at IS NULL
+    RETURNING id
+), deleted_schedules AS (
+    UPDATE task_schedules SET deleted_at = now(), updated_at = now()
+    WHERE task_id IN (SELECT id FROM deleted_tasks) AND deleted_at IS NULL
+    RETURNING id
+)
+SELECT id FROM deleted_project
+`
+
+type DeleteProjectByUserIDParams struct {
+	UserID           string
+	ID               string
+	ExpectedRevision int32
+}
+
+func (q *Queries) DeleteProjectByUserID(ctx context.Context, arg DeleteProjectByUserIDParams) (string, error) {
+	row := q.db.QueryRow(ctx, deleteProjectByUserID, arg.UserID, arg.ID, arg.ExpectedRevision)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const updateProject = `-- name: UpdateProject :one
@@ -96,13 +120,12 @@ SET type = $2,
     title = $3,
     goal = $4,
     description = $5,
-    progress = $6,
-    priority = $7,
-    start_at = $8,
-    end_at = $9,
-    updated_at = now()
+    priority = $6,
+    start_date = $7,
+    end_date = $8,
+    changed_by = $9
 WHERE id = $1
-RETURNING id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
+RETURNING id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type UpdateProjectParams struct {
@@ -111,10 +134,10 @@ type UpdateProjectParams struct {
 	Title       string
 	Goal        pgtype.Text
 	Description pgtype.Text
-	Progress    int16
 	Priority    string
-	StartAt     pgtype.Timestamptz
-	EndAt       pgtype.Timestamptz
+	StartDate   pgtype.Date
+	EndDate     pgtype.Date
+	ChangedBy   string
 }
 
 func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error) {
@@ -124,10 +147,10 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		arg.Title,
 		arg.Goal,
 		arg.Description,
-		arg.Progress,
 		arg.Priority,
-		arg.StartAt,
-		arg.EndAt,
+		arg.StartDate,
+		arg.EndDate,
+		arg.ChangedBy,
 	)
 	var i Project
 	err := row.Scan(
@@ -137,57 +160,62 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.Title,
 		&i.Goal,
 		&i.Description,
-		&i.Progress,
 		&i.Priority,
-		&i.StartAt,
-		&i.EndAt,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Revision,
+		&i.DeletedAt,
+		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const updateProjectByUser = `-- name: UpdateProjectByUser :one
+const updateProjectByUserID = `-- name: UpdateProjectByUserID :one
 UPDATE projects
 SET type = $3,
     title = $4,
     goal = $5,
     description = $6,
-    progress = $7,
-    priority = $8,
-    start_at = $9,
-    end_at = $10,
-    updated_at = now()
+    priority = $7,
+    start_date = $8,
+    end_date = $9,
+    changed_by = $2
 WHERE id = $1
-  AND user_id = $2
-RETURNING id, user_id, type, title, goal, description, progress, priority, start_at, end_at, created_at, updated_at
+  AND deleted_at IS NULL
+  AND revision = $10::integer
+  AND project_has_permission(id, $11::text, 'project', 'update')
+RETURNING id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 `
 
-type UpdateProjectByUserParams struct {
-	ID          string
-	UserID      string
-	Type        string
-	Title       string
-	Goal        pgtype.Text
-	Description pgtype.Text
-	Progress    int16
-	Priority    string
-	StartAt     pgtype.Timestamptz
-	EndAt       pgtype.Timestamptz
+type UpdateProjectByUserIDParams struct {
+	ID               string
+	ChangedBy        string
+	Type             string
+	Title            string
+	Goal             pgtype.Text
+	Description      pgtype.Text
+	Priority         string
+	StartDate        pgtype.Date
+	EndDate          pgtype.Date
+	ExpectedRevision int32
+	UserID           string
 }
 
-func (q *Queries) UpdateProjectByUser(ctx context.Context, arg UpdateProjectByUserParams) (Project, error) {
-	row := q.db.QueryRow(ctx, updateProjectByUser,
+func (q *Queries) UpdateProjectByUserID(ctx context.Context, arg UpdateProjectByUserIDParams) (Project, error) {
+	row := q.db.QueryRow(ctx, updateProjectByUserID,
 		arg.ID,
-		arg.UserID,
+		arg.ChangedBy,
 		arg.Type,
 		arg.Title,
 		arg.Goal,
 		arg.Description,
-		arg.Progress,
 		arg.Priority,
-		arg.StartAt,
-		arg.EndAt,
+		arg.StartDate,
+		arg.EndDate,
+		arg.ExpectedRevision,
+		arg.UserID,
 	)
 	var i Project
 	err := row.Scan(
@@ -197,10 +225,12 @@ func (q *Queries) UpdateProjectByUser(ctx context.Context, arg UpdateProjectByUs
 		&i.Title,
 		&i.Goal,
 		&i.Description,
-		&i.Progress,
 		&i.Priority,
-		&i.StartAt,
-		&i.EndAt,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Revision,
+		&i.DeletedAt,
+		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

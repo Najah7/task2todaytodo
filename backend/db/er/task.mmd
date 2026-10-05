@@ -1,0 +1,248 @@
+erDiagram
+    %% Composite unique constraints: projects(id, user_id); task_schedules(id, task_id); todo_items(id, task_id).
+    %% Composite unique constraints: task_tags(user_id, name); todo_lists(user_id, list_date); todo_list_items(todo_list_id, position) [deferrable].
+    %% Composite FK: tasks(project_id, user_id) -> projects(id, user_id).
+    %% Composite self-FKs: task_schedules(series_id, task_id) -> task_schedules(id, task_id); todo_items(series_id, task_id) -> todo_items(id, task_id).
+    %% Partial unique indexes: task_schedules(series_id, occurrence_date) and todo_items(series_id, occurrence_date), only when id <> series_id.
+
+    %% users is an ID-only reference to auth schema; project_members is shown in auth.mmd.
+    users {
+        text id PK "NOT NULL"
+    }
+
+    project_type_master {
+        text type PK "NOT NULL"
+        text label "NOT NULL"
+        text label_jp "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    priority_master {
+        text priority PK "NOT NULL"
+        text label "NOT NULL"
+        text label_jp "NOT NULL"
+        integer weight "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    task_status_master {
+        text status PK "NOT NULL"
+        text label "NOT NULL"
+        text label_jp "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    frequency_master {
+        text frequency PK "NOT NULL"
+        text label "NOT NULL"
+        text label_jp "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    projects {
+        text id PK, UK "NOT NULL"
+        text user_id FK, UK "NOT NULL"
+        text type FK "NOT NULL"
+        text title "NOT NULL"
+        text goal "NULL"
+        text description "NULL"
+        text priority FK "NOT NULL"
+        date start_date "NULL"
+        date end_date "NULL"
+        integer revision "NOT NULL"
+        timestamptz deleted_at "NULL"
+        text changed_by FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    tasks {
+        text id PK "NOT NULL"
+        text user_id FK "NOT NULL"
+        text project_id FK "NULL"
+        text assignee_id FK "NOT NULL"
+        text title "NOT NULL"
+        text description "NULL"
+        date due_date "NULL"
+        integer estimated_minutes "NULL"
+        integer actual_minutes "NULL"
+        text priority FK "NOT NULL"
+        text status FK "NOT NULL"
+        integer revision "NOT NULL"
+        timestamptz deleted_at "NULL"
+        text changed_by FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    project_revisions {
+        text id PK, FK "NOT NULL"
+        integer revision PK "NOT NULL"
+        text user_id FK "NOT NULL"
+        text type "NOT NULL"
+        text title "NOT NULL"
+        text goal "NULL"
+        text description "NULL"
+        text priority "NOT NULL"
+        date start_date "NULL"
+        date end_date "NULL"
+        timestamptz deleted_at "NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+        text changed_by FK "NOT NULL"
+        timestamptz changed_at "NOT NULL"
+    }
+
+    task_revisions {
+        text id PK, FK "NOT NULL"
+        integer revision PK "NOT NULL"
+        text user_id FK "NOT NULL"
+        text project_id "NULL"
+        text assignee_id FK "NOT NULL"
+        text title "NOT NULL"
+        text description "NULL"
+        date due_date "NULL"
+        integer estimated_minutes "NULL"
+        integer actual_minutes "NULL"
+        text priority "NOT NULL"
+        text status "NOT NULL"
+        timestamptz deleted_at "NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+        text changed_by FK "NOT NULL"
+        timestamptz changed_at "NOT NULL"
+    }
+
+    task_tags {
+        text id PK "NOT NULL"
+        text user_id FK, UK "NOT NULL"
+        citext name UK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    task_tag_assignments {
+        text task_id PK, FK "NOT NULL"
+        text tag_id PK, FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+    }
+
+    todo_lists {
+        text id PK "NOT NULL"
+        text user_id FK, UK "NOT NULL"
+        date list_date UK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    task_schedules {
+        text id PK, UK "NOT NULL"
+        text task_id FK, UK "NOT NULL"
+        text title "NOT NULL"
+        text description "NULL"
+        text location "NULL"
+        timestamptz start_at "NOT NULL"
+        timestamptz end_at "NOT NULL"
+        text series_id FK, UK "NOT NULL"
+        date occurrence_date UK "NOT NULL"
+        text timezone "NOT NULL"
+        boolean is_exception "NOT NULL"
+        text repeat_state "NULL"
+        date frequency_anchor_date "NULL"
+        integer interval_weeks "NOT NULL"
+        boolean completed "NOT NULL"
+        timestamptz deleted_at "NULL"
+        timestamptz skipped_at "NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    task_schedule_frequencies {
+        text task_schedule_id PK, FK "NOT NULL"
+        text frequency PK, FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+    }
+
+    todo_items {
+        text id PK, UK "NOT NULL"
+        text task_id FK, UK "NOT NULL"
+        text title "NOT NULL"
+        text description "NULL"
+        date due_date "NULL"
+        boolean completed "NOT NULL"
+        integer position "NOT NULL"
+        text series_id FK, UK "NOT NULL"
+        date occurrence_date UK "NOT NULL"
+        text timezone "NOT NULL"
+        boolean is_exception "NOT NULL"
+        text repeat_state "NULL"
+        date frequency_anchor_date "NULL"
+        integer interval_weeks "NOT NULL"
+        timestamptz deleted_at "NULL"
+        timestamptz skipped_at "NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    todo_item_frequencies {
+        text todo_item_id PK, FK "NOT NULL"
+        text frequency PK, FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+    }
+
+    todo_list_items {
+        text todo_list_id PK, FK, UK "NOT NULL"
+        text todo_item_id PK, FK "NOT NULL"
+        integer position UK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+    }
+
+    todo_list_task_schedules {
+        text todo_list_id PK, FK "NOT NULL"
+        text task_schedule_id PK, FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+    }
+
+    users ||..o{ projects : owns
+    users ||..o{ projects : changed_by
+    project_type_master ||..o{ projects : classifies
+    priority_master ||..o{ projects : prioritizes
+
+    users ||..o{ tasks : owns
+    users ||..o{ tasks : assignee
+    users ||..o{ tasks : changed_by
+    priority_master ||..o{ tasks : prioritizes
+    task_status_master ||..o{ tasks : status
+    projects |o..o{ tasks : optional_project_owner_pair
+
+    projects ||--o{ project_revisions : has_revisions
+    users ||..o{ project_revisions : snapshot_owner
+    users ||..o{ project_revisions : changed_by
+    tasks ||--o{ task_revisions : has_revisions
+    users ||..o{ task_revisions : snapshot_owner
+    users ||..o{ task_revisions : assignee
+    users ||..o{ task_revisions : changed_by
+
+    users ||..o{ task_tags : owns
+    tasks ||--o{ task_tag_assignments : has_tag_assignments
+    task_tags ||--o{ task_tag_assignments : assigned_to_tasks
+
+    users ||..o{ todo_lists : owns
+    tasks ||..o{ task_schedules : schedules
+    task_schedules ||..o{ task_schedules : series_parent_same_task
+    task_schedules ||--o{ task_schedule_frequencies : repeats_on
+    frequency_master ||--o{ task_schedule_frequencies : used_by_schedule
+
+    tasks ||..o{ todo_items : contains
+    todo_items ||..o{ todo_items : series_parent_same_task
+    todo_items ||--o{ todo_item_frequencies : repeats_on
+    frequency_master ||--o{ todo_item_frequencies : used_by_item
+
+    todo_lists ||--o{ todo_list_items : contains_items
+    todo_items ||--o{ todo_list_items : included_on_list
+    todo_lists ||--o{ todo_list_task_schedules : contains_schedules
+    task_schedules ||--o{ todo_list_task_schedules : included_on_list

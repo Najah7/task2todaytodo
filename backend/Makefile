@@ -27,6 +27,7 @@ help:
 	@printf '  %-28s %s\n' 'make db-shell' 'Open a psql shell in the database container.'
 	@printf '  %-28s %s\n' 'make migrate-up' 'Run database migrations.'
 	@printf '  %-28s %s\n' 'make migrate-down' 'Roll back database migrations.'
+	@printf '  %-28s %s\n' 'make seed' 'Reset the configured database and load the demo dataset.'
 	@printf '  %-28s %s\n' 'make migrate-create name=...' 'Create a new SQL migration.'
 	@printf '  %-28s %s\n' 'make sqlc-gen' 'Generate sqlc repository code.'
 	@printf '  %-28s %s\n' 'make swagger-gen' 'Generate Swagger documentation.'
@@ -93,6 +94,10 @@ migrate-up:
 .PHONY: migrate-down
 migrate-down:
 	@$(MAKE) _migrate-action action=down
+
+.PHONY: seed
+seed:
+	@docker compose exec -T db psql -v ON_ERROR_STOP=1 -U $(POSTGRES_USER) -d $(POSTGRES_DB) < db/seed/demo.sql
 
 .PHONY: migrate-create
 migrate-create:

@@ -30,20 +30,20 @@ func (q *Queries) GetTodoList(ctx context.Context, id string) (TodoList, error) 
 	return i, err
 }
 
-const getTodoListByUserAndDate = `-- name: GetTodoListByUserAndDate :one
+const getTodoListByUserIDAndDate = `-- name: GetTodoListByUserIDAndDate :one
 SELECT id, user_id, list_date, created_at, updated_at
 FROM todo_lists
 WHERE user_id = $1
   AND list_date = $2
 `
 
-type GetTodoListByUserAndDateParams struct {
+type GetTodoListByUserIDAndDateParams struct {
 	UserID   string
 	ListDate pgtype.Date
 }
 
-func (q *Queries) GetTodoListByUserAndDate(ctx context.Context, arg GetTodoListByUserAndDateParams) (TodoList, error) {
-	row := q.db.QueryRow(ctx, getTodoListByUserAndDate, arg.UserID, arg.ListDate)
+func (q *Queries) GetTodoListByUserIDAndDate(ctx context.Context, arg GetTodoListByUserIDAndDateParams) (TodoList, error) {
+	row := q.db.QueryRow(ctx, getTodoListByUserIDAndDate, arg.UserID, arg.ListDate)
 	var i TodoList
 	err := row.Scan(
 		&i.ID,
@@ -115,15 +115,15 @@ func (q *Queries) ListTodoListTaskSchedules(ctx context.Context, todoListID stri
 	return items, nil
 }
 
-const listTodoListsByUser = `-- name: ListTodoListsByUser :many
+const listTodoListsByUserID = `-- name: ListTodoListsByUserID :many
 SELECT id, user_id, list_date, created_at, updated_at
 FROM todo_lists
 WHERE user_id = $1
 ORDER BY list_date DESC
 `
 
-func (q *Queries) ListTodoListsByUser(ctx context.Context, userID string) ([]TodoList, error) {
-	rows, err := q.db.Query(ctx, listTodoListsByUser, userID)
+func (q *Queries) ListTodoListsByUserID(ctx context.Context, userID string) ([]TodoList, error) {
+	rows, err := q.db.Query(ctx, listTodoListsByUserID, userID)
 	if err != nil {
 		return nil, err
 	}

@@ -12,7 +12,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, first_name, last_name, email, password)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, first_name, last_name, email, password, created_at, updated_at
+RETURNING id, first_name, last_name, email, password, created_at, updated_at, timezone
 `
 
 type CreateUserParams struct {
@@ -40,6 +40,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Timezone,
 	)
 	return i, err
 }
@@ -48,7 +49,7 @@ const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET first_name = $2, last_name = $3, email = $4, password = $5, updated_at = now()
 WHERE id = $1
-RETURNING id, first_name, last_name, email, password, created_at, updated_at
+RETURNING id, first_name, last_name, email, password, created_at, updated_at, timezone
 `
 
 type UpdateUserParams struct {
@@ -76,6 +77,26 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Timezone,
 	)
 	return i, err
+}
+
+const updateUserTimezone = `-- name: UpdateUserTimezone :one
+UPDATE users
+SET timezone = $2, updated_at = now()
+WHERE id = $1
+RETURNING timezone
+`
+
+type UpdateUserTimezoneParams struct {
+	ID       string
+	Timezone string
+}
+
+func (q *Queries) UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) (string, error) {
+	row := q.db.QueryRow(ctx, updateUserTimezone, arg.ID, arg.Timezone)
+	var timezone string
+	err := row.Scan(&timezone)
+	return timezone, err
 }

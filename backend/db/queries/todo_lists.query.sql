@@ -3,13 +3,13 @@ SELECT id, user_id, list_date, created_at, updated_at
 FROM todo_lists
 WHERE id = $1;
 
--- name: GetTodoListByUserAndDate :one
+-- name: GetTodoListByUserIDAndDate :one
 SELECT id, user_id, list_date, created_at, updated_at
 FROM todo_lists
 WHERE user_id = $1
   AND list_date = $2;
 
--- name: ListTodoListsByUser :many
+-- name: ListTodoListsByUserID :many
 SELECT id, user_id, list_date, created_at, updated_at
 FROM todo_lists
 WHERE user_id = $1

@@ -5,8 +5,97 @@
 package sqlc
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type PermissionAction string
+
+const (
+	PermissionActionCreate PermissionAction = "create"
+	PermissionActionRead   PermissionAction = "read"
+	PermissionActionUpdate PermissionAction = "update"
+	PermissionActionDelete PermissionAction = "delete"
+)
+
+func (e *PermissionAction) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PermissionAction(s)
+	case string:
+		*e = PermissionAction(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PermissionAction: %T", src)
+	}
+	return nil
+}
+
+type NullPermissionAction struct {
+	PermissionAction PermissionAction
+	Valid            bool // Valid is true if PermissionAction is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPermissionAction) Scan(value interface{}) error {
+	if value == nil {
+		ns.PermissionAction, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PermissionAction.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPermissionAction) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PermissionAction), nil
+}
+
+type PermissionEffect string
+
+const (
+	PermissionEffectAllow PermissionEffect = "allow"
+	PermissionEffectDeny  PermissionEffect = "deny"
+)
+
+func (e *PermissionEffect) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PermissionEffect(s)
+	case string:
+		*e = PermissionEffect(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PermissionEffect: %T", src)
+	}
+	return nil
+}
+
+type NullPermissionEffect struct {
+	PermissionEffect PermissionEffect
+	Valid            bool // Valid is true if PermissionEffect is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPermissionEffect) Scan(value interface{}) error {
+	if value == nil {
+		ns.PermissionEffect, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PermissionEffect.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPermissionEffect) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PermissionEffect), nil
+}
 
 type AccessToken struct {
 	Token     string
@@ -22,6 +111,21 @@ type FrequencyMaster struct {
 	LabelJp   string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+}
+
+type ManagedResource struct {
+	ResourceID string
+	Name       string
+	CreatedAt  pgtype.Timestamptz
+}
+
+type Permission struct {
+	PermissionID int64
+	ResourceID   string
+	Action       PermissionAction
+	Effect       PermissionEffect
+	Description  string
+	CreatedAt    pgtype.Timestamptz
 }
 
 type PriorityMaster struct {
@@ -40,12 +144,41 @@ type Project struct {
 	Title       string
 	Goal        pgtype.Text
 	Description pgtype.Text
-	Progress    int16
 	Priority    string
-	StartAt     pgtype.Timestamptz
-	EndAt       pgtype.Timestamptz
+	StartDate   pgtype.Date
+	EndDate     pgtype.Date
+	Revision    int32
+	DeletedAt   pgtype.Timestamptz
+	ChangedBy   string
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
+}
+
+type ProjectMember struct {
+	ProjectID string
+	UserID    string
+	RoleID    string
+	AddedBy   string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type ProjectRevision struct {
+	ID          string
+	Revision    int32
+	UserID      string
+	Type        string
+	Title       string
+	Goal        pgtype.Text
+	Description pgtype.Text
+	Priority    string
+	StartDate   pgtype.Date
+	EndDate     pgtype.Date
+	DeletedAt   pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+	ChangedBy   string
+	ChangedAt   pgtype.Timestamptz
 }
 
 type ProjectTypeMaster struct {
@@ -56,33 +189,77 @@ type ProjectTypeMaster struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type Role struct {
+	RoleID    string
+	Name      string
+	CreatedAt pgtype.Timestamptz
+}
+
+type RolePermission struct {
+	RoleID       string
+	PermissionID int64
+	CreatedAt    pgtype.Timestamptz
+}
+
 type Task struct {
 	ID               string
 	UserID           string
 	ProjectID        pgtype.Text
+	AssigneeID       string
 	Title            string
 	Description      pgtype.Text
 	DueDate          pgtype.Date
 	EstimatedMinutes pgtype.Int4
 	ActualMinutes    pgtype.Int4
-	Progress         int16
 	Priority         string
 	Status           string
+	Revision         int32
+	DeletedAt        pgtype.Timestamptz
+	ChangedBy        string
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 }
 
+type TaskRevision struct {
+	ID               string
+	Revision         int32
+	UserID           string
+	ProjectID        pgtype.Text
+	AssigneeID       string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	ActualMinutes    pgtype.Int4
+	Priority         string
+	Status           string
+	DeletedAt        pgtype.Timestamptz
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	ChangedBy        string
+	ChangedAt        pgtype.Timestamptz
+}
+
 type TaskSchedule struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	Location      pgtype.Text
-	IntervalWeeks int32
-	StartAt       pgtype.Timestamptz
-	EndAt         pgtype.Timestamptz
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	ID                  string
+	TaskID              string
+	Title               string
+	Description         pgtype.Text
+	Location            pgtype.Text
+	StartAt             pgtype.Timestamptz
+	EndAt               pgtype.Timestamptz
+	SeriesID            string
+	OccurrenceDate      pgtype.Date
+	Timezone            string
+	IsException         bool
+	RepeatState         pgtype.Text
+	FrequencyAnchorDate pgtype.Date
+	IntervalWeeks       int32
+	Completed           bool
+	DeletedAt           pgtype.Timestamptz
+	SkippedAt           pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
 }
 
 type TaskScheduleFrequency struct {
@@ -114,16 +291,24 @@ type TaskTagAssignment struct {
 }
 
 type TodoItem struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	DueDate       pgtype.Date
-	Completed     bool
-	Position      int32
-	IntervalWeeks int32
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	ID                  string
+	TaskID              string
+	Title               string
+	Description         pgtype.Text
+	DueDate             pgtype.Date
+	Completed           bool
+	Position            int32
+	SeriesID            string
+	OccurrenceDate      pgtype.Date
+	Timezone            string
+	IsException         bool
+	RepeatState         pgtype.Text
+	FrequencyAnchorDate pgtype.Date
+	IntervalWeeks       int32
+	DeletedAt           pgtype.Timestamptz
+	SkippedAt           pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
 }
 
 type TodoItemFrequency struct {
@@ -161,4 +346,5 @@ type User struct {
 	Password  string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+	Timezone  string
 }

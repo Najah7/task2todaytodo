@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/access-token/current": {
+        "/access-token:revoke": {
             "delete": {
                 "security": [
                     {
@@ -31,27 +31,27 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.MessageResponse"
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
                         }
                     },
                     "401": {
                         "description": "Missing or invalid access token",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to revoke access token",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
             }
         },
-        "/access-tokens": {
+        "/login": {
             "post": {
-                "description": "Generates a new access token for a user.",
+                "description": "Authenticates a user and generates an access token.",
                 "consumes": [
                     "application/json"
                 ],
@@ -61,15 +61,15 @@ const docTemplate = `{
                 "tags": [
                     "Access Tokens"
                 ],
-                "summary": "Generate access token",
+                "summary": "Log in",
                 "parameters": [
                     {
-                        "description": "Access token generate request",
+                        "description": "Login request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.AccessTokenGenerateRequest"
+                            "$ref": "#/definitions/internal_port_rest.LoginRequest"
                         }
                     }
                 ],
@@ -77,64 +77,127 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.AccessTokenResponse"
+                            "$ref": "#/definitions/internal_port_rest.AccessTokenResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Invalid email or password",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to generate access token",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
             }
         },
-        "/monitor/health": {
+        "/permissions": {
             "get": {
-                "description": "Returns the API health status.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Monitor"
+                    "Authorization"
                 ],
-                "summary": "Check API health",
+                "summary": "List permissions",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HealthResponse"
+                            "$ref": "#/definitions/internal_port_rest.PermissionListResponse"
                         }
                     },
-                    "500": {
-                        "description": "Failed to marshal response",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
             }
         },
         "/projects": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "List projects",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 50, maximum 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque next page token",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Response field mask",
+                        "name": "fields",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ProjectListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a Project for the authenticated user.",
                 "consumes": [
                     "application/json"
                 ],
@@ -147,12 +210,12 @@ const docTemplate = `{
                 "summary": "Create project",
                 "parameters": [
                     {
-                        "description": "Project create request",
+                        "description": "Project",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.ProjectCreateRequest"
+                            "$ref": "#/definitions/internal_port_rest.ProjectCreateRequest"
                         }
                     }
                 ],
@@ -160,70 +223,43 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ProjectResponse"
+                            "$ref": "#/definitions/internal_port_rest.ProjectResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body",
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "409": {
-                        "description": "Project ID already exists",
+                        "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
-                        "description": "Failed to create project",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
             }
         },
-        "/projects/types": {
-            "get": {
-                "description": "Returns all project type master data.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Projects"
-                ],
-                "summary": "List project types",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ProjectTypeListResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to list project types",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/projects/{project_id}": {
+        "/projects/{id}": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns an owned Project with its Tasks ordered by creation time.",
                 "produces": [
                     "application/json"
                 ],
@@ -235,7 +271,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -244,25 +280,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ProjectAggregateResponse"
+                            "$ref": "#/definitions/internal_port_rest.ProjectResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "404": {
-                        "description": "Project not found",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
-                        "description": "Failed to get project",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
@@ -273,10 +315,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deletes an owned Project. Existing Tasks are kept and detached by database constraints.",
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "Projects"
                 ],
@@ -284,35 +322,57 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "Current project ETag, for example \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.MessageResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "404": {
-                        "description": "Project not found",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Revision conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
-                        "description": "Failed to delete project",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
@@ -323,7 +383,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Partially updates owned Project basic information.",
                 "consumes": [
                     "application/json"
                 ],
@@ -333,22 +392,29 @@ const docTemplate = `{
                 "tags": [
                     "Projects"
                 ],
-                "summary": "Update project basic information",
+                "summary": "Update project",
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "Current project ETag, for example \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Project basic update request",
+                        "description": "Project fields to update",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.ProjectUpdateRequest"
+                            "$ref": "#/definitions/internal_port_rest.ProjectUpdateRequest"
                         }
                     }
                 ],
@@ -356,114 +422,112 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ProjectResponse"
+                            "$ref": "#/definitions/internal_port_rest.ProjectResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body",
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "404": {
-                        "description": "Project not found",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Revision conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
-                        "description": "Failed to update project",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
             }
         },
-        "/projects/{project_id}/priority": {
-            "patch": {
+        "/projects/{id}/members": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Updates owned Project priority.",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Projects"
                 ],
-                "summary": "Update project priority",
+                "summary": "List project members",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "Project priority update request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ProjectPriorityUpdateRequest"
-                        }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ProjectResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request body",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ProjectMemberListResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "404": {
-                        "description": "Project not found",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
-                        "description": "Failed to update project",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
             }
         },
-        "/projects/{project_id}/schedule": {
-            "patch": {
+        "/projects/{id}/members/{user_id}": {
+            "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Partially updates owned Project schedule.",
                 "consumes": [
                     "application/json"
                 ],
@@ -473,67 +537,268 @@ const docTemplate = `{
                 "tags": [
                     "Projects"
                 ],
-                "summary": "Update project schedule",
+                "summary": "Add or update a project member",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Project schedule update request",
+                        "type": "string",
+                        "description": "Member user ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Member role",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.ProjectScheduleUpdateRequest"
+                            "$ref": "#/definitions/internal_port_rest.ProjectMemberUpsertRequest"
                         }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Remove a project member",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Member user ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}/revisions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "List project revisions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque next page token",
+                        "name": "page_token",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ProjectResponse"
+                            "$ref": "#/definitions/internal_port_rest.ProjectRevisionListResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body",
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "404": {
-                        "description": "Project not found",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to update project",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
             }
         },
-        "/projects/{project_id}/tasks": {
+        "/projects/{id}/tasks": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "List project tasks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 50, maximum 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque next page token",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Response field mask",
+                        "name": "fields",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ProjectTaskPageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a Task under an owned Project.",
                 "consumes": [
                     "application/json"
                 ],
@@ -541,24 +806,24 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Tasks"
+                    "Projects"
                 ],
-                "summary": "Create project task",
+                "summary": "Create task in project",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Task create request",
+                        "description": "Task",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.TaskCreateRequest"
+                            "$ref": "#/definitions/internal_port_rest.ProjectTaskCreateRequest"
                         }
                     }
                 ],
@@ -566,44 +831,613 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/handlers.TaskResponse"
+                            "$ref": "#/definitions/internal_port_rest.ProjectTaskResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body",
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "404": {
-                        "description": "Project not found",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
-                        "description": "Failed to create task",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
             }
         },
-        "/tasks": {
+        "/projects/{id}/tasks:add": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a standalone Task for the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Add task to project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current task ETag, for example \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Single task ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ProjectTaskAssignmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ProjectTaskResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}/tasks:remove": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Remove task from project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current task ETag, for example \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Single task ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ProjectTaskAssignmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ProjectTaskResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Revision conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authorization"
+                ],
+                "summary": "List roles",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.RoleListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/signup": {
+            "post": {
+                "description": "Creates a user with an email address and password.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Sign up",
+                "parameters": [
+                    {
+                        "description": "Signup request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.SignupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to create user",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/task-tags": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns task tags owned by the authenticated user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Tags"
+                ],
+                "summary": "List task tags",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 50, maximum 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque next page token",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Response field mask",
+                        "name": "fields",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskTagListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid pagination or fields",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list task tags",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a task tag for the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Tags"
+                ],
+                "summary": "Create task tag",
+                "parameters": [
+                    {
+                        "description": "Task tag create request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskTagCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskTagResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or name",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Tag name already exists",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to create task tag",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/task-tags/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a task tag owned by the authenticated user.",
+                "tags": [
+                    "Task Tags"
+                ],
+                "summary": "Delete task tag",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task tag ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Task tag deleted"
+                    },
+                    "400": {
+                        "description": "Invalid task tag ID",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task tag not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to delete task tag",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Renames a task tag owned by the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Tags"
+                ],
+                "summary": "Rename task tag",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task tag ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Task tag rename request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskTagRenameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskTagResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or name",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task tag not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Tag name already exists",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to update task tag",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a page of tasks assigned to the authenticated user, including tasks in projects.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "List tasks",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 50, maximum 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque next page token",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Response field mask",
+                        "name": "fields",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid pagination",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list tasks",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a task without project membership.",
                 "consumes": [
                     "application/json"
                 ],
@@ -621,7 +1455,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.TaskCreateRequest"
+                            "$ref": "#/definitions/internal_port_rest.TaskCreateRequest"
                         }
                     }
                 ],
@@ -629,116 +1463,44 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/handlers.TaskResponse"
+                            "$ref": "#/definitions/internal_port_rest.TaskResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body",
+                        "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Task ID conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to create task",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
             }
         },
-        "/tasks/frequencies": {
-            "get": {
-                "description": "Returns all task frequency master data.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Tasks"
-                ],
-                "summary": "List task frequencies",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.TaskFrequencyListResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to list task frequencies",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/priorities": {
-            "get": {
-                "description": "Returns all task priority master data.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Tasks"
-                ],
-                "summary": "List task priorities",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.TaskPriorityListResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to list task priorities",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/statuses": {
-            "get": {
-                "description": "Returns all task status master data.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Tasks"
-                ],
-                "summary": "List task statuses",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.TaskStatusListResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to list task statuses",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{task_id}": {
+        "/tasks/{id}": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns an owned Task with TodoItems and TaskSchedules.",
+                "description": "Returns a task the caller may read and its assigned tags.",
                 "produces": [
                     "application/json"
                 ],
@@ -750,7 +1512,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Task ID",
-                        "name": "task_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -759,25 +1521,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.TaskAggregateResponse"
+                            "$ref": "#/definitions/internal_port_rest.TaskDetailsResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to get task",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
@@ -788,10 +1550,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deletes an owned Task.",
-                "produces": [
-                    "application/json"
-                ],
+                "description": "Logically deletes a task the caller may delete and its child items and schedules.",
                 "tags": [
                     "Tasks"
                 ],
@@ -799,35 +1558,51 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "Current task ETag, for example \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
                         "description": "Task ID",
-                        "name": "task_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.MessageResponse"
-                        }
+                    "204": {
+                        "description": "No Content"
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Revision conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to delete task",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
@@ -838,7 +1613,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Partially updates owned Task basic information.",
+                "description": "Partially updates basic task fields. Project membership, status, and progress cannot be changed here.",
                 "consumes": [
                     "application/json"
                 ],
@@ -852,8 +1627,15 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "Current task ETag, for example \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
                         "description": "Task ID",
-                        "name": "task_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     },
@@ -863,7 +1645,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.TaskUpdateRequest"
+                            "$ref": "#/definitions/internal_port_rest.TaskUpdateRequest"
                         }
                     }
                 ],
@@ -871,46 +1653,54 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.TaskResponse"
+                            "$ref": "#/definitions/internal_port_rest.TaskResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body",
+                        "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Task conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to update task",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
             }
         },
-        "/tasks/{task_id}/estimation": {
-            "patch": {
+        "/tasks/{id}/assignees": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
-                "description": "Updates estimated and/or actual minutes for an owned Task.",
-                "consumes": [
-                    "application/json"
                 ],
                 "produces": [
                     "application/json"
@@ -918,226 +1708,12 @@ const docTemplate = `{
                 "tags": [
                     "Tasks"
                 ],
-                "summary": "Update task estimation",
+                "summary": "List task assignees",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "Task ID",
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Task estimation update request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.TaskEstimationUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.TaskResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request body",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Task not found",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to update task",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{task_id}/priority": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Updates priority for an owned Task.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Tasks"
-                ],
-                "summary": "Update task priority",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Task priority update request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.TaskPriorityUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.TaskResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request body",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Task not found",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to update task",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{task_id}/schedules": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Creates a TaskSchedule under an owned Task.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "TaskSchedules"
-                ],
-                "summary": "Create task schedule",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "TaskSchedule create request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.TaskScheduleCreateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.TaskScheduleResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request body",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Task not found",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to create task schedule",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{task_id}/schedules/{task_schedule_id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Deletes an owned TaskSchedule.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "TaskSchedules"
-                ],
-                "summary": "Delete task schedule",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "TaskSchedule ID",
-                        "name": "task_schedule_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -1146,25 +1722,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.MessageResponse"
+                            "$ref": "#/definitions/internal_port_rest.TaskAssigneeListResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "404": {
-                        "description": "TaskSchedule not found",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to delete task schedule",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
@@ -1175,84 +1751,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Partially updates an owned TaskSchedule.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "TaskSchedules"
-                ],
-                "summary": "Update task schedule",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "TaskSchedule ID",
-                        "name": "task_schedule_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "TaskSchedule update request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.TaskScheduleUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.TaskScheduleResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request body",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "TaskSchedule not found",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to update task schedule",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{task_id}/status": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Updates status for an owned Task.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1262,22 +1760,29 @@ const docTemplate = `{
                 "tags": [
                     "Tasks"
                 ],
-                "summary": "Update task status",
+                "summary": "Assign task",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "Task ID",
-                        "name": "task_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Task status update request",
+                        "type": "string",
+                        "description": "Current task ETag, for example \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Assignee",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.TaskStatusUpdateRequest"
+                            "$ref": "#/definitions/internal_port_rest.TaskAssignmentRequest"
                         }
                     }
                 ],
@@ -1285,44 +1790,1426 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.TaskResponse"
+                            "$ref": "#/definitions/internal_port_rest.TaskResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body",
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "404": {
-                        "description": "Task not found",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
-                    "500": {
-                        "description": "Failed to update task",
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "Precondition Required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
             }
         },
-        "/tasks/{task_id}/todo-items": {
+        "/tasks/{id}/revisions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "List task revisions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque next page token",
+                        "name": "page_token",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskRevisionListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{id}/tags:add": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a TodoItem under an owned Task.",
+                "description": "Assigns one user-owned tag to a task owned by the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Tags"
+                ],
+                "summary": "Add tag to task",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tag assignment request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskTagAssignmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Tag assigned"
+                    },
+                    "400": {
+                        "description": "Invalid request body or task ID",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task or tag not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to add tag to task",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{id}/tags:remove": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Removes one user-owned tag from a task owned by the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Tags"
+                ],
+                "summary": "Remove tag from task",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tag assignment request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskTagAssignmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Tag removed"
+                    },
+                    "400": {
+                        "description": "Invalid request body or task ID",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task or tag not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to remove tag from task",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{id}:complete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Marks task done and stops future recurrence generation.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Complete task",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current task ETag, for example \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Revision conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to complete task",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{id}:hold": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Moves task to pending, regardless of current status.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Hold task",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current task ETag, for example \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Revision conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to hold task",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{id}:reopen": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Moves task to open, regardless of current status.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Reopen task",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current task ETag, for example \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Revision conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to reopen task",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{id}:start": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Moves task to in progress, regardless of current status.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Start task",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current task ETag, for example \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Revision conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to start task",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{id}:wait": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Moves task to waiting on others, regardless of current status.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Wait on task",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current task ETag, for example \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Revision conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to wait on task",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/schedules": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Schedules"
+                ],
+                "summary": "List task schedules",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 50, maximum 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque next page token",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "First occurrence date (YYYY-MM-DD); defaults to today in each series timezone",
+                        "name": "from_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Response field mask",
+                        "name": "fields",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskScheduleListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Schedules"
+                ],
+                "summary": "Create task schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Task schedule",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskScheduleCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskScheduleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/schedules/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Task Schedules"
+                ],
+                "summary": "Delete task schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task schedule series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Schedules"
+                ],
+                "summary": "Update task schedule details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task schedule series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Schedule fields",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskScheduleUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskScheduleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/schedules/{id}/frequency": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Changes recurrence settings immediately on the root schedule. frequencies selects weekdays and interval_weeks sets the number of weeks between matching weeks. Use this endpoint to change recurrence weekdays. interval_weeks zero stops future generation; occurrence_date is not part of this request.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Schedules"
+                ],
+                "summary": "Update task schedule frequency",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task schedule series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Recurrence settings",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskScheduleFrequencyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/schedules/{id}:complete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Marks one TaskSchedule occurrence complete. Recurring schedules require occurrence_date; one-off schedules may omit it. occurrence_date identifies scheduled occurrence and may differ from start_at after an edit.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Schedules"
+                ],
+                "summary": "Complete task schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task schedule series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Stable occurrence date; required for recurring schedules",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskScheduleOccurrenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/schedules/{id}:reopen": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reopens one TaskSchedule occurrence. Recurring schedules require occurrence_date; one-off schedules may omit it. occurrence_date identifies scheduled occurrence and may differ from start_at after an edit.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Schedules"
+                ],
+                "summary": "Reopen task schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task schedule series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Stable occurrence date; required for recurring schedules",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskScheduleOccurrenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/schedules/{id}:reschedule": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Future scope updates the root template immediately and does not require occurrence_date. Current scope changes selected occurrence. occurrence_date is stable occurrence identity and may differ from start_at after an edit.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Schedules"
+                ],
+                "summary": "Reschedule task schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task schedule series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New schedule times",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskScheduleRescheduleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskScheduleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/schedules/{id}:restore": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Schedules"
+                ],
+                "summary": "Restore task schedule occurrence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task schedule series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Stable recurring occurrence date",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskScheduleOccurrenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/schedules/{id}:skip": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Task Schedules"
+                ],
+                "summary": "Skip task schedule occurrence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task schedule series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Stable recurring occurrence date",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TaskScheduleOccurrenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Completed occurrence cannot be skipped",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/todo-items": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns TodoItems for the authenticated user's task.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TodoItems"
+                ],
+                "summary": "List todo items",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 50, maximum 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque next page token",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "First occurrence date (YYYY-MM-DD); defaults to today in each series timezone",
+                        "name": "from_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Response field mask",
+                        "name": "fields",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TodoItemListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid task ID",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list todo items",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a one-off or recurring TodoItem owned by the authenticated user.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1337,17 +3224,17 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Task ID",
-                        "name": "task_id",
+                        "name": "taskId",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "TodoItem create request",
+                        "description": "TodoItem fields",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.TodoItemCreateRequest"
+                            "$ref": "#/definitions/internal_port_rest.TodoItemCreateRequest"
                         }
                     }
                 ],
@@ -1355,53 +3242,44 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/handlers.TodoItemResponse"
+                            "$ref": "#/definitions/internal_port_rest.TodoItemResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body",
+                        "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Position conflict",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to create todo item",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
             }
         },
-        "/tasks/{task_id}/todo-items/{todo_item_id}": {
+        "/tasks/{taskId}/todo-items/{id}": {
             "delete": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deletes an owned TodoItem.",
-                "produces": [
-                    "application/json"
-                ],
+                "description": "Deletes the entire TodoItem series, or one-off TodoItem.",
                 "tags": [
                     "TodoItems"
                 ],
@@ -1410,167 +3288,55 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Task ID",
-                        "name": "task_id",
+                        "name": "taskId",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "TodoItem ID",
-                        "name": "todo_item_id",
+                        "description": "TodoItem series ID",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Invalid IDs",
                         "schema": {
-                            "$ref": "#/definitions/handlers.MessageResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "404": {
-                        "description": "TodoItem not found",
+                        "description": "Task or todo item not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to delete todo item",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
-            }
-        },
-        "/tasks/{task_id}/todo-items/{todo_item_id}:checked": {
-            "post": {
+            },
+            "patch": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Marks an owned TodoItem as completed.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "TodoItems"
-                ],
-                "summary": "Check todo item",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "TodoItem ID",
-                        "name": "todo_item_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.MessageResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "TodoItem not found",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to update todo item",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{task_id}/todo-items/{todo_item_id}:unchecked": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Marks an owned TodoItem as incomplete.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "TodoItems"
-                ],
-                "summary": "Uncheck todo item",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "TodoItem ID",
-                        "name": "todo_item_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.MessageResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "TodoItem not found",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to update todo item",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/users": {
-            "post": {
-                "description": "Creates a user with an email address and password.",
+                "description": "Updates one occurrence with current scope and occurrence_date. Future scope updates the root template immediately and does not require occurrence_date. due_date cannot be changed with future scope; use the frequency endpoint to change recurrence weekdays. occurrence_date is stable occurrence identity and may differ from due_date after an edit.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1578,37 +3344,545 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Users"
+                    "TodoItems"
                 ],
-                "summary": "Create user",
+                "summary": "Update todo item",
                 "parameters": [
                     {
-                        "description": "User create request",
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "TodoItem series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.UserCreateRequest"
+                            "$ref": "#/definitions/internal_port_rest.TodoItemUpdateRequest"
                         }
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.UserResponse"
+                            "$ref": "#/definitions/internal_port_rest.TodoItemResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body",
+                        "description": "Invalid request or scope",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task or todo item not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Position conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
-                        "description": "Failed to create user",
+                        "description": "Failed to update todo item",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/todo-items/{id}/frequency": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Changes recurrence settings immediately on the root item. frequencies selects weekdays and interval_weeks sets the number of weeks between matching weeks. Use this endpoint to change recurrence weekdays. interval_weeks zero stops future generation; occurrence_date is not part of this request.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TodoItems"
+                ],
+                "summary": "Update todo item frequency",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "TodoItem root ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Frequency settings",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TodoItemFrequencyUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid frequency settings",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task or series root not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Position conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to update todo item frequency",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/todo-items/{id}:complete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Marks one TodoItem occurrence complete. Recurring items require occurrence_date; one-off items may omit it. occurrence_date identifies scheduled occurrence and may differ from due_date after an edit.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TodoItems"
+                ],
+                "summary": "Complete todo item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "TodoItem series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Stable occurrence date; required for recurring items",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TodoItemOccurrenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/todo-items/{id}:reopen": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reopens one TodoItem occurrence. Recurring items require occurrence_date; one-off items may omit it. occurrence_date identifies scheduled occurrence and may differ from due_date after an edit.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TodoItems"
+                ],
+                "summary": "Reopen todo item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "TodoItem series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Stable occurrence date; required for recurring items",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TodoItemOccurrenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/todo-items/{id}:reorder": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Moves the TodoItem to a new zero-based position for the same occurrence date.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TodoItems"
+                ],
+                "summary": "Reorder todo item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "TodoItem series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Target position",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TodoItemReorderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TodoItemResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid position",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task or todo item not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Concurrent position conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to reorder todo item",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/todo-items/{id}:restore": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TodoItems"
+                ],
+                "summary": "Restore todo item occurrence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "TodoItem series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Stable recurring occurrence date",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TodoItemOccurrenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{taskId}/todo-items/{id}:skip": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TodoItems"
+                ],
+                "summary": "Skip todo item occurrence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "TodoItem series ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Stable recurring occurrence date",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.TodoItemOccurrenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Completed occurrence cannot be skipped",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
@@ -1633,19 +3907,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.UserResponse"
+                            "$ref": "#/definitions/internal_port_rest.UserResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to get user",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
@@ -1674,7 +3948,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.UserInfoUpdateRequest"
+                            "$ref": "#/definitions/internal_port_rest.UserInfoUpdateRequest"
                         }
                     }
                 ],
@@ -1682,25 +3956,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.UserResponse"
+                            "$ref": "#/definitions/internal_port_rest.UserResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to update user",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
@@ -1728,7 +4002,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.UserPasswordUpdateRequest"
+                            "$ref": "#/definitions/internal_port_rest.UserPasswordUpdateRequest"
                         }
                     }
                 ],
@@ -1736,25 +4010,82 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.MessageResponse"
+                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to update password",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrResponse"
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/timezone": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates the authenticated user's IANA timezone.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Update current user timezone",
+                "parameters": [
+                    {
+                        "description": "User timezone update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.UserTimezoneUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or timezone",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to update user timezone",
+                        "schema": {
+                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
                         }
                     }
                 }
@@ -1762,18 +4093,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handlers.AccessTokenGenerateRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.AccessTokenResponse": {
+        "internal_port_rest.AccessTokenResponse": {
             "type": "object",
             "properties": {
                 "expires_at": {
@@ -1784,7 +4104,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.Err": {
+        "internal_port_rest.Err": {
             "type": "object",
             "properties": {
                 "code": {
@@ -1793,7 +4113,7 @@ const docTemplate = `{
                 "details": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/handlers.ErrDetail"
+                        "$ref": "#/definitions/internal_port_rest.ErrDetail"
                     }
                 },
                 "message": {
@@ -1804,7 +4124,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.ErrDetail": {
+        "internal_port_rest.ErrDetail": {
             "type": "object",
             "properties": {
                 "code": {
@@ -1818,15 +4138,15 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.ErrResponse": {
+        "internal_port_rest.ErrResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/handlers.Err"
+                    "$ref": "#/definitions/internal_port_rest.Err"
                 }
             }
         },
-        "handlers.HealthResponse": {
+        "internal_port_rest.HealthResponse": {
             "type": "object",
             "properties": {
                 "status": {
@@ -1834,637 +4154,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.MessageResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.ProjectAggregateResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
-                "goal": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "priority": {
-                    "type": "string"
-                },
-                "progress": {
-                    "type": "integer"
-                },
-                "start_at": {
-                    "type": "string"
-                },
-                "tasks": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handlers.ProjectTaskResponse"
-                    }
-                },
-                "title": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.ProjectCreateRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
-                "goal": {
-                    "type": "string"
-                },
-                "priority": {
-                    "type": "string"
-                },
-                "start_at": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.ProjectPriorityUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "priority": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.ProjectResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
-                "goal": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "priority": {
-                    "type": "string"
-                },
-                "progress": {
-                    "type": "integer"
-                },
-                "start_at": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.ProjectScheduleUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "end_at": {
-                    "type": "string"
-                },
-                "start_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.ProjectTaskResponse": {
-            "type": "object",
-            "properties": {
-                "actual_minutes": {
-                    "type": "integer"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "due_date": {
-                    "type": "string",
-                    "format": "date"
-                },
-                "estimated_minutes": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "priority": {
-                    "type": "string"
-                },
-                "progress": {
-                    "type": "integer"
-                },
-                "project_id": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.ProjectTypeListResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handlers.ProjectTypeResponse"
-                    }
-                }
-            }
-        },
-        "handlers.ProjectTypeResponse": {
-            "type": "object",
-            "properties": {
-                "label": {
-                    "type": "string"
-                },
-                "label_jp": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.ProjectUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "goal": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.TaskAggregateResponse": {
-            "type": "object",
-            "properties": {
-                "actual_minutes": {
-                    "type": "integer"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "due_date": {
-                    "type": "string",
-                    "format": "date"
-                },
-                "estimated_minutes": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "priority": {
-                    "type": "string"
-                },
-                "progress": {
-                    "type": "integer"
-                },
-                "project_id": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "task_schedules": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handlers.TaskScheduleResponse"
-                    }
-                },
-                "title": {
-                    "type": "string"
-                },
-                "todo_items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handlers.TodoItemResponse"
-                    }
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.TaskCreateRequest": {
-            "type": "object",
-            "properties": {
-                "actual_minutes": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "due_date": {
-                    "type": "string",
-                    "format": "date"
-                },
-                "estimated_minutes": {
-                    "type": "integer"
-                },
-                "priority": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.TaskEstimationUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "actual_minutes": {
-                    "type": "integer"
-                },
-                "estimated_minutes": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handlers.TaskFrequencyListResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handlers.TaskFrequencyResponse"
-                    }
-                }
-            }
-        },
-        "handlers.TaskFrequencyResponse": {
-            "type": "object",
-            "properties": {
-                "frequency": {
-                    "type": "string"
-                },
-                "label": {
-                    "type": "string"
-                },
-                "label_jp": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.TaskPriorityListResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handlers.TaskPriorityResponse"
-                    }
-                }
-            }
-        },
-        "handlers.TaskPriorityResponse": {
-            "type": "object",
-            "properties": {
-                "label": {
-                    "type": "string"
-                },
-                "label_jp": {
-                    "type": "string"
-                },
-                "priority": {
-                    "type": "string"
-                },
-                "weight": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handlers.TaskPriorityUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "priority": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.TaskResponse": {
-            "type": "object",
-            "properties": {
-                "actual_minutes": {
-                    "type": "integer"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "due_date": {
-                    "type": "string",
-                    "format": "date"
-                },
-                "estimated_minutes": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "priority": {
-                    "type": "string"
-                },
-                "progress": {
-                    "type": "integer"
-                },
-                "project_id": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.TaskScheduleCreateRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "start_at": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.TaskScheduleResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "start_at": {
-                    "type": "string"
-                },
-                "task_id": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.TaskScheduleUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "start_at": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.TaskStatusListResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handlers.TaskStatusResponse"
-                    }
-                }
-            }
-        },
-        "handlers.TaskStatusResponse": {
-            "type": "object",
-            "properties": {
-                "label": {
-                    "type": "string"
-                },
-                "label_jp": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.TaskStatusUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.TaskUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "due_date": {
-                    "type": "string",
-                    "format": "date"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.TodoItemCreateRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "due_date": {
-                    "type": "string",
-                    "format": "date"
-                },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.TodoItemResponse": {
-            "type": "object",
-            "properties": {
-                "completed": {
-                    "type": "boolean"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "due_date": {
-                    "type": "string",
-                    "format": "date"
-                },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "task_id": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.UserCreateRequest": {
+        "internal_port_rest.LoginRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -2475,7 +4165,1072 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.UserInfoUpdateRequest": {
+        "internal_port_rest.MessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.PermissionListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.PermissionResponse"
+                    }
+                }
+            }
+        },
+        "internal_port_rest.PermissionResponse": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "effect": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "resource_id": {
+                    "type": "string"
+                },
+                "resource_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectCreateRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "goal": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.ProjectResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectMemberListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.ProjectMemberResponse"
+                    }
+                }
+            }
+        },
+        "internal_port_rest.ProjectMemberResponse": {
+            "type": "object",
+            "properties": {
+                "added_by": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "string"
+                },
+                "role_name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectMemberUpsertRequest": {
+            "type": "object",
+            "properties": {
+                "role_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectPriorityResponse": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "label_jp": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                },
+                "weight": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_port_rest.ProjectResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "goal": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "priority": {
+                    "$ref": "#/definitions/internal_port_rest.ProjectPriorityResponse"
+                },
+                "progress": {
+                    "type": "integer"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/internal_port_rest.ProjectTypeResponse"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectRevisionListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.ProjectRevisionResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectRevisionResponse": {
+            "type": "object",
+            "properties": {
+                "changed_at": {
+                    "type": "integer"
+                },
+                "changed_by": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "deleted_at": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "goal": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectTaskAssignmentRequest": {
+            "type": "object",
+            "properties": {
+                "task_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectTaskCreateRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "estimated_minutes": {
+                    "type": "integer"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectTaskPageResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.ProjectTaskResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectTaskResponse": {
+            "type": "object",
+            "properties": {
+                "actual_minutes": {
+                    "type": "integer"
+                },
+                "assignee_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "estimated_minutes": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "priority": {
+                    "$ref": "#/definitions/internal_port_rest.ProjectPriorityResponse"
+                },
+                "progress": {
+                    "type": "integer"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/internal_port_rest.ProjectTaskStatusResponse"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectTaskStatusResponse": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "label_jp": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectTypeResponse": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "label_jp": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.ProjectUpdateRequest": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "array",
+                "items": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            }
+        },
+        "internal_port_rest.RoleListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.RoleResponse"
+                    }
+                }
+            }
+        },
+        "internal_port_rest.RoleResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.PermissionResponse"
+                    }
+                }
+            }
+        },
+        "internal_port_rest.SignupRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskAssignedTagResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskAssigneeListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.TaskAssigneeResponse"
+                    }
+                }
+            }
+        },
+        "internal_port_rest.TaskAssigneeResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "project_owner": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_port_rest.TaskAssignmentRequest": {
+            "type": "object",
+            "properties": {
+                "assignee_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskCreateRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "estimated_minutes": {
+                    "type": "integer"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.TaskAssignedTagResponse"
+                    }
+                },
+                "task": {
+                    "$ref": "#/definitions/internal_port_rest.TaskResponse"
+                }
+            }
+        },
+        "internal_port_rest.TaskListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.TaskResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskResponse": {
+            "type": "object",
+            "properties": {
+                "actual_minutes": {
+                    "type": "integer"
+                },
+                "assignee_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "estimated_minutes": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "progress": {
+                    "type": "integer"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskRevisionListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.TaskRevisionResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskRevisionResponse": {
+            "type": "object",
+            "properties": {
+                "actual_minutes": {
+                    "type": "integer"
+                },
+                "assignee_id": {
+                    "type": "string"
+                },
+                "changed_at": {
+                    "type": "integer"
+                },
+                "changed_by": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "deleted_at": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "estimated_minutes": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskScheduleCreateRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "frequencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "interval_weeks": {
+                    "type": "integer"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskScheduleFrequencyRequest": {
+            "type": "object",
+            "required": [
+                "frequencies",
+                "interval_weeks"
+            ],
+            "properties": {
+                "frequencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "interval_weeks": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_port_rest.TaskScheduleFrequencyResponse": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "label_jp": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskScheduleListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.TaskScheduleResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskScheduleOccurrenceRequest": {
+            "type": "object",
+            "properties": {
+                "occurrence_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskScheduleRescheduleRequest": {
+            "type": "object",
+            "properties": {
+                "end_at": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskScheduleResponse": {
+            "type": "object",
+            "properties": {
+                "completed": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "frequencies": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.TaskScheduleFrequencyResponse"
+                    }
+                },
+                "frequency_anchor_date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "interval_weeks": {
+                    "type": "integer"
+                },
+                "is_exception": {
+                    "type": "boolean"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "repeat_state": {
+                    "type": "string"
+                },
+                "series_id": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_port_rest.TaskScheduleUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskTagAssignmentRequest": {
+            "type": "object",
+            "properties": {
+                "tag_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskTagCreateRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskTagListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.TaskTagResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskTagRenameRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskTagResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TaskUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "actual_minutes": {
+                    "$ref": "#/definitions/internal_port_rest.optionalJSON-int"
+                },
+                "description": {
+                    "$ref": "#/definitions/internal_port_rest.optionalJSON-string"
+                },
+                "due_date": {
+                    "$ref": "#/definitions/internal_port_rest.optionalJSON-string"
+                },
+                "estimated_minutes": {
+                    "$ref": "#/definitions/internal_port_rest.optionalJSON-int"
+                },
+                "title": {
+                    "$ref": "#/definitions/internal_port_rest.optionalJSON-string"
+                }
+            }
+        },
+        "internal_port_rest.TodoItemCreateRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "frequencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "interval_weeks": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TodoItemFrequencyUpdateRequest": {
+            "type": "object",
+            "required": [
+                "frequencies",
+                "interval_weeks"
+            ],
+            "properties": {
+                "frequencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "interval_weeks": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_port_rest.TodoItemListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_port_rest.TodoItemResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TodoItemOccurrenceRequest": {
+            "type": "object",
+            "properties": {
+                "occurrence_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.TodoItemReorderRequest": {
+            "type": "object",
+            "properties": {
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_port_rest.TodoItemResponse": {
+            "type": "object",
+            "properties": {
+                "completed": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "frequencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "frequency_anchor_date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "interval_weeks": {
+                    "type": "integer"
+                },
+                "is_exception": {
+                    "type": "boolean"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "repeat_state": {
+                    "type": "string"
+                },
+                "series_id": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_port_rest.TodoItemUpdateRequest": {
+            "type": "object",
+            "required": [
+                "scope"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string",
+                    "enum": [
+                        "current",
+                        "future"
+                    ]
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.UserInfoUpdateRequest": {
             "type": "object",
             "properties": {
                 "first_name": {
@@ -2486,7 +5241,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.UserPasswordUpdateRequest": {
+        "internal_port_rest.UserPasswordUpdateRequest": {
             "type": "object",
             "properties": {
                 "new_password": {
@@ -2494,16 +5249,49 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.UserResponse": {
+        "internal_port_rest.UserResponse": {
             "type": "object",
             "properties": {
                 "email": {
+                    "type": "string"
+                },
+                "timezone": {
                     "type": "string"
                 },
                 "user_id": {
                     "type": "string"
                 },
                 "user_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.UserTimezoneUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_port_rest.optionalJSON-int": {
+            "type": "object",
+            "properties": {
+                "present": {
+                    "type": "boolean"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_port_rest.optionalJSON-string": {
+            "type": "object",
+            "properties": {
+                "present": {
+                    "type": "boolean"
+                },
+                "value": {
                     "type": "string"
                 }
             }
@@ -2521,7 +5309,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
+	Host:             "",
 	BasePath:         "/api",
 	Schemes:          []string{},
 	Title:            "task2todaytodo API",

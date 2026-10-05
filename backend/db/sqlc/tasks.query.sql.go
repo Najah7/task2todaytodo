@@ -12,8 +12,7 @@ import (
 )
 
 const getTask = `-- name: GetTask :one
-SELECT id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, progress,
-       priority, status, created_at, updated_at
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
 FROM tasks
 WHERE id = $1
 `
@@ -25,14 +24,17 @@ func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
 		&i.ID,
 		&i.UserID,
 		&i.ProjectID,
+		&i.AssigneeID,
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
 		&i.EstimatedMinutes,
 		&i.ActualMinutes,
-		&i.Progress,
 		&i.Priority,
 		&i.Status,
+		&i.Revision,
+		&i.DeletedAt,
+		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -40,23 +42,24 @@ func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
 }
 
 const getTaskByFrequency = `-- name: GetTaskByFrequency :many
-SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.progress,
-       t.priority, t.status, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
 FROM tasks AS t
-WHERE EXISTS (
+WHERE t.deleted_at IS NULL
+AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL))
+AND (EXISTS (
     SELECT 1
     FROM todo_items AS ti
-    JOIN todo_item_frequencies AS tif ON tif.todo_item_id = ti.id
+    JOIN todo_item_frequencies AS tif ON tif.todo_item_id = ti.series_id
     WHERE ti.task_id = t.id
       AND tif.frequency = $1::text
 )
 OR EXISTS (
     SELECT 1
     FROM task_schedules AS ts
-    JOIN task_schedule_frequencies AS tsf ON tsf.task_schedule_id = ts.id
+    JOIN task_schedule_frequencies AS tsf ON tsf.task_schedule_id = ts.series_id
     WHERE ts.task_id = t.id
       AND tsf.frequency = $1::text
-)
+))
 `
 
 func (q *Queries) GetTaskByFrequency(ctx context.Context, frequency string) ([]Task, error) {
@@ -72,14 +75,17 @@ func (q *Queries) GetTaskByFrequency(ctx context.Context, frequency string) ([]T
 			&i.ID,
 			&i.UserID,
 			&i.ProjectID,
+			&i.AssigneeID,
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
-			&i.Progress,
 			&i.Priority,
 			&i.Status,
+			&i.Revision,
+			&i.DeletedAt,
+			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -94,10 +100,8 @@ func (q *Queries) GetTaskByFrequency(ctx context.Context, frequency string) ([]T
 }
 
 const getTaskByPriority = `-- name: GetTaskByPriority :many
-SELECT id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, progress,
-       priority, status, created_at, updated_at
-FROM tasks
-WHERE priority = $1
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks WHERE tasks.priority = $1 AND deleted_at IS NULL
+  AND (project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=tasks.project_id AND p.deleted_at IS NULL))
 `
 
 func (q *Queries) GetTaskByPriority(ctx context.Context, priority string) ([]Task, error) {
@@ -113,14 +117,17 @@ func (q *Queries) GetTaskByPriority(ctx context.Context, priority string) ([]Tas
 			&i.ID,
 			&i.UserID,
 			&i.ProjectID,
+			&i.AssigneeID,
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
-			&i.Progress,
 			&i.Priority,
 			&i.Status,
+			&i.Revision,
+			&i.DeletedAt,
+			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -135,10 +142,8 @@ func (q *Queries) GetTaskByPriority(ctx context.Context, priority string) ([]Tas
 }
 
 const getTaskByProject = `-- name: GetTaskByProject :many
-SELECT id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, progress,
-       priority, status, created_at, updated_at
-FROM tasks
-WHERE project_id = $1::text
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks WHERE project_id = $1::text AND deleted_at IS NULL
+  AND EXISTS (SELECT 1 FROM projects p WHERE p.id=tasks.project_id AND p.deleted_at IS NULL)
 `
 
 func (q *Queries) GetTaskByProject(ctx context.Context, projectID string) ([]Task, error) {
@@ -154,14 +159,17 @@ func (q *Queries) GetTaskByProject(ctx context.Context, projectID string) ([]Tas
 			&i.ID,
 			&i.UserID,
 			&i.ProjectID,
+			&i.AssigneeID,
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
-			&i.Progress,
 			&i.Priority,
 			&i.Status,
+			&i.Revision,
+			&i.DeletedAt,
+			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -176,11 +184,10 @@ func (q *Queries) GetTaskByProject(ctx context.Context, projectID string) ([]Tas
 }
 
 const getTaskByProjectType = `-- name: GetTaskByProjectType :many
-SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.progress,
-       t.priority, t.status, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
 FROM tasks AS t
 JOIN projects AS p ON p.id = t.project_id
-WHERE p.type = $1
+WHERE p.type = $1 AND t.deleted_at IS NULL AND p.deleted_at IS NULL
 `
 
 func (q *Queries) GetTaskByProjectType(ctx context.Context, type_ string) ([]Task, error) {
@@ -196,14 +203,17 @@ func (q *Queries) GetTaskByProjectType(ctx context.Context, type_ string) ([]Tas
 			&i.ID,
 			&i.UserID,
 			&i.ProjectID,
+			&i.AssigneeID,
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
-			&i.Progress,
 			&i.Priority,
 			&i.Status,
+			&i.Revision,
+			&i.DeletedAt,
+			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -218,10 +228,8 @@ func (q *Queries) GetTaskByProjectType(ctx context.Context, type_ string) ([]Tas
 }
 
 const getTaskByStatus = `-- name: GetTaskByStatus :many
-SELECT id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, progress,
-       priority, status, created_at, updated_at
-FROM tasks
-WHERE status = $1
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks WHERE tasks.status = $1 AND deleted_at IS NULL
+  AND (project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=tasks.project_id AND p.deleted_at IS NULL))
 `
 
 func (q *Queries) GetTaskByStatus(ctx context.Context, status string) ([]Task, error) {
@@ -237,14 +245,17 @@ func (q *Queries) GetTaskByStatus(ctx context.Context, status string) ([]Task, e
 			&i.ID,
 			&i.UserID,
 			&i.ProjectID,
+			&i.AssigneeID,
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
-			&i.Progress,
 			&i.Priority,
 			&i.Status,
+			&i.Revision,
+			&i.DeletedAt,
+			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -259,11 +270,12 @@ func (q *Queries) GetTaskByStatus(ctx context.Context, status string) ([]Task, e
 }
 
 const getTaskByTag = `-- name: GetTaskByTag :many
-SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.progress,
-       t.priority, t.status, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
 FROM tasks AS t
 JOIN task_tag_assignments AS tta ON tta.task_id = t.id
 WHERE tta.tag_id = $1
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL))
 `
 
 func (q *Queries) GetTaskByTag(ctx context.Context, tagID string) ([]Task, error) {
@@ -279,14 +291,17 @@ func (q *Queries) GetTaskByTag(ctx context.Context, tagID string) ([]Task, error
 			&i.ID,
 			&i.UserID,
 			&i.ProjectID,
+			&i.AssigneeID,
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
-			&i.Progress,
 			&i.Priority,
 			&i.Status,
+			&i.Revision,
+			&i.DeletedAt,
+			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -300,38 +315,146 @@ func (q *Queries) GetTaskByTag(ctx context.Context, tagID string) ([]Task, error
 	return items, nil
 }
 
-const getTaskByUser = `-- name: GetTaskByUser :one
-SELECT id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, progress,
-       priority, status, created_at, updated_at
-FROM tasks
-WHERE id = $1
-  AND user_id = $2
+const getTaskByUserID = `-- name: GetTaskByUserID :one
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
+FROM tasks AS t
+WHERE t.id = $1
+  AND task_has_permission(t.id, $2, 'task', 'read')
 `
 
-type GetTaskByUserParams struct {
-	ID     string
-	UserID string
+type GetTaskByUserIDParams struct {
+	ID       string
+	ActorKey string
 }
 
-func (q *Queries) GetTaskByUser(ctx context.Context, arg GetTaskByUserParams) (Task, error) {
-	row := q.db.QueryRow(ctx, getTaskByUser, arg.ID, arg.UserID)
+func (q *Queries) GetTaskByUserID(ctx context.Context, arg GetTaskByUserIDParams) (Task, error) {
+	row := q.db.QueryRow(ctx, getTaskByUserID, arg.ID, arg.ActorKey)
 	var i Task
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.ProjectID,
+		&i.AssigneeID,
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
 		&i.EstimatedMinutes,
 		&i.ActualMinutes,
-		&i.Progress,
 		&i.Priority,
 		&i.Status,
+		&i.Revision,
+		&i.DeletedAt,
+		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getTaskByUserIDForPermission = `-- name: GetTaskByUserIDForPermission :one
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
+FROM tasks AS t
+WHERE t.id = $1::text
+  AND task_has_permission(t.id, $2::text, $3::text, $4::permission_action)
+`
+
+type GetTaskByUserIDForPermissionParams struct {
+	ID         string
+	ActorID    string
+	ResourceID string
+	Action     PermissionAction
+}
+
+func (q *Queries) GetTaskByUserIDForPermission(ctx context.Context, arg GetTaskByUserIDForPermissionParams) (Task, error) {
+	row := q.db.QueryRow(ctx, getTaskByUserIDForPermission,
+		arg.ID,
+		arg.ActorID,
+		arg.ResourceID,
+		arg.Action,
+	)
+	var i Task
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProjectID,
+		&i.AssigneeID,
+		&i.Title,
+		&i.Description,
+		&i.DueDate,
+		&i.EstimatedMinutes,
+		&i.ActualMinutes,
+		&i.Priority,
+		&i.Status,
+		&i.Revision,
+		&i.DeletedAt,
+		&i.ChangedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const listProjectTasksByUserIDCursorPage = `-- name: ListProjectTasksByUserIDCursorPage :many
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
+FROM tasks AS t
+JOIN projects AS p ON p.id = t.project_id AND p.user_id = t.user_id AND p.deleted_at IS NULL
+WHERE t.project_id = $1
+  AND t.deleted_at IS NULL
+  AND task_has_permission(t.id, $2, 'task', 'read')
+  AND ($3::timestamptz IS NULL OR (t.created_at, t.id) < ($3::timestamptz, $4::text))
+ORDER BY t.created_at DESC, t.id DESC
+LIMIT $5::integer
+`
+
+type ListProjectTasksByUserIDCursorPageParams struct {
+	ProjectID pgtype.Text
+	UserID    string
+	CursorAt  pgtype.Timestamptz
+	CursorID  pgtype.Text
+	PageLimit int32
+}
+
+func (q *Queries) ListProjectTasksByUserIDCursorPage(ctx context.Context, arg ListProjectTasksByUserIDCursorPageParams) ([]Task, error) {
+	rows, err := q.db.Query(ctx, listProjectTasksByUserIDCursorPage,
+		arg.ProjectID,
+		arg.UserID,
+		arg.CursorAt,
+		arg.CursorID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Task
+	for rows.Next() {
+		var i Task
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ProjectID,
+			&i.AssigneeID,
+			&i.Title,
+			&i.Description,
+			&i.DueDate,
+			&i.EstimatedMinutes,
+			&i.ActualMinutes,
+			&i.Priority,
+			&i.Status,
+			&i.Revision,
+			&i.DeletedAt,
+			&i.ChangedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listTaskSchedulesByTaskForUser = `-- name: ListTaskSchedulesByTaskForUser :many
@@ -341,11 +464,12 @@ SELECT
     ts.title,
     ts.description,
     ts.location,
-    ts.interval_weeks,
+    COALESCE((SELECT r.interval_weeks FROM task_schedules r WHERE r.id = ts.series_id ), 0)::integer AS interval_weeks,
+    ts.completed,
     ARRAY(
         SELECT tsf.frequency
         FROM task_schedule_frequencies AS tsf
-        WHERE tsf.task_schedule_id = ts.id
+        WHERE tsf.task_schedule_id = ts.series_id
         ORDER BY tsf.frequency
     )::text[] AS frequencies,
     ts.start_at,
@@ -356,6 +480,7 @@ FROM task_schedules AS ts
 JOIN tasks AS t ON t.id = ts.task_id
 WHERE ts.task_id = $1
   AND t.user_id = $2
+	AND ts.deleted_at IS NULL
 ORDER BY ts.start_at ASC
 `
 
@@ -371,6 +496,7 @@ type ListTaskSchedulesByTaskForUserRow struct {
 	Description   pgtype.Text
 	Location      pgtype.Text
 	IntervalWeeks int32
+	Completed     bool
 	Frequencies   []string
 	StartAt       pgtype.Timestamptz
 	EndAt         pgtype.Timestamptz
@@ -394,6 +520,7 @@ func (q *Queries) ListTaskSchedulesByTaskForUser(ctx context.Context, arg ListTa
 			&i.Description,
 			&i.Location,
 			&i.IntervalWeeks,
+			&i.Completed,
 			&i.Frequencies,
 			&i.StartAt,
 			&i.EndAt,
@@ -410,8 +537,8 @@ func (q *Queries) ListTaskSchedulesByTaskForUser(ctx context.Context, arg ListTa
 	return items, nil
 }
 
-const listTasksByProjectAndUser = `-- name: ListTasksByProjectAndUser :many
-SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.progress,
+const listTasksByProjectAndUserID = `-- name: ListTasksByProjectAndUserID :many
+SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes,
        t.priority, t.status, t.created_at, t.updated_at
 FROM tasks AS t
 JOIN projects AS p ON p.id = t.project_id
@@ -420,13 +547,84 @@ WHERE t.project_id = $1
 ORDER BY t.created_at ASC
 `
 
-type ListTasksByProjectAndUserParams struct {
+type ListTasksByProjectAndUserIDParams struct {
 	ProjectID pgtype.Text
 	UserID    string
 }
 
-func (q *Queries) ListTasksByProjectAndUser(ctx context.Context, arg ListTasksByProjectAndUserParams) ([]Task, error) {
-	rows, err := q.db.Query(ctx, listTasksByProjectAndUser, arg.ProjectID, arg.UserID)
+type ListTasksByProjectAndUserIDRow struct {
+	ID               string
+	UserID           string
+	ProjectID        pgtype.Text
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	ActualMinutes    pgtype.Int4
+	Priority         string
+	Status           string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+func (q *Queries) ListTasksByProjectAndUserID(ctx context.Context, arg ListTasksByProjectAndUserIDParams) ([]ListTasksByProjectAndUserIDRow, error) {
+	rows, err := q.db.Query(ctx, listTasksByProjectAndUserID, arg.ProjectID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTasksByProjectAndUserIDRow
+	for rows.Next() {
+		var i ListTasksByProjectAndUserIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ProjectID,
+			&i.Title,
+			&i.Description,
+			&i.DueDate,
+			&i.EstimatedMinutes,
+			&i.ActualMinutes,
+			&i.Priority,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTasksByUserIDCursorPage = `-- name: ListTasksByUserIDCursorPage :many
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
+FROM tasks AS t
+WHERE t.assignee_id = $1
+  AND t.deleted_at IS NULL
+  AND task_has_permission(t.id, $1, 'task', 'read')
+  AND ($2::timestamptz IS NULL OR (created_at, id) < ($2::timestamptz, $3::text))
+ORDER BY created_at DESC, id DESC
+LIMIT $4::integer
+`
+
+type ListTasksByUserIDCursorPageParams struct {
+	UserID    string
+	CursorAt  pgtype.Timestamptz
+	CursorID  pgtype.Text
+	PageLimit int32
+}
+
+func (q *Queries) ListTasksByUserIDCursorPage(ctx context.Context, arg ListTasksByUserIDCursorPageParams) ([]Task, error) {
+	rows, err := q.db.Query(ctx, listTasksByUserIDCursorPage,
+		arg.UserID,
+		arg.CursorAt,
+		arg.CursorID,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -438,14 +636,17 @@ func (q *Queries) ListTasksByProjectAndUser(ctx context.Context, arg ListTasksBy
 			&i.ID,
 			&i.UserID,
 			&i.ProjectID,
+			&i.AssigneeID,
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
 			&i.EstimatedMinutes,
 			&i.ActualMinutes,
-			&i.Progress,
 			&i.Priority,
 			&i.Status,
+			&i.Revision,
+			&i.DeletedAt,
+			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -468,11 +669,11 @@ SELECT
     ti.due_date,
     ti.completed,
     ti.position,
-    ti.interval_weeks,
+    COALESCE((SELECT r.interval_weeks FROM todo_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
     ARRAY(
         SELECT tif.frequency
         FROM todo_item_frequencies AS tif
-        WHERE tif.todo_item_id = ti.id
+        WHERE tif.todo_item_id = ti.series_id
         ORDER BY tif.frequency
     )::text[] AS frequencies,
     ti.created_at,
@@ -481,6 +682,7 @@ FROM todo_items AS ti
 JOIN tasks AS t ON t.id = ti.task_id
 WHERE ti.task_id = $1
   AND t.user_id = $2
+	AND ti.deleted_at IS NULL
 ORDER BY ti.position ASC
 `
 
@@ -528,6 +730,46 @@ func (q *Queries) ListTodoItemsByTaskForUser(ctx context.Context, arg ListTodoIt
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersWithActiveRecurrences = `-- name: ListUsersWithActiveRecurrences :many
+SELECT DISTINCT t.user_id
+FROM tasks AS t
+WHERE t.status <> 'done'
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL))
+  AND (
+    EXISTS (
+      SELECT 1 FROM todo_items AS ti
+      WHERE ti.task_id = t.id AND ti.id = ti.series_id
+        AND EXISTS (SELECT 1 FROM todo_items r WHERE r.id = ti.id AND r.repeat_state = 'active') AND ti.deleted_at IS NULL
+    ) OR EXISTS (
+      SELECT 1 FROM task_schedules AS ts
+      WHERE ts.task_id = t.id AND ts.id = ts.series_id
+        AND EXISTS (SELECT 1 FROM task_schedules r WHERE r.id = ts.id AND r.repeat_state = 'active') AND ts.deleted_at IS NULL
+    )
+  )
+ORDER BY t.user_id
+`
+
+func (q *Queries) ListUsersWithActiveRecurrences(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listUsersWithActiveRecurrences)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
