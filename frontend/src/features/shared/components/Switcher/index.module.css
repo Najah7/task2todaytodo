@@ -1,0 +1,130 @@
+.switcher {
+  --thumb-width: var(--size-switcher-thumb);
+  --thumb-inset: calc((var(--size-switcher-track-height) - var(--size-switcher-thumb)) / 2 - var(--border-width));
+  flex: 0 1 var(--size-switcher-width);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-switcher-width);
+  min-width: 0;
+  min-height: var(--size-input-height);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  width: 100%;
+  height: var(--size-switcher-track-height);
+  border: var(--border-width) solid var(--color-primary-border);
+  border-radius: var(--radius-full);
+  background: var(--color-primary-soft);
+  transition: background-color var(--motion-switcher-duration) var(--motion-switcher-easing);
+}
+
+.option,
+.thumbLeft,
+.thumbRight {
+  display: grid;
+  place-items: center;
+}
+
+.option {
+  color: var(--color-text-body);
+}
+
+.thumb {
+  position: absolute;
+  z-index: 1;
+  top: var(--thumb-inset);
+  left: var(--thumb-inset);
+  width: var(--thumb-width);
+  height: var(--size-switcher-thumb);
+  border-radius: var(--radius-full);
+  background: var(--color-action-background);
+  color: var(--color-action-text);
+  box-shadow: var(--shadow-switcher-thumb);
+  transition:
+    left var(--motion-switcher-duration) var(--motion-switcher-easing),
+    width var(--motion-switcher-press-duration) var(--motion-switcher-easing),
+    background-color var(--motion-switcher-duration) var(--motion-switcher-easing),
+    color var(--motion-switcher-duration) var(--motion-switcher-easing);
+}
+
+.thumbLeft,
+.thumbRight {
+  position: absolute;
+  inset: 0;
+  transition: opacity calc(var(--motion-switcher-duration) / 2) steps(1, end);
+}
+
+.thumbRight {
+  opacity: 0;
+}
+
+.switcher[data-selected="right"] .thumb {
+  left: calc(100% - var(--thumb-inset) - var(--thumb-width));
+}
+
+.switcher[data-selected="right"] .thumbLeft {
+  opacity: 0;
+}
+
+.switcher[data-selected="right"] .thumbRight {
+  opacity: 1;
+}
+
+.track svg {
+  width: var(--size-switcher-icon);
+  height: var(--size-switcher-icon);
+  stroke-width: var(--icon-stroke-width);
+}
+
+.switcher:hover:not(:disabled) .track {
+  background: var(--color-switcher-track-hover);
+}
+
+.switcher:active:not(:disabled) {
+  --thumb-width: calc(var(--size-switcher-thumb) + var(--size-switcher-stretch));
+}
+
+.switcher:focus-visible {
+  outline: none;
+}
+
+.switcher:focus-visible .track {
+  outline: var(--focus-width) solid var(--color-primary);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.switcher:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.description {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .thumb,
+  .thumbLeft,
+  .thumbRight {
+    transition: none;
+  }
+}

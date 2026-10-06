@@ -1,0 +1,45 @@
+# Frontend guide
+
+## Core
+
+- Keep the frontend thin. Centralize business logic in the backend; do not distribute or duplicate it across the system. Revisit the design when frontend logic becomes complex.
+- Preserve a single source of truth across the system: business rules, data, state, API contracts, and design values.
+- The frontend owns presentation and interaction. Client validation provides early feedback; the backend remains responsible for data validity.
+
+## Components
+
+- Colocate a component's implementation, CSS Module, schema, helpers, and unit tests. Keep private parts nearby.
+- Colocate Storybook stories as `Component.stories.tsx`. Keep shared Storybook decorators, mocks, and helpers under `.storybook/`; feature-specific helpers belong in `.storybook/<feature>/` and use the `~storybook/` alias. Use stories to inspect meaningful UI states with the application's existing styles and tokens.
+- Build for a concrete purpose first. Extract abstractions when multiple concrete uses exist; abstract upfront only with a clear, stable requirement.
+- Share within a feature first. Use `src/features/shared/` only for code used by multiple features; shared code must not depend on those features.
+- Components own Props, State, rendering, and Event Handlers. Simple display decisions may stay inline; extract substantial presentation transformations into nearby pure functions.
+- Put interaction-driven side effects in Event Handlers. Avoid Effects except for necessary synchronization with external systems, including subscription cleanup. Do not use Effects to copy derived values into State.
+
+## State and API
+
+- Backend data belongs to the backend; TanStack Query owns its client cache. Do not maintain a second server-data cache in Jotai or local State. Editing drafts are local UI state.
+- Use React Router's URL state for routes and shareable navigation state. Keep temporary UI state local. Use Jotai only for frontend-specific state that genuinely needs global access.
+- Generate API types, clients, and Query hooks with Orval from the backend OpenAPI specification. Never hand-edit generated code or duplicate API contracts.
+- Handwrite only necessary integration, such as shared HTTP behavior and actions after a successful request. Do not add wrappers that merely repeat the generated API.
+- Use React Hook Form and Zod for forms; colocate `schema.ts` with the form.
+
+## Styles
+
+- Use CSS Modules to encapsulate each component's layout and appearance. Do not import another component's private styles.
+- Keep global CSS limited to broadly shared, focused concerns: typography classes and design tokens such as colors, spacing, and radii.
+- `src/styles/` is the design-value source of truth; `DESIGN.md` references it. Use global `text-*` typography classes and CSS variables instead of redefining values locally.
+- Prefer `rem` for scalable dimensions and `em` for media queries; `px` is appropriate for thin borders and outlines.
+
+## Tests
+
+- `e2e/`: Playwright tests for important user journeys against the real backend and database. Do not mock API responses.
+- Run E2E with an isolated, disposable Docker Compose environment. Keep test data independent so tests can run in parallel.
+- Colocate unit tests with complex or high-impact components, pure functions, and schemas. Use Vitest and React Testing Library; mock dependencies here when needed.
+- Test meaningful behavior and failures. Keep detailed cases out of E2E; do not retest trivial rendering or library internals.
+
+## Conventions
+
+- TypeScript, React, Vite, React Router, TanStack Query, Jotai, Orval, and CSS Modules are the existing stack.
+- `~/` resolves to `frontend/src/`. Use it for project imports; `./...` is allowed for the same directory and descendants. Do not use `../...` imports.
+- Keep system text in `src/features/i18n/` for Japanese and English. Do not translate user-created data.
+- See `README.md` for commands and `e2e/README.md` for the E2E environment.

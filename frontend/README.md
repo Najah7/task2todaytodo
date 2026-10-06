@@ -47,11 +47,40 @@ See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rule
 
 # Build, test, and lint commands
 
-TODO
+Run these commands from `frontend/`:
+
+```bash
+pnpm build
+pnpm lint
+pnpm test:unit
+pnpm exec playwright install chromium --only-shell
+pnpm test:e2e
+```
+
+Unit tests use Vitest and React Testing Library and live beside their implementation. E2E tests live in `e2e/` and use Playwright with a real backend and database. `pnpm test:e2e` starts an isolated Docker Compose environment and removes it afterward; a running Docker daemon is required. See [E2E setup and lifecycle](e2e/README.md).
+
+# Storybook
+
+Run Storybook from `frontend/`:
+
+```bash
+pnpm storybook
+pnpm build-storybook
+```
+
+The development UI is available at `http://localhost:6006`. The static build is written to `storybook-static/`.
+
+Colocate `Component.stories.tsx` with its component. Storybook reuses the Vite configuration, including the `~/` alias, and imports the application's global CSS. Use the toolbar to switch between light/dark themes and Japanese/English.
+
+Keep shared decorators, mocks, and interaction helpers under `.storybook/`. Authentication helpers live in `.storybook/auth/` and are imported with `~storybook/auth/...`.
+
+Stories cover Switcher, Wordmark, SubmitButton, EmailField, PasswordField, LoginForm, and SignupForm. Form stories include validation errors, API errors, pending submissions, and login retry after signup. Field stories include read-only and password visibility states.
+
+Storybook uses MSW to mock authentication responses, so these previews run without a backend. Submitting a default form shows a Today heading inside the preview. Unhandled `/api/` requests are blocked. E2E tests continue to use the real backend. The service worker lives in `.storybook/public/` and is excluded from the application build; regenerate it after upgrading MSW with `pnpm exec msw init .storybook/public --save`.
 
 # Engineering conventions and PR expectations
 
-TODO
+See [AGENTS.md](AGENTS.md) for the core frontend architecture, state, styling, and testing conventions.
 
 # Constraints and do-not rules
 

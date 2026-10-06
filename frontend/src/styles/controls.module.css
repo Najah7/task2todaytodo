@@ -1,0 +1,88 @@
+.focusRing:focus-visible {
+  outline: var(--focus-width) solid var(--color-primary);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.card {
+  width: 100%;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.input,
+.select {
+  width: 100%;
+  min-height: var(--size-input-height);
+  padding: var(--padding-input);
+  border: var(--border-width) solid var(--color-input-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-input);
+  color: var(--color-text);
+}
+
+.select {
+  width: auto;
+  cursor: pointer;
+}
+
+.input::placeholder {
+  color: var(--color-placeholder);
+}
+
+.input:focus,
+.select:focus-visible {
+  border-color: var(--color-primary);
+  outline: var(--focus-width) solid var(--color-primary);
+  outline-offset: calc(-1 * var(--border-width));
+  box-shadow: var(--shadow-focus);
+}
+
+.input:read-only {
+  background: var(--color-raised);
+}
+
+.button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-full);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primaryButton {
+  min-height: var(--size-login-button-height);
+  background: var(--color-action-background);
+  color: var(--color-action-text);
+}
+
+.primaryButton:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.outlineButton {
+  min-height: var(--size-button-small-height);
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+  color: var(--color-primary);
+}
+
+.outlineButton:hover {
+  background: var(--color-selected-background);
+}
+
+.neutralButton {
+  min-height: var(--size-input-height);
+  border-color: var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-body);
+}

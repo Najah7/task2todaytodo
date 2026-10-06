@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:18.4-trixie
+    environment:
+      POSTGRES_USER: e2e
+      POSTGRES_PASSWORD: e2e
+      POSTGRES_DB: task2todaytodo_e2e
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U e2e -d task2todaytodo_e2e"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+
+  migrate:
+    image: migrate/migrate:v4.19.1
+    volumes:
+      - ../../backend/db/migrations:/migrations:ro
+    command: ["-path=/migrations", "-database=postgres://e2e:e2e@db:5432/task2todaytodo_e2e?sslmode=disable", "up"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ../../backend
+      dockerfile_inline: |
+        FROM golang:1.25-alpine AS build
+        WORKDIR /app
+        COPY go.mod go.sum ./
+        RUN go mod download
+        COPY cmd ./cmd
+        COPY internal ./internal
+        COPY db/sqlc ./db/sqlc
+        COPY docs ./docs
+        RUN CGO_ENABLED=0 go build -o /api ./cmd/api
+
+        FROM alpine:3.22
+        RUN apk add --no-cache ca-certificates tzdata
+        COPY --from=build /api /api
+        ENTRYPOINT ["/api"]
+    environment:
+      SERVER_ADDR: :8080
+      POSTGRES_USER: e2e
+      POSTGRES_PASSWORD: e2e
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: task2todaytodo_e2e
+      POSTGRES_SSLMODE: disable
+      PAGE_TOKEN_KEY: ${E2E_PAGE_TOKEN_KEY:?Run pnpm test:e2e}
+      ENVIRONMENT: test
+      OTEL_TRACES_EXPORTER: none
+    ports:
+      - "127.0.0.1::8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/monitor/health"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+    depends_on:
+      migrate:
+        condition: service_completed_successfully

@@ -1,0 +1,23 @@
+:root {
+  --border-width: 1px;
+  --border-width-emphasis: 2px;
+  --focus-width: 2px;
+  --focus-ring-width: 3px;
+  --focus-outline-offset: 3px;
+  --shadow-card: 0 0 0 1px rgb(50 50 50 / 4%), 0 1px 3px rgb(50 50 50 / 12%);
+  --shadow-overlay: 0 0 1.5rem rgb(0 0 0 / 10%), 0 0.25rem 0.5rem rgb(0 0 0 / 20%);
+  --shadow-menu: var(--shadow-overlay);
+  --shadow-dialog: var(--shadow-overlay);
+  --shadow-focus: 0 0 0 var(--focus-ring-width) var(--color-focus-ring);
+  --shadow-switcher-thumb: 0 1px 3px rgb(0 0 0 / 24%);
+  --motion-switcher-duration: 220ms;
+  --motion-switcher-press-duration: 100ms;
+  --motion-switcher-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+:root[data-display="dark"] {
+  --shadow-card: 0 0 0 var(--border-width) var(--color-border);
+  --shadow-overlay: 0 1.5rem 4rem rgb(0 0 0 / 60%);
+  --shadow-menu: 0 0.75rem 2rem rgb(0 0 0 / 55%);
+  --shadow-switcher-thumb: 0 1px 3px rgb(0 0 0 / 35%);
+}

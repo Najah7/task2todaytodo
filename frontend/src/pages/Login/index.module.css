@@ -1,0 +1,76 @@
+.page {
+  min-height: 100dvh;
+  padding: var(--space-xxl) var(--space-lg);
+  background: var(--color-ground);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: var(--size-login-card-width);
+  margin: 0 auto var(--space-lg);
+}
+
+.preferences {
+  display: flex;
+  gap: var(--space-sm);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  width: 100%;
+  max-width: var(--size-login-card-width);
+  margin: 0 auto;
+}
+
+.brand {
+  display: inline-flex;
+  max-width: 100%;
+  border-radius: var(--radius-xs);
+}
+
+.wordmark {
+  display: block;
+  width: 12.5rem;
+  max-width: 100%;
+  height: auto;
+}
+
+.switchCard {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.note {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.backLink {
+  color: var(--color-text-muted);
+  text-underline-offset: 0.2em;
+}
+
+@media (max-width: 30em) {
+  .page {
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .switchCard {
+    justify-content: center;
+    text-align: center;
+  }
+}

@@ -1,0 +1,45 @@
+import { expect, test } from "@playwright/test"
+import { createAccount, expectAuthenticated, fillCredentials, newCredentials } from "./helpers/auth.ts"
+
+test("signup creates an account and logs in to Today", async ({ page }) => {
+  const credentials = newCredentials()
+  await page.goto("/signup")
+  await fillCredentials(page, credentials, true)
+  await page.getByRole("checkbox", { name: "パスワードを表示" }).check()
+  await expect(page.getByLabel("パスワード", { exact: true })).toHaveAttribute("type", "text")
+  await expect(page.getByLabel("パスワード（確認）", { exact: true })).toHaveAttribute("type", "text")
+  await page.setViewportSize({ width: 320, height: 900 })
+  await page.evaluate(() => document.documentElement.style.fontSize = "32px")
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+  await page.getByRole("button", { name: "アカウントを作成" }).click()
+  await expectAuthenticated(page, credentials.email)
+  await page.reload()
+  await expectAuthenticated(page, credentials.email)
+})
+
+test("an existing email leads the user back to login", async ({ page, request }) => {
+  const credentials = await createAccount(request)
+  await page.goto("/signup")
+  await fillCredentials(page, credentials, true)
+  await page.getByRole("button", { name: "アカウントを作成" }).click()
+  await expect(page.getByRole("alert")).toHaveText("このメールアドレスは登録済みです。ログインしてください。")
+  expect(await page.evaluate(() => localStorage.getItem("access_token"))).toBeNull()
+  await page.getByRole("link", { name: "ログイン", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "ログイン", exact: true })).toBeVisible()
+  await fillCredentials(page, credentials)
+  await page.getByRole("button", { name: "ログイン", exact: true }).click()
+  await expectAuthenticated(page, credentials.email)
+})
+
+test("password confirmation can be corrected before signup", async ({ page }) => {
+  const credentials = newCredentials()
+  await page.goto("/signup")
+  await fillCredentials(page, credentials, true)
+  await page.getByLabel("パスワード（確認）", { exact: true }).fill("Different1!")
+  await page.getByRole("button", { name: "アカウントを作成" }).click()
+  await expect(page.getByRole("alert")).toHaveText("確認用パスワードが一致していません。")
+  await expect(page).toHaveURL("/signup")
+  await page.getByLabel("パスワード（確認）", { exact: true }).fill(credentials.password)
+  await page.getByRole("button", { name: "アカウントを作成" }).click()
+  await expectAuthenticated(page, credentials.email)
+})

@@ -1,0 +1,23 @@
+:root {
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-xxl: 3rem;
+
+  /* Intermediate spacing used by navigation, fields, and card headers. */
+  --space-12: 0.75rem;
+  --space-20: 1.25rem;
+
+  --padding-topbar: 0 var(--space-lg) 0 var(--space-20);
+  --padding-sidebar: var(--space-md) var(--space-12);
+  --padding-page: var(--space-lg) var(--space-xl) 2.5rem;
+  --padding-card-header: var(--space-md) var(--space-20);
+  --padding-table-cell: 0 var(--space-md);
+  --padding-button: 0 1.125rem;
+  --padding-button-small: 0 0.875rem;
+  --padding-input: 0 var(--space-12);
+  --padding-info-band: 0.875rem var(--space-20);
+  --padding-stat: 1.125rem var(--space-lg);
+}

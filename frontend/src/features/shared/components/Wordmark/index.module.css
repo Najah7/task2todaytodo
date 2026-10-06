@@ -1,0 +1,13 @@
+.wordmark {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.ink {
+  fill: var(--color-brand-ink);
+}
+
+.accent {
+  fill: var(--color-attention);
+}

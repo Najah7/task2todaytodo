@@ -1,10 +1,22 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.tsx'
+import { RouterProvider } from 'react-router/dom'
+import { router } from './router.tsx'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { LanguageProvider } from '~/features/i18n'
+import { initializeDisplay } from '~/features/display'
+
+const queryClient = new QueryClient()
+
+initializeDisplay()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <LanguageProvider>
+        <RouterProvider router={router} />
+      </LanguageProvider>
+    </QueryClientProvider>
   </StrictMode>,
 )
