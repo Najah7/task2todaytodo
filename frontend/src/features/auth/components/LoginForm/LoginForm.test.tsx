@@ -35,7 +35,7 @@ function fillCredentials() {
 }
 
 test("field errors follow the selected language and disappear after correction", async () => {
-  login.mockResolvedValue({ token: "unit-token" })
+  login.mockResolvedValue({ personal_access_token: "unit-token" })
   renderForm()
   fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: "invalid-email" } })
   fireEvent.click(screen.getByRole("button", { name: "ログイン" }))
@@ -68,7 +68,7 @@ test("submission stays disabled during a request and recovers after a network fa
 })
 
 test.each(["missing token", "storage failure"])("does not navigate after %s", async (failure) => {
-  login.mockResolvedValue(failure === "missing token" ? {} : { token: "unit-token" })
+  login.mockResolvedValue(failure === "missing token" ? {} : { personal_access_token: "unit-token" })
   renderForm()
   if (failure === "storage failure") {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("Unavailable", "SecurityError") })
@@ -78,5 +78,5 @@ test.each(["missing token", "storage failure"])("does not navigate after %s", as
   const message = failure === "missing token" ? "ログイン情報を取得できませんでした" : "ログイン情報を保存できませんでした"
   expect((await screen.findByRole("alert")).textContent).toContain(message)
   expect(screen.queryByRole("heading", { name: "Today" })).toBeNull()
-  expect(localStorage.getItem("access_token")).toBeNull()
+  expect(localStorage.getItem("personal_access_token")).toBeNull()
 })

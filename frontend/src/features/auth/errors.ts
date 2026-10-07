@@ -1,5 +1,5 @@
 import type { MessageKey } from "~/features/i18n/messages"
-import type { InternalPortRestErrResponse } from "~/api/generated/auth"
+import type { RestErrResponse } from "~/api/generated/auth"
 import { ApiError } from "~/api/http"
 
 export class SessionError extends Error {
@@ -14,7 +14,7 @@ export class SessionError extends Error {
 export function getAuthErrorMessage(error: unknown): MessageKey {
   if (error instanceof SessionError) return error.translationKey
   if (error instanceof ApiError) {
-    const data = error.data as InternalPortRestErrResponse | undefined
+    const data = error.data as RestErrResponse | undefined
     const codes = data?.error?.details?.map((detail) => detail.code) ?? []
     if (codes.includes("email_already_exists") || error.status === 409) {
       return "auth.error.emailExists"

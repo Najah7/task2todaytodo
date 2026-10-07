@@ -19,7 +19,7 @@ test("an incorrect password shows an error and can be corrected", async ({ page,
   await fillCredentials(page, { ...credentials, password: "Different1!" })
   await page.getByRole("button", { name: "ログイン", exact: true }).click()
   await expect(page.getByRole("alert")).toHaveText("メールアドレスまたはパスワードが正しくありません。")
-  expect(await page.evaluate(() => localStorage.getItem("access_token"))).toBeNull()
+  expect(await page.evaluate(() => localStorage.getItem("personal_access_token"))).toBeNull()
   await expect(page).toHaveURL("/login")
 
   await page.getByLabel("パスワード", { exact: true }).fill(credentials.password)

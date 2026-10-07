@@ -1,6 +1,6 @@
 - `/login`: メールアドレスとパスワードでログイン。
 - `/signup`: 登録後、同じ入力でログイン。
-- 成功後は `localStorage` の `access_token` にバックエンドの `token` を保存し、`/today` に遷移します。
+- 成功後は `localStorage` の `personal_access_token` にバックエンドの `personal_access_token` を保存し、`/today` に遷移します。
 - その他のページはログイン不要です。期限判定やrefresh処理はフロントで行いません。
 - Google / X / GitHub認証は未接続です。画面上のボタンは無効化しています。
 

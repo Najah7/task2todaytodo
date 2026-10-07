@@ -26,59 +26,59 @@ import type {
 
 import { apiFetch } from "~/api/http";
 import type { ErrorType } from "~/api/http";
-export interface InternalPortRestMessageResponse {
-  message?: string;
+export interface RestPersonalAccessTokenResponse {
+  expires_at?: string;
+  personal_access_token?: string;
 }
 
-export interface InternalPortRestErrDetail {
+export interface RestErrDetail {
   code?: string;
   field?: string;
   message?: string;
 }
 
-export interface InternalPortRestErr {
+export interface RestErr {
   code?: string;
-  details?: InternalPortRestErrDetail[];
+  details?: RestErrDetail[];
   message?: string;
   request_id?: string;
 }
 
-export interface InternalPortRestErrResponse {
-  error?: InternalPortRestErr;
+export interface RestErrResponse {
+  error?: RestErr;
 }
 
-export interface InternalPortRestAccessTokenResponse {
-  expires_at?: string;
-  token?: string;
-}
-
-export interface InternalPortRestLoginRequest {
+export interface RestLoginRequest {
   email?: string;
   password?: string;
 }
 
-export interface InternalPortRestUserResponse {
+export interface RestMessageResponse {
+  message?: string;
+}
+
+export interface RestUserResponse {
   email?: string;
   timezone?: string;
   user_id?: string;
   user_name?: string;
 }
 
-export interface InternalPortRestSignupRequest {
+export interface RestSignupRequest {
   email?: string;
   password?: string;
 }
 
-export interface InternalPortRestUserInfoUpdateRequest {
+export interface RestUserInfoUpdateRequest {
   first_name?: string;
   last_name?: string;
 }
 
-export interface InternalPortRestUserPasswordUpdateRequest {
+export interface RestUserPasswordUpdateRequest {
   new_password?: string;
 }
 
-export interface InternalPortRestUserTimezoneUpdateRequest {
+export interface RestUserTimezoneUpdateRequest {
   timezone?: string;
 }
 
@@ -101,81 +101,6 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export const getDeleteAccessTokenrevokeUrl = () => {
-
-
-
-
-  return `/api/access-token:revoke`
-}
-
-/**
- * Revokes the current access token from the Authorization header.
- * @summary Revoke access token
- */
-export const deleteAccessTokenrevoke = async ( options?: Parameters<typeof apiFetch>[1]): Promise<InternalPortRestMessageResponse> => {
-
-  return apiFetch<InternalPortRestMessageResponse>(getDeleteAccessTokenrevokeUrl(),
-  {
-    ...options,
-    method: 'DELETE'
-
-
-  }
-);}
-
-
-
-
-
-export const getDeleteAccessTokenrevokeMutationKey = () => ['deleteAccessTokenrevoke'] as const;
-
-export const getDeleteAccessTokenrevokeMutationOptions = <TError = ErrorType<InternalPortRestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccessTokenrevoke>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteAccessTokenrevoke>>, TError,void, TContext> => {
-
-const mutationKey = getDeleteAccessTokenrevokeMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAccessTokenrevoke>>, void> = () => {
-
-
-          return  deleteAccessTokenrevoke(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DeleteAccessTokenrevokeMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAccessTokenrevoke>>>
-
-    export type DeleteAccessTokenrevokeMutationError = ErrorType<InternalPortRestErrResponse>
-
-
-    /**
- * @summary Revoke access token
- */
-export const useDeleteAccessTokenrevoke = <TError = ErrorType<InternalPortRestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccessTokenrevoke>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof deleteAccessTokenrevoke>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getDeleteAccessTokenrevokeMutationOptions(options), queryClient);
-    }
-
 export const getPostLoginUrl = () => {
 
 
@@ -188,7 +113,7 @@ export const getPostLoginUrl = () => {
  * Authenticates a user and generates an access token.
  * @summary Log in
  */
-export const postLogin = async (internalPortRestLoginRequest: InternalPortRestLoginRequest, options?: Parameters<typeof apiFetch>[1]): Promise<InternalPortRestAccessTokenResponse> => {
+export const postLogin = async (restLoginRequest: RestLoginRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestPersonalAccessTokenResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -204,12 +129,12 @@ export const postLogin = async (internalPortRestLoginRequest: InternalPortRestLo
     }
     return headers;
   };
-return apiFetch<InternalPortRestAccessTokenResponse>(getPostLoginUrl(),
+return apiFetch<RestPersonalAccessTokenResponse>(getPostLoginUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(internalPortRestLoginRequest)
+    body: JSON.stringify(restLoginRequest)
   }
 );}
 
@@ -219,7 +144,7 @@ return apiFetch<InternalPortRestAccessTokenResponse>(getPostLoginUrl(),
 
 export const getPostLoginMutationKey = () => ['postLogin'] as const;
 
-export const getPostLoginMutationOptions = <TError = ErrorType<InternalPortRestErrResponse>,
+export const getPostLoginMutationOptions = <TError = ErrorType<RestErrResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postLogin>>, TError,PostLoginMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof postLogin>>, TError,PostLoginMutationVariables, TContext> => {
 
@@ -247,14 +172,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PostLoginMutationResult = NonNullable<Awaited<ReturnType<typeof postLogin>>>
-    export type PostLoginMutationBody = InternalPortRestLoginRequest
-    export type PostLoginMutationError = ErrorType<InternalPortRestErrResponse>
-    export type PostLoginMutationVariables = {data: InternalPortRestLoginRequest}
+    export type PostLoginMutationBody = RestLoginRequest
+    export type PostLoginMutationError = ErrorType<RestErrResponse>
+    export type PostLoginMutationVariables = {data: RestLoginRequest}
 
     /**
  * @summary Log in
  */
-export const usePostLogin = <TError = ErrorType<InternalPortRestErrResponse>,
+export const usePostLogin = <TError = ErrorType<RestErrResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postLogin>>, TError,PostLoginMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof postLogin>>,
@@ -263,6 +188,81 @@ export const usePostLogin = <TError = ErrorType<InternalPortRestErrResponse>,
         TContext
       > => {
       return useMutation(getPostLoginMutationOptions(options), queryClient);
+    }
+
+export const getDeletePersonalAccessTokenrevokeUrl = () => {
+
+
+
+
+  return `/api/personal-access-token:revoke`
+}
+
+/**
+ * Revokes the current access token from the Authorization header.
+ * @summary Revoke personal access token
+ */
+export const deletePersonalAccessTokenrevoke = async ( options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
+
+  return apiFetch<RestMessageResponse>(getDeletePersonalAccessTokenrevokeUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeletePersonalAccessTokenrevokeMutationKey = () => ['deletePersonalAccessTokenrevoke'] as const;
+
+export const getDeletePersonalAccessTokenrevokeMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePersonalAccessTokenrevoke>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePersonalAccessTokenrevoke>>, TError,void, TContext> => {
+
+const mutationKey = getDeletePersonalAccessTokenrevokeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePersonalAccessTokenrevoke>>, void> = () => {
+
+
+          return  deletePersonalAccessTokenrevoke(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePersonalAccessTokenrevokeMutationResult = NonNullable<Awaited<ReturnType<typeof deletePersonalAccessTokenrevoke>>>
+
+    export type DeletePersonalAccessTokenrevokeMutationError = ErrorType<RestErrResponse>
+
+
+    /**
+ * @summary Revoke personal access token
+ */
+export const useDeletePersonalAccessTokenrevoke = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePersonalAccessTokenrevoke>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deletePersonalAccessTokenrevoke>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeletePersonalAccessTokenrevokeMutationOptions(options), queryClient);
     }
 
 export const getPostSignupUrl = () => {
@@ -277,7 +277,7 @@ export const getPostSignupUrl = () => {
  * Creates a user with an email address and password.
  * @summary Sign up
  */
-export const postSignup = async (internalPortRestSignupRequest: InternalPortRestSignupRequest, options?: Parameters<typeof apiFetch>[1]): Promise<InternalPortRestUserResponse> => {
+export const postSignup = async (restSignupRequest: RestSignupRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestUserResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -293,12 +293,12 @@ export const postSignup = async (internalPortRestSignupRequest: InternalPortRest
     }
     return headers;
   };
-return apiFetch<InternalPortRestUserResponse>(getPostSignupUrl(),
+return apiFetch<RestUserResponse>(getPostSignupUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(internalPortRestSignupRequest)
+    body: JSON.stringify(restSignupRequest)
   }
 );}
 
@@ -308,7 +308,7 @@ return apiFetch<InternalPortRestUserResponse>(getPostSignupUrl(),
 
 export const getPostSignupMutationKey = () => ['postSignup'] as const;
 
-export const getPostSignupMutationOptions = <TError = ErrorType<InternalPortRestErrResponse>,
+export const getPostSignupMutationOptions = <TError = ErrorType<RestErrResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSignup>>, TError,PostSignupMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof postSignup>>, TError,PostSignupMutationVariables, TContext> => {
 
@@ -336,14 +336,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PostSignupMutationResult = NonNullable<Awaited<ReturnType<typeof postSignup>>>
-    export type PostSignupMutationBody = InternalPortRestSignupRequest
-    export type PostSignupMutationError = ErrorType<InternalPortRestErrResponse>
-    export type PostSignupMutationVariables = {data: InternalPortRestSignupRequest}
+    export type PostSignupMutationBody = RestSignupRequest
+    export type PostSignupMutationError = ErrorType<RestErrResponse>
+    export type PostSignupMutationVariables = {data: RestSignupRequest}
 
     /**
  * @summary Sign up
  */
-export const usePostSignup = <TError = ErrorType<InternalPortRestErrResponse>,
+export const usePostSignup = <TError = ErrorType<RestErrResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSignup>>, TError,PostSignupMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof postSignup>>,
@@ -366,9 +366,9 @@ export const getGetUsersMeUrl = () => {
  * Returns the authenticated user's profile.
  * @summary Get current user
  */
-export const getUsersMe = async ( options?: Parameters<typeof apiFetch>[1]): Promise<InternalPortRestUserResponse> => {
+export const getUsersMe = async ( options?: Parameters<typeof apiFetch>[1]): Promise<RestUserResponse> => {
 
-  return apiFetch<InternalPortRestUserResponse>(getGetUsersMeUrl(),
+  return apiFetch<RestUserResponse>(getGetUsersMeUrl(),
   {
     ...options,
     method: 'GET'
@@ -388,7 +388,7 @@ export const getGetUsersMeQueryKey = () => {
     }
 
 
-export const getGetUsersMeQueryOptions = <TData = Awaited<ReturnType<typeof getUsersMe>>, TError = ErrorType<InternalPortRestErrResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUsersMe>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetUsersMeQueryOptions = <TData = Awaited<ReturnType<typeof getUsersMe>>, TError = ErrorType<RestErrResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUsersMe>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -407,10 +407,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetUsersMeQueryResult = NonNullable<Awaited<ReturnType<typeof getUsersMe>>>
-export type GetUsersMeQueryError = ErrorType<InternalPortRestErrResponse>
+export type GetUsersMeQueryError = ErrorType<RestErrResponse>
 
 
-export function useGetUsersMe<TData = Awaited<ReturnType<typeof getUsersMe>>, TError = ErrorType<InternalPortRestErrResponse>>(
+export function useGetUsersMe<TData = Awaited<ReturnType<typeof getUsersMe>>, TError = ErrorType<RestErrResponse>>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUsersMe>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getUsersMe>>,
@@ -420,7 +420,7 @@ export function useGetUsersMe<TData = Awaited<ReturnType<typeof getUsersMe>>, TE
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetUsersMe<TData = Awaited<ReturnType<typeof getUsersMe>>, TError = ErrorType<InternalPortRestErrResponse>>(
+export function useGetUsersMe<TData = Awaited<ReturnType<typeof getUsersMe>>, TError = ErrorType<RestErrResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUsersMe>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getUsersMe>>,
@@ -430,7 +430,7 @@ export function useGetUsersMe<TData = Awaited<ReturnType<typeof getUsersMe>>, TE
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetUsersMe<TData = Awaited<ReturnType<typeof getUsersMe>>, TError = ErrorType<InternalPortRestErrResponse>>(
+export function useGetUsersMe<TData = Awaited<ReturnType<typeof getUsersMe>>, TError = ErrorType<RestErrResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUsersMe>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -438,7 +438,7 @@ export function useGetUsersMe<TData = Awaited<ReturnType<typeof getUsersMe>>, TE
  * @summary Get current user
  */
 
-export function useGetUsersMe<TData = Awaited<ReturnType<typeof getUsersMe>>, TError = ErrorType<InternalPortRestErrResponse>>(
+export function useGetUsersMe<TData = Awaited<ReturnType<typeof getUsersMe>>, TError = ErrorType<RestErrResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUsersMe>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -468,7 +468,7 @@ export const getPatchUsersMeUrl = () => {
  * Updates the authenticated user's first and last name.
  * @summary Update current user basic info
  */
-export const patchUsersMe = async (internalPortRestUserInfoUpdateRequest: InternalPortRestUserInfoUpdateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<InternalPortRestUserResponse> => {
+export const patchUsersMe = async (restUserInfoUpdateRequest: RestUserInfoUpdateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestUserResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -484,12 +484,12 @@ export const patchUsersMe = async (internalPortRestUserInfoUpdateRequest: Intern
     }
     return headers;
   };
-return apiFetch<InternalPortRestUserResponse>(getPatchUsersMeUrl(),
+return apiFetch<RestUserResponse>(getPatchUsersMeUrl(),
   {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(internalPortRestUserInfoUpdateRequest)
+    body: JSON.stringify(restUserInfoUpdateRequest)
   }
 );}
 
@@ -499,7 +499,7 @@ return apiFetch<InternalPortRestUserResponse>(getPatchUsersMeUrl(),
 
 export const getPatchUsersMeMutationKey = () => ['patchUsersMe'] as const;
 
-export const getPatchUsersMeMutationOptions = <TError = ErrorType<InternalPortRestErrResponse>,
+export const getPatchUsersMeMutationOptions = <TError = ErrorType<RestErrResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchUsersMe>>, TError,PatchUsersMeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof patchUsersMe>>, TError,PatchUsersMeMutationVariables, TContext> => {
 
@@ -527,14 +527,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PatchUsersMeMutationResult = NonNullable<Awaited<ReturnType<typeof patchUsersMe>>>
-    export type PatchUsersMeMutationBody = InternalPortRestUserInfoUpdateRequest
-    export type PatchUsersMeMutationError = ErrorType<InternalPortRestErrResponse>
-    export type PatchUsersMeMutationVariables = {data: InternalPortRestUserInfoUpdateRequest}
+    export type PatchUsersMeMutationBody = RestUserInfoUpdateRequest
+    export type PatchUsersMeMutationError = ErrorType<RestErrResponse>
+    export type PatchUsersMeMutationVariables = {data: RestUserInfoUpdateRequest}
 
     /**
  * @summary Update current user basic info
  */
-export const usePatchUsersMe = <TError = ErrorType<InternalPortRestErrResponse>,
+export const usePatchUsersMe = <TError = ErrorType<RestErrResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchUsersMe>>, TError,PatchUsersMeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof patchUsersMe>>,
@@ -557,7 +557,7 @@ export const getPatchUsersMePasswordUrl = () => {
  * Updates the authenticated user's password.
  * @summary Update current user password
  */
-export const patchUsersMePassword = async (internalPortRestUserPasswordUpdateRequest: InternalPortRestUserPasswordUpdateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<InternalPortRestMessageResponse> => {
+export const patchUsersMePassword = async (restUserPasswordUpdateRequest: RestUserPasswordUpdateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -573,12 +573,12 @@ export const patchUsersMePassword = async (internalPortRestUserPasswordUpdateReq
     }
     return headers;
   };
-return apiFetch<InternalPortRestMessageResponse>(getPatchUsersMePasswordUrl(),
+return apiFetch<RestMessageResponse>(getPatchUsersMePasswordUrl(),
   {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(internalPortRestUserPasswordUpdateRequest)
+    body: JSON.stringify(restUserPasswordUpdateRequest)
   }
 );}
 
@@ -588,7 +588,7 @@ return apiFetch<InternalPortRestMessageResponse>(getPatchUsersMePasswordUrl(),
 
 export const getPatchUsersMePasswordMutationKey = () => ['patchUsersMePassword'] as const;
 
-export const getPatchUsersMePasswordMutationOptions = <TError = ErrorType<InternalPortRestErrResponse>,
+export const getPatchUsersMePasswordMutationOptions = <TError = ErrorType<RestErrResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchUsersMePassword>>, TError,PatchUsersMePasswordMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof patchUsersMePassword>>, TError,PatchUsersMePasswordMutationVariables, TContext> => {
 
@@ -616,14 +616,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PatchUsersMePasswordMutationResult = NonNullable<Awaited<ReturnType<typeof patchUsersMePassword>>>
-    export type PatchUsersMePasswordMutationBody = InternalPortRestUserPasswordUpdateRequest
-    export type PatchUsersMePasswordMutationError = ErrorType<InternalPortRestErrResponse>
-    export type PatchUsersMePasswordMutationVariables = {data: InternalPortRestUserPasswordUpdateRequest}
+    export type PatchUsersMePasswordMutationBody = RestUserPasswordUpdateRequest
+    export type PatchUsersMePasswordMutationError = ErrorType<RestErrResponse>
+    export type PatchUsersMePasswordMutationVariables = {data: RestUserPasswordUpdateRequest}
 
     /**
  * @summary Update current user password
  */
-export const usePatchUsersMePassword = <TError = ErrorType<InternalPortRestErrResponse>,
+export const usePatchUsersMePassword = <TError = ErrorType<RestErrResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchUsersMePassword>>, TError,PatchUsersMePasswordMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof patchUsersMePassword>>,
@@ -646,7 +646,7 @@ export const getPatchUsersMeTimezoneUrl = () => {
  * Updates the authenticated user's IANA timezone.
  * @summary Update current user timezone
  */
-export const patchUsersMeTimezone = async (internalPortRestUserTimezoneUpdateRequest: InternalPortRestUserTimezoneUpdateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<InternalPortRestUserResponse> => {
+export const patchUsersMeTimezone = async (restUserTimezoneUpdateRequest: RestUserTimezoneUpdateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestUserResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -662,12 +662,12 @@ export const patchUsersMeTimezone = async (internalPortRestUserTimezoneUpdateReq
     }
     return headers;
   };
-return apiFetch<InternalPortRestUserResponse>(getPatchUsersMeTimezoneUrl(),
+return apiFetch<RestUserResponse>(getPatchUsersMeTimezoneUrl(),
   {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(internalPortRestUserTimezoneUpdateRequest)
+    body: JSON.stringify(restUserTimezoneUpdateRequest)
   }
 );}
 
@@ -677,7 +677,7 @@ return apiFetch<InternalPortRestUserResponse>(getPatchUsersMeTimezoneUrl(),
 
 export const getPatchUsersMeTimezoneMutationKey = () => ['patchUsersMeTimezone'] as const;
 
-export const getPatchUsersMeTimezoneMutationOptions = <TError = ErrorType<InternalPortRestErrResponse>,
+export const getPatchUsersMeTimezoneMutationOptions = <TError = ErrorType<RestErrResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchUsersMeTimezone>>, TError,PatchUsersMeTimezoneMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof patchUsersMeTimezone>>, TError,PatchUsersMeTimezoneMutationVariables, TContext> => {
 
@@ -705,14 +705,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PatchUsersMeTimezoneMutationResult = NonNullable<Awaited<ReturnType<typeof patchUsersMeTimezone>>>
-    export type PatchUsersMeTimezoneMutationBody = InternalPortRestUserTimezoneUpdateRequest
-    export type PatchUsersMeTimezoneMutationError = ErrorType<InternalPortRestErrResponse>
-    export type PatchUsersMeTimezoneMutationVariables = {data: InternalPortRestUserTimezoneUpdateRequest}
+    export type PatchUsersMeTimezoneMutationBody = RestUserTimezoneUpdateRequest
+    export type PatchUsersMeTimezoneMutationError = ErrorType<RestErrResponse>
+    export type PatchUsersMeTimezoneMutationVariables = {data: RestUserTimezoneUpdateRequest}
 
     /**
  * @summary Update current user timezone
  */
-export const usePatchUsersMeTimezone = <TError = ErrorType<InternalPortRestErrResponse>,
+export const usePatchUsersMeTimezone = <TError = ErrorType<RestErrResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchUsersMeTimezone>>, TError,PatchUsersMeTimezoneMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof patchUsersMeTimezone>>,

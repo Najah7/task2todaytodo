@@ -1,19 +1,19 @@
 import { useNavigate } from "react-router"
-import { usePostLogin, type InternalPortRestLoginRequest } from "~/api/generated/auth"
-import { savePAT } from "~/features/auth/lib/localStorage"
+import { usePostLogin, type RestLoginRequest } from "~/api/generated/auth"
+import { savePersonalAccessToken } from "~/features/auth/lib/localStorage"
 import { SessionError } from "~/features/auth/errors"
 
 export function useLogin() {
   const navigate = useNavigate()
   const mutation = usePostLogin({ mutation: { retry: false, gcTime: 0 } })
 
-  async function logIn(data: InternalPortRestLoginRequest) {
+  async function logIn(data: RestLoginRequest) {
     const response = await mutation.mutateAsync({ data })
-    if (typeof response?.token !== "string" || !response.token.trim()) {
+    if (typeof response?.personal_access_token !== "string" || !response.personal_access_token.trim()) {
       throw new SessionError("auth.error.tokenMissing")
     }
     try {
-      savePAT(response.token)
+      savePersonalAccessToken(response.personal_access_token)
     } catch {
       throw new SessionError("auth.error.tokenStorage")
     }

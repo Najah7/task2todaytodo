@@ -1,13 +1,13 @@
-export const ACCESS_TOKEN_KEY = "access_token"
+export const PERSONAL_ACCESS_TOKEN_KEY = "personal_access_token"
 
-export function getPAT(): string | null {
+export function getPersonalAccessToken(): string | null {
   try {
-    return localStorage.getItem(ACCESS_TOKEN_KEY)
+    return localStorage.getItem(PERSONAL_ACCESS_TOKEN_KEY)
   } catch {
     return null
   }
 }
 
-export function savePAT(token: string): void {
-  localStorage.setItem(ACCESS_TOKEN_KEY, token)
+export function savePersonalAccessToken(personalAccessToken: string): void {
+  localStorage.setItem(PERSONAL_ACCESS_TOKEN_KEY, personalAccessToken)
 }

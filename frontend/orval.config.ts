@@ -8,7 +8,7 @@ export default defineConfig({
   auth: {
     input: {
       target: "../backend/docs/swagger.json",
-      filters: { tags: ["Access Tokens", "Users"] },
+      filters: { tags: ["Personal Access Tokens", "Users"] },
     },
     output: {
       baseUrl: "/api",

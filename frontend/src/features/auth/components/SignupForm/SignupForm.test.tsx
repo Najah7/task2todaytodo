@@ -38,7 +38,7 @@ function renderForm() {
 
 test("retries only login after the account has been created", async () => {
   signup.mockResolvedValue({ user_id: "unit-user" })
-  login.mockRejectedValueOnce(new ApiError(503, {})).mockResolvedValueOnce({ token: "unit-token" })
+  login.mockRejectedValueOnce(new ApiError(503, {})).mockResolvedValueOnce({ personal_access_token: "unit-token" })
   renderForm()
   fireEvent.click(screen.getByRole("button", { name: "アカウントを作成" }))
   expect((await screen.findByRole("alert")).textContent).toContain("登録は完了しました")
@@ -56,6 +56,6 @@ test("shows backend validation failures without creating a session", async () =>
   fireEvent.click(screen.getByRole("button", { name: "アカウントを作成" }))
   expect(await screen.findByRole("alert")).toHaveProperty("textContent", "パスワードは8文字以上で、英大文字・英小文字・数字・記号を含めてください。")
   expect(login).not.toHaveBeenCalled()
-  expect(localStorage.getItem("access_token")).toBeNull()
+  expect(localStorage.getItem("personal_access_token")).toBeNull()
   expect(screen.getByRole("button", { name: "アカウントを作成" })).toHaveProperty("disabled", false)
 })
