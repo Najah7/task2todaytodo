@@ -18,7 +18,7 @@ type taskProgressTestRepositories struct{ Repositories }
 
 func (taskProgressTestRepositories) Tasks() TaskRepository { return taskProgressTestRepository{} }
 
-func (taskProgressTestRepository) ReadTaskProgressSources(_ context.Context, taskIDs, _ []string, _ time.Time) (dao.TaskProgressSources, error) {
+func (taskProgressTestRepository) ReadTaskProgressSources(_ context.Context, taskIDs []string, _ time.Time) (dao.TaskProgressSources, error) {
 	sources := dao.TaskProgressSources{Counts: map[string]dao.TaskProgressCounts{}, Statuses: map[string]dao.TaskStatus{}}
 	for _, id := range taskIDs {
 		sources.Statuses[id] = dao.TaskStatus{Value: "open"}

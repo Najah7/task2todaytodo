@@ -21,26 +21,16 @@ func NewAddTagToTaskUseCase(uow addTagToTaskUOW, logger logging.Logger) *AddTagT
 	return &AddTagToTaskUseCase{logger: logging.OrNop(logger), uow: uow}
 }
 
-func (uc *AddTagToTaskUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, tagID domain.TaskTagID) (err error) {
+func (uc *AddTagToTaskUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, tagID string) (err error) {
 	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "AddTagToTaskUseCase.Execute", err) }()
 
 	return uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		task, err := repos.Tasks().GetByUserIDWithPermission(ctx, userID, taskID, shared.TaskUpdate())
+		_, err := repos.Tasks().GetByUserIDWithPermission(ctx, userID, taskID, shared.TaskUpdate())
 		if err != nil {
 			return err
 		}
 
-		tags := repos.TaskTags()
-		tagOwner := domain.UserID(task.UserID)
-		tag, err := tags.GetByUserID(ctx, tagOwner, tagID)
-		if err != nil {
-			return err
-		}
-		if tag.UserID != task.UserID {
-			return ErrTaskTagNotFound
-		}
-
-		return tags.AddToTask(ctx, userID, taskID, tagID)
+		return repos.TaskTags().AddToTask(ctx, userID, taskID, tagID)
 	})
 
 }

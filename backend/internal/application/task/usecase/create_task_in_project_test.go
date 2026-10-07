@@ -12,29 +12,32 @@ import (
 )
 
 type createTaskInProjectProjectRepositoryFake struct {
-	ProjectRepository
-	project dao.Project
+	project TaskProject
 	err     error
 	calls   int
 	userID  domain.UserID
 	id      domain.ProjectID
 }
 
-func (repo *createTaskInProjectProjectRepositoryFake) GetByUserID(_ context.Context, userID domain.UserID, id domain.ProjectID) (dao.Project, error) {
+func (repo *createTaskInProjectProjectRepositoryFake) GetProjectByUserID(_ context.Context, userID, id string) (TaskProject, error) {
 	repo.calls++
-	repo.userID, repo.id = userID, id
+	repo.userID, repo.id = domain.UserID(userID), domain.ProjectID(id)
 	return repo.project, repo.err
 }
 
-func (repo *createTaskInProjectProjectRepositoryFake) LockByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.ProjectID, _ shared.Capability) (dao.Project, error) {
-	project, err := repo.GetByUserID(ctx, userID, id)
+func (repo *createTaskInProjectProjectRepositoryFake) LockProjectByUserIDWithPermission(ctx context.Context, userID, id string, _ shared.Capability) (TaskProject, error) {
+	project, err := repo.GetProjectByUserID(ctx, userID, id)
 	if err != nil {
-		return dao.Project{}, err
+		return TaskProject{}, err
 	}
-	if project.ID != string(id) || project.UserID != string(userID) {
-		return dao.Project{}, domain.ErrProjectNotFound
+	if project.ID != id || project.OwnerID != userID {
+		return TaskProject{}, ErrTaskProjectNotFound
 	}
 	return project, nil
+}
+
+func (repo *createTaskInProjectProjectRepositoryFake) GetProjectByUserIDWithPermission(ctx context.Context, userID, id string, _ shared.Capability) (TaskProject, error) {
+	return repo.GetProjectByUserID(ctx, userID, id)
 }
 
 type createTaskInProjectTaskRepositoryFake struct {
@@ -57,8 +60,10 @@ type createTaskInProjectRepositoriesFake struct {
 	tasks    *createTaskInProjectTaskRepositoryFake
 }
 
-func (repos *createTaskInProjectRepositoriesFake) Projects() ProjectRepository { return repos.projects }
-func (repos *createTaskInProjectRepositoriesFake) Tasks() TaskRepository       { return repos.tasks }
+func (repos *createTaskInProjectRepositoriesFake) TaskProjects() TaskProjectRepository {
+	return repos.projects
+}
+func (repos *createTaskInProjectRepositoriesFake) Tasks() TaskRepository { return repos.tasks }
 
 type createTaskInProjectUOWFake struct {
 	repos *createTaskInProjectRepositoriesFake
@@ -75,10 +80,10 @@ func (uow *createTaskInProjectUOWFake) Do(ctx context.Context, fn func(context.C
 }
 
 func newCreateTaskInProjectFakes() (*createTaskInProjectUOWFake, *createTaskInProjectProjectRepositoryFake, *createTaskInProjectTaskRepositoryFake) {
-	projectRepo := &createTaskInProjectProjectRepositoryFake{project: dao.Project{
-		ID:       "project-1",
-		UserID:   "user-1",
-		Priority: dao.Priority{Value: "high"},
+	projectRepo := &createTaskInProjectProjectRepositoryFake{project: TaskProject{
+		ID:              "project-1",
+		OwnerID:         "user-1",
+		DefaultPriority: "high",
 	}}
 	taskRepo := &createTaskInProjectTaskRepositoryFake{}
 	repos := &createTaskInProjectRepositoriesFake{projects: projectRepo, tasks: taskRepo}
@@ -143,8 +148,8 @@ func TestCreateTaskInProjectUseCaseExecuteReturnsNotFoundForMissingOrForeignProj
 		name  string
 		setup func(*createTaskInProjectProjectRepositoryFake)
 	}{
-		{name: "missing", setup: func(repo *createTaskInProjectProjectRepositoryFake) { repo.err = domain.ErrProjectNotFound }},
-		{name: "foreign owner", setup: func(repo *createTaskInProjectProjectRepositoryFake) { repo.project.UserID = "other-user" }},
+		{name: "missing", setup: func(repo *createTaskInProjectProjectRepositoryFake) { repo.err = ErrTaskProjectNotFound }},
+		{name: "foreign owner", setup: func(repo *createTaskInProjectProjectRepositoryFake) { repo.project.OwnerID = "other-user" }},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -152,8 +157,8 @@ func TestCreateTaskInProjectUseCaseExecuteReturnsNotFoundForMissingOrForeignProj
 			test.setup(projectRepo)
 
 			_, err := NewCreateTaskInProjectUseCase(uow, nil).Execute(context.Background(), validCreateTaskInProjectInput())
-			if !errors.Is(err, domain.ErrProjectNotFound) {
-				t.Errorf("Execute() error = %v, want %v", err, domain.ErrProjectNotFound)
+			if !errors.Is(err, ErrTaskProjectNotFound) {
+				t.Errorf("Execute() error = %v, want %v", err, ErrTaskProjectNotFound)
 			}
 			if taskRepo.calls != 0 {
 				t.Errorf("CreateInProject() calls = %d, want 0", taskRepo.calls)

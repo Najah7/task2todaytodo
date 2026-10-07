@@ -9,21 +9,25 @@ import (
 	"net/http"
 	"time"
 
+	projectdao "github.com/Najah7/task2todaytodo/internal/application/project/dao"
+	projectdomain "github.com/Najah7/task2todaytodo/internal/application/project/domain"
+	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
-	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
+	taskdao "github.com/Najah7/task2todaytodo/internal/application/task/dao"
+	taskdomain "github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
 	"github.com/Najah7/task2todaytodo/internal/port/rest/pagination"
 )
 
 type ProjectHandler struct {
-	projects   taskusecase.ProjectUseCases
+	projects   *projectusecase.UseCases
+	tasks      taskusecase.TaskUseCases
 	ID         shared.ID
 	pageTokens *pagination.Codec
 }
 
-func NewProjectHandler(projects taskusecase.ProjectUseCases, ID shared.ID, codecs ...*pagination.Codec) *ProjectHandler {
-	h := &ProjectHandler{projects: projects, ID: ID}
+func NewProjectHandler(projects *projectusecase.UseCases, tasks taskusecase.TaskUseCases, ID shared.ID, codecs ...*pagination.Codec) *ProjectHandler {
+	h := &ProjectHandler{projects: projects, tasks: tasks, ID: ID}
 	if len(codecs) > 0 {
 		h.pageTokens = codecs[0]
 	}
@@ -117,6 +121,18 @@ type ProjectTaskPageResponse struct {
 
 type ProjectUpdateRequest map[string]json.RawMessage
 
+// ProjectUpdateRequestSchema documents the nullable fields accepted by the PATCH endpoint.
+// The handler keeps a raw object so it can distinguish omitted fields from null.
+type ProjectUpdateRequestSchema struct {
+	Title       *string `json:"title"`
+	Goal        *string `json:"goal"`
+	Description *string `json:"description"`
+	Type        *string `json:"type"`
+	Priority    *string `json:"priority"`
+	StartDate   *string `json:"start_date"`
+	EndDate     *string `json:"end_date"`
+}
+
 var (
 	projectListFailure       = NewFailureErrSpec(ResourceProjects, ActionList, "Failed to list projects")
 	projectCreateTaskFailure = NewFailureErrSpec(ResourceTasks, ActionCreate, "Failed to create task")
@@ -150,11 +166,11 @@ func (h *ProjectHandler) List(w http.ResponseWriter, r *http.Request) {
 		writeListError(w, projectListFailure, err)
 		return
 	}
-	var cursor *taskusecase.CursorAnchor
+	var cursor *projectusecase.CursorAnchor
 	if request.Anchor != nil {
-		cursor = &taskusecase.CursorAnchor{At: request.Anchor.At, ID: request.Anchor.ID}
+		cursor = &projectusecase.CursorAnchor{At: request.Anchor.At, ID: request.Anchor.ID}
 	}
-	page, err := h.projects.List.ExecutePage(r.Context(), userID, taskusecase.CursorPageRequest{Size: request.Size, Anchor: cursor})
+	page, err := h.projects.List.ExecutePage(r.Context(), userID, projectusecase.CursorPageRequest{Size: request.Size, Anchor: cursor})
 	if err != nil {
 		writeProjectUseCaseError(w, projectListFailure, err)
 		return
@@ -203,8 +219,8 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		writeProjectError(w, http.StatusBadRequest, ErrSpecProjectsCreateFailed, projectInvalidDate("end_date"))
 		return
 	}
-	project, err := h.projects.Create.Execute(r.Context(), taskusecase.CreateProjectInput{
-		ID: domain.ProjectID(h.ID.Generate()), UserID: userID, Type: request.Type,
+	project, err := h.projects.Create.Execute(r.Context(), projectusecase.CreateProjectInput{
+		ID: projectdomain.ProjectID(h.ID.Generate()), UserID: userID, Type: request.Type,
 		Title: request.Title, Goal: request.Goal, Description: request.Description, Priority: request.Priority,
 		StartDate: startDate, EndDate: endDate,
 	})
@@ -250,18 +266,19 @@ func (h *ProjectHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // Update partially updates a project. Null clears nullable goal, description,
 // start_date, and end_date; omitted fields keep their stored values.
-// @Param If-Match header string true "Current project ETag, for example \"3\""
-// @Header 200 {string} ETag "Current project revision"
-// @Failure 409 {object} ErrResponse "Revision conflict"
-// @Failure 428 {object} ErrResponse "If-Match is required"
+//
+//	@Param		If-Match	header		string		true	"Current project ETag, for example \"3\""
+//	@Header		200			{string}	ETag		"Current project revision"
+//	@Failure	409			{object}	ErrResponse	"Revision conflict"
+//	@Failure	428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary	Update project
 //	@Tags		Projects
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		id		path		string					true	"Project ID"
-//	@Param		request	body		ProjectUpdateRequest	true	"Project fields to update"
+//	@Param		id		path		string						true	"Project ID"
+//	@Param		request	body		ProjectUpdateRequestSchema	true	"Project fields to update"
 //	@Success	200		{object}	ProjectResponse
 //	@Failure	400		{object}	ErrResponse
 //	@Failure	401		{object}	ErrResponse
@@ -340,9 +357,10 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 // Delete logically deletes a project and all of its tasks and child records.
-// @Param If-Match header string true "Current project ETag, for example \"3\""
-// @Failure 409 {object} ErrResponse "Revision conflict"
-// @Failure 428 {object} ErrResponse "If-Match is required"
+//
+//	@Param		If-Match	header		string		true	"Current project ETag, for example \"3\""
+//	@Failure	409			{object}	ErrResponse	"Revision conflict"
+//	@Failure	428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary	Delete project
 //	@Tags		Projects
@@ -410,7 +428,7 @@ func (h *ProjectHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 	if request.Anchor != nil {
 		cursor = &taskusecase.CursorAnchor{At: request.Anchor.At, ID: request.Anchor.ID}
 	}
-	page, err := h.projects.ListTasks.Execute(r.Context(), userID, projectID, taskusecase.CursorPageRequest{Size: request.Size, Anchor: cursor})
+	page, err := h.tasks.ListByProject.Execute(r.Context(), taskdomain.UserID(userID), taskdomain.ProjectID(projectID), taskusecase.CursorPageRequest{Size: request.Size, Anchor: cursor})
 	if err != nil {
 		writeProjectUseCaseError(w, projectListTasksFailure, err)
 		return
@@ -460,8 +478,8 @@ func (h *ProjectHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		writeProjectError(w, http.StatusBadRequest, projectCreateTaskFailure, projectInvalidDate("due_date"))
 		return
 	}
-	task, err := h.projects.CreateTask.Execute(r.Context(), taskusecase.CreateTaskInProjectInput{
-		ID: domain.TaskID(h.ID.Generate()), UserID: userID, ProjectID: projectID,
+	task, err := h.tasks.CreateInProject.Execute(r.Context(), taskusecase.CreateTaskInProjectInput{
+		ID: taskdomain.TaskID(h.ID.Generate()), UserID: taskdomain.UserID(userID), ProjectID: taskdomain.ProjectID(projectID),
 		Title: request.Title, Description: request.Description, DueDate: dueDate,
 		EstimatedMinutes: request.EstimatedMinutes, Priority: request.Priority,
 	})
@@ -474,10 +492,11 @@ func (h *ProjectHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 }
 
 // AddTask moves one task into a project the authenticated user may edit.
-// @Param If-Match header string true "Current task ETag, for example \"3\""
-// @Header 200 {string} ETag "Current task revision"
-// @Failure 409 {object} ErrResponse "Revision conflict"
-// @Failure 428 {object} ErrResponse "If-Match is required"
+//
+//	@Param		If-Match	header		string		true	"Current task ETag, for example \"3\""
+//	@Header		200			{string}	ETag		"Current task revision"
+//	@Failure	409			{object}	ErrResponse	"Revision conflict"
+//	@Failure	428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary	Add task to project
 //	@Tags		Projects
@@ -511,7 +530,7 @@ func (h *ProjectHandler) AddTask(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	task, err := h.projects.AddTask.Execute(r.Context(), userID, projectID, domain.TaskID(request.TaskID), expected)
+	task, err := h.tasks.AddToProject.Execute(r.Context(), taskdomain.UserID(userID), taskdomain.ProjectID(projectID), taskdomain.TaskID(request.TaskID), expected)
 	if err != nil {
 		writeProjectUseCaseError(w, projectAddTaskFailure, err)
 		return
@@ -521,10 +540,11 @@ func (h *ProjectHandler) AddTask(w http.ResponseWriter, r *http.Request) {
 }
 
 // RemoveTask detaches a task from a project the authenticated user may edit.
-// @Param If-Match header string true "Current task ETag, for example \"3\""
-// @Header 200 {string} ETag "Current task revision"
-// @Failure 409 {object} ErrResponse "Revision conflict"
-// @Failure 428 {object} ErrResponse "If-Match is required"
+//
+//	@Param		If-Match	header		string		true	"Current task ETag, for example \"3\""
+//	@Header		200			{string}	ETag		"Current task revision"
+//	@Failure	409			{object}	ErrResponse	"Revision conflict"
+//	@Failure	428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary	Remove task from project
 //	@Tags		Projects
@@ -557,7 +577,7 @@ func (h *ProjectHandler) RemoveTask(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	task, err := h.projects.RemoveTask.Execute(r.Context(), userID, projectID, domain.TaskID(request.TaskID), expected)
+	task, err := h.tasks.RemoveFromProject.Execute(r.Context(), taskdomain.UserID(userID), taskdomain.ProjectID(projectID), taskdomain.TaskID(request.TaskID), expected)
 	if err != nil {
 		writeProjectUseCaseError(w, projectRemoveTaskFailure, err)
 		return
@@ -566,21 +586,21 @@ func (h *ProjectHandler) RemoveTask(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, projectTaskResponse(task))
 }
 
-func projectUserID(ctx context.Context) (domain.UserID, bool) {
+func projectUserID(ctx context.Context) (projectdomain.UserID, bool) {
 	id, ok := ctx.Value(UserIDContextKey).(string)
 	if !ok || id == "" {
 		return "", false
 	}
-	return domain.UserID(id), true
+	return projectdomain.UserID(id), true
 }
 
-func projectPathID(w http.ResponseWriter, r *http.Request, spec ErrSpec) (domain.ProjectID, bool) {
+func projectPathID(w http.ResponseWriter, r *http.Request, spec ErrSpec) (projectdomain.ProjectID, bool) {
 	value := r.PathValue("id")
 	if value == "" {
 		writeProjectError(w, http.StatusBadRequest, spec, projectInvalidBody("id", "required", "Project ID is required"))
 		return "", false
 	}
-	return domain.ProjectID(value), true
+	return projectdomain.ProjectID(value), true
 }
 
 func projectTaskAssignment(w http.ResponseWriter, r *http.Request, spec ErrSpec) (ProjectTaskAssignmentRequest, bool) {
@@ -618,18 +638,18 @@ func onlyProjectPatchFields(fields ProjectUpdateRequest) bool {
 	return true
 }
 
-func patchProjectField[T any](fields ProjectUpdateRequest, field string, decode func(json.RawMessage) (T, error)) (taskusecase.PatchField[T], error) {
+func patchProjectField[T any](fields ProjectUpdateRequest, field string, decode func(json.RawMessage) (T, error)) (projectusecase.PatchField[T], error) {
 	raw, present := fields[field]
 	if !present {
-		return taskusecase.PatchField[T]{}, nil
+		return projectusecase.PatchField[T]{}, nil
 	}
-	patch := taskusecase.PatchField[T]{Present: true}
+	patch := projectusecase.PatchField[T]{Present: true}
 	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
 		return patch, nil
 	}
 	value, err := decode(raw)
 	if err != nil {
-		return taskusecase.PatchField[T]{}, err
+		return projectusecase.PatchField[T]{}, err
 	}
 	patch.Value = &value
 	return patch, nil
@@ -668,7 +688,7 @@ func parseProjectTaskDueDate(value *string) (time.Time, error) {
 	return parsed, err
 }
 
-func projectResponse(project dao.Project) ProjectResponse {
+func projectResponse(project projectdao.Project) ProjectResponse {
 	return ProjectResponse{
 		ID:     project.ID,
 		UserID: project.UserID,
@@ -680,7 +700,7 @@ func projectResponse(project dao.Project) ProjectResponse {
 	}
 }
 
-func projectTaskResponse(task dao.Task) ProjectTaskResponse {
+func projectTaskResponse(task taskdao.Task) ProjectTaskResponse {
 	return ProjectTaskResponse{
 		ID: task.ID, UserID: task.UserID, AssigneeID: task.AssigneeID, Revision: task.Revision,
 		ProjectID: task.ProjectID, Title: task.Title, Description: task.Description,
@@ -715,31 +735,31 @@ func writeProjectUseCaseError(w http.ResponseWriter, spec ErrSpec, err error) {
 
 func projectUseCaseError(err error) (int, ErrDetail) {
 	switch {
-	case errors.Is(err, taskusecase.ErrRevisionConflict):
+	case errors.Is(err, projectusecase.ErrRevisionConflict), errors.Is(err, taskusecase.ErrRevisionConflict):
 		return http.StatusConflict, NewErrDetail("If-Match", "revision_conflict", "The resource changed since the supplied revision")
-	case errors.Is(err, taskusecase.ErrPermissionDenied):
+	case errors.Is(err, projectusecase.ErrPermissionDenied), errors.Is(err, taskusecase.ErrPermissionDenied):
 		return http.StatusForbidden, NewErrDetail("", "permission_denied", "The required project permission is not granted")
-	case errors.Is(err, domain.ErrProjectNotFound), errors.Is(err, taskusecase.ErrTaskNotFound), errors.Is(err, taskusecase.ErrTaskProjectNotFound):
+	case errors.Is(err, projectdomain.ErrProjectNotFound), errors.Is(err, taskusecase.ErrTaskNotFound), errors.Is(err, taskusecase.ErrTaskProjectNotFound):
 		return http.StatusNotFound, NewErrDetail("id", "not_found", "Project or task was not found")
 	case IsUniqueConstraint(err, "projects_pkey"):
 		return http.StatusConflict, NewErrDetail("id", "project_id_conflict", "Project ID already exists")
 	case IsUniqueConstraint(err, "tasks_pkey"):
 		return http.StatusConflict, NewErrDetail("id", "task_id_conflict", "Task ID already exists")
-	case errors.Is(err, domain.ErrProjectIDEmpty):
+	case errors.Is(err, projectdomain.ErrProjectIDEmpty):
 		return http.StatusBadRequest, projectInvalidBody("id", "required", "Project ID is required")
-	case errors.Is(err, domain.ErrTaskEstimatedMinutesInvalid):
+	case errors.Is(err, taskdomain.ErrTaskEstimatedMinutesInvalid):
 		return http.StatusBadRequest, projectInvalidBody("estimated_minutes", "invalid_estimated_minutes", "Estimated minutes must be non-negative")
-	case errors.Is(err, domain.ErrProjectTitleEmpty), errors.Is(err, domain.ErrTaskTitleEmpty):
+	case errors.Is(err, projectdomain.ErrProjectTitleEmpty), errors.Is(err, taskdomain.ErrTaskTitleEmpty):
 		return http.StatusBadRequest, projectInvalidBody("title", "required", "Title is required")
-	case errors.Is(err, domain.ErrProjectTypeEmpty), errors.Is(err, domain.ErrProjectTypeInvalid):
+	case errors.Is(err, projectdomain.ErrProjectTypeEmpty), errors.Is(err, projectdomain.ErrProjectTypeInvalid):
 		return http.StatusBadRequest, projectInvalidBody("type", "invalid_project_type", "Type is not supported")
-	case errors.Is(err, domain.ErrTaskPriorityEmpty), errors.Is(err, domain.ErrTaskPriorityInvalid):
+	case errors.Is(err, taskdomain.ErrTaskPriorityEmpty), errors.Is(err, taskdomain.ErrTaskPriorityInvalid), errors.Is(err, projectdomain.ErrProjectPriorityEmpty), errors.Is(err, projectdomain.ErrProjectPriorityInvalid):
 		return http.StatusBadRequest, projectInvalidBody("priority", "invalid_priority", "Priority is not supported")
-	case errors.Is(err, domain.ErrProjectEndDateBeforeStartDate):
+	case errors.Is(err, projectdomain.ErrProjectEndDateBeforeStartDate):
 		return http.StatusBadRequest, projectInvalidBody("end_date", "invalid_date_range", "End date must be on or after start date")
-	case errors.Is(err, taskusecase.ErrProjectPatchRequiredFieldNull):
+	case errors.Is(err, projectusecase.ErrProjectPatchRequiredFieldNull):
 		return http.StatusBadRequest, projectInvalidBody("", "null_not_allowed", "Required fields cannot be null")
-	case errors.Is(err, taskusecase.ErrInvalidTaskPage):
+	case errors.Is(err, taskusecase.ErrInvalidTaskPage), errors.Is(err, projectusecase.ErrInvalidProjectPage):
 		return http.StatusBadRequest, projectInvalidBody("page_size", "invalid_pagination", "Page size or cursor is invalid")
 	default:
 		return http.StatusInternalServerError, ErrDetailInternalServerError

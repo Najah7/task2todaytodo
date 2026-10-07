@@ -35,14 +35,14 @@ func (uc *CreateTaskInProjectUseCase) Execute(ctx context.Context, input CreateT
 
 	var created dao.Task
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		project, err := repos.Projects().LockByUserIDWithPermission(ctx, input.UserID, input.ProjectID, shared.TaskCreate())
+		project, err := repos.TaskProjects().LockProjectByUserIDWithPermission(ctx, string(input.UserID), string(input.ProjectID), shared.TaskCreate())
 		if err != nil {
 			return err
 		}
 
 		priorityValue := input.Priority
 		if priorityValue == "" {
-			priorityValue = project.Priority.Value
+			priorityValue = project.DefaultPriority
 		}
 		priority, err := domain.NewTaskPriority(priorityValue)
 		if err != nil {
@@ -69,8 +69,8 @@ func (uc *CreateTaskInProjectUseCase) Execute(ctx context.Context, input CreateT
 			return err
 		}
 
-		task.UserID = domain.UserID(project.UserID)
-		task, err = task.AssignTo(domain.UserID(project.UserID))
+		task.UserID = domain.UserID(project.OwnerID)
+		task, err = task.AssignTo(domain.UserID(project.OwnerID))
 		if err != nil {
 			return err
 		}

@@ -32,10 +32,8 @@ func (r *UserRepository) WithTx(tx pgx.Tx) *UserRepository {
 	}
 }
 
-func (r UserRepository) loadTimezone(ctx context.Context, userID string) (string, error) {
-	var timezone string
-	err := r.db.QueryRow(ctx, "SELECT timezone FROM users WHERE id = $1", userID).Scan(&timezone)
-	return timezone, err
+func (r UserRepository) GetTimezone(ctx context.Context, userID string) (string, error) {
+	return r.queries.GetUserTimezone(ctx, userID)
 }
 
 func recordToUserDAO(record sqlc.User) dao.User {
@@ -56,7 +54,7 @@ func (r UserRepository) Get(ctx context.Context, id domain.UserID) (dao.User, er
 		return dao.User{}, err
 	}
 	result := recordToUserDAO(u)
-	result.Timezone, err = r.loadTimezone(ctx, u.ID)
+	result.Timezone, err = r.GetTimezone(ctx, u.ID)
 	if err != nil {
 		return dao.User{}, err
 	}
@@ -69,7 +67,7 @@ func (r UserRepository) GetByEmail(ctx context.Context, email string) (dao.User,
 		return dao.User{}, err
 	}
 	result := recordToUserDAO(u)
-	result.Timezone, err = r.loadTimezone(ctx, u.ID)
+	result.Timezone, err = r.GetTimezone(ctx, u.ID)
 	if err != nil {
 		return dao.User{}, err
 	}
@@ -88,7 +86,7 @@ func (r UserRepository) Create(ctx context.Context, user domain.User) (dao.User,
 		return dao.User{}, err
 	}
 	result := recordToUserDAO(u)
-	result.Timezone, err = r.loadTimezone(ctx, u.ID)
+	result.Timezone, err = r.GetTimezone(ctx, u.ID)
 	if err != nil {
 		return dao.User{}, err
 	}
@@ -107,7 +105,7 @@ func (r UserRepository) Update(ctx context.Context, user domain.User) (dao.User,
 		return dao.User{}, err
 	}
 	result := recordToUserDAO(u)
-	result.Timezone, err = r.loadTimezone(ctx, u.ID)
+	result.Timezone, err = r.GetTimezone(ctx, u.ID)
 	if err != nil {
 		return dao.User{}, err
 	}

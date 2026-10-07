@@ -1,20 +1,19 @@
 package rest
 
 const (
-	ResourceAccessTokens    = "access_tokens"
-	ResourceAuth            = "auth"
-	ResourceProjects        = "projects"
-	ResourceProjectTypes    = "project_types"
-	ResourceResponses       = "responses"
-	ResourceTaskSchedules   = "task_schedules"
-	ResourceTaskFrequencies = "task_frequencies"
-	ResourceTasks           = "tasks"
-	ResourceTodoItems       = "todo_items"
-	ResourceTaskPriorities  = "task_priorities"
-	ResourceTaskStatuses    = "task_statuses"
-	ResourceUsers           = "users"
-	ResourceRoles           = "roles"
-	ResourcePermissions     = "permissions"
+	ResourcePersonalAccessTokens = "personal_access_tokens"
+	ResourceAuth                 = "auth"
+	ResourceProjects             = "projects"
+	ResourceProjectTypes         = "project_types"
+	ResourceResponses            = "responses"
+	ResourceTaskFrequencies      = "task_frequencies"
+	ResourceTasks                = "tasks"
+	ResourceTodoItems            = "todo_items"
+	ResourceTaskPriorities       = "task_priorities"
+	ResourceTaskStatuses         = "task_statuses"
+	ResourceUsers                = "users"
+	ResourceRoles                = "roles"
+	ResourcePermissions          = "permissions"
 
 	ActionAuthenticate              = "authenticate"
 	ActionCreate                    = "create"
@@ -35,54 +34,51 @@ const (
 	DetailInvalidCredMsg            = "Invalid email or password"
 	DetailUnauthorizedCode          = "unauthorized"
 	DetailUnauthorizedMsg           = "Unauthorized"
-	DetailMissingTokenCode          = "missing_access_token"
+	DetailMissingTokenCode          = "missing_personal_access_token"
 	DetailMissingTokenMsg           = "Missing access token"
-	DetailInvalidTokenCode          = "invalid_access_token"
+	DetailInvalidTokenCode          = "invalid_personal_access_token"
 	DetailInvalidTokenMsg           = "Invalid access token"
 	DetailUserLookupCode            = "failed_to_get_user_by_email"
 	DetailUserLookupMsg             = "Failed to get user by email"
-	DetailMissingOrInvalidTokenCode = "missing_or_invalid_access_token"
+	DetailMissingOrInvalidTokenCode = "missing_or_invalid_personal_access_token"
 	DetailInternalErrorCode         = "internal_error"
 	DetailInternalErrorMsg          = "An unexpected error occurred"
 )
 
 var (
-	ErrSpecAccessTokensGenerateFailed = NewFailureErrSpec(ResourceAccessTokens, ActionGenerate, "Failed to generate access token")
-	ErrSpecAccessTokensRevokeFailed   = NewFailureErrSpec(ResourceAccessTokens, ActionRevoke, "Failed to revoke access token")
-	ErrSpecAuthAuthenticateFailed     = NewFailureErrSpec(ResourceAuth, ActionAuthenticate, "Failed to authenticate")
-	ErrSpecProjectsCreateFailed       = NewFailureErrSpec(ResourceProjects, ActionCreate, "Failed to create project")
-	ErrSpecProjectsGetFailed          = NewFailureErrSpec(ResourceProjects, ActionGet, "Failed to get project")
-	ErrSpecProjectsUpdateFailed       = NewFailureErrSpec(ResourceProjects, ActionUpdate, "Failed to update project")
-	ErrSpecProjectsDeleteFailed       = NewFailureErrSpec(ResourceProjects, ActionDelete, "Failed to delete project")
-	ErrSpecProjectTypesListFailed     = NewFailureErrSpec(ResourceProjectTypes, ActionList, "Failed to list project types")
-	ErrSpecResponsesMarshalFailed     = NewFailureErrSpec(ResourceResponses, ActionMarshal, "Failed to marshal response")
-	ErrSpecTaskSchedulesCreateFailed  = NewFailureErrSpec(ResourceTaskSchedules, ActionCreate, "Failed to create task schedule")
-	ErrSpecTaskSchedulesUpdateFailed  = NewFailureErrSpec(ResourceTaskSchedules, ActionUpdate, "Failed to update task schedule")
-	ErrSpecTaskSchedulesDeleteFailed  = NewFailureErrSpec(ResourceTaskSchedules, ActionDelete, "Failed to delete task schedule")
-	ErrSpecTaskFrequenciesListFailed  = NewFailureErrSpec(ResourceTaskFrequencies, ActionList, "Failed to list task frequencies")
-	ErrSpecTasksCreateFailed          = NewFailureErrSpec(ResourceTasks, ActionCreate, "Failed to create task")
-	ErrSpecTasksGetFailed             = NewFailureErrSpec(ResourceTasks, ActionGet, "Failed to get task")
-	ErrSpecTasksUpdateFailed          = NewFailureErrSpec(ResourceTasks, ActionUpdate, "Failed to update task")
-	ErrSpecTasksDeleteFailed          = NewFailureErrSpec(ResourceTasks, ActionDelete, "Failed to delete task")
-	ErrSpecTodoItemsCreateFailed      = NewFailureErrSpec(ResourceTodoItems, ActionCreate, "Failed to create todo item")
-	ErrSpecTodoItemsUpdateFailed      = NewFailureErrSpec(ResourceTodoItems, ActionUpdate, "Failed to update todo item")
-	ErrSpecTodoItemsDeleteFailed      = NewFailureErrSpec(ResourceTodoItems, ActionDelete, "Failed to delete todo item")
-	ErrSpecTaskPrioritiesListFailed   = NewFailureErrSpec(ResourceTaskPriorities, ActionList, "Failed to list task priorities")
-	ErrSpecTaskStatusesListFailed     = NewFailureErrSpec(ResourceTaskStatuses, ActionList, "Failed to list task statuses")
-	ErrSpecUsersCreateFailed          = NewFailureErrSpec(ResourceUsers, ActionCreate, "Failed to create user")
-	ErrSpecUsersGetFailed             = NewFailureErrSpec(ResourceUsers, ActionGet, "Failed to get user")
-	ErrSpecUsersUpdateBasicInfoFailed = NewFailureErrSpec(ResourceUsers, ActionUpdateBasicInfo, "Failed to update user")
-	ErrSpecUsersUpdateTimezoneFailed  = NewFailureErrSpec(ResourceUsers, ActionUpdateTimezone, "Failed to update user timezone")
-	ErrSpecUsersUpdatePasswordFailed  = NewFailureErrSpec(ResourceUsers, ActionUpdatePassword, "Failed to update password")
+	ErrSpecPersonalAccessTokensGenerateFailed = NewFailureErrSpec(ResourcePersonalAccessTokens, ActionGenerate, "Failed to generate access token")
+	ErrSpecPersonalAccessTokensRevokeFailed   = NewFailureErrSpec(ResourcePersonalAccessTokens, ActionRevoke, "Failed to revoke access token")
+	ErrSpecAuthAuthenticateFailed             = NewFailureErrSpec(ResourceAuth, ActionAuthenticate, "Failed to authenticate")
+	ErrSpecProjectsCreateFailed               = NewFailureErrSpec(ResourceProjects, ActionCreate, "Failed to create project")
+	ErrSpecProjectsGetFailed                  = NewFailureErrSpec(ResourceProjects, ActionGet, "Failed to get project")
+	ErrSpecProjectsUpdateFailed               = NewFailureErrSpec(ResourceProjects, ActionUpdate, "Failed to update project")
+	ErrSpecProjectsDeleteFailed               = NewFailureErrSpec(ResourceProjects, ActionDelete, "Failed to delete project")
+	ErrSpecProjectTypesListFailed             = NewFailureErrSpec(ResourceProjectTypes, ActionList, "Failed to list project types")
+	ErrSpecResponsesMarshalFailed             = NewFailureErrSpec(ResourceResponses, ActionMarshal, "Failed to marshal response")
+	ErrSpecTaskFrequenciesListFailed          = NewFailureErrSpec(ResourceTaskFrequencies, ActionList, "Failed to list task frequencies")
+	ErrSpecTasksCreateFailed                  = NewFailureErrSpec(ResourceTasks, ActionCreate, "Failed to create task")
+	ErrSpecTasksGetFailed                     = NewFailureErrSpec(ResourceTasks, ActionGet, "Failed to get task")
+	ErrSpecTasksUpdateFailed                  = NewFailureErrSpec(ResourceTasks, ActionUpdate, "Failed to update task")
+	ErrSpecTasksDeleteFailed                  = NewFailureErrSpec(ResourceTasks, ActionDelete, "Failed to delete task")
+	ErrSpecTodoItemsCreateFailed              = NewFailureErrSpec(ResourceTodoItems, ActionCreate, "Failed to create todo item")
+	ErrSpecTodoItemsUpdateFailed              = NewFailureErrSpec(ResourceTodoItems, ActionUpdate, "Failed to update todo item")
+	ErrSpecTodoItemsDeleteFailed              = NewFailureErrSpec(ResourceTodoItems, ActionDelete, "Failed to delete todo item")
+	ErrSpecTaskPrioritiesListFailed           = NewFailureErrSpec(ResourceTaskPriorities, ActionList, "Failed to list task priorities")
+	ErrSpecTaskStatusesListFailed             = NewFailureErrSpec(ResourceTaskStatuses, ActionList, "Failed to list task statuses")
+	ErrSpecUsersCreateFailed                  = NewFailureErrSpec(ResourceUsers, ActionCreate, "Failed to create user")
+	ErrSpecUsersGetFailed                     = NewFailureErrSpec(ResourceUsers, ActionGet, "Failed to get user")
+	ErrSpecUsersUpdateBasicInfoFailed         = NewFailureErrSpec(ResourceUsers, ActionUpdateBasicInfo, "Failed to update user")
+	ErrSpecUsersUpdateTimezoneFailed          = NewFailureErrSpec(ResourceUsers, ActionUpdateTimezone, "Failed to update user timezone")
+	ErrSpecUsersUpdatePasswordFailed          = NewFailureErrSpec(ResourceUsers, ActionUpdatePassword, "Failed to update password")
 
-	ErrDetailInvalidRequestBody          = NewErrDetail("", DetailInvalidBodyCode, DetailInvalidBodyMsg)
-	ErrDetailInvalidCredentials          = NewErrDetail("", DetailInvalidCredCode, DetailInvalidCredMsg)
-	ErrDetailUnauthorized                = NewErrDetail("", DetailUnauthorizedCode, DetailUnauthorizedMsg)
-	ErrDetailMissingAccessToken          = NewErrDetail("", DetailMissingTokenCode, DetailMissingTokenMsg)
-	ErrDetailInvalidAccessToken          = NewErrDetail("", DetailInvalidTokenCode, DetailInvalidTokenMsg)
-	ErrDetailFailedUserLookup            = NewErrDetail("", DetailUserLookupCode, DetailUserLookupMsg)
-	ErrDetailMissingOrInvalidAccessToken = NewErrDetail("", DetailMissingTokenCode, DetailMissingTokenMsg)
-	ErrDetailInternalServerError         = NewErrDetail("", DetailInternalErrorCode, DetailInternalErrorMsg)
+	ErrDetailInvalidRequestBody                  = NewErrDetail("", DetailInvalidBodyCode, DetailInvalidBodyMsg)
+	ErrDetailInvalidCredentials                  = NewErrDetail("", DetailInvalidCredCode, DetailInvalidCredMsg)
+	ErrDetailUnauthorized                        = NewErrDetail("", DetailUnauthorizedCode, DetailUnauthorizedMsg)
+	ErrDetailMissingPersonalAccessToken          = NewErrDetail("", DetailMissingTokenCode, DetailMissingTokenMsg)
+	ErrDetailInvalidPersonalAccessToken          = NewErrDetail("", DetailInvalidTokenCode, DetailInvalidTokenMsg)
+	ErrDetailFailedUserLookup                    = NewErrDetail("", DetailUserLookupCode, DetailUserLookupMsg)
+	ErrDetailMissingOrInvalidPersonalAccessToken = NewErrDetail("", DetailMissingTokenCode, DetailMissingTokenMsg)
+	ErrDetailInternalServerError                 = NewErrDetail("", DetailInternalErrorCode, DetailInternalErrorMsg)
 )
 
 type ErrSpec struct {

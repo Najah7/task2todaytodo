@@ -16,25 +16,25 @@ func NewAuthMiddleware(authenticate *authusecase.AuthenticateUseCase) func(http.
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
 			if !strings.HasPrefix(authHeader, bearerPrefix) {
-				rest.WriteError(w, http.StatusUnauthorized, rest.ErrSpecAuthAuthenticateFailed, rest.ErrDetailMissingAccessToken)
+				rest.WriteError(w, http.StatusUnauthorized, rest.ErrSpecAuthAuthenticateFailed, rest.ErrDetailMissingPersonalAccessToken)
 				return
 			}
 
 			token := strings.TrimSpace(strings.TrimPrefix(authHeader, bearerPrefix))
 			if token == "" {
-				rest.WriteError(w, http.StatusUnauthorized, rest.ErrSpecAuthAuthenticateFailed, rest.ErrDetailMissingAccessToken)
+				rest.WriteError(w, http.StatusUnauthorized, rest.ErrSpecAuthAuthenticateFailed, rest.ErrDetailMissingPersonalAccessToken)
 				return
 			}
 
 			ctx := r.Context()
 			userID, err := authenticate.Execute(ctx, token)
 			if err != nil {
-				rest.WriteError(w, http.StatusUnauthorized, rest.ErrSpecAuthAuthenticateFailed, rest.ErrDetailInvalidAccessToken)
+				rest.WriteError(w, http.StatusUnauthorized, rest.ErrSpecAuthAuthenticateFailed, rest.ErrDetailInvalidPersonalAccessToken)
 				return
 			}
 
 			ctx = context.WithValue(ctx, rest.UserIDContextKey, string(userID))
-			ctx = context.WithValue(ctx, rest.AccessTokenContextKey, token)
+			ctx = context.WithValue(ctx, rest.PersonalAccessTokenContextKey, token)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

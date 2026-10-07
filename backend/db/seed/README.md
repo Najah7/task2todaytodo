@@ -36,9 +36,9 @@ Open `http://localhost:8080/swagger/index.html`.
 | `GET /api/tasks/00000000000000000000000201/todo-items?page_size=2` | Ordered completed and incomplete TodoItems |
 | `GET /api/tasks/00000000000000000000000204/todo-items` | Weekly recurring TodoItem occurrences and frequencies |
 | `GET /api/tasks/00000000000000000000000220/todo-items` | TodoItem for generated task; use `page_size=1` to inspect pagination |
-| `GET /api/tasks/00000000000000000000000201/schedules?page_size=2` | Weekly schedule series, changed occurrence, and timezone |
-| `GET /api/tasks/00000000000000000000000207/schedules` | One-off fixed schedule |
-| `GET /api/tasks/00000000000000000000000220/schedules` | Additional generated one-off schedule |
+| `GET /api/schedules?page_size=2` | Weekly schedule series, changed occurrence, and timezone |
+| `GET /api/projects/00000000000000000000000101/schedules` | Project-scoped schedules, including recurring and one-off work |
+| `GET /api/schedules` | Personal schedules, filtered by assignee |
 | `GET /api/task-tags?page_size=2` | User-owned tags |
 
 List requests also accept a `fields` mask. For example, try

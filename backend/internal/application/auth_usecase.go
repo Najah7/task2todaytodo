@@ -17,12 +17,12 @@ func NewUserUseCases(authStore AuthStore, logger logging.Logger) authusecase.Use
 	}
 }
 
-func NewAccessTokenUseCases(authStore AuthStore, logger logging.Logger) authusecase.AccessTokenUseCases {
-	return authusecase.AccessTokenUseCases{
-		Authenticate: authusecase.NewAuthenticateUseCase(authStore.AccessTokens, logger),
+func NewPersonalAccessTokenUseCases(authStore AuthStore, logger logging.Logger) authusecase.PersonalAccessTokenUseCases {
+	return authusecase.PersonalAccessTokenUseCases{
+		Authenticate: authusecase.NewAuthenticateUseCase(authStore.PersonalAccessTokens, logger),
 		Login:        authusecase.NewLoginUserUseCase(authStore.Users, logger),
-		Generate:     authusecase.NewGenerateAccessTokenUseCase(authStore.AccessTokens, logger),
-		Revoke:       authusecase.NewRevokeAccessTokenUseCase(authStore.AccessTokens, logger),
+		Generate:     authusecase.NewGeneratePersonalAccessTokenUseCase(authStore.PersonalAccessTokens, logger),
+		Revoke:       authusecase.NewRevokePersonalAccessTokenUseCase(authStore.PersonalAccessTokens, logger),
 	}
 }
 

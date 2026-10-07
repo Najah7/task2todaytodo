@@ -1,6 +1,6 @@
 package rest
 
 const (
-	AccessTokenContextKey = "accessToken"
-	UserIDContextKey      = "userID"
+	PersonalAccessTokenContextKey = "personalAccessToken"
+	UserIDContextKey              = "userID"
 )

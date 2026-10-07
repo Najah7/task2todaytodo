@@ -18,7 +18,8 @@ internal/application/shared/pagination/  Transport-independent List page policy
 internal/config/                          Process environment loading and validation
 internal/logging/                         Structured logger contract and slog implementation
 internal/telemetry/                       OpenTelemetry resource, propagation and trace exporter
-internal/application/task/time.go        Task-context calendar and wall-time helpers
+internal/application/shared/calendar/    Shared calendar and wall-time helpers
+internal/application/shared/recurrence/  Shared recurrence values and occurrence rules
 internal/port/rest/                      HTTP handlers, response and error mapping
 internal/port/rest/middleware/           HTTP middleware
 internal/port/rest/pagination/           Query parsing and encrypted page tokens
@@ -26,8 +27,8 @@ internal/port/rest/fieldmask/            Read response field masks
 internal/port/adapter/                   External adapters, including ULID and UUID
 ```
 
-`<context>` is `auth` or `task`. HTTP handlers for both contexts live in the
-single `internal/port/rest` package.
+`<context>` is `auth`, `project`, `task`, `schedule`, or `tag`. HTTP handlers
+for these contexts live in the single `internal/port/rest` package.
 
 `db/queries` + `sqlc.yml` = sqlc source. `/db/sqlc` = generated.
 
@@ -38,6 +39,7 @@ $ make help
 Available commands:
   make go-fmt                  Format Go source files.
   make test                    Run Go tests.
+  make test-integration        Start isolated PostgreSQL and run integration tests.
   make build                   Build the API binary.
   make run                     Run the app service with Docker Compose.
   make dev                     Run the API with Air live reload in Docker.
@@ -78,15 +80,29 @@ query parsing, field masks, and cursor-token encoding belong to `internal/port/r
 ### Context dependencies
 
 ```text
-application/auth, application/task -> application/shared
-port/rest -> application/auth, application/task, application/shared
+application/auth, application/project, application/task,
+application/schedule, application/tag -> application/shared
+port/rest -> application/auth, application/project, application/task,
+             application/schedule, application/tag, application/shared
 cmd/api -> application root, port/rest, port/adapter
 ```
 
-- Do not import one context from another: `task -> auth`, `auth -> task`, and
-  `shared -> auth/task` are forbidden.
-- A context may import `application/shared`, but shared must not depend on a
-  context or on `port/rest`.
+- The import boundary is between business contexts: code under
+  `internal/application/<context>` must not import another context's packages.
+  Packages within a context may depend on that context's own layers according
+  to the layer rule above. The application root may import multiple contexts
+  to compose repositories, usecases, and UOWs; `port/rest` may consume multiple
+  contexts as the transport boundary; integration scenarios under
+  `tests/integration` may exercise multiple contexts. These are explicit
+  composition, transport, and test boundaries, not business-context
+  dependencies.
+- `application/shared` may contain contracts or pure policy genuinely shared
+  by contexts, but it must not depend on any business context or on
+  `port/rest`. Keep `task` and `schedule` independent. Cross-context reads and
+  writes are defined at the consuming context's usecase boundary and wired by
+  the application root.
+- The shared Tag catalog is its own context. Task and Schedule own their
+  separate Tag-assignment operations and use primitive owner checks.
 - `port/rest` may depend on usecases and read models. Application usecases must
   not depend on REST query, token, field-mask, or response types.
 - If a cross-domain reference is unavoidable, define the required interface on
@@ -126,13 +142,27 @@ cmd/api -> application root, port/rest, port/adapter
   domain behavior, validation, or invariants; keep that modeling in `domain/`.
 - Repository maps database records to DAO for reads. Return DAO from create or
   update when the caller needs the persisted result.
+- A cross-context read model belongs to the consuming context. Its repository
+  may use existing SQL/ACL queries to project only the primitive facts the
+  consumer needs; do not expose the source context's DAO or domain types.
+  Contexts may therefore have different read DTOs for the same underlying
+  records. Keep owner domain behavior and update policy in the owning context,
+  and do not duplicate them in a read model. These projections still depend on
+  the shared database schema, so schema changes may require updates to more
+  than one context repository.
 - For a read that needs no domain behavior, pass the DAO to the caller as-is.
   When an operation needs domain behavior, the use case converts DAO fields to
   value objects and a domain model using the existing domain factories. Do not
   make domain factories accept DAO values.
-- Use a domain model for writes. Value Objects and domain methods validate
-  changes and protect invariants; pass the resulting domain model to the
-  repository.
+- Use a domain model for writes owned by the context. Value Objects and domain
+  methods validate changes and protect invariants; pass the resulting domain
+  model to the repository. For cross-context orchestration, a consuming
+  usecase may define a narrow command port with primitive inputs and delegate
+  an explicit bulk operation (for example, deleting or reassigning a context's
+  children) to the owning context's repository through root wiring. Keep owner
+  rules in the owner; do not copy or bypass them in the consumer. Per-row
+  domain reconstruction is not required when the owner-scoped bulk command
+  preserves the required invariants without additional per-entity behavior.
 
 ```text
 WRITE: Domain Model -> Repository -> DAO (persisted result, when needed)
@@ -152,7 +182,7 @@ READ:  Repository -> DAO -> UseCase/REST handler
 - Orchestrate domain object load, domain method call, repository save, and transaction boundary as the operation requires.
 - Keep repository interfaces in the usecase package, close to the use cases that need them.
 - Group related use cases by resource for wiring only, such as `UserUseCases`
-  and `AccessTokenUseCases`. `application.UseCase` holds those groups; `main.go`
+  and `PersonalAccessTokenUseCases`. `application.UseCase` holds those groups; `main.go`
   passes each resource group to its handler. Keep business behavior in the
   individual use cases.
 - No duplicate VO/entity validation.
@@ -173,10 +203,24 @@ READ:  Repository -> DAO -> UseCase/REST handler
 - In Go, `UOW` receives the workflow function, e.g. `uow.Do(ctx, func(ctx, repos) error { ... })`.
 - Do not use an event-registration style where operations are queued and executed at the end.
 - Prepare one Unit of Work per domain concern/bounded context, e.g. auth UoW and task UoW.
-- A UoW exposes only repositories for its own bounded context.
+- A UoW normally exposes repositories for its bounded context. A cross-context
+  orchestration UoW may additionally expose only narrow, consumer-defined
+  primitive command ports, implemented by root wiring over the owning
+  repositories bound to the same transaction. For example, Project deletion
+  and member removal coordinate Task and Schedule bulk commands this way. Do
+  not expose foreign repositories or domain types through the UoW.
 - Repository impl may expose `WithTx(tx)` internally. Do not add `WithTx` to usecase repository ports.
 - The use case decides the transaction boundary by calling `uow.Do(...)`.
-- Inside `uow.Do(...)`, use only repositories received from `repos`. Do not call use case fields backed by non-transaction repositories.
+- The UoW guarantees atomicity and rollback; it does not own business policy,
+  enforce ownership, or replace validation by the owning context. Inside
+  `uow.Do(...)`, perform all writes and database reads that enforce
+  transaction invariants through the transaction-bound repositories or ports
+  received from `repos`. Do not call use case fields backed by non-transaction
+  repositories for those operations.
+- Task and Schedule currently read the user's timezone inside the UoW callback
+  through a non-transaction-bound scalar reader. It is a committed-value
+  snapshot, not a guarantee for enforcing transactional invariants; do not
+  generalize it to non-transactional writes or other invariant reads.
 - Domain never knows transaction, repository, driver, or context-carried DB state.
 
 ## REST handler and public error
@@ -209,6 +253,13 @@ READ:  Repository -> DAO -> UseCase/REST handler
 - Generated sqlc stays in `/db/sqlc` until the sqlc package is moved.
 - Repository = CRUD + DB record ↔ DAO mapping + Domain Model → DB mapping.
   Business rule stays usecase/domain.
+- A context repository may execute an explicitly delegated, set-based bulk
+  command through a consumer-defined primitive port when root wiring binds it
+  to the same transaction. Keep the owning context's required business rules
+  in that context; do not reimplement or bypass them elsewhere. Database
+  foreign-key cascades may handle referential cleanup such as Tag-assignment
+  join rows, while the owning command still performs its required business
+  checks.
 - Create/update returns persisted DAO when the caller needs it. Error-only only
   when the result is irrelevant.
 - Check nullable DB value validity before read. DB NULL → explicit domain absent state.
@@ -331,6 +382,20 @@ READ:  Repository -> DAO -> UseCase/REST handler
 
 ## Test
 
+- `make test` runs unit tests only. Keep pure database-config and usecase tests
+  colocated with their packages; they must not require PostgreSQL.
+- Real PostgreSQL tests live under `tests/integration/{project,task,schedule,tag,rest}`
+  and use the `integration` build tag. Share only the guarded pool helper in
+  `tests/integration/internal/testdb`.
+- `make test-integration` starts a uniquely named PostgreSQL container on a
+  dynamically assigned loopback port, applies every `db/migrations/*.up.sql`
+  file in order, runs the tagged suite serially, then removes only that
+  container. It needs Docker and does not use the development database.
+- Direct tagged test runs require `INTEGRATION_DATABASE_URL` pointing to a
+  disposable database named `task2todaytodo_integration_*`; tests fail when
+  the variable is absent or the database name is outside that allowlist.
+- Do not add `t.Parallel` to integration tests until shared database state is
+  isolated per test.
 - Split VO/entity tests by concept.
 - Name each use case test file after its implementation file with `_test.go`,
   such as `create_user_test.go` for `create_user.go`.

@@ -1,0 +1,42 @@
+erDiagram
+    %% users, todo_items, and schedules are defined in auth.mmd/task.mmd/schedule.mmd.
+    %% Unique constraints: todo_lists(user_id, list_date), todo_list_items(todo_list_id, position).
+
+    users {
+        text id PK "NOT NULL"
+    }
+
+    todo_items {
+        text id PK "NOT NULL"
+    }
+
+    schedules {
+        text id PK "NOT NULL"
+    }
+
+    todo_lists {
+        text id PK "NOT NULL"
+        text user_id FK "NOT NULL"
+        date list_date "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    todo_list_items {
+        text todo_list_id PK, FK "NOT NULL"
+        text todo_item_id PK, FK "NOT NULL"
+        integer position "NOT NULL"
+        timestamptz created_at "NOT NULL"
+    }
+
+    todo_list_schedules {
+        text todo_list_id PK, FK "NOT NULL"
+        text schedule_id PK, FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+    }
+
+    users ||..o{ todo_lists : owns
+    todo_lists ||--o{ todo_list_items : contains_items
+    todo_items ||--o{ todo_list_items : included_on_list
+    todo_lists ||--o{ todo_list_schedules : contains_schedules
+    schedules ||--o{ todo_list_schedules : included_on_list

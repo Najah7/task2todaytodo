@@ -46,18 +46,5 @@ WITH deleted_project AS (
       AND revision = sqlc.arg(expected_revision)::integer
       AND project_has_permission(id, sqlc.arg(user_id)::text, 'project', 'delete')
     RETURNING id
-), deleted_tasks AS (
-    UPDATE tasks
-    SET deleted_at = now(), changed_by = sqlc.arg(user_id)::text
-    WHERE project_id IN (SELECT id FROM deleted_project) AND deleted_at IS NULL
-    RETURNING id
-), deleted_items AS (
-    UPDATE todo_items SET deleted_at = now(), updated_at = now()
-    WHERE task_id IN (SELECT id FROM deleted_tasks) AND deleted_at IS NULL
-    RETURNING id
-), deleted_schedules AS (
-    UPDATE task_schedules SET deleted_at = now(), updated_at = now()
-    WHERE task_id IN (SELECT id FROM deleted_tasks) AND deleted_at IS NULL
-    RETURNING id
 )
 SELECT id FROM deleted_project;

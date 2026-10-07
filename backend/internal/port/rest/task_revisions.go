@@ -40,13 +40,13 @@ type TaskRevisionListResponse struct {
 //	@Tags		Tasks
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		id		path	string	true	"Task ID"
-//	@Param		page_size	query	int	false	"Items per page"
-//	@Param		page_token	query	string	false	"Opaque next page token"
-//	@Success	200	{object}	TaskRevisionListResponse
-//	@Failure	400	{object}	ErrResponse
-//	@Failure	401	{object}	ErrResponse
-//	@Failure	404	{object}	ErrResponse
+//	@Param		id			path		string	true	"Task ID"
+//	@Param		page_size	query		int		false	"Items per page"
+//	@Param		page_token	query		string	false	"Opaque next page token"
+//	@Success	200			{object}	TaskRevisionListResponse
+//	@Failure	400			{object}	ErrResponse
+//	@Failure	401			{object}	ErrResponse
+//	@Failure	404			{object}	ErrResponse
 //	@Router		/tasks/{id}/revisions [get]
 func (h *TaskHandler) ListRevisions(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.userID(r)

@@ -1,18 +1,18 @@
--- name: GetTaskTagByUserID :one
+-- name: GetTagByUserID :one
 SELECT id, user_id, name, created_at, updated_at
-FROM task_tags
+FROM tags
 WHERE id = sqlc.arg(id)::text
   AND user_id = sqlc.arg(user_id)::text;
 
--- name: ListTaskTagsByUserID :many
+-- name: ListTagsByUserID :many
 SELECT id, user_id, name, created_at, updated_at
-FROM task_tags
+FROM tags
 WHERE user_id = sqlc.arg(user_id)::text
 ORDER BY name ASC, id ASC;
 
--- name: ListTaskTagsByUserIDPage :many
+-- name: ListTagsByUserIDPage :many
 SELECT id, user_id, name, created_at, updated_at
-FROM task_tags
+FROM tags
 WHERE user_id = sqlc.arg(user_id)::text
   AND (sqlc.narg(cursor_name)::citext IS NULL OR (name, id) > (sqlc.narg(cursor_name)::citext, sqlc.narg(cursor_id)::text))
 ORDER BY name ASC, id ASC
@@ -20,7 +20,7 @@ LIMIT sqlc.arg(page_limit)::integer;
 
 -- name: ListTaskTagsByTaskAndUserID :many
 SELECT tt.id, tt.user_id, tt.name, tt.created_at, tt.updated_at
-FROM task_tags AS tt
+FROM tags AS tt
 JOIN task_tag_assignments AS tta ON tta.tag_id = tt.id
 JOIN tasks AS t ON t.id = tta.task_id
 WHERE t.id = sqlc.arg(task_id)::text

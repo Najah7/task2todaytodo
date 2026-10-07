@@ -7,3 +7,8 @@ WHERE id = $1;
 SELECT *
 FROM users
 WHERE email = $1;
+
+-- name: GetUserTimezone :one
+SELECT timezone
+FROM users
+WHERE id = $1;

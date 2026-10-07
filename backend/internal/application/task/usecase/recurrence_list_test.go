@@ -10,11 +10,6 @@ import (
 func recurringTodoRoot() dao.TodoItem {
 	return dao.TodoItem{ID: "series", TaskID: "task", Title: "work", Position: 3, IntervalWeeks: 1, Frequencies: []dao.TaskFrequency{{Value: "mon"}}, RepeatState: repeatStateActive, FrequencyAnchorDate: mustParseDate("2026-10-05").Unix(), SeriesID: "series", OccurrenceDate: "2026-10-05", Timezone: "UTC"}
 }
-func recurringScheduleRoot() dao.TaskSchedule {
-	start := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
-	return dao.TaskSchedule{ID: "series", TaskID: "task", Title: "work", IntervalWeeks: 1, Frequencies: []dao.TaskFrequency{{Value: "mon"}}, RepeatState: repeatStateActive, FrequencyAnchorDate: mustParseDate("2026-10-05").Unix(), StartAt: start.Unix(), EndAt: start.Add(time.Hour).Unix(), SeriesID: "series", OccurrenceDate: "2026-10-05", Timezone: "UTC"}
-}
-
 func TestTodoListClampsVirtualGenerationToLocalTodayAndKeepsRequestedSavedHistory(t *testing.T) {
 	root := recurringTodoRoot()
 	saved := root
@@ -130,24 +125,6 @@ func TestDeletedOccurrenceTombstonesSuppressVirtualsWithoutLeakingIntoProjection
 			}
 		}
 	})
-	t.Run("task schedule", func(t *testing.T) {
-		root := recurringScheduleRoot()
-		deleted := root
-		deleted.ID = "deleted-occurrence"
-		deleted.OccurrenceDate = "2026-10-12"
-		deleted.StartAt = mustParseDate(deleted.OccurrenceDate).Add(9 * time.Hour).Unix()
-		deleted.EndAt = deleted.StartAt + int64(time.Hour.Seconds())
-		deleted.Deleted = true
-		rows, err := expandTaskScheduleRowsWithSkipped([]dao.TaskSchedule{root, deleted}, CursorPageRequest{Size: 5}, time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC), false, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, row := range rows {
-			if row.Deleted || row.OccurrenceDate == deleted.OccurrenceDate {
-				t.Fatalf("deleted occurrence leaked or was regenerated: %#v", row)
-			}
-		}
-	})
 }
 
 func TestTodoListPositionRemainsStableAcrossPages(t *testing.T) {
@@ -180,97 +157,6 @@ func TestOneOffListsSavedCurrentOverrideInsteadOfRootSnapshot(t *testing.T) {
 	if len(rows) != 1 || rows[0].ID != child.ID || rows[0].Title != child.Title {
 		t.Fatalf("one-off override projection=%#v", rows)
 	}
-}
-
-func TestOneOffScheduleListsSavedCurrentOverrideInsteadOfRootSnapshot(t *testing.T) {
-	root := recurringScheduleRoot()
-	root.IntervalWeeks, root.Frequencies, root.RepeatState = 0, nil, repeatStateOneOff
-	child := root
-	child.ID, child.Title, child.IsException = "edited-child", "edited", true
-	rows, err := expandTaskScheduleRowsWithSkipped([]dao.TaskSchedule{root, child}, CursorPageRequest{Size: 5}, mustParseDate(root.OccurrenceDate), false, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(rows) != 1 || rows[0].ID != child.ID || rows[0].Title != child.Title {
-		t.Fatalf("one-off schedule override projection=%#v", rows)
-	}
-}
-
-func TestScheduleListClampsVirtualGenerationAndKeepsSavedPastOutsideCurrentRule(t *testing.T) {
-	root := recurringScheduleRoot()
-	saved := root
-	saved.ID = "completed"
-	saved.OccurrenceDate = "2026-10-14"
-	saved.StartAt = mustParseDate("2026-10-14").Add(9 * time.Hour).Unix()
-	saved.EndAt = saved.StartAt + 3600
-	saved.Completed = true
-	rows, err := expandTaskScheduleRowsWithSkipped([]dao.TaskSchedule{root, saved}, CursorPageRequest{Size: 20, FromDate: "2026-10-01"}, time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC), false, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	foundSaved := false
-	for _, row := range rows {
-		if row.ID == "completed" {
-			foundSaved = true
-		}
-		if row.ID == VirtualOccurrenceID && scheduleRowOnOrAfter(row, mustParseDate("2026-10-19")) == false {
-			t.Fatalf("past virtual leaked: %#v", row)
-		}
-	}
-	if !foundSaved {
-		t.Fatalf("completed row outside current rule missing: %#v", rows)
-	}
-}
-
-func TestScheduleListDoneTaskSuppressesVirtualsButKeepsSavedRows(t *testing.T) {
-	root := recurringScheduleRoot()
-	saved := root
-	saved.ID = "completed"
-	saved.Completed = true
-	saved.OccurrenceDate = "2026-10-14"
-	rows, err := expandTaskScheduleRowsWithSkipped([]dao.TaskSchedule{root, saved}, CursorPageRequest{Size: 20}, time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC), true, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(rows) != 1 || rows[0].ID != "completed" {
-		t.Fatalf("rows while done=%#v", rows)
-	}
-}
-
-func TestDeletedRecurrenceRootStillAllowsSavedHistory(t *testing.T) {
-	asOf := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
-	request := CursorPageRequest{Size: 20, FromDate: "2026-10-01"}
-
-	t.Run("todo item", func(t *testing.T) {
-		root := recurringTodoRoot()
-		root.Deleted = true
-		saved := root
-		saved.ID, saved.Deleted, saved.IsException = "edited-past", false, true
-		saved.OccurrenceDate = "2026-10-12"
-		saved.Title = "saved edit"
-		rows, err := expandTodoItemRowsWithSkipped([]dao.TodoItem{root, saved}, request, asOf, false, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rows) != 1 || rows[0].ID != saved.ID || rows[0].Title != saved.Title {
-			t.Fatalf("saved history after root deletion=%#v", rows)
-		}
-	})
-
-	t.Run("task schedule", func(t *testing.T) {
-		root := recurringScheduleRoot()
-		root.Deleted = true
-		saved := root
-		saved.ID, saved.Deleted, saved.Completed = "completed-past", false, true
-		saved.OccurrenceDate = "2026-10-12"
-		rows, err := expandTaskScheduleRowsWithSkipped([]dao.TaskSchedule{root, saved}, request, asOf, false, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rows) != 1 || rows[0].ID != saved.ID || !rows[0].Completed {
-			t.Fatalf("saved history after root deletion=%#v", rows)
-		}
-	})
 }
 
 func TestReopenedTaskCanProjectTodayAgainUnlessSkipped(t *testing.T) {

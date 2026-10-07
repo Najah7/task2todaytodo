@@ -21,17 +21,16 @@ type listTasksRepositoryFake struct {
 }
 
 type taskProgressSourceFake struct {
-	sources    dao.TaskProgressSources
-	err        error
-	taskIDs    []string
-	projectIDs []string
-	asOf       time.Time
-	calls      int
+	sources dao.TaskProgressSources
+	err     error
+	taskIDs []string
+	asOf    time.Time
+	calls   int
 }
 
-func (source *taskProgressSourceFake) ReadTaskProgressSources(_ context.Context, taskIDs, projectIDs []string, asOf time.Time) (dao.TaskProgressSources, error) {
+func (source *taskProgressSourceFake) ReadTaskProgressSources(_ context.Context, taskIDs []string, asOf time.Time) (dao.TaskProgressSources, error) {
 	source.calls++
-	source.taskIDs, source.projectIDs, source.asOf = taskIDs, projectIDs, asOf
+	source.taskIDs, source.asOf = taskIDs, asOf
 	return source.sources, source.err
 }
 

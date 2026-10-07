@@ -27,12 +27,12 @@ func (uow *addTaskToProjectUOWFake) Do(ctx context.Context, fn func(context.Cont
 
 type addTaskToProjectRepositoriesFake struct {
 	taskProgressTestRepositories
-	projects ProjectRepository
+	projects TaskProjectRepository
 	tasks    TaskRepository
 	accesses *[]string
 }
 
-func (repos addTaskToProjectRepositoriesFake) Projects() ProjectRepository {
+func (repos addTaskToProjectRepositoriesFake) TaskProjects() TaskProjectRepository {
 	*repos.accesses = append(*repos.accesses, "projects")
 	return repos.projects
 }
@@ -43,9 +43,8 @@ func (repos addTaskToProjectRepositoriesFake) Tasks() TaskRepository {
 }
 
 type addTaskToProjectProjectRepositoryFake struct {
-	ProjectRepository
-	project   dao.Project
-	projects  map[string]dao.Project
+	project   TaskProject
+	projects  map[string]TaskProject
 	err       error
 	userID    domain.UserID
 	projectID domain.ProjectID
@@ -53,31 +52,35 @@ type addTaskToProjectProjectRepositoryFake struct {
 	accesses  *[]string
 }
 
-func (repo *addTaskToProjectProjectRepositoryFake) LockByUserIDWithPermission(_ context.Context, userID domain.UserID, projectID domain.ProjectID, _ shared.Capability) (dao.Project, error) {
+func (repo *addTaskToProjectProjectRepositoryFake) LockProjectByUserIDWithPermission(_ context.Context, userID, projectID string, _ shared.Capability) (TaskProject, error) {
 	repo.calls++
-	repo.userID, repo.projectID = userID, projectID
+	repo.userID, repo.projectID = domain.UserID(userID), domain.ProjectID(projectID)
 	*repo.accesses = append(*repo.accesses, "lock-project")
 	if repo.err != nil {
-		return dao.Project{}, repo.err
+		return TaskProject{}, repo.err
 	}
 	project := repo.project
-	if candidate, ok := repo.projects[string(projectID)]; ok {
+	if candidate, ok := repo.projects[projectID]; ok {
 		project = candidate
 	}
-	if project.ID != string(projectID) || project.UserID != string(userID) {
-		return dao.Project{}, domain.ErrProjectNotFound
+	if project.ID != projectID || project.OwnerID != userID {
+		return TaskProject{}, ErrTaskProjectNotFound
 	}
 	return project, nil
 }
 
-func (repo *addTaskToProjectProjectRepositoryFake) GetByUserID(_ context.Context, userID domain.UserID, projectID domain.ProjectID) (dao.Project, error) {
+func (repo *addTaskToProjectProjectRepositoryFake) GetProjectByUserID(_ context.Context, userID, projectID string) (TaskProject, error) {
 	repo.calls++
-	repo.userID, repo.projectID = userID, projectID
+	repo.userID, repo.projectID = domain.UserID(userID), domain.ProjectID(projectID)
 	*repo.accesses = append(*repo.accesses, "get-project")
 	if repo.err != nil {
-		return dao.Project{}, repo.err
+		return TaskProject{}, repo.err
 	}
 	return repo.project, nil
+}
+
+func (repo *addTaskToProjectProjectRepositoryFake) GetProjectByUserIDWithPermission(ctx context.Context, userID, projectID string, _ shared.Capability) (TaskProject, error) {
+	return repo.GetProjectByUserID(ctx, userID, projectID)
 }
 
 type addTaskToProjectTaskRepositoryFake struct {
@@ -122,9 +125,9 @@ func (repo *addTaskToProjectTaskRepositoryFake) AssignToProjectByUserID(_ contex
 	return repo.assignedTask, nil
 }
 
-func newAddTaskToProjectFixture(project dao.Project, task dao.Task) (*addTaskToProjectUOWFake, *addTaskToProjectProjectRepositoryFake, *addTaskToProjectTaskRepositoryFake, *[]string) {
+func newAddTaskToProjectFixture(project legacyProjectFixture, task dao.Task) (*addTaskToProjectUOWFake, *addTaskToProjectProjectRepositoryFake, *addTaskToProjectTaskRepositoryFake, *[]string) {
 	var accesses []string
-	projectRepo := &addTaskToProjectProjectRepositoryFake{project: project, accesses: &accesses}
+	projectRepo := &addTaskToProjectProjectRepositoryFake{project: TaskProject{ID: project.ID, OwnerID: project.UserID, DefaultPriority: project.Priority.Value}, accesses: &accesses}
 	taskRepo := &addTaskToProjectTaskRepositoryFake{task: task, accesses: &accesses}
 	uow := &addTaskToProjectUOWFake{repos: addTaskToProjectRepositoriesFake{
 		projects: projectRepo,
@@ -138,7 +141,7 @@ func TestAddTaskToProjectUseCaseExecuteAddsStandaloneTask(t *testing.T) {
 	userID, projectID, taskID := domain.UserID("user-1"), domain.ProjectID("project-1"), domain.TaskID("task-1")
 	want := dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: string(projectID), Title: "Task", Status: dao.TaskStatus{Value: "open"}, Revision: 2}
 	uow, projectRepo, taskRepo, accesses := newAddTaskToProjectFixture(
-		dao.Project{ID: string(projectID), UserID: string(userID)},
+		legacyProjectFixture{ID: string(projectID), UserID: string(userID)},
 		dao.Task{ID: string(taskID), UserID: string(userID), Revision: 1},
 	)
 	taskRepo.assignedTask = want
@@ -168,12 +171,12 @@ func TestAddTaskToProjectUseCaseExecuteMovesTaskFromAnotherProject(t *testing.T)
 	userID, projectID, taskID := domain.UserID("user-1"), domain.ProjectID("project-new"), domain.TaskID("task-1")
 	want := dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: string(projectID), Title: "Task", Status: dao.TaskStatus{Value: "open"}, Revision: 2}
 	uow, projectRepo, taskRepo, _ := newAddTaskToProjectFixture(
-		dao.Project{ID: string(projectID), UserID: string(userID)},
+		legacyProjectFixture{ID: string(projectID), UserID: string(userID)},
 		dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: "project-old", Revision: 1},
 	)
-	projectRepo.projects = map[string]dao.Project{
-		"project-new": {ID: "project-new", UserID: string(userID)},
-		"project-old": {ID: "project-old", UserID: string(userID)},
+	projectRepo.projects = map[string]TaskProject{
+		"project-new": {ID: "project-new", OwnerID: string(userID)},
+		"project-old": {ID: "project-old", OwnerID: string(userID)},
 	}
 	taskRepo.assignedTask = want
 
@@ -189,7 +192,7 @@ func TestAddTaskToProjectUseCaseExecuteMovesTaskFromAnotherProject(t *testing.T)
 func TestAddTaskToProjectUseCaseExecuteDoesNotSaveWhenAlreadyInProject(t *testing.T) {
 	userID, projectID, taskID := domain.UserID("user-1"), domain.ProjectID("project-1"), domain.TaskID("task-1")
 	want := dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: string(projectID), Title: "Task", Status: dao.TaskStatus{Value: "open"}, Revision: 1}
-	uow, _, taskRepo, accesses := newAddTaskToProjectFixture(dao.Project{ID: string(projectID), UserID: string(userID)}, want)
+	uow, _, taskRepo, accesses := newAddTaskToProjectFixture(legacyProjectFixture{ID: string(projectID), UserID: string(userID)}, want)
 
 	got, err := NewAddTaskToProjectUseCase(uow, &taskProgressSourceFake{}, nil).Execute(context.Background(), userID, projectID, taskID, 1)
 	if err != nil || got != want {
@@ -206,19 +209,19 @@ func TestAddTaskToProjectUseCaseExecuteDoesNotSaveWhenAlreadyInProject(t *testin
 func TestAddTaskToProjectUseCaseExecuteReturnsNotFoundForUnownedOrMissingProject(t *testing.T) {
 	for _, testCase := range []struct {
 		name    string
-		project dao.Project
+		project legacyProjectFixture
 		err     error
 	}{
-		{name: "missing project", err: domain.ErrProjectNotFound},
-		{name: "project owned by another user", project: dao.Project{ID: "project-1", UserID: "other-user"}},
+		{name: "missing project", err: ErrTaskProjectNotFound},
+		{name: "project owned by another user", project: legacyProjectFixture{ID: "project-1", UserID: "other-user"}},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			uow, projectRepo, taskRepo, _ := newAddTaskToProjectFixture(testCase.project, dao.Task{ID: "task-1", UserID: "user-1", Revision: 1})
 			projectRepo.err = testCase.err
 
 			got, err := NewAddTaskToProjectUseCase(uow, &taskProgressSourceFake{}, nil).Execute(context.Background(), "user-1", "project-1", "task-1", 1)
-			if !errors.Is(err, domain.ErrProjectNotFound) {
-				t.Errorf("Execute() error = %v, want %v", err, domain.ErrProjectNotFound)
+			if !errors.Is(err, ErrTaskProjectNotFound) {
+				t.Errorf("Execute() error = %v, want %v", err, ErrTaskProjectNotFound)
 			}
 			if got != (dao.Task{}) || taskRepo.getCalls != 1 {
 				t.Errorf("result = %#v and task reads = %d, want zero result after the initial task read", got, taskRepo.getCalls)
@@ -237,7 +240,7 @@ func TestAddTaskToProjectUseCaseExecuteReturnsNotFoundForUnownedOrMissingTask(t 
 		{name: "task owned by another user", task: dao.Task{ID: "task-1", UserID: "other-user", Revision: 1}},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			uow, _, taskRepo, _ := newAddTaskToProjectFixture(dao.Project{ID: "project-1", UserID: "user-1"}, testCase.task)
+			uow, _, taskRepo, _ := newAddTaskToProjectFixture(legacyProjectFixture{ID: "project-1", UserID: "user-1"}, testCase.task)
 			taskRepo.getErr = testCase.err
 
 			got, err := NewAddTaskToProjectUseCase(uow, &taskProgressSourceFake{}, nil).Execute(context.Background(), "user-1", "project-1", "task-1", 1)
@@ -266,21 +269,21 @@ func TestAddTaskToProjectUseCaseExecutePropagatesUOWError(t *testing.T) {
 
 func TestAddTaskToProjectUseCaseExecutePropagatesRepositoryErrors(t *testing.T) {
 	projectErr := errors.New("project lookup failed")
-	uow, projectRepo, taskRepo, _ := newAddTaskToProjectFixture(dao.Project{ID: "project-1", UserID: "user-1"}, dao.Task{ID: "task-1", UserID: "user-1", Revision: 1})
+	uow, projectRepo, taskRepo, _ := newAddTaskToProjectFixture(legacyProjectFixture{ID: "project-1", UserID: "user-1"}, dao.Task{ID: "task-1", UserID: "user-1", Revision: 1})
 	projectRepo.err = projectErr
 	if _, err := NewAddTaskToProjectUseCase(uow, &taskProgressSourceFake{}, nil).Execute(context.Background(), "user-1", "project-1", "task-1", 1); !errors.Is(err, projectErr) {
 		t.Errorf("project lookup error = %v, want %v", err, projectErr)
 	}
 
 	taskErr := errors.New("task lookup failed")
-	uow, _, taskRepo, _ = newAddTaskToProjectFixture(dao.Project{ID: "project-1", UserID: "user-1"}, dao.Task{ID: "task-1", UserID: "user-1", Revision: 1})
+	uow, _, taskRepo, _ = newAddTaskToProjectFixture(legacyProjectFixture{ID: "project-1", UserID: "user-1"}, dao.Task{ID: "task-1", UserID: "user-1", Revision: 1})
 	taskRepo.getErr = taskErr
 	if _, err := NewAddTaskToProjectUseCase(uow, &taskProgressSourceFake{}, nil).Execute(context.Background(), "user-1", "project-1", "task-1", 1); !errors.Is(err, taskErr) {
 		t.Errorf("task lookup error = %v, want %v", err, taskErr)
 	}
 
 	assignErr := errors.New("assignment failed")
-	uow, _, taskRepo, _ = newAddTaskToProjectFixture(dao.Project{ID: "project-1", UserID: "user-1"}, dao.Task{ID: "task-1", UserID: "user-1", Revision: 1})
+	uow, _, taskRepo, _ = newAddTaskToProjectFixture(legacyProjectFixture{ID: "project-1", UserID: "user-1"}, dao.Task{ID: "task-1", UserID: "user-1", Revision: 1})
 	taskRepo.assignErr = assignErr
 	if _, err := NewAddTaskToProjectUseCase(uow, &taskProgressSourceFake{}, nil).Execute(context.Background(), "user-1", "project-1", "task-1", 1); !errors.Is(err, assignErr) {
 		t.Errorf("assignment error = %v, want %v", err, assignErr)

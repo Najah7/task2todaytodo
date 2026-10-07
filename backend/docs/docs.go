@@ -15,40 +15,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/access-token:revoke": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Revokes the current access token from the Authorization header.",
-                "tags": [
-                    "Access Tokens"
-                ],
-                "summary": "Revoke access token",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Missing or invalid access token",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to revoke access token",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/login": {
             "post": {
                 "description": "Authenticates a user and generates an access token.",
@@ -59,7 +25,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Access Tokens"
+                    "Personal Access Tokens"
                 ],
                 "summary": "Log in",
                 "parameters": [
@@ -69,7 +35,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.LoginRequest"
+                            "$ref": "#/definitions/rest.LoginRequest"
                         }
                     }
                 ],
@@ -77,25 +43,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.AccessTokenResponse"
+                            "$ref": "#/definitions/rest.PersonalAccessTokenResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Invalid email or password",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to generate access token",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -119,13 +85,47 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.PermissionListResponse"
+                            "$ref": "#/definitions/rest.PermissionListResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/personal-access-token:revoke": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Revokes the current access token from the Authorization header.",
+                "tags": [
+                    "Personal Access Tokens"
+                ],
+                "summary": "Revoke personal access token",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid access token",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to revoke access token",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -169,25 +169,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectListResponse"
+                            "$ref": "#/definitions/rest.ProjectListResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -215,7 +215,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectCreateRequest"
+                            "$ref": "#/definitions/rest.ProjectCreateRequest"
                         }
                     }
                 ],
@@ -223,31 +223,31 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectResponse"
+                            "$ref": "#/definitions/rest.ProjectResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -280,31 +280,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectResponse"
+                            "$ref": "#/definitions/rest.ProjectResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -342,37 +342,37 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Revision conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "428": {
                         "description": "If-Match is required",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -414,7 +414,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectUpdateRequest"
+                            "$ref": "#/definitions/rest.ProjectUpdateRequestSchema"
                         }
                     }
                 ],
@@ -422,43 +422,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectResponse"
+                            "$ref": "#/definitions/rest.ProjectResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Revision conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "428": {
                         "description": "If-Match is required",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -491,31 +491,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectMemberListResponse"
+                            "$ref": "#/definitions/rest.ProjectMemberListResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -559,7 +559,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectMemberUpsertRequest"
+                            "$ref": "#/definitions/rest.ProjectMemberUpsertRequest"
                         }
                     }
                 ],
@@ -570,31 +570,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -632,25 +632,25 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -695,25 +695,287 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectRevisionListResponse"
+                            "$ref": "#/definitions/rest.ProjectRevisionListResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}/schedules": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "List Project schedules",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque next page token",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "First occurrence date (YYYY-MM-DD)",
+                        "name": "from_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Response field mask",
+                        "name": "fields",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Create Project schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Schedule",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}/schedules:add": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Add schedule to Project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Schedule ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleProjectAssignmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}/schedules:remove": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Remove schedule from Project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Schedule ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleProjectAssignmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -764,31 +1026,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectTaskPageResponse"
+                            "$ref": "#/definitions/rest.ProjectTaskPageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -823,7 +1085,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectTaskCreateRequest"
+                            "$ref": "#/definitions/rest.ProjectTaskCreateRequest"
                         }
                     }
                 ],
@@ -831,37 +1093,37 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectTaskResponse"
+                            "$ref": "#/definitions/rest.ProjectTaskResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -905,7 +1167,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectTaskAssignmentRequest"
+                            "$ref": "#/definitions/rest.ProjectTaskAssignmentRequest"
                         }
                     }
                 ],
@@ -913,43 +1175,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectTaskResponse"
+                            "$ref": "#/definitions/rest.ProjectTaskResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "428": {
                         "description": "If-Match is required",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -993,7 +1255,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectTaskAssignmentRequest"
+                            "$ref": "#/definitions/rest.ProjectTaskAssignmentRequest"
                         }
                     }
                 ],
@@ -1001,43 +1263,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ProjectTaskResponse"
+                            "$ref": "#/definitions/rest.ProjectTaskResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Revision conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "428": {
                         "description": "If-Match is required",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1061,13 +1323,973 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.RoleListResponse"
+                            "$ref": "#/definitions/rest.RoleListResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "List schedules",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque next page token",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "First occurrence date (YYYY-MM-DD)",
+                        "name": "from_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Response field mask",
+                        "name": "fields",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Create schedule",
+                "parameters": [
+                    {
+                        "description": "Schedule",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Get schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Delete schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Occurrence date (YYYY-MM-DD)",
+                        "name": "occurrence_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Update schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Schedule changes",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{id}/assignees": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "List schedule assignees",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleAssigneeListResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Assign schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Assignee",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleAssigneeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{id}/frequency": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Update schedule frequency",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Recurrence rule",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleFrequencyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{id}/revisions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "List schedule revisions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque next page token",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Response field mask",
+                        "name": "fields",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleRevisionListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{id}/tags:add": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Add a tag to a schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tag ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleTagAssignmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{id}/tags:remove": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Remove a tag from a schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tag ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleTagAssignmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{id}:complete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Complete schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Occurrence date",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleOccurrenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{id}:reopen": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Reopen schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Occurrence date",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleOccurrenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{id}:reschedule": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Reschedule occurrence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New occurrence time",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleRescheduleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{id}:restore": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Restore schedule occurrence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Occurrence date",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleOccurrenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{id}:skip": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Skip schedule occurrence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Occurrence date",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleOccurrenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1093,7 +2315,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.SignupRequest"
+                            "$ref": "#/definitions/rest.SignupRequest"
                         }
                     }
                 ],
@@ -1101,43 +2323,42 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.UserResponse"
+                            "$ref": "#/definitions/rest.UserResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to create user",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
             }
         },
-        "/task-tags": {
+        "/tags": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns task tags owned by the authenticated user.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Task Tags"
+                    "Tags"
                 ],
-                "summary": "List task tags",
+                "summary": "List tags",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Items per page (default 50, maximum 100)",
+                        "description": "Items per page",
                         "name": "page_size",
                         "in": "query"
                     },
@@ -1158,25 +2379,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskTagListResponse"
+                            "$ref": "#/definitions/rest.TagListResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid pagination or fields",
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
-                        "description": "Failed to list task tags",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1187,7 +2408,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a task tag for the authenticated user.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1195,17 +2415,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Task Tags"
+                    "Tags"
                 ],
-                "summary": "Create task tag",
+                "summary": "Create tag",
                 "parameters": [
                     {
-                        "description": "Task tag create request",
+                        "description": "Tag",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskTagCreateRequest"
+                            "$ref": "#/definitions/rest.TagCreateRequest"
                         }
                     }
                 ],
@@ -1213,83 +2433,113 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskTagResponse"
+                            "$ref": "#/definitions/rest.TagResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body or name",
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
-                        "description": "Tag name already exists",
+                        "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to create task tag",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
             }
         },
-        "/task-tags/{id}": {
-            "delete": {
+        "/tags/{id}": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deletes a task tag owned by the authenticated user.",
-                "tags": [
-                    "Task Tags"
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Delete task tag",
+                "tags": [
+                    "Tags"
+                ],
+                "summary": "Get tag",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Task tag ID",
+                        "description": "Tag ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "Task tag deleted"
-                    },
-                    "400": {
-                        "description": "Invalid task tag ID",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.TagResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
-                        "description": "Task tag not found",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tags"
+                ],
+                "summary": "Delete tag",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tag ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
-                    "500": {
-                        "description": "Failed to delete task tag",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1300,7 +2550,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Renames a task tag owned by the authenticated user.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1308,24 +2557,24 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Task Tags"
+                    "Tags"
                 ],
-                "summary": "Rename task tag",
+                "summary": "Rename tag",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Task tag ID",
+                        "description": "Tag ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Task tag rename request",
+                        "description": "New tag name",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskTagRenameRequest"
+                            "$ref": "#/definitions/rest.TagRenameRequest"
                         }
                     }
                 ],
@@ -1333,37 +2582,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskTagResponse"
+                            "$ref": "#/definitions/rest.TagResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body or name",
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
-                        "description": "Task tag not found",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
-                        "description": "Tag name already exists",
+                        "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to update task tag",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1408,25 +2645,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskListResponse"
+                            "$ref": "#/definitions/rest.TaskListResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid pagination",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to list tasks",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1455,7 +2692,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskCreateRequest"
+                            "$ref": "#/definitions/rest.TaskCreateRequest"
                         }
                     }
                 ],
@@ -1463,31 +2700,31 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskResponse"
+                            "$ref": "#/definitions/rest.TaskResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Task ID conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to create task",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1521,25 +2758,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskDetailsResponse"
+                            "$ref": "#/definitions/rest.TaskDetailsResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to get task",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1578,31 +2815,31 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Revision conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "428": {
                         "description": "If-Match is required",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to delete task",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1645,7 +2882,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskUpdateRequest"
+                            "$ref": "#/definitions/rest.TaskUpdateRequest"
                         }
                     }
                 ],
@@ -1653,43 +2890,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskResponse"
+                            "$ref": "#/definitions/rest.TaskResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Task conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "428": {
                         "description": "If-Match is required",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to update task",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1722,25 +2959,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskAssigneeListResponse"
+                            "$ref": "#/definitions/rest.TaskAssigneeListResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1782,7 +3019,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskAssignmentRequest"
+                            "$ref": "#/definitions/rest.TaskAssignmentRequest"
                         }
                     }
                 ],
@@ -1790,43 +3027,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskResponse"
+                            "$ref": "#/definitions/rest.TaskResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "428": {
                         "description": "Precondition Required",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1871,25 +3108,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskRevisionListResponse"
+                            "$ref": "#/definitions/rest.TaskRevisionListResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1902,12 +3139,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Assigns one user-owned tag to a task owned by the authenticated user.",
                 "consumes": [
                     "application/json"
                 ],
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
-                    "Task Tags"
+                    "Tasks"
                 ],
                 "summary": "Add tag to task",
                 "parameters": [
@@ -1919,41 +3158,38 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Tag assignment request",
+                        "description": "Tag ID",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskTagAssignmentRequest"
+                            "$ref": "#/definitions/rest.TaskTagAssignmentRequest"
                         }
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "Tag assigned"
-                    },
-                    "400": {
-                        "description": "Invalid request body or task ID",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
-                        "description": "Task or tag not found",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to add tag to task",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -1966,12 +3202,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Removes one user-owned tag from a task owned by the authenticated user.",
                 "consumes": [
                     "application/json"
                 ],
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
-                    "Task Tags"
+                    "Tasks"
                 ],
                 "summary": "Remove tag from task",
                 "parameters": [
@@ -1983,41 +3221,38 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Tag assignment request",
+                        "description": "Tag ID",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskTagAssignmentRequest"
+                            "$ref": "#/definitions/rest.TaskTagAssignmentRequest"
                         }
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "Tag removed"
-                    },
-                    "400": {
-                        "description": "Invalid request body or task ID",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
-                        "description": "Task or tag not found",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to remove tag from task",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -2058,37 +3293,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Revision conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "428": {
                         "description": "If-Match is required",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to complete task",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -2129,37 +3364,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Revision conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "428": {
                         "description": "If-Match is required",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to hold task",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -2200,37 +3435,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Revision conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "428": {
                         "description": "If-Match is required",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to reopen task",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -2271,37 +3506,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Revision conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "428": {
                         "description": "If-Match is required",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to start task",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -2342,781 +3577,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Revision conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "428": {
                         "description": "If-Match is required",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to wait on task",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{taskId}/schedules": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Task Schedules"
-                ],
-                "summary": "List task schedules",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "taskId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Items per page (default 50, maximum 100)",
-                        "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Opaque next page token",
-                        "name": "page_token",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "First occurrence date (YYYY-MM-DD); defaults to today in each series timezone",
-                        "name": "from_date",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Response field mask",
-                        "name": "fields",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskScheduleListResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Task Schedules"
-                ],
-                "summary": "Create task schedule",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "taskId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Task schedule",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskScheduleCreateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskScheduleResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{taskId}/schedules/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "Task Schedules"
-                ],
-                "summary": "Delete task schedule",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "taskId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Task schedule series ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Task Schedules"
-                ],
-                "summary": "Update task schedule details",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "taskId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Task schedule series ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Schedule fields",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskScheduleUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskScheduleResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{taskId}/schedules/{id}/frequency": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Changes recurrence settings immediately on the root schedule. frequencies selects weekdays and interval_weeks sets the number of weeks between matching weeks. Use this endpoint to change recurrence weekdays. interval_weeks zero stops future generation; occurrence_date is not part of this request.",
-                "consumes": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Task Schedules"
-                ],
-                "summary": "Update task schedule frequency",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "taskId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Task schedule series ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Recurrence settings",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskScheduleFrequencyRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{taskId}/schedules/{id}:complete": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Marks one TaskSchedule occurrence complete. Recurring schedules require occurrence_date; one-off schedules may omit it. occurrence_date identifies scheduled occurrence and may differ from start_at after an edit.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Task Schedules"
-                ],
-                "summary": "Complete task schedule",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "taskId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Task schedule series ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Stable occurrence date; required for recurring schedules",
-                        "name": "request",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskScheduleOccurrenceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{taskId}/schedules/{id}:reopen": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Reopens one TaskSchedule occurrence. Recurring schedules require occurrence_date; one-off schedules may omit it. occurrence_date identifies scheduled occurrence and may differ from start_at after an edit.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Task Schedules"
-                ],
-                "summary": "Reopen task schedule",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "taskId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Task schedule series ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Stable occurrence date; required for recurring schedules",
-                        "name": "request",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskScheduleOccurrenceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{taskId}/schedules/{id}:reschedule": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Future scope updates the root template immediately and does not require occurrence_date. Current scope changes selected occurrence. occurrence_date is stable occurrence identity and may differ from start_at after an edit.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Task Schedules"
-                ],
-                "summary": "Reschedule task schedule",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "taskId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Task schedule series ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "New schedule times",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskScheduleRescheduleRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskScheduleResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{taskId}/schedules/{id}:restore": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Task Schedules"
-                ],
-                "summary": "Restore task schedule occurrence",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "taskId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Task schedule series ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Stable recurring occurrence date",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskScheduleOccurrenceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{taskId}/schedules/{id}:skip": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Task Schedules"
-                ],
-                "summary": "Skip task schedule occurrence",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "taskId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Task schedule series ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Stable recurring occurrence date",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TaskScheduleOccurrenceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Completed occurrence cannot be skipped",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -3174,31 +3665,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TodoItemListResponse"
+                            "$ref": "#/definitions/rest.TodoItemListResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid task ID",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to list todo items",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -3234,7 +3725,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TodoItemCreateRequest"
+                            "$ref": "#/definitions/rest.TodoItemCreateRequest"
                         }
                     }
                 ],
@@ -3242,31 +3733,31 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TodoItemResponse"
+                            "$ref": "#/definitions/rest.TodoItemResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to create todo item",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -3307,25 +3798,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid IDs",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task or todo item not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to delete todo item",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -3368,7 +3859,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TodoItemUpdateRequest"
+                            "$ref": "#/definitions/rest.TodoItemUpdateRequest"
                         }
                     }
                 ],
@@ -3376,37 +3867,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TodoItemResponse"
+                            "$ref": "#/definitions/rest.TodoItemResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request or scope",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task or todo item not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Position conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to update todo item",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -3451,7 +3942,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TodoItemFrequencyUpdateRequest"
+                            "$ref": "#/definitions/rest.TodoItemFrequencyUpdateRequest"
                         }
                     }
                 ],
@@ -3459,37 +3950,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid frequency settings",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task or series root not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Position conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to update todo item frequency",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -3533,7 +4024,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TodoItemOccurrenceRequest"
+                            "$ref": "#/definitions/rest.TodoItemOccurrenceRequest"
                         }
                     }
                 ],
@@ -3541,31 +4032,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -3609,7 +4100,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TodoItemOccurrenceRequest"
+                            "$ref": "#/definitions/rest.TodoItemOccurrenceRequest"
                         }
                     }
                 ],
@@ -3617,31 +4108,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -3686,7 +4177,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TodoItemReorderRequest"
+                            "$ref": "#/definitions/rest.TodoItemReorderRequest"
                         }
                     }
                 ],
@@ -3694,37 +4185,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TodoItemResponse"
+                            "$ref": "#/definitions/rest.TodoItemResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid position",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Task or todo item not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Concurrent position conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to reorder todo item",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -3768,7 +4259,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TodoItemOccurrenceRequest"
+                            "$ref": "#/definitions/rest.TodoItemOccurrenceRequest"
                         }
                     }
                 ],
@@ -3776,31 +4267,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -3844,7 +4335,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.TodoItemOccurrenceRequest"
+                            "$ref": "#/definitions/rest.TodoItemOccurrenceRequest"
                         }
                     }
                 ],
@@ -3852,37 +4343,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "409": {
                         "description": "Completed occurrence cannot be skipped",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -3907,19 +4398,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.UserResponse"
+                            "$ref": "#/definitions/rest.UserResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to get user",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -3948,7 +4439,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.UserInfoUpdateRequest"
+                            "$ref": "#/definitions/rest.UserInfoUpdateRequest"
                         }
                     }
                 ],
@@ -3956,25 +4447,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.UserResponse"
+                            "$ref": "#/definitions/rest.UserResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to update user",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -4002,7 +4493,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.UserPasswordUpdateRequest"
+                            "$ref": "#/definitions/rest.UserPasswordUpdateRequest"
                         }
                     }
                 ],
@@ -4010,25 +4501,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.MessageResponse"
+                            "$ref": "#/definitions/rest.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to update password",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -4059,7 +4550,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.UserTimezoneUpdateRequest"
+                            "$ref": "#/definitions/rest.UserTimezoneUpdateRequest"
                         }
                     }
                 ],
@@ -4067,25 +4558,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.UserResponse"
+                            "$ref": "#/definitions/rest.UserResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request body or timezone",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to update user timezone",
                         "schema": {
-                            "$ref": "#/definitions/internal_port_rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ErrResponse"
                         }
                     }
                 }
@@ -4093,18 +4584,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "internal_port_rest.AccessTokenResponse": {
-            "type": "object",
-            "properties": {
-                "expires_at": {
-                    "type": "string"
-                },
-                "token": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_port_rest.Err": {
+        "rest.Err": {
             "type": "object",
             "properties": {
                 "code": {
@@ -4113,7 +4593,7 @@ const docTemplate = `{
                 "details": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_port_rest.ErrDetail"
+                        "$ref": "#/definitions/rest.ErrDetail"
                     }
                 },
                 "message": {
@@ -4124,7 +4604,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ErrDetail": {
+        "rest.ErrDetail": {
             "type": "object",
             "properties": {
                 "code": {
@@ -4138,15 +4618,15 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ErrResponse": {
+        "rest.ErrResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/internal_port_rest.Err"
+                    "$ref": "#/definitions/rest.Err"
                 }
             }
         },
-        "internal_port_rest.HealthResponse": {
+        "rest.HealthResponse": {
             "type": "object",
             "properties": {
                 "status": {
@@ -4154,7 +4634,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.LoginRequest": {
+        "rest.LoginRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -4165,7 +4645,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.MessageResponse": {
+        "rest.MessageResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -4173,18 +4653,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.PermissionListResponse": {
+        "rest.PermissionListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_port_rest.PermissionResponse"
+                        "$ref": "#/definitions/rest.PermissionResponse"
                     }
                 }
             }
         },
-        "internal_port_rest.PermissionResponse": {
+        "rest.PermissionResponse": {
             "type": "object",
             "properties": {
                 "action": {
@@ -4207,7 +4687,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectCreateRequest": {
+        "rest.PersonalAccessTokenResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "personal_access_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ProjectCreateRequest": {
             "type": "object",
             "properties": {
                 "description": {
@@ -4233,13 +4724,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectListResponse": {
+        "rest.ProjectListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_port_rest.ProjectResponse"
+                        "$ref": "#/definitions/rest.ProjectResponse"
                     }
                 },
                 "next_page_token": {
@@ -4247,18 +4738,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectMemberListResponse": {
+        "rest.ProjectMemberListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_port_rest.ProjectMemberResponse"
+                        "$ref": "#/definitions/rest.ProjectMemberResponse"
                     }
                 }
             }
         },
-        "internal_port_rest.ProjectMemberResponse": {
+        "rest.ProjectMemberResponse": {
             "type": "object",
             "properties": {
                 "added_by": {
@@ -4293,7 +4784,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectMemberUpsertRequest": {
+        "rest.ProjectMemberUpsertRequest": {
             "type": "object",
             "properties": {
                 "role_id": {
@@ -4301,7 +4792,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectPriorityResponse": {
+        "rest.ProjectPriorityResponse": {
             "type": "object",
             "properties": {
                 "label": {
@@ -4318,7 +4809,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectResponse": {
+        "rest.ProjectResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -4337,7 +4828,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "priority": {
-                    "$ref": "#/definitions/internal_port_rest.ProjectPriorityResponse"
+                    "$ref": "#/definitions/rest.ProjectPriorityResponse"
                 },
                 "progress": {
                     "type": "integer"
@@ -4352,7 +4843,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type": {
-                    "$ref": "#/definitions/internal_port_rest.ProjectTypeResponse"
+                    "$ref": "#/definitions/rest.ProjectTypeResponse"
                 },
                 "updated_at": {
                     "type": "integer"
@@ -4362,13 +4853,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectRevisionListResponse": {
+        "rest.ProjectRevisionListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_port_rest.ProjectRevisionResponse"
+                        "$ref": "#/definitions/rest.ProjectRevisionResponse"
                     }
                 },
                 "next_page_token": {
@@ -4376,7 +4867,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectRevisionResponse": {
+        "rest.ProjectRevisionResponse": {
             "type": "object",
             "properties": {
                 "changed_at": {
@@ -4426,7 +4917,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectTaskAssignmentRequest": {
+        "rest.ProjectTaskAssignmentRequest": {
             "type": "object",
             "properties": {
                 "task_id": {
@@ -4434,7 +4925,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectTaskCreateRequest": {
+        "rest.ProjectTaskCreateRequest": {
             "type": "object",
             "properties": {
                 "description": {
@@ -4454,13 +4945,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectTaskPageResponse": {
+        "rest.ProjectTaskPageResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_port_rest.ProjectTaskResponse"
+                        "$ref": "#/definitions/rest.ProjectTaskResponse"
                     }
                 },
                 "next_page_token": {
@@ -4468,7 +4959,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectTaskResponse": {
+        "rest.ProjectTaskResponse": {
             "type": "object",
             "properties": {
                 "actual_minutes": {
@@ -4493,7 +4984,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "priority": {
-                    "$ref": "#/definitions/internal_port_rest.ProjectPriorityResponse"
+                    "$ref": "#/definitions/rest.ProjectPriorityResponse"
                 },
                 "progress": {
                     "type": "integer"
@@ -4505,7 +4996,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "status": {
-                    "$ref": "#/definitions/internal_port_rest.ProjectTaskStatusResponse"
+                    "$ref": "#/definitions/rest.ProjectTaskStatusResponse"
                 },
                 "title": {
                     "type": "string"
@@ -4518,7 +5009,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectTaskStatusResponse": {
+        "rest.ProjectTaskStatusResponse": {
             "type": "object",
             "properties": {
                 "label": {
@@ -4532,7 +5023,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectTypeResponse": {
+        "rest.ProjectTypeResponse": {
             "type": "object",
             "properties": {
                 "label": {
@@ -4546,28 +5037,44 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.ProjectUpdateRequest": {
+        "rest.ProjectUpdateRequestSchema": {
             "type": "object",
-            "additionalProperties": {
-                "type": "array",
-                "items": {
-                    "type": "integer",
-                    "format": "int32"
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "goal": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
-        "internal_port_rest.RoleListResponse": {
+        "rest.RoleListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_port_rest.RoleResponse"
+                        "$ref": "#/definitions/rest.RoleResponse"
                     }
                 }
             }
         },
-        "internal_port_rest.RoleResponse": {
+        "rest.RoleResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -4579,12 +5086,371 @@ const docTemplate = `{
                 "permissions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_port_rest.PermissionResponse"
+                        "$ref": "#/definitions/rest.PermissionResponse"
                     }
                 }
             }
         },
-        "internal_port_rest.SignupRequest": {
+        "rest.ScheduleAssigneeListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ScheduleAssigneeResponse"
+                    }
+                }
+            }
+        },
+        "rest.ScheduleAssigneeRequest": {
+            "type": "object",
+            "properties": {
+                "assignee_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleAssigneeResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_owner": {
+                    "type": "boolean"
+                },
+                "last_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleCreateRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "frequencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "interval_weeks": {
+                    "type": "integer"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleFrequencyRequest": {
+            "type": "object",
+            "properties": {
+                "frequencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "interval_weeks": {
+                    "type": "integer"
+                }
+            }
+        },
+        "rest.ScheduleFrequencyResponse": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "label_jp": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ScheduleResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleOccurrenceRequest": {
+            "type": "object",
+            "properties": {
+                "occurrence_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleProjectAssignmentRequest": {
+            "type": "object",
+            "properties": {
+                "schedule_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleRescheduleRequest": {
+            "type": "object",
+            "properties": {
+                "end_at": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleResponse": {
+            "type": "object",
+            "properties": {
+                "assignee_id": {
+                    "type": "string"
+                },
+                "completed": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "frequencies": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ScheduleFrequencyResponse"
+                    }
+                },
+                "frequency_anchor_date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "interval_weeks": {
+                    "type": "integer"
+                },
+                "is_exception": {
+                    "type": "boolean"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "repeat_state": {
+                    "type": "string"
+                },
+                "series_id": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ScheduleTagResponse"
+                    }
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleRevisionListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ScheduleRevisionResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleRevisionResponse": {
+            "type": "object",
+            "properties": {
+                "assignee_id": {
+                    "type": "string"
+                },
+                "changed_at": {
+                    "type": "integer"
+                },
+                "changed_by": {
+                    "type": "string"
+                },
+                "completed": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "deleted_at": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "frequencies": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ScheduleFrequencyResponse"
+                    }
+                },
+                "frequency_anchor_date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "interval_weeks": {
+                    "type": "integer"
+                },
+                "is_exception": {
+                    "type": "boolean"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "repeat_state": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "series_id": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleTagAssignmentRequest": {
+            "type": "object",
+            "properties": {
+                "tag_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleTagResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                }
+            }
+        },
+        "rest.ScheduleUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.SignupRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -4595,7 +5461,54 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TaskAssignedTagResponse": {
+        "rest.TagCreateRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.TagListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.TagResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.TagRenameRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.TagResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.TaskAssignedTagResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -4606,18 +5519,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TaskAssigneeListResponse": {
+        "rest.TaskAssigneeListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_port_rest.TaskAssigneeResponse"
+                        "$ref": "#/definitions/rest.TaskAssigneeResponse"
                     }
                 }
             }
         },
-        "internal_port_rest.TaskAssigneeResponse": {
+        "rest.TaskAssigneeResponse": {
             "type": "object",
             "properties": {
                 "email": {
@@ -4637,7 +5550,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TaskAssignmentRequest": {
+        "rest.TaskAssignmentRequest": {
             "type": "object",
             "properties": {
                 "assignee_id": {
@@ -4645,7 +5558,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TaskCreateRequest": {
+        "rest.TaskCreateRequest": {
             "type": "object",
             "properties": {
                 "description": {
@@ -4665,27 +5578,27 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TaskDetailsResponse": {
+        "rest.TaskDetailsResponse": {
             "type": "object",
             "properties": {
                 "tags": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_port_rest.TaskAssignedTagResponse"
+                        "$ref": "#/definitions/rest.TaskAssignedTagResponse"
                     }
                 },
                 "task": {
-                    "$ref": "#/definitions/internal_port_rest.TaskResponse"
+                    "$ref": "#/definitions/rest.TaskResponse"
                 }
             }
         },
-        "internal_port_rest.TaskListResponse": {
+        "rest.TaskListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_port_rest.TaskResponse"
+                        "$ref": "#/definitions/rest.TaskResponse"
                     }
                 },
                 "next_page_token": {
@@ -4693,7 +5606,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TaskResponse": {
+        "rest.TaskResponse": {
             "type": "object",
             "properties": {
                 "actual_minutes": {
@@ -4743,13 +5656,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TaskRevisionListResponse": {
+        "rest.TaskRevisionListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_port_rest.TaskRevisionResponse"
+                        "$ref": "#/definitions/rest.TaskRevisionResponse"
                     }
                 },
                 "next_page_token": {
@@ -4757,7 +5670,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TaskRevisionResponse": {
+        "rest.TaskRevisionResponse": {
             "type": "object",
             "properties": {
                 "actual_minutes": {
@@ -4813,189 +5726,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TaskScheduleCreateRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "start_at": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_port_rest.TaskScheduleFrequencyRequest": {
-            "type": "object",
-            "required": [
-                "frequencies",
-                "interval_weeks"
-            ],
-            "properties": {
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_port_rest.TaskScheduleFrequencyResponse": {
-            "type": "object",
-            "properties": {
-                "label": {
-                    "type": "string"
-                },
-                "label_jp": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_port_rest.TaskScheduleListResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_port_rest.TaskScheduleResponse"
-                    }
-                },
-                "next_page_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_port_rest.TaskScheduleOccurrenceRequest": {
-            "type": "object",
-            "properties": {
-                "occurrence_date": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_port_rest.TaskScheduleRescheduleRequest": {
-            "type": "object",
-            "properties": {
-                "end_at": {
-                    "type": "string"
-                },
-                "occurrence_date": {
-                    "type": "string"
-                },
-                "scope": {
-                    "type": "string"
-                },
-                "start_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_port_rest.TaskScheduleResponse": {
-            "type": "object",
-            "properties": {
-                "completed": {
-                    "type": "boolean"
-                },
-                "created_at": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_port_rest.TaskScheduleFrequencyResponse"
-                    }
-                },
-                "frequency_anchor_date": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                },
-                "is_exception": {
-                    "type": "boolean"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "occurrence_date": {
-                    "type": "string"
-                },
-                "repeat_state": {
-                    "type": "string"
-                },
-                "series_id": {
-                    "type": "string"
-                },
-                "start_at": {
-                    "type": "string"
-                },
-                "task_id": {
-                    "type": "string"
-                },
-                "timezone": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_port_rest.TaskScheduleUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "occurrence_date": {
-                    "type": "string"
-                },
-                "scope": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_port_rest.TaskTagAssignmentRequest": {
+        "rest.TaskTagAssignmentRequest": {
             "type": "object",
             "properties": {
                 "tag_id": {
@@ -5003,74 +5734,27 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TaskTagCreateRequest": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_port_rest.TaskTagListResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_port_rest.TaskTagResponse"
-                    }
-                },
-                "next_page_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_port_rest.TaskTagRenameRequest": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_port_rest.TaskTagResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_port_rest.TaskUpdateRequest": {
+        "rest.TaskUpdateRequest": {
             "type": "object",
             "properties": {
                 "actual_minutes": {
-                    "$ref": "#/definitions/internal_port_rest.optionalJSON-int"
+                    "$ref": "#/definitions/rest.optionalJSON-int"
                 },
                 "description": {
-                    "$ref": "#/definitions/internal_port_rest.optionalJSON-string"
+                    "$ref": "#/definitions/rest.optionalJSON-string"
                 },
                 "due_date": {
-                    "$ref": "#/definitions/internal_port_rest.optionalJSON-string"
+                    "$ref": "#/definitions/rest.optionalJSON-string"
                 },
                 "estimated_minutes": {
-                    "$ref": "#/definitions/internal_port_rest.optionalJSON-int"
+                    "$ref": "#/definitions/rest.optionalJSON-int"
                 },
                 "title": {
-                    "$ref": "#/definitions/internal_port_rest.optionalJSON-string"
+                    "$ref": "#/definitions/rest.optionalJSON-string"
                 }
             }
         },
-        "internal_port_rest.TodoItemCreateRequest": {
+        "rest.TodoItemCreateRequest": {
             "type": "object",
             "properties": {
                 "description": {
@@ -5093,7 +5777,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TodoItemFrequencyUpdateRequest": {
+        "rest.TodoItemFrequencyUpdateRequest": {
             "type": "object",
             "required": [
                 "frequencies",
@@ -5111,13 +5795,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TodoItemListResponse": {
+        "rest.TodoItemListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_port_rest.TodoItemResponse"
+                        "$ref": "#/definitions/rest.TodoItemResponse"
                     }
                 },
                 "next_page_token": {
@@ -5125,7 +5809,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TodoItemOccurrenceRequest": {
+        "rest.TodoItemOccurrenceRequest": {
             "type": "object",
             "properties": {
                 "occurrence_date": {
@@ -5133,7 +5817,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TodoItemReorderRequest": {
+        "rest.TodoItemReorderRequest": {
             "type": "object",
             "properties": {
                 "occurrence_date": {
@@ -5144,7 +5828,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TodoItemResponse": {
+        "rest.TodoItemResponse": {
             "type": "object",
             "properties": {
                 "completed": {
@@ -5203,7 +5887,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.TodoItemUpdateRequest": {
+        "rest.TodoItemUpdateRequest": {
             "type": "object",
             "required": [
                 "scope"
@@ -5230,7 +5914,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.UserInfoUpdateRequest": {
+        "rest.UserInfoUpdateRequest": {
             "type": "object",
             "properties": {
                 "first_name": {
@@ -5241,7 +5925,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.UserPasswordUpdateRequest": {
+        "rest.UserPasswordUpdateRequest": {
             "type": "object",
             "properties": {
                 "new_password": {
@@ -5249,7 +5933,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.UserResponse": {
+        "rest.UserResponse": {
             "type": "object",
             "properties": {
                 "email": {
@@ -5266,7 +5950,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.UserTimezoneUpdateRequest": {
+        "rest.UserTimezoneUpdateRequest": {
             "type": "object",
             "properties": {
                 "timezone": {
@@ -5274,7 +5958,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.optionalJSON-int": {
+        "rest.optionalJSON-int": {
             "type": "object",
             "properties": {
                 "present": {
@@ -5285,7 +5969,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_port_rest.optionalJSON-string": {
+        "rest.optionalJSON-string": {
             "type": "object",
             "properties": {
                 "present": {

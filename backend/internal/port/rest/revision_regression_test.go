@@ -189,7 +189,7 @@ func (repo *revisionUpdateRepository) UpdateByUserID(_ context.Context, _ domain
 	return repo.task, nil
 }
 
-func (repo *revisionUpdateRepository) ReadTaskProgressSources(_ context.Context, taskIDs, _ []string, _ time.Time) (dao.TaskProgressSources, error) {
+func (repo *revisionUpdateRepository) ReadTaskProgressSources(_ context.Context, taskIDs []string, _ time.Time) (dao.TaskProgressSources, error) {
 	counts, statuses := make(map[string]dao.TaskProgressCounts, len(taskIDs)), make(map[string]dao.TaskStatus, len(taskIDs))
 	for _, taskID := range taskIDs {
 		counts[taskID] = dao.TaskProgressCounts{Total: 1}

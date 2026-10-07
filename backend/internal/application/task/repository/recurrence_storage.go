@@ -9,7 +9,6 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/task/usecase"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/oklog/ulid/v2"
 )
 
@@ -95,7 +94,7 @@ func (r TodoItemRepository) ListTodoItemSkippedOccurrences(ctx context.Context, 
 func (r TodoItemRepository) ListTodoItemSkippedOccurrencesForCapability(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.TodoItemID, capability shared.Capability) ([]int64, error) {
 	rows, err := r.queries.ListTodoItemSkippedOccurrencesForCapabilityByTaskAndUserID(ctx, sqlc.ListTodoItemSkippedOccurrencesForCapabilityByTaskAndUserIDParams{
 		SeriesID: string(seriesID), TaskID: string(taskID), ActorID: string(userID),
-		ResourceID: string(capability.Resource), Action: sqlc.PermissionAction(capability.Action),
+		ResourceID: string(capability.Resource), Action: sqlc.Action(capability.Action),
 	})
 	if err != nil {
 		return nil, err
@@ -125,125 +124,6 @@ func (r TodoItemRepository) SetTodoItemSkippedOccurrence(ctx context.Context, us
 	return r.queries.DeleteSkippedTodoItemOccurrenceByTaskAndUserID(ctx, sqlc.DeleteSkippedTodoItemOccurrenceByTaskAndUserIDParams{
 		SeriesID: string(seriesID), TaskID: string(taskID), UserID: string(userID), OccurrenceDate: date,
 	})
-}
-
-func (r TaskScheduleRepository) SetTaskScheduleRecurrence(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.TaskScheduleID, anchor time.Time, intervalWeeks int, frequencies []dao.TaskFrequency) error {
-	params := sqlc.SetTaskScheduleRecurrenceByTaskAndUserIDParams{
-		SeriesID: string(seriesID), TaskID: string(taskID), UserID: string(userID),
-		FrequencyAnchorDate: timeToPgDate(anchor), IntervalWeeks: int32(intervalWeeks),
-	}
-	rows, err := r.queries.SetTaskScheduleRecurrenceByTaskAndUserID(ctx, params)
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return domain.ErrTaskScheduleNotFound
-	}
-	owner := sqlc.ReplaceTaskScheduleFrequenciesByTaskAndUserIDParams{SeriesID: string(seriesID), TaskID: string(taskID), UserID: string(userID)}
-	if err := r.queries.ReplaceTaskScheduleFrequenciesByTaskAndUserID(ctx, owner); err != nil {
-		return err
-	}
-	return r.queries.CreateTaskScheduleFrequenciesByTaskAndUserID(ctx, sqlc.CreateTaskScheduleFrequenciesByTaskAndUserIDParams{
-		SeriesID: string(seriesID), TaskID: string(taskID), UserID: string(userID), Frequencies: taskFrequencyValues(frequencies),
-	})
-}
-
-func (r TaskScheduleRepository) StopTaskScheduleRecurrence(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.TaskScheduleID) error {
-	rows, err := r.queries.StopTaskScheduleRecurrenceByTaskAndUserID(ctx, sqlc.StopTaskScheduleRecurrenceByTaskAndUserIDParams{
-		SeriesID: string(seriesID), TaskID: string(taskID), UserID: string(userID),
-	})
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return domain.ErrTaskScheduleNotFound
-	}
-	return r.queries.ClearTaskScheduleFrequenciesByTaskAndUserID(ctx, sqlc.ClearTaskScheduleFrequenciesByTaskAndUserIDParams{
-		SeriesID: string(seriesID), TaskID: string(taskID), UserID: string(userID),
-	})
-}
-
-func (r TaskScheduleRepository) UpdateTaskScheduleSeriesTemplate(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID, snapshotID domain.TaskScheduleID, schedule domain.TaskSchedule) (dao.TaskSchedule, error) {
-	owner := sqlc.SnapshotTaskScheduleRootOccurrenceByTaskAndUserIDParams{
-		ID: string(snapshotID), SeriesID: string(seriesID), TaskID: string(taskID), UserID: string(userID),
-	}
-	if err := r.queries.SnapshotTaskScheduleRootOccurrenceByTaskAndUserID(ctx, owner); err != nil {
-		return dao.TaskSchedule{}, err
-	}
-	rows, err := r.queries.UpdateTaskScheduleSeriesTemplateByTaskAndUserID(ctx, sqlc.UpdateTaskScheduleSeriesTemplateByTaskAndUserIDParams{
-		SeriesID: string(seriesID), TaskID: string(taskID), UserID: string(userID), Title: schedule.Title,
-		Description: stringToPgText(schedule.Description), Location: stringToPgText(schedule.Location),
-		StartAt: timeToPgTime(schedule.StartAt), EndAt: timeToPgTime(schedule.EndAt), Timezone: schedule.Timezone,
-	})
-	if err != nil {
-		return dao.TaskSchedule{}, err
-	}
-	if rows == 0 {
-		return dao.TaskSchedule{}, domain.ErrTaskScheduleNotFound
-	}
-	return r.GetByTaskAndUserID(ctx, userID, taskID, seriesID)
-}
-
-func (r TaskScheduleRepository) UpsertTaskScheduleOverride(ctx context.Context, userID domain.UserID, schedule domain.TaskSchedule) (string, error) {
-	return r.queries.UpsertTaskScheduleOverrideByTaskAndUserID(ctx, sqlc.UpsertTaskScheduleOverrideByTaskAndUserIDParams{
-		ID: string(schedule.ID), TaskID: string(schedule.TaskID), UserID: string(userID), SeriesID: string(schedule.SeriesID),
-		Title: schedule.Title, Description: stringToPgText(schedule.Description), Location: stringToPgText(schedule.Location),
-		StartAt: timeToPgTime(schedule.StartAt), EndAt: timeToPgTime(schedule.EndAt), OccurrenceDate: timeToPgDate(schedule.OccurrenceDate),
-		Timezone: schedule.Timezone, Completed: schedule.Completed, Deleted: schedule.Deleted,
-	})
-}
-
-func (r TaskScheduleRepository) ListTaskScheduleSkippedOccurrences(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.TaskScheduleID) ([]int64, error) {
-	rows, err := r.queries.ListTaskScheduleSkippedOccurrencesByTaskAndUserID(ctx, sqlc.ListTaskScheduleSkippedOccurrencesByTaskAndUserIDParams{
-		SeriesID: string(seriesID), TaskID: string(taskID), UserID: string(userID),
-	})
-	if err != nil {
-		return nil, err
-	}
-	dates := make([]int64, 0, len(rows))
-	for _, occurrenceDate := range rows {
-		dates = append(dates, pgDateUnix(occurrenceDate))
-	}
-	return dates, nil
-}
-
-func (r TaskScheduleRepository) ListTaskScheduleSkippedOccurrencesForCapability(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.TaskScheduleID, capability shared.Capability) ([]int64, error) {
-	rows, err := r.queries.ListTaskScheduleSkippedOccurrencesForCapabilityByTaskAndUserID(ctx, sqlc.ListTaskScheduleSkippedOccurrencesForCapabilityByTaskAndUserIDParams{
-		SeriesID: string(seriesID), TaskID: string(taskID), ActorID: string(userID),
-		ResourceID: string(capability.Resource), Action: sqlc.PermissionAction(capability.Action),
-	})
-	if err != nil {
-		return nil, err
-	}
-	dates := make([]int64, 0, len(rows))
-	for _, occurrenceDate := range rows {
-		dates = append(dates, pgDateUnix(occurrenceDate))
-	}
-	return dates, nil
-}
-
-func (r TaskScheduleRepository) SetTaskScheduleSkippedOccurrence(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.TaskScheduleID, occurrenceDate time.Time, skipped bool) error {
-	date := timeToPgDate(occurrenceDate)
-	owner := sqlc.SkipTaskScheduleOccurrenceByTaskAndUserIDParams{
-		ID: ulid.Make().String(), SeriesID: string(seriesID), TaskID: string(taskID), UserID: string(userID), OccurrenceDate: date,
-	}
-	if skipped {
-		_, err := r.queries.SkipTaskScheduleOccurrenceByTaskAndUserID(ctx, owner)
-		return err
-	}
-	restore := sqlc.RestoreEditedTaskScheduleOccurrenceByTaskAndUserIDParams{
-		SeriesID: string(seriesID), TaskID: string(taskID), UserID: string(userID), OccurrenceDate: date,
-	}
-	if err := r.queries.RestoreEditedTaskScheduleOccurrenceByTaskAndUserID(ctx, restore); err != nil {
-		return err
-	}
-	return r.queries.DeleteSkippedTaskScheduleOccurrenceByTaskAndUserID(ctx, sqlc.DeleteSkippedTaskScheduleOccurrenceByTaskAndUserIDParams{
-		SeriesID: string(seriesID), TaskID: string(taskID), UserID: string(userID), OccurrenceDate: date,
-	})
-}
-
-func unixToPgDate(value int64) pgtype.Date {
-	return pgtype.Date{Time: time.Unix(value, 0).UTC(), Valid: true}
 }
 
 func taskFrequenciesFromStrings(values []string) []dao.TaskFrequency {

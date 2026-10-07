@@ -10,9 +10,9 @@ type UserUseCases struct {
 	UpdateTimezone *UpdateUserTimezoneUseCase
 }
 
-type AccessTokenUseCases struct {
+type PersonalAccessTokenUseCases struct {
 	Authenticate *AuthenticateUseCase
 	Login        *LoginUserUseCase
-	Generate     *GenerateAccessTokenUseCase
-	Revoke       *RevokeAccessTokenUseCase
+	Generate     *GeneratePersonalAccessTokenUseCase
+	Revoke       *RevokePersonalAccessTokenUseCase
 }

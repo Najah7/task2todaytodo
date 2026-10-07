@@ -11,35 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (r ProjectRepository) ListProjectRevisionsByActor(ctx context.Context, actor domain.UserID, project domain.ProjectID, limit int, anchor *usecase.CursorAnchor) ([]dao.ProjectRevision, error) {
-	arg := sqlc.ListProjectRevisionsByActorParams{ID: string(project), ActorID: string(actor), PageLimit: int32(limit)}
-	if anchor != nil {
-		if anchor.Revision < 1 {
-			return nil, usecase.ErrInvalidTaskPage
-		}
-		arg.CursorRevision = pgtype.Int4{Int32: anchor.Revision, Valid: true}
-	}
-	rows, err := r.queries.ListProjectRevisionsByActor(ctx, arg)
-	if err != nil {
-		return nil, err
-	}
-	if len(rows) == 0 && anchor == nil {
-		return nil, domain.ErrProjectNotFound
-	}
-	revisions := make([]dao.ProjectRevision, 0, len(rows))
-	for _, row := range rows {
-		revisions = append(revisions, dao.ProjectRevision{
-			ID: row.ID, Revision: row.Revision, UserID: row.UserID, Type: row.Type,
-			Title: row.Title, Goal: pgTextString(row.Goal), Description: pgTextString(row.Description),
-			Priority: row.Priority, StartDate: pgDateString(row.StartDate), EndDate: pgDateString(row.EndDate),
-			DeletedAt: pgUnixPointer(row.DeletedAt), CreatedAt: row.CreatedAt.Time.Unix(),
-			UpdatedAt: row.UpdatedAt.Time.Unix(), ChangedBy: row.ChangedBy, ChangedAt: row.ChangedAt.Time.Unix(),
-			CursorAt: row.ChangedAt.Time.UTC().Format(time.RFC3339Nano),
-		})
-	}
-	return revisions, nil
-}
-
 func (r TaskRepository) ListTaskRevisionsByActor(ctx context.Context, actor domain.UserID, task domain.TaskID, limit int, anchor *usecase.CursorAnchor) ([]dao.TaskRevision, error) {
 	arg := sqlc.ListTaskRevisionsByActorParams{ID: string(task), ActorID: string(actor), PageLimit: int32(limit)}
 	if anchor != nil {

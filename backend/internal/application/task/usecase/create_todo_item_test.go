@@ -85,9 +85,9 @@ type createTodoItemTimezoneFake struct {
 	userID   domain.UserID
 }
 
-func (reader *createTodoItemTimezoneFake) GetTimezone(_ context.Context, userID domain.UserID) (string, error) {
+func (reader *createTodoItemTimezoneFake) GetTimezone(_ context.Context, userID string) (string, error) {
 	reader.calls++
-	reader.userID = userID
+	reader.userID = domain.UserID(userID)
 	return reader.timezone, reader.err
 }
 

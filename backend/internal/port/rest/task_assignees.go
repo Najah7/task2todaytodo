@@ -30,7 +30,7 @@ type TaskAssignmentRequest struct {
 //	@Tags		Tasks
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		id	path	string	true	"Task ID"
+//	@Param		id	path		string	true	"Task ID"
 //	@Success	200	{object}	TaskAssigneeListResponse
 //	@Failure	401	{object}	ErrResponse
 //	@Failure	403	{object}	ErrResponse
@@ -62,16 +62,16 @@ func (h *TaskHandler) ListAssignees(w http.ResponseWriter, r *http.Request) {
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		id		path	string	true	"Task ID"
-//	@Param		If-Match	header	string	true	"Current task ETag, for example \"3\""
-//	@Param		request	body	TaskAssignmentRequest	true	"Assignee"
-//	@Success	200	{object}	TaskResponse
-//	@Failure	400	{object}	ErrResponse
-//	@Failure	401	{object}	ErrResponse
-//	@Failure	403	{object}	ErrResponse
-//	@Failure	404	{object}	ErrResponse
-//	@Failure	409	{object}	ErrResponse
-//	@Failure	428	{object}	ErrResponse
+//	@Param		id			path		string					true	"Task ID"
+//	@Param		If-Match	header		string					true	"Current task ETag, for example \"3\""
+//	@Param		request		body		TaskAssignmentRequest	true	"Assignee"
+//	@Success	200			{object}	TaskResponse
+//	@Failure	400			{object}	ErrResponse
+//	@Failure	401			{object}	ErrResponse
+//	@Failure	403			{object}	ErrResponse
+//	@Failure	404			{object}	ErrResponse
+//	@Failure	409			{object}	ErrResponse
+//	@Failure	428			{object}	ErrResponse
 //	@Router		/tasks/{id}/assignees [patch]
 func (h *TaskHandler) Assign(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.userID(r)

@@ -11,13 +11,13 @@ import (
 )
 
 var (
-	errGetUser           = errors.New("get user failed")
-	errGetUserByEmail    = errors.New("get user by email failed")
-	errCreateUser        = errors.New("create user failed")
-	errUpdateUser        = errors.New("update user failed")
-	errGetAccessToken    = errors.New("get access token failed")
-	errCreateAccessToken = errors.New("create access token failed")
-	errRevokeAccessToken = errors.New("revoke access token failed")
+	errGetUser                   = errors.New("get user failed")
+	errGetUserByEmail            = errors.New("get user by email failed")
+	errCreateUser                = errors.New("create user failed")
+	errUpdateUser                = errors.New("update user failed")
+	errGetPersonalAccessToken    = errors.New("get access token failed")
+	errCreatePersonalAccessToken = errors.New("create access token failed")
+	errRevokePersonalAccessToken = errors.New("revoke access token failed")
 )
 
 var _ UserRepository = (*stubUserRepository)(nil)
@@ -70,33 +70,33 @@ func (r *stubUserRepository) UpdateTimezone(_ context.Context, _ domain.UserID, 
 	return r.updateTimezoneErr
 }
 
-var _ AccessTokenRepository = (*stubAccessTokenRepository)(nil)
+var _ PersonalAccessTokenRepository = (*stubPersonalAccessTokenRepository)(nil)
 
-type stubAccessTokenRepository struct {
-	token        domain.AccessToken
+type stubPersonalAccessTokenRepository struct {
+	token        domain.PersonalAccessToken
 	getErr       error
 	createErr    error
 	revokeErr    error
-	createdToken domain.AccessToken
+	createdToken domain.PersonalAccessToken
 	revokedToken string
 }
 
-func (r *stubAccessTokenRepository) GetByToken(_ context.Context, _ string) (dao.AccessToken, error) {
+func (r *stubPersonalAccessTokenRepository) GetByToken(_ context.Context, _ string) (dao.PersonalAccessToken, error) {
 	if r.getErr != nil {
-		return dao.AccessToken{}, r.getErr
+		return dao.PersonalAccessToken{}, r.getErr
 	}
-	return accessTokenDAOFromDomain(r.token), nil
+	return personalAccessTokenDAOFromDomain(r.token), nil
 }
 
-func (r *stubAccessTokenRepository) Create(_ context.Context, token domain.AccessToken) (dao.AccessToken, error) {
+func (r *stubPersonalAccessTokenRepository) Create(_ context.Context, token domain.PersonalAccessToken) (dao.PersonalAccessToken, error) {
 	if r.createErr != nil {
-		return dao.AccessToken{}, r.createErr
+		return dao.PersonalAccessToken{}, r.createErr
 	}
 	r.createdToken = token
-	return accessTokenDAOFromDomain(token), nil
+	return personalAccessTokenDAOFromDomain(token), nil
 }
 
-func (r *stubAccessTokenRepository) Revoke(_ context.Context, token string) error {
+func (r *stubPersonalAccessTokenRepository) Revoke(_ context.Context, token string) error {
 	if r.revokeErr != nil {
 		return r.revokeErr
 	}
@@ -118,11 +118,11 @@ func existingUser(t *testing.T) domain.User {
 	return domain.NewUser(userID, email, password, domain.NewUserName("John", "Doe"))
 }
 
-func serviceAccessToken(t *testing.T) domain.AccessToken {
+func servicePersonalAccessToken(t *testing.T) domain.PersonalAccessToken {
 	t.Helper()
-	token, err := domain.NewExistingAccessToken("token-1", "user-1", time.Now().Add(time.Hour).Unix(), 0, time.Now().Add(-time.Hour).Unix())
+	token, err := domain.NewExistingPersonalAccessToken("token-1", "user-1", time.Now().Add(time.Hour).Unix(), 0, time.Now().Add(-time.Hour).Unix())
 	if err != nil {
-		t.Fatalf("domain.NewExistingAccessToken() error = %v", err)
+		t.Fatalf("domain.NewExistingPersonalAccessToken() error = %v", err)
 	}
 	return token
 }
@@ -151,8 +151,8 @@ func userReadDAOFromDomain(user domain.User) dao.User {
 	return result
 }
 
-func accessTokenDAOFromDomain(token domain.AccessToken) dao.AccessToken {
-	return dao.AccessToken{
+func personalAccessTokenDAOFromDomain(token domain.PersonalAccessToken) dao.PersonalAccessToken {
+	return dao.PersonalAccessToken{
 		Token:     token.Token,
 		UserID:    string(token.UserID),
 		ExpiresAt: token.ExpiresAt,
@@ -168,7 +168,7 @@ func assertServiceErrorIs(t *testing.T, got, want error) {
 	}
 }
 
-func assertAccessTokenErrorIs(t *testing.T, got, want error) {
+func assertPersonalAccessTokenErrorIs(t *testing.T, got, want error) {
 	t.Helper()
 	if !errors.Is(got, want) {
 		t.Errorf("error = %v, want %v", got, want)

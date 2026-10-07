@@ -12,14 +12,15 @@ type Capability struct {
 }
 
 const (
-	ResourceProject        ResourceKind = "project"
-	ResourceTask           ResourceKind = "task"
-	ResourceTodoItem       ResourceKind = "todo_item"
-	ResourceTaskSchedule   ResourceKind = "task_schedule"
-	ResourceTaskAssignment ResourceKind = "task_assignment"
-	ResourceOccurrence     ResourceKind = "occurrence"
-	ResourceProjectMember  ResourceKind = "project_member"
-	ResourceDeletedHistory ResourceKind = "deleted_history"
+	ResourceProject            ResourceKind = "project"
+	ResourceTask               ResourceKind = "task"
+	ResourceTodoItem           ResourceKind = "todo_item"
+	ResourceSchedule           ResourceKind = "schedule"
+	ResourceTaskAssignment     ResourceKind = "task_assignment"
+	ResourceScheduleAssignment ResourceKind = "schedule_assignment"
+	ResourceOccurrence         ResourceKind = "occurrence"
+	ResourceProjectMember      ResourceKind = "project_member"
+	ResourceDeletedHistory     ResourceKind = "deleted_history"
 )
 
 const (
@@ -29,14 +30,17 @@ const (
 	ActionDelete PermissionAction = "delete"
 )
 
-func ProjectRead() Capability         { return Capability{ResourceProject, ActionRead} }
-func ProjectUpdate() Capability       { return Capability{ResourceProject, ActionUpdate} }
-func ProjectDelete() Capability       { return Capability{ResourceProject, ActionDelete} }
-func TaskRead() Capability            { return Capability{ResourceTask, ActionRead} }
-func TaskCreate() Capability          { return Capability{ResourceTask, ActionCreate} }
-func TaskUpdate() Capability          { return Capability{ResourceTask, ActionUpdate} }
-func TaskDelete() Capability          { return Capability{ResourceTask, ActionDelete} }
-func AssignmentUpdate() Capability    { return Capability{ResourceTaskAssignment, ActionUpdate} }
+func ProjectRead() Capability      { return Capability{ResourceProject, ActionRead} }
+func ProjectUpdate() Capability    { return Capability{ResourceProject, ActionUpdate} }
+func ProjectDelete() Capability    { return Capability{ResourceProject, ActionDelete} }
+func TaskRead() Capability         { return Capability{ResourceTask, ActionRead} }
+func TaskCreate() Capability       { return Capability{ResourceTask, ActionCreate} }
+func TaskUpdate() Capability       { return Capability{ResourceTask, ActionUpdate} }
+func TaskDelete() Capability       { return Capability{ResourceTask, ActionDelete} }
+func AssignmentUpdate() Capability { return Capability{ResourceTaskAssignment, ActionUpdate} }
+func ScheduleAssignmentUpdate() Capability {
+	return Capability{ResourceScheduleAssignment, ActionUpdate}
+}
 func OccurrenceUpdate() Capability    { return Capability{ResourceOccurrence, ActionUpdate} }
 func ProjectMemberRead() Capability   { return Capability{ResourceProjectMember, ActionRead} }
 func ProjectMemberCreate() Capability { return Capability{ResourceProjectMember, ActionCreate} }
@@ -49,13 +53,7 @@ func TodoItemCreate() Capability { return Capability{ResourceTodoItem, ActionCre
 func TodoItemRead() Capability   { return Capability{ResourceTodoItem, ActionRead} }
 func TodoItemUpdate() Capability { return Capability{ResourceTodoItem, ActionUpdate} }
 func TodoItemDelete() Capability { return Capability{ResourceTodoItem, ActionDelete} }
-func TaskScheduleCreate() Capability {
-	return Capability{ResourceTaskSchedule, ActionCreate}
-}
-func TaskScheduleRead() Capability { return Capability{ResourceTaskSchedule, ActionRead} }
-func TaskScheduleUpdate() Capability {
-	return Capability{ResourceTaskSchedule, ActionUpdate}
-}
-func TaskScheduleDelete() Capability {
-	return Capability{ResourceTaskSchedule, ActionDelete}
-}
+func ScheduleCreate() Capability { return Capability{ResourceSchedule, ActionCreate} }
+func ScheduleRead() Capability   { return Capability{ResourceSchedule, ActionRead} }
+func ScheduleUpdate() Capability { return Capability{ResourceSchedule, ActionUpdate} }
+func ScheduleDelete() Capability { return Capability{ResourceSchedule, ActionDelete} }

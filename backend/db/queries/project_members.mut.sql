@@ -13,7 +13,7 @@ SELECT project_has_permission(
     CASE WHEN EXISTS (
         SELECT 1 FROM project_members AS existing
         WHERE existing.project_id = p.id AND existing.user_id = sqlc.arg(member_id)::text
-    ) THEN 'update'::permission_action ELSE 'create'::permission_action END
+    ) THEN 'update'::action ELSE 'create'::action END
 ) AS allowed
 FROM projects AS p
 WHERE p.id = sqlc.arg(project_id)::text AND p.deleted_at IS NULL;
@@ -32,7 +32,7 @@ WHERE p.id = sqlc.arg(project_id)::text
       CASE WHEN EXISTS (
           SELECT 1 FROM project_members AS existing
           WHERE existing.project_id = p.id AND existing.user_id = sqlc.arg(member_id)::text
-      ) THEN 'update'::permission_action ELSE 'create'::permission_action END
+      ) THEN 'update'::action ELSE 'create'::action END
   )
 ON CONFLICT (project_id, user_id) DO UPDATE
 SET role_id = EXCLUDED.role_id,

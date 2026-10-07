@@ -497,8 +497,8 @@ func (h *TodoItemHandler) changeCompleted(w http.ResponseWriter, r *http.Request
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			taskId	path		string	true	"Task ID"
-//	@Param			id		path		string	true	"TodoItem series ID"
+//	@Param			taskId	path		string						true	"Task ID"
+//	@Param			id		path		string						true	"TodoItem series ID"
 //	@Param			request	body		TodoItemOccurrenceRequest	false	"Stable occurrence date; required for recurring items"
 //	@Success		200		{object}	MessageResponse
 //	@Failure		400		{object}	ErrResponse
@@ -519,8 +519,8 @@ func (h *TodoItemHandler) Complete(w http.ResponseWriter, r *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			taskId	path		string	true	"Task ID"
-//	@Param			id		path		string	true	"TodoItem series ID"
+//	@Param			taskId	path		string						true	"Task ID"
+//	@Param			id		path		string						true	"TodoItem series ID"
 //	@Param			request	body		TodoItemOccurrenceRequest	false	"Stable occurrence date; required for recurring items"
 //	@Success		200		{object}	MessageResponse
 //	@Failure		400		{object}	ErrResponse
@@ -535,41 +535,41 @@ func (h *TodoItemHandler) Reopen(w http.ResponseWriter, r *http.Request) {
 
 // Skip marks one recurring TodoItem occurrence skipped. occurrence_date identifies stable occurrence, even if due_date changed.
 //
-//	@Summary Skip todo item occurrence
-//	@Tags TodoItems
-//	@Accept json
-//	@Produce json
-//	@Security BearerAuth
-//	@Param taskId path string true "Task ID"
-//	@Param id path string true "TodoItem series ID"
-//	@Param request body TodoItemOccurrenceRequest true "Stable recurring occurrence date"
-//	@Success 200 {object} MessageResponse
-//	@Failure 400 {object} ErrResponse
-//	@Failure 401 {object} ErrResponse
-//	@Failure 404 {object} ErrResponse
-//	@Failure 409 {object} ErrResponse "Completed occurrence cannot be skipped"
-//	@Failure 500 {object} ErrResponse
-//	@Router /tasks/{taskId}/todo-items/{id}:skip [post]
+//	@Summary	Skip todo item occurrence
+//	@Tags		TodoItems
+//	@Accept		json
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		taskId	path		string						true	"Task ID"
+//	@Param		id		path		string						true	"TodoItem series ID"
+//	@Param		request	body		TodoItemOccurrenceRequest	true	"Stable recurring occurrence date"
+//	@Success	200		{object}	MessageResponse
+//	@Failure	400		{object}	ErrResponse
+//	@Failure	401		{object}	ErrResponse
+//	@Failure	404		{object}	ErrResponse
+//	@Failure	409		{object}	ErrResponse	"Completed occurrence cannot be skipped"
+//	@Failure	500		{object}	ErrResponse
+//	@Router		/tasks/{taskId}/todo-items/{id}:skip [post]
 func (h *TodoItemHandler) Skip(w http.ResponseWriter, r *http.Request) {
 	h.changeCompleted(w, r, todoItemsSkipFailure, h.todoItems.Skip.Execute, "TodoItem skipped")
 }
 
 // Restore restores one skipped TodoItem occurrence. occurrence_date identifies stable occurrence, even if due_date changed.
 //
-//	@Summary Restore todo item occurrence
-//	@Tags TodoItems
-//	@Accept json
-//	@Produce json
-//	@Security BearerAuth
-//	@Param taskId path string true "Task ID"
-//	@Param id path string true "TodoItem series ID"
-//	@Param request body TodoItemOccurrenceRequest true "Stable recurring occurrence date"
-//	@Success 200 {object} MessageResponse
-//	@Failure 400 {object} ErrResponse
-//	@Failure 401 {object} ErrResponse
-//	@Failure 404 {object} ErrResponse
-//	@Failure 500 {object} ErrResponse
-//	@Router /tasks/{taskId}/todo-items/{id}:restore [post]
+//	@Summary	Restore todo item occurrence
+//	@Tags		TodoItems
+//	@Accept		json
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		taskId	path		string						true	"Task ID"
+//	@Param		id		path		string						true	"TodoItem series ID"
+//	@Param		request	body		TodoItemOccurrenceRequest	true	"Stable recurring occurrence date"
+//	@Success	200		{object}	MessageResponse
+//	@Failure	400		{object}	ErrResponse
+//	@Failure	401		{object}	ErrResponse
+//	@Failure	404		{object}	ErrResponse
+//	@Failure	500		{object}	ErrResponse
+//	@Router		/tasks/{taskId}/todo-items/{id}:restore [post]
 func (h *TodoItemHandler) Restore(w http.ResponseWriter, r *http.Request) {
 	h.changeCompleted(w, r, todoItemsRestoreFailure, h.todoItems.Restore.Execute, "TodoItem restored")
 }

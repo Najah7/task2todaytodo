@@ -53,8 +53,8 @@ type getTaskTaskRepositoryFake struct {
 	accesses *[]string
 }
 
-func (repo *getTaskTaskRepositoryFake) ReadTaskProgressSources(ctx context.Context, taskIDs, projectIDs []string, asOf time.Time) (dao.TaskProgressSources, error) {
-	return repo.taskProgressSourceFake.ReadTaskProgressSources(ctx, taskIDs, projectIDs, asOf)
+func (repo *getTaskTaskRepositoryFake) ReadTaskProgressSources(ctx context.Context, taskIDs []string, asOf time.Time) (dao.TaskProgressSources, error) {
+	return repo.taskProgressSourceFake.ReadTaskProgressSources(ctx, taskIDs, asOf)
 }
 
 func (repo *getTaskTaskRepositoryFake) GetByUserID(_ context.Context, userID domain.UserID, taskID domain.TaskID) (dao.Task, error) {

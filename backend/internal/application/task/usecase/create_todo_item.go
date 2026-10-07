@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	tasktime "github.com/Najah7/task2todaytodo/internal/application/task"
+	calendar "github.com/Najah7/task2todaytodo/internal/application/shared/calendar"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	"github.com/Najah7/task2todaytodo/internal/logging"
@@ -40,7 +40,7 @@ func (uc *CreateTodoItemUseCase) Execute(ctx context.Context, input CreateTodoIt
 	asOf := uc.clock()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		return withTaskProgressMutationForPermission(ctx, repos, input.UserID, input.TaskID, asOf, shared.TodoItemCreate(), func() error {
-			timezone, err := uc.timezones.GetTimezone(ctx, input.UserID)
+			timezone, err := uc.timezones.GetTimezone(ctx, string(input.UserID))
 			if err != nil {
 				return err
 			}
@@ -103,5 +103,5 @@ func recurrenceDate(dueDate, now time.Time, timezone string) time.Time {
 			date = now
 		}
 	}
-	return tasktime.NormalizeCalendarDate(date)
+	return calendar.NormalizeCalendarDate(date)
 }

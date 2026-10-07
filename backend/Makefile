@@ -16,7 +16,8 @@ export APP_SERVICE_NAME := task2todaytodo
 help:
 	@printf '%s\n' 'Available commands:'
 	@printf '  %-28s %s\n' 'make go-fmt' 'Format Go source files.'
-	@printf '  %-28s %s\n' 'make test' 'Run Go tests.'
+	@printf '  %-28s %s\n' 'make test' 'Run Go unit tests.'
+	@printf '  %-28s %s\n' 'make test-integration' 'Start isolated PostgreSQL and run integration tests.'
 	@printf '  %-28s %s\n' 'make build' 'Build the API binary.'
 	@printf '  %-28s %s\n' 'make run' 'Run the app service with Docker Compose.'
 	@printf '  %-28s %s\n' 'make dev' 'Run the API with Air live reload in Docker.'
@@ -44,6 +45,10 @@ go-fmt:
 .PHONY: test
 test:
 	@go test -v ./...
+
+.PHONY: test-integration
+test-integration:
+	@./tests/run-integration.sh
 
 .PHONY: build
 build:

@@ -4,16 +4,16 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
-	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
+	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
+	projectdomain "github.com/Najah7/task2todaytodo/internal/application/project/domain"
+	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 )
 
 type ProjectMemberHandler struct {
-	members *taskusecase.ProjectMemberUseCases
+	members *projectusecase.UseCases
 }
 
-func NewProjectMemberHandler(members *taskusecase.ProjectMemberUseCases) *ProjectMemberHandler {
+func NewProjectMemberHandler(members *projectusecase.UseCases) *ProjectMemberHandler {
 	return &ProjectMemberHandler{members: members}
 }
 
@@ -67,7 +67,7 @@ func (h *ProjectMemberHandler) ListMembers(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
-	members, err := h.members.ListMembers.Execute(r.Context(), actor, projectID)
+	members, err := h.members.Members.ListMembers.Execute(r.Context(), actor, projectID)
 	if err != nil {
 		writeProjectMemberUseCaseError(w, projectMemberListFailure, err)
 		return
@@ -86,9 +86,9 @@ func (h *ProjectMemberHandler) ListMembers(w http.ResponseWriter, r *http.Reques
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		id		path		string				true	"Project ID"
-//	@Param		user_id	path		string				true	"Member user ID"
-//	@Param		request	body		ProjectMemberUpsertRequest	true	"Member role"
+//	@Param		id		path	string						true	"Project ID"
+//	@Param		user_id	path	string						true	"Member user ID"
+//	@Param		request	body	ProjectMemberUpsertRequest	true	"Member role"
 //	@Success	204
 //	@Failure	400	{object}	ErrResponse
 //	@Failure	401	{object}	ErrResponse
@@ -119,7 +119,7 @@ func (h *ProjectMemberHandler) UpsertMember(w http.ResponseWriter, r *http.Reque
 		WriteError(w, http.StatusBadRequest, projectMemberUpsertFailure, NewErrDetail("role_id", "required", "Role ID is required"))
 		return
 	}
-	if err := h.members.UpsertMember.Execute(r.Context(), actor, projectID, memberID, request.RoleID); err != nil {
+	if err := h.members.Members.UpsertMember.Execute(r.Context(), actor, projectID, memberID, request.RoleID); err != nil {
 		writeProjectMemberUseCaseError(w, projectMemberUpsertFailure, err)
 		return
 	}
@@ -153,20 +153,20 @@ func (h *ProjectMemberHandler) DeleteMember(w http.ResponseWriter, r *http.Reque
 	if !ok {
 		return
 	}
-	if err := h.members.DeleteMember.Execute(r.Context(), actor, projectID, memberID); err != nil {
+	if err := h.members.Members.DeleteMember.Execute(r.Context(), actor, projectID, memberID); err != nil {
 		writeProjectMemberUseCaseError(w, projectMemberDeleteFailure, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func projectMemberUserID(w http.ResponseWriter, r *http.Request, spec ErrSpec) (domain.UserID, bool) {
+func projectMemberUserID(w http.ResponseWriter, r *http.Request, spec ErrSpec) (projectdomain.UserID, bool) {
 	id := r.PathValue("user_id")
 	if id == "" {
 		WriteError(w, http.StatusBadRequest, spec, NewErrDetail("user_id", "required", "Member user ID is required"))
 		return "", false
 	}
-	return domain.UserID(id), true
+	return projectdomain.UserID(id), true
 }
 
 func projectMemberResponse(member dao.ProjectMember) ProjectMemberResponse {
@@ -186,19 +186,19 @@ func projectMemberResponse(member dao.ProjectMember) ProjectMemberResponse {
 
 func writeProjectMemberUseCaseError(w http.ResponseWriter, spec ErrSpec, err error) {
 	switch {
-	case errors.Is(err, domain.ErrProjectNotFound):
+	case errors.Is(err, projectdomain.ErrProjectNotFound):
 		WriteError(w, http.StatusNotFound, spec, NewErrDetail("id", "not_found", "Project was not found or membership access is not permitted"))
-	case errors.Is(err, taskusecase.ErrProjectMemberNotFound):
+	case errors.Is(err, projectusecase.ErrProjectMemberNotFound):
 		WriteError(w, http.StatusNotFound, spec, NewErrDetail("user_id", "not_found", "Project member was not found"))
-	case errors.Is(err, taskusecase.ErrProjectMemberUpsertRejected):
+	case errors.Is(err, projectusecase.ErrProjectMemberUpsertRejected):
 		WriteError(w, http.StatusBadRequest, spec, NewErrDetail("user_id", "member_not_allowed", "This user cannot be added as a project member"))
-	case errors.Is(err, taskusecase.ErrProjectMemberRoleNotFound):
+	case errors.Is(err, projectusecase.ErrProjectMemberRoleNotFound):
 		WriteError(w, http.StatusBadRequest, spec, NewErrDetail("role_id", "unknown_role", "The role ID is not supported"))
-	case errors.Is(err, taskusecase.ErrProjectMemberUserNotFound):
+	case errors.Is(err, projectusecase.ErrProjectMemberUserNotFound):
 		WriteError(w, http.StatusNotFound, spec, NewErrDetail("user_id", "not_found", "User was not found"))
-	case errors.Is(err, taskusecase.ErrProjectMemberInvalidInput):
+	case errors.Is(err, projectusecase.ErrProjectMemberInvalidInput):
 		WriteError(w, http.StatusBadRequest, spec, NewErrDetail("", "invalid_input", "Project, member, and role IDs are required"))
-	case errors.Is(err, taskusecase.ErrPermissionDenied):
+	case errors.Is(err, projectusecase.ErrPermissionDenied):
 		WriteError(w, http.StatusForbidden, spec, NewErrDetail("", "permission_denied", "The caller lacks required project member permission"))
 	default:
 		WriteError(w, http.StatusInternalServerError, spec, ErrDetailInternalServerError)

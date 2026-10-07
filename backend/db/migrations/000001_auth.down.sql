@@ -1,11 +1,11 @@
-DROP INDEX IF EXISTS idx_access_tokens_expires_at;
-DROP INDEX IF EXISTS idx_access_tokens_user_id;
-DROP TABLE IF EXISTS access_tokens;
+DROP INDEX IF EXISTS idx_personal_access_tokens_expires_at;
+DROP INDEX IF EXISTS idx_personal_access_tokens_user_id;
+DROP TABLE IF EXISTS personal_access_tokens;
 DROP TABLE IF EXISTS role_permissions;
 DROP TABLE IF EXISTS permissions;
 DROP TABLE IF EXISTS managed_resources;
 DROP TABLE IF EXISTS roles;
-DROP TYPE IF EXISTS permission_effect;
-DROP TYPE IF EXISTS permission_action;
+DROP TYPE IF EXISTS effect;
+DROP TYPE IF EXISTS action;
 DROP TABLE IF EXISTS users;
 DROP EXTENSION IF EXISTS citext;

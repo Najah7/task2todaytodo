@@ -363,9 +363,10 @@ func (h *TaskHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 // Update changes basic task fields. Project membership, status, and progress are not accepted.
-// @Param If-Match header string true "Current task ETag, for example \"3\""
-// @Header 200 {string} ETag "Current task revision"
-// @Failure 428 {object} ErrResponse "If-Match is required"
+//
+//	@Param			If-Match	header		string		true	"Current task ETag, for example \"3\""
+//	@Header			200			{string}	ETag		"Current task revision"
+//	@Failure		428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary		Update task
 //	@Description	Partially updates basic task fields. Project membership, status, and progress cannot be changed here.
@@ -423,9 +424,10 @@ func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 // Delete logically deletes a task and its dependent records.
-// @Param If-Match header string true "Current task ETag, for example \"3\""
-// @Failure 409 {object} ErrResponse "Revision conflict"
-// @Failure 428 {object} ErrResponse "If-Match is required"
+//
+//	@Param			If-Match	header		string		true	"Current task ETag, for example \"3\""
+//	@Failure		409			{object}	ErrResponse	"Revision conflict"
+//	@Failure		428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary		Delete task
 //	@Description	Logically deletes a task the caller may delete and its child items and schedules.
@@ -479,10 +481,11 @@ func (h *TaskHandler) changeStatus(w http.ResponseWriter, r *http.Request, spec 
 }
 
 // Start moves task to in progress.
-// @Param If-Match header string true "Current task ETag, for example \"3\""
-// @Header 200 {string} ETag "Current task revision"
-// @Failure 409 {object} ErrResponse "Revision conflict"
-// @Failure 428 {object} ErrResponse "If-Match is required"
+//
+//	@Param			If-Match	header		string		true	"Current task ETag, for example \"3\""
+//	@Header			200			{string}	ETag		"Current task revision"
+//	@Failure		409			{object}	ErrResponse	"Revision conflict"
+//	@Failure		428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary		Start task
 //	@Description	Moves task to in progress, regardless of current status.
@@ -500,10 +503,11 @@ func (h *TaskHandler) Start(w http.ResponseWriter, r *http.Request) {
 }
 
 // Hold moves task to pending.
-// @Param If-Match header string true "Current task ETag, for example \"3\""
-// @Header 200 {string} ETag "Current task revision"
-// @Failure 409 {object} ErrResponse "Revision conflict"
-// @Failure 428 {object} ErrResponse "If-Match is required"
+//
+//	@Param			If-Match	header		string		true	"Current task ETag, for example \"3\""
+//	@Header			200			{string}	ETag		"Current task revision"
+//	@Failure		409			{object}	ErrResponse	"Revision conflict"
+//	@Failure		428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary		Hold task
 //	@Description	Moves task to pending, regardless of current status.
@@ -521,10 +525,11 @@ func (h *TaskHandler) Hold(w http.ResponseWriter, r *http.Request) {
 }
 
 // Wait moves task to waiting on others.
-// @Param If-Match header string true "Current task ETag, for example \"3\""
-// @Header 200 {string} ETag "Current task revision"
-// @Failure 409 {object} ErrResponse "Revision conflict"
-// @Failure 428 {object} ErrResponse "If-Match is required"
+//
+//	@Param			If-Match	header		string		true	"Current task ETag, for example \"3\""
+//	@Header			200			{string}	ETag		"Current task revision"
+//	@Failure		409			{object}	ErrResponse	"Revision conflict"
+//	@Failure		428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary		Wait on task
 //	@Description	Moves task to waiting on others, regardless of current status.
@@ -542,10 +547,11 @@ func (h *TaskHandler) Wait(w http.ResponseWriter, r *http.Request) {
 }
 
 // Complete marks task done.
-// @Param If-Match header string true "Current task ETag, for example \"3\""
-// @Header 200 {string} ETag "Current task revision"
-// @Failure 409 {object} ErrResponse "Revision conflict"
-// @Failure 428 {object} ErrResponse "If-Match is required"
+//
+//	@Param			If-Match	header		string		true	"Current task ETag, for example \"3\""
+//	@Header			200			{string}	ETag		"Current task revision"
+//	@Failure		409			{object}	ErrResponse	"Revision conflict"
+//	@Failure		428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary		Complete task
 //	@Description	Marks task done and stops future recurrence generation.
@@ -563,10 +569,11 @@ func (h *TaskHandler) Complete(w http.ResponseWriter, r *http.Request) {
 }
 
 // Reopen moves task to open.
-// @Param If-Match header string true "Current task ETag, for example \"3\""
-// @Header 200 {string} ETag "Current task revision"
-// @Failure 409 {object} ErrResponse "Revision conflict"
-// @Failure 428 {object} ErrResponse "If-Match is required"
+//
+//	@Param			If-Match	header		string		true	"Current task ETag, for example \"3\""
+//	@Header			200			{string}	ETag		"Current task revision"
+//	@Failure		409			{object}	ErrResponse	"Revision conflict"
+//	@Failure		428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary		Reopen task
 //	@Description	Moves task to open, regardless of current status.

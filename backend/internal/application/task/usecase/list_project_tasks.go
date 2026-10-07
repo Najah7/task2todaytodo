@@ -4,26 +4,23 @@ import (
 	"context"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	"github.com/Najah7/task2todaytodo/internal/logging"
 )
-
-type listProjectTasksProjectRepository interface {
-	GetByUserID(ctx context.Context, userID domain.UserID, id domain.ProjectID) (dao.Project, error)
-}
 
 type listProjectTasksTaskRepository interface {
 	ProjectTasksCursorRepository
 }
 
 type ListProjectTasksUseCase struct {
-	projects listProjectTasksProjectRepository
+	projects TaskProjectRepository
 	tasks    listProjectTasksTaskRepository
 	logger   logging.Logger
 }
 
-func NewListProjectTasksUseCase(projects listProjectTasksProjectRepository, tasks listProjectTasksTaskRepository, logger logging.Logger) *ListProjectTasksUseCase {
+func NewListProjectTasksUseCase(projects TaskProjectRepository, tasks listProjectTasksTaskRepository, logger logging.Logger) *ListProjectTasksUseCase {
 	return &ListProjectTasksUseCase{logger: logging.OrNop(logger), projects: projects, tasks: tasks}
 }
 
@@ -33,7 +30,7 @@ func (uc *ListProjectTasksUseCase) Execute(ctx context.Context, userID domain.Us
 	if err := validateCursorPageRequest(request); err != nil {
 		return CursorPage[dao.Task]{}, err
 	}
-	_, err = uc.projects.GetByUserID(ctx, userID, projectID)
+	_, err = uc.projects.GetProjectByUserIDWithPermission(ctx, string(userID), string(projectID), shared.ProjectRead())
 	if err != nil {
 		return CursorPage[dao.Task]{}, err
 	}

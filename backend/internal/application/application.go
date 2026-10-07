@@ -22,8 +22,8 @@ func New(database DatabaseConfig, ids shared.ID, logger logging.Logger) (*Applic
 	}
 
 	store := NewStore(pool)
-	uow := NewUOW(pool, store.Auth, store.Task)
-	uc := NewUseCase(store.Auth, store.Task, uow.Task, ids, logger)
+	uow := NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
+	uc := NewUseCase(store.Auth, store.Project, store.Task, store.Schedule, store.Tag, uow.Project, uow.Task, uow.Schedule, ids, logger)
 
 	return &Application{
 		Store:   store,

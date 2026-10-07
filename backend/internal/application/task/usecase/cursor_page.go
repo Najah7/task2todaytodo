@@ -43,9 +43,6 @@ type CursorPage[T any] struct {
 	Next  *CursorAnchor
 }
 
-type ProjectCursorRepository interface {
-	ListByUserIDCursor(ctx context.Context, userID domain.UserID, limit int, anchor *CursorAnchor) ([]dao.Project, error)
-}
 type TaskCursorRepository interface {
 	taskProgressSource
 	ListByUserIDCursor(ctx context.Context, userID domain.UserID, limit int, anchor *CursorAnchor) ([]dao.Task, error)
@@ -55,15 +52,6 @@ type ProjectTasksCursorRepository interface {
 	ListByProjectAndUserIDCursor(ctx context.Context, userID domain.UserID, projectID domain.ProjectID, limit int, anchor *CursorAnchor) ([]dao.Task, error)
 }
 
-func projectPage(rows []dao.Project, size int) CursorPage[dao.Project] {
-	items, more := pagination.Window(rows, size)
-	page := CursorPage[dao.Project]{Items: items}
-	if more && len(items) > 0 {
-		last := items[len(items)-1]
-		page.Next = &CursorAnchor{At: last.CursorCreatedAt, ID: last.ID}
-	}
-	return page
-}
 func taskPage(rows []dao.Task, size int) CursorPage[dao.Task] {
 	items, more := pagination.Window(rows, size)
 	page := CursorPage[dao.Task]{Items: items}

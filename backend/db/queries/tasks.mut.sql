@@ -76,7 +76,7 @@ FOR UPDATE;
 SELECT * FROM tasks AS t
 WHERE t.id = sqlc.arg(id)
   AND t.deleted_at IS NULL
-  AND task_has_permission(t.id, sqlc.arg(user_id), sqlc.arg(resource_id)::text, sqlc.arg(action)::permission_action)
+  AND task_has_permission(t.id, sqlc.arg(user_id), sqlc.arg(resource_id)::text, sqlc.arg(action)::action)
 FOR UPDATE;
 
 -- name: UpdateTaskStatusByUserID :one
@@ -85,7 +85,7 @@ SET status = sqlc.arg(status), changed_by = sqlc.arg(user_id)
 WHERE id = sqlc.arg(id)
   AND deleted_at IS NULL
   AND revision = sqlc.arg(expected_revision)::integer
-  AND task_has_permission(id, sqlc.arg(user_id), sqlc.arg(resource_id)::text, sqlc.arg(action)::permission_action)
+  AND task_has_permission(id, sqlc.arg(user_id), sqlc.arg(resource_id)::text, sqlc.arg(action)::action)
 RETURNING *;
 
 -- name: UpdateTaskStatusDerivedByUserID :execrows
@@ -94,7 +94,7 @@ SET status = sqlc.arg(status), changed_by = sqlc.arg(user_id)
 WHERE id = sqlc.arg(id)
   AND deleted_at IS NULL
   AND status IS DISTINCT FROM sqlc.arg(status)::text
-  AND task_has_permission(id, sqlc.arg(user_id), sqlc.arg(resource_id)::text, sqlc.arg(action)::permission_action);
+  AND task_has_permission(id, sqlc.arg(user_id), sqlc.arg(resource_id)::text, sqlc.arg(action)::action);
 
 -- name: DeleteTaskByUserID :one
 WITH deleted_task AS (
@@ -109,12 +109,23 @@ WITH deleted_task AS (
     UPDATE todo_items SET deleted_at = now(), updated_at = now()
     WHERE task_id IN (SELECT id FROM deleted_task) AND deleted_at IS NULL
     RETURNING id
-), deleted_schedules AS (
-    UPDATE task_schedules SET deleted_at = now(), updated_at = now()
-    WHERE task_id IN (SELECT id FROM deleted_task) AND deleted_at IS NULL
-    RETURNING id
 )
 SELECT id FROM deleted_task;
+
+-- name: DeleteProjectTasksByActor :execrows
+UPDATE tasks AS t
+SET deleted_at = now(), changed_by = sqlc.arg(actor_id)::text
+WHERE t.project_id = sqlc.arg(project_id)::text
+  AND t.deleted_at IS NULL;
+
+-- name: DeleteProjectTodoItemsByActor :execrows
+UPDATE todo_items AS i
+SET deleted_at = now(), updated_at = now()
+WHERE i.task_id IN (
+    SELECT t.id FROM tasks AS t
+    WHERE t.project_id = sqlc.arg(project_id)::text
+)
+  AND i.deleted_at IS NULL;
 
 -- name: AssignTaskToProjectByUserID :one
 UPDATE tasks AS t

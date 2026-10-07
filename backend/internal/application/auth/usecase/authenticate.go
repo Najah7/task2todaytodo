@@ -9,11 +9,11 @@ import (
 )
 
 type AuthenticateUseCase struct {
-	repo   AccessTokenRepository
+	repo   PersonalAccessTokenRepository
 	logger logging.Logger
 }
 
-func NewAuthenticateUseCase(repo AccessTokenRepository, logger logging.Logger) *AuthenticateUseCase {
+func NewAuthenticateUseCase(repo PersonalAccessTokenRepository, logger logging.Logger) *AuthenticateUseCase {
 	return &AuthenticateUseCase{repo: repo, logger: logging.OrNop(logger)}
 }
 
@@ -28,7 +28,7 @@ func (uc *AuthenticateUseCase) Execute(ctx context.Context, token string) (domai
 		return "", err
 	}
 
-	accessToken, err := domain.NewExistingAccessToken(
+	personalAccessToken, err := domain.NewExistingPersonalAccessToken(
 		dao.Token,
 		domain.UserID(dao.UserID),
 		dao.ExpiresAt,
@@ -36,7 +36,7 @@ func (uc *AuthenticateUseCase) Execute(ctx context.Context, token string) (domai
 		dao.CreatedAt,
 	)
 	if err != nil {
-		if errors.Is(err, domain.ErrAccessTokenExpired) || errors.Is(err, domain.ErrAccessTokenRevoked) {
+		if errors.Is(err, domain.ErrPersonalAccessTokenExpired) || errors.Is(err, domain.ErrPersonalAccessTokenRevoked) {
 			logAuthenticationRejected(uc.logger, ctx, "inactive_token")
 		} else {
 			logUnexpectedFailure(uc.logger, ctx, "authenticate.restore_token", err)
@@ -44,10 +44,10 @@ func (uc *AuthenticateUseCase) Execute(ctx context.Context, token string) (domai
 		return "", err
 	}
 
-	if accessToken.IsExpired() {
+	if personalAccessToken.IsExpired() {
 		logAuthenticationRejected(uc.logger, ctx, "expired_token")
-		return "", domain.ErrAccessTokenExpired
+		return "", domain.ErrPersonalAccessTokenExpired
 	}
 
-	return accessToken.UserID, nil
+	return personalAccessToken.UserID, nil
 }

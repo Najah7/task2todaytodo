@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	scheduledao "github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 )
 
@@ -30,10 +31,10 @@ func TestTodoItemResponseUsesStableVirtualIDAndRepeatMetadata(t *testing.T) {
 	}
 }
 
-func TestTaskScheduleResponseUsesStableVirtualIDAndRepeatMetadata(t *testing.T) {
+func TestScheduleResponseUsesStableVirtualIDAndRepeatMetadata(t *testing.T) {
 	anchorDate := time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC)
-	response := taskScheduleResponse(dao.TaskSchedule{
-		ID: "generated-1", TaskID: "task-1", SeriesID: "root-1", OccurrenceDate: "2026-10-12",
+	response := scheduleResponse(scheduledao.Schedule{
+		ID: "generated-1", UserID: "owner-1", AssigneeID: "assignee-1", SeriesID: "root-1", OccurrenceDate: "2026-10-12",
 		RepeatState: "active", FrequencyAnchorDate: anchorDate.Unix(), IntervalWeeks: 2, Timezone: "UTC",
 	})
 	if response.ID != virtualOccurrenceID || response.SeriesID != "root-1" || response.OccurrenceDate != "2026-10-12" {
@@ -48,5 +49,8 @@ func TestTaskScheduleResponseUsesStableVirtualIDAndRepeatMetadata(t *testing.T) 
 	}
 	if !strings.Contains(string(body), `"repeat_state":"active"`) {
 		t.Fatalf("repeat-state JSON field = %s", body)
+	}
+	if response.UserID != "owner-1" || response.AssigneeID != "assignee-1" {
+		t.Fatalf("schedule ownership/assignment = %q/%q", response.UserID, response.AssigneeID)
 	}
 }

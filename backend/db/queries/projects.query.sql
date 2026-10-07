@@ -15,14 +15,14 @@ SELECT p.*
 FROM projects AS p
 WHERE p.id = sqlc.arg(id)::text
   AND p.deleted_at IS NULL
-  AND project_has_permission(p.id, sqlc.arg(actor_id)::text, sqlc.arg(resource_id)::text, sqlc.arg(action)::permission_action);
+  AND project_has_permission(p.id, sqlc.arg(actor_id)::text, sqlc.arg(resource_id)::text, sqlc.arg(action)::action);
 
 -- name: LockProjectByUserIDForPermission :one
 SELECT p.*
 FROM projects AS p
 WHERE p.id = sqlc.arg(id)::text
   AND p.deleted_at IS NULL
-  AND project_has_permission(p.id, sqlc.arg(user_id)::text, sqlc.arg(resource_id)::text, sqlc.arg(action)::permission_action)
+  AND project_has_permission(p.id, sqlc.arg(user_id)::text, sqlc.arg(resource_id)::text, sqlc.arg(action)::action)
 FOR UPDATE;
 
 -- name: LockActiveProjectTasksForDeletion :many

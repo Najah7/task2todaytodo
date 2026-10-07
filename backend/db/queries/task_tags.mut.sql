@@ -1,18 +1,18 @@
--- name: CreateTaskTag :one
-INSERT INTO task_tags (id, user_id, name)
+-- name: CreateTag :one
+INSERT INTO tags (id, user_id, name)
 VALUES (sqlc.arg(id)::text, sqlc.arg(user_id)::text, sqlc.arg(name)::citext)
 RETURNING id, user_id, name, created_at, updated_at;
 
--- name: RenameTaskTagByUserID :one
-UPDATE task_tags
+-- name: RenameTagByUserID :one
+UPDATE tags
 SET name = sqlc.arg(name)::citext,
     updated_at = now()
 WHERE id = sqlc.arg(id)::text
   AND user_id = sqlc.arg(user_id)::text
 RETURNING id, user_id, name, created_at, updated_at;
 
--- name: DeleteTaskTagByUserID :execrows
-DELETE FROM task_tags
+-- name: DeleteTagByUserID :execrows
+DELETE FROM tags
 WHERE id = sqlc.arg(id)::text
   AND user_id = sqlc.arg(user_id)::text;
 
@@ -20,7 +20,7 @@ WHERE id = sqlc.arg(id)::text
 WITH owned_pair AS (
     SELECT t.id AS task_id, tt.id AS tag_id
     FROM tasks AS t
-    JOIN task_tags AS tt ON tt.user_id = t.user_id
+    JOIN tags AS tt ON tt.user_id = t.user_id
     WHERE t.id = sqlc.arg(task_id)::text
       AND tt.id = sqlc.arg(tag_id)::text
       AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'task', 'update')
@@ -37,7 +37,7 @@ SELECT EXISTS (SELECT 1 FROM owned_pair) AS owned,
 WITH owned_pair AS (
     SELECT t.id AS task_id, tt.id AS tag_id
     FROM tasks AS t
-    JOIN task_tags AS tt ON tt.user_id = t.user_id
+    JOIN tags AS tt ON tt.user_id = t.user_id
     WHERE t.id = sqlc.arg(task_id)::text
       AND tt.id = sqlc.arg(tag_id)::text
       AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'task', 'update')

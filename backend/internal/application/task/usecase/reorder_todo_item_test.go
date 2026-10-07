@@ -136,7 +136,7 @@ func (r *reorderProgressFake) SetStatusByUserID(_ context.Context, _ domain.User
 	r.writes++
 	return nil
 }
-func (r *reorderProgressFake) ReadTaskProgressSources(_ context.Context, taskIDs, _ []string, asOf time.Time) (dao.TaskProgressSources, error) {
+func (r *reorderProgressFake) ReadTaskProgressSources(_ context.Context, taskIDs []string, asOf time.Time) (dao.TaskProgressSources, error) {
 	r.reads = append(r.reads, asOf)
 	return dao.TaskProgressSources{
 		Counts:   map[string]dao.TaskProgressCounts{taskIDs[0]: {Total: 1}},

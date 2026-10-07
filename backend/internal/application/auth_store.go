@@ -8,23 +8,23 @@ import (
 )
 
 type AuthStore struct {
-	Users        *repository.UserRepository
-	AccessTokens *repository.AccessTokenRepository
-	Roles        *repository.RoleRepository
+	Users                *repository.UserRepository
+	PersonalAccessTokens *repository.PersonalAccessTokenRepository
+	Roles                *repository.RoleRepository
 }
 
 func newAuthStore(pool *pgxpool.Pool) AuthStore {
 	return AuthStore{
-		Users:        repository.NewUserRepository(pool),
-		AccessTokens: repository.NewAccessTokenRepository(pool),
-		Roles:        repository.NewRoleRepository(pool),
+		Users:                repository.NewUserRepository(pool),
+		PersonalAccessTokens: repository.NewPersonalAccessTokenRepository(pool),
+		Roles:                repository.NewRoleRepository(pool),
 	}
 }
 
 func (s AuthStore) WithTx(tx pgx.Tx) AuthStore {
 	return AuthStore{
-		Users:        s.Users.WithTx(tx),
-		AccessTokens: s.AccessTokens.WithTx(tx),
-		Roles:        s.Roles.WithTx(tx),
+		Users:                s.Users.WithTx(tx),
+		PersonalAccessTokens: s.PersonalAccessTokens.WithTx(tx),
+		Roles:                s.Roles.WithTx(tx),
 	}
 }

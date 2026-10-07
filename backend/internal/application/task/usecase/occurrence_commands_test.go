@@ -132,7 +132,7 @@ func (deletedOccurrenceTaskRepository) LockByUserIDWithPermission(_ context.Cont
 	return dao.Task{ID: string(taskID), UserID: string(userID), Status: dao.TaskStatus{Value: "open"}}, nil
 }
 
-func (deletedOccurrenceTaskRepository) ReadTaskProgressSources(_ context.Context, taskIDs, _ []string, _ time.Time) (dao.TaskProgressSources, error) {
+func (deletedOccurrenceTaskRepository) ReadTaskProgressSources(_ context.Context, taskIDs []string, _ time.Time) (dao.TaskProgressSources, error) {
 	sources := dao.TaskProgressSources{Counts: make(map[string]dao.TaskProgressCounts), Statuses: make(map[string]dao.TaskStatus)}
 	for _, taskID := range taskIDs {
 		sources.Statuses[taskID] = dao.TaskStatus{Value: "open"}
@@ -173,45 +173,14 @@ func (r *deletedOccurrenceTodoRepository) UpsertTodoItemOverride(_ context.Conte
 	return string(item.ID), nil
 }
 
-type deletedOccurrenceScheduleRepository struct {
-	TaskScheduleRepository
-	rows          []dao.TaskSchedule
-	mutationCalls int
-}
-
-func (r *deletedOccurrenceScheduleRepository) ListByTaskAndUserID(context.Context, domain.UserID, domain.TaskID) ([]dao.TaskSchedule, error) {
-	return r.rows, nil
-}
-
-func (*deletedOccurrenceScheduleRepository) ListTaskScheduleSkippedOccurrences(context.Context, domain.UserID, domain.TaskID, domain.TaskScheduleID) ([]int64, error) {
-	return nil, nil
-}
-
-func (r *deletedOccurrenceScheduleRepository) SetTaskScheduleSkippedOccurrence(context.Context, domain.UserID, domain.TaskID, domain.TaskScheduleID, time.Time, bool) error {
-	r.mutationCalls++
-	return nil
-}
-
-func (r *deletedOccurrenceScheduleRepository) SetCompletedForOwnedTask(context.Context, domain.UserID, domain.TaskID, domain.TaskScheduleID, bool) error {
-	r.mutationCalls++
-	return nil
-}
-
-func (r *deletedOccurrenceScheduleRepository) UpsertTaskScheduleOverride(_ context.Context, _ domain.UserID, schedule domain.TaskSchedule) (string, error) {
-	r.mutationCalls++
-	return string(schedule.ID), nil
-}
-
 type deletedOccurrenceRepositories struct {
 	taskProgressTestRepositories
 	tasks     TaskRepository
 	todoItems TodoItemRepository
-	schedules TaskScheduleRepository
 }
 
-func (r deletedOccurrenceRepositories) Tasks() TaskRepository                 { return r.tasks }
-func (r deletedOccurrenceRepositories) TodoItems() TodoItemRepository         { return r.todoItems }
-func (r deletedOccurrenceRepositories) TaskSchedules() TaskScheduleRepository { return r.schedules }
+func (r deletedOccurrenceRepositories) Tasks() TaskRepository         { return r.tasks }
+func (r deletedOccurrenceRepositories) TodoItems() TodoItemRepository { return r.todoItems }
 
 func nextWeeklyOccurrenceTestDates() (time.Time, time.Time) {
 	today := time.Now().UTC()
@@ -261,57 +230,6 @@ func TestDeletedTodoOccurrenceRejectsRestoreCompleteAndEdit(t *testing.T) {
 			t.Run(occurrence.name+"/"+operation.name, func(t *testing.T) {
 				repo := &deletedOccurrenceTodoRepository{rows: occurrence.rows}
 				repos := deletedOccurrenceRepositories{tasks: deletedOccurrenceTaskRepository{}, todoItems: repo}
-				uow := &occurrenceCommandsUOW{repos: repos}
-				if err := operation.run(context.Background(), uow, occurrence.date); !errors.Is(err, ErrOccurrenceInactive) {
-					t.Fatalf("operation error = %v; want ErrOccurrenceInactive", err)
-				}
-				if repo.mutationCalls != 0 {
-					t.Fatalf("deleted occurrence triggered %d writes", repo.mutationCalls)
-				}
-			})
-		}
-	}
-}
-
-func TestDeletedScheduleOccurrenceRejectsRestoreCompleteAndEdit(t *testing.T) {
-	rootDate, futureDate := nextWeeklyOccurrenceTestDates()
-	root := recurringScheduleRoot()
-	root.OccurrenceDate, root.FrequencyAnchorDate = rootDate.Format("2006-01-02"), rootDate.Unix()
-	startAt := time.Date(rootDate.Year(), rootDate.Month(), rootDate.Day(), 9, 0, 0, 0, time.UTC)
-	root.StartAt, root.EndAt = startAt.Unix(), startAt.Add(time.Hour).Unix()
-	deletedFuture := root
-	deletedFuture.ID, deletedFuture.OccurrenceDate, deletedFuture.Deleted, deletedFuture.IsException = "deleted-future", futureDate.Format("2006-01-02"), true, true
-	deletedRootDate := root
-	deletedRootDate.ID, deletedRootDate.Deleted, deletedRootDate.IsException = "deleted-root-date", true, true
-	tests := []struct {
-		name string
-		date string
-		rows []dao.TaskSchedule
-	}{
-		{name: "deleted future occurrence", date: deletedFuture.OccurrenceDate, rows: []dao.TaskSchedule{root, deletedFuture}},
-		{name: "deleted saved occurrence on root date", date: root.OccurrenceDate, rows: []dao.TaskSchedule{root, deletedRootDate}},
-	}
-	operations := []struct {
-		name string
-		run  func(context.Context, *occurrenceCommandsUOW, string) error
-	}{
-		{name: "restore", run: func(ctx context.Context, uow *occurrenceCommandsUOW, date string) error {
-			return NewRestoreTaskScheduleUseCase(uow, nil).Execute(ctx, "user", "task", "series", date)
-		}},
-		{name: "complete", run: func(ctx context.Context, uow *occurrenceCommandsUOW, date string) error {
-			return NewCompleteTaskScheduleUseCase(uow, nil, fixedUpdateID("new-schedule")).ExecuteOccurrence(ctx, "user", "task", "series", date)
-		}},
-		{name: "edit", run: func(ctx context.Context, uow *occurrenceCommandsUOW, date string) error {
-			title := "changed"
-			_, err := NewUpdateTaskScheduleUseCase(uow, nil, fixedUpdateID("new-schedule")).ExecuteOccurrence(ctx, "user", "task", "series", date, taskScheduleScopeCurrent, PatchField[string]{Present: true, Value: &title}, PatchField[string]{}, PatchField[string]{})
-			return err
-		}},
-	}
-	for _, occurrence := range tests {
-		for _, operation := range operations {
-			t.Run(occurrence.name+"/"+operation.name, func(t *testing.T) {
-				repo := &deletedOccurrenceScheduleRepository{rows: occurrence.rows}
-				repos := deletedOccurrenceRepositories{tasks: deletedOccurrenceTaskRepository{}, schedules: repo}
 				uow := &occurrenceCommandsUOW{repos: repos}
 				if err := operation.run(context.Background(), uow, occurrence.date); !errors.Is(err, ErrOccurrenceInactive) {
 					t.Fatalf("operation error = %v; want ErrOccurrenceInactive", err)

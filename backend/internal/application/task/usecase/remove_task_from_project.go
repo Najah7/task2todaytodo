@@ -29,7 +29,7 @@ func (uc *RemoveTaskFromProjectUseCase) Execute(ctx context.Context, userID doma
 
 	var result dao.Task
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		project, err := repos.Projects().LockByUserIDWithPermission(ctx, userID, projectID, shared.TaskUpdate())
+		project, err := repos.TaskProjects().LockProjectByUserIDWithPermission(ctx, string(userID), string(projectID), shared.TaskUpdate())
 		if err != nil {
 			return err
 		}
@@ -39,7 +39,7 @@ func (uc *RemoveTaskFromProjectUseCase) Execute(ctx context.Context, userID doma
 		if err != nil {
 			return err
 		}
-		if task.UserID != project.UserID {
+		if task.UserID != project.OwnerID {
 			return ErrTaskNotFound
 		}
 		if task.Revision != expectedRevision {

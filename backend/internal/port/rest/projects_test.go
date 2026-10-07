@@ -11,9 +11,12 @@ import (
 	"testing"
 	"time"
 
+	projectdao "github.com/Najah7/task2todaytodo/internal/application/project/dao"
+	projectdomain "github.com/Najah7/task2todaytodo/internal/application/project/domain"
+	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
-	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
+	taskdao "github.com/Najah7/task2todaytodo/internal/application/task/dao"
+	taskdomain "github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -29,8 +32,8 @@ func (g *projectHandlerID) Generate() string {
 }
 
 type projectHandlerProjectRepository struct {
-	taskusecase.ProjectRepository
-	projects    map[string]dao.Project
+	projectusecase.Repository
+	projects    map[string]projectdao.Project
 	listErr     error
 	createErr   error
 	updateErr   error
@@ -40,16 +43,20 @@ type projectHandlerProjectRepository struct {
 	getCalls    int
 	updateCalls int
 	deleteCalls int
-	created     domain.Project
-	updated     domain.Project
+	created     projectdomain.Project
+	updated     projectdomain.Project
 }
 
-func (repo *projectHandlerProjectRepository) ListByUserID(_ context.Context, userID domain.UserID) ([]dao.Project, error) {
+func (repo *projectHandlerProjectRepository) ReadProjectProgressSources(context.Context, []string, time.Time) (projectdao.ProjectProgressSources, error) {
+	return projectdao.ProjectProgressSources{}, nil
+}
+
+func (repo *projectHandlerProjectRepository) ListByUserID(_ context.Context, userID projectdomain.UserID) ([]projectdao.Project, error) {
 	repo.listCalls++
 	if repo.listErr != nil {
 		return nil, repo.listErr
 	}
-	rows := make([]dao.Project, 0, len(repo.projects))
+	rows := make([]projectdao.Project, 0, len(repo.projects))
 	for _, row := range repo.projects {
 		if row.UserID == string(userID) {
 			rows = append(rows, row)
@@ -58,7 +65,7 @@ func (repo *projectHandlerProjectRepository) ListByUserID(_ context.Context, use
 	return rows, nil
 }
 
-func (repo *projectHandlerProjectRepository) ListByUserIDCursor(_ context.Context, userID domain.UserID, limit int, _ *taskusecase.CursorAnchor) ([]dao.Project, error) {
+func (repo *projectHandlerProjectRepository) ListByUserIDCursor(_ context.Context, userID projectdomain.UserID, limit int, _ *projectusecase.CursorAnchor) ([]projectdao.Project, error) {
 	rows, err := repo.ListByUserID(context.Background(), userID)
 	if err != nil {
 		return nil, err
@@ -69,50 +76,46 @@ func (repo *projectHandlerProjectRepository) ListByUserIDCursor(_ context.Contex
 	return rows, nil
 }
 
-func (repo *projectHandlerProjectRepository) Create(_ context.Context, project domain.Project) (dao.Project, error) {
+func (repo *projectHandlerProjectRepository) Create(_ context.Context, project projectdomain.Project) (projectdao.Project, error) {
 	repo.createCalls++
 	repo.created = project
 	if repo.createErr != nil {
-		return dao.Project{}, repo.createErr
+		return projectdao.Project{}, repo.createErr
 	}
 	row := projectHandlerProjectDAO(project)
 	repo.projects[row.ID] = row
 	return row, nil
 }
 
-func (repo *projectHandlerProjectRepository) GetByUserID(_ context.Context, userID domain.UserID, id domain.ProjectID) (dao.Project, error) {
+func (repo *projectHandlerProjectRepository) GetByUserID(_ context.Context, userID projectdomain.UserID, id projectdomain.ProjectID) (projectdao.Project, error) {
 	repo.getCalls++
 	row, exists := repo.projects[string(id)]
 	if !exists || row.UserID != string(userID) {
-		return dao.Project{}, domain.ErrProjectNotFound
+		return projectdao.Project{}, projectdomain.ErrProjectNotFound
 	}
 	return row, nil
 }
 
-func (repo *projectHandlerProjectRepository) GetByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.ProjectID, _ shared.Capability) (dao.Project, error) {
+func (repo *projectHandlerProjectRepository) GetByUserIDWithPermission(ctx context.Context, userID projectdomain.UserID, id projectdomain.ProjectID, _ shared.Capability) (projectdao.Project, error) {
 	return repo.GetByUserID(ctx, userID, id)
 }
 
-func (repo *projectHandlerProjectRepository) LockByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.ProjectID, _ shared.Capability) (dao.Project, error) {
+func (repo *projectHandlerProjectRepository) LockByUserIDWithPermission(ctx context.Context, userID projectdomain.UserID, id projectdomain.ProjectID, _ shared.Capability) (projectdao.Project, error) {
 	return repo.GetByUserID(ctx, userID, id)
 }
 
-func (repo *projectHandlerProjectRepository) LockActiveTasksForDeletion(context.Context, domain.ProjectID) error {
-	return nil
-}
-
-func (repo *projectHandlerProjectRepository) UpdateByUserID(_ context.Context, userID domain.UserID, project domain.Project, expectedRevision int32) (dao.Project, error) {
+func (repo *projectHandlerProjectRepository) UpdateByUserID(_ context.Context, userID projectdomain.UserID, project projectdomain.Project, expectedRevision int32) (projectdao.Project, error) {
 	repo.updateCalls++
 	repo.updated = project
 	if repo.updateErr != nil {
-		return dao.Project{}, repo.updateErr
+		return projectdao.Project{}, repo.updateErr
 	}
 	existing, ok := repo.projects[string(project.ID)]
 	if !ok || existing.UserID != string(userID) {
-		return dao.Project{}, domain.ErrProjectNotFound
+		return projectdao.Project{}, projectdomain.ErrProjectNotFound
 	}
 	if existing.Revision != expectedRevision {
-		return dao.Project{}, taskusecase.ErrRevisionConflict
+		return projectdao.Project{}, projectusecase.ErrRevisionConflict
 	}
 	row := projectHandlerProjectDAO(project)
 	row.Revision = expectedRevision + 1
@@ -120,17 +123,17 @@ func (repo *projectHandlerProjectRepository) UpdateByUserID(_ context.Context, u
 	return row, nil
 }
 
-func (repo *projectHandlerProjectRepository) DeleteByUserID(_ context.Context, userID domain.UserID, id domain.ProjectID, expectedRevision int32) error {
+func (repo *projectHandlerProjectRepository) DeleteByUserID(_ context.Context, userID projectdomain.UserID, id projectdomain.ProjectID, expectedRevision int32) error {
 	repo.deleteCalls++
 	if repo.deleteErr != nil {
 		return repo.deleteErr
 	}
 	row, ok := repo.projects[string(id)]
 	if !ok || row.UserID != string(userID) {
-		return domain.ErrProjectNotFound
+		return projectdomain.ErrProjectNotFound
 	}
 	if row.Revision != expectedRevision {
-		return taskusecase.ErrRevisionConflict
+		return projectusecase.ErrRevisionConflict
 	}
 	delete(repo.projects, string(id))
 	return nil
@@ -138,8 +141,8 @@ func (repo *projectHandlerProjectRepository) DeleteByUserID(_ context.Context, u
 
 type projectHandlerTaskRepository struct {
 	taskusecase.TaskRepository
-	tasks       map[string]dao.Task
-	pageRows    []dao.Task
+	tasks       map[string]taskdao.Task
+	pageRows    []taskdao.Task
 	createErr   error
 	assignErr   error
 	removeErr   error
@@ -152,33 +155,26 @@ type projectHandlerTaskRepository struct {
 	pageOffset  int
 }
 
-func (repo *projectHandlerTaskRepository) ReadTaskProgressSources(_ context.Context, taskIDs, projectIDs []string, _ time.Time) (dao.TaskProgressSources, error) {
+func (repo *projectHandlerTaskRepository) ReadTaskProgressSources(_ context.Context, taskIDs []string, _ time.Time) (taskdao.TaskProgressSources, error) {
 	requested := make(map[string]bool, len(taskIDs))
 	for _, id := range taskIDs {
 		requested[id] = true
 	}
-	projects := make(map[string]bool, len(projectIDs))
-	for _, id := range projectIDs {
-		projects[id] = true
-	}
-	sources := dao.TaskProgressSources{Counts: make(map[string]dao.TaskProgressCounts), Statuses: make(map[string]dao.TaskStatus)}
+	sources := taskdao.TaskProgressSources{Counts: make(map[string]taskdao.TaskProgressCounts), Statuses: make(map[string]taskdao.TaskStatus)}
 	for _, row := range repo.tasks {
-		if !requested[row.ID] && !projects[row.ProjectID] {
+		if !requested[row.ID] {
 			continue
 		}
-		sources.Counts[row.ID] = dao.TaskProgressCounts{Total: 100, Completed: row.Progress}
+		sources.Counts[row.ID] = taskdao.TaskProgressCounts{Total: 100, Completed: row.Progress}
 		sources.Statuses[row.ID] = row.Status
-		if projects[row.ProjectID] {
-			sources.ProjectTasks = append(sources.ProjectTasks, dao.ProjectProgressTask{ID: row.ID, ProjectID: row.ProjectID, Status: row.Status})
-		}
 	}
 	return sources, nil
 }
 
-func (repo *projectHandlerTaskRepository) ListByProjectAndUserIDCursor(_ context.Context, userID domain.UserID, projectID domain.ProjectID, limit int, _ *taskusecase.CursorAnchor) ([]dao.Task, error) {
+func (repo *projectHandlerTaskRepository) ListByProjectAndUserIDCursor(_ context.Context, userID taskdomain.UserID, projectID taskdomain.ProjectID, limit int, _ *taskusecase.CursorAnchor) ([]taskdao.Task, error) {
 	repo.pageCalls++
 	repo.pageLimit, repo.pageOffset = limit, 0
-	rows := make([]dao.Task, 0, len(repo.pageRows))
+	rows := make([]taskdao.Task, 0, len(repo.pageRows))
 	for _, row := range repo.pageRows {
 		if row.UserID == string(userID) && row.ProjectID == string(projectID) {
 			rows = append(rows, row)
@@ -187,40 +183,40 @@ func (repo *projectHandlerTaskRepository) ListByProjectAndUserIDCursor(_ context
 	return rows, nil
 }
 
-func (repo *projectHandlerTaskRepository) CreateInProject(_ context.Context, _ domain.UserID, task domain.Task) (dao.Task, error) {
+func (repo *projectHandlerTaskRepository) CreateInProject(_ context.Context, _ taskdomain.UserID, task taskdomain.Task) (taskdao.Task, error) {
 	repo.createCalls++
 	if repo.createErr != nil {
-		return dao.Task{}, repo.createErr
+		return taskdao.Task{}, repo.createErr
 	}
 	row := projectHandlerTaskDAO(task)
 	repo.tasks[row.ID] = row
 	return row, nil
 }
 
-func (repo *projectHandlerTaskRepository) GetByUserID(_ context.Context, userID domain.UserID, id domain.TaskID) (dao.Task, error) {
+func (repo *projectHandlerTaskRepository) GetByUserID(_ context.Context, userID taskdomain.UserID, id taskdomain.TaskID) (taskdao.Task, error) {
 	repo.getCalls++
 	row, ok := repo.tasks[string(id)]
 	if !ok || row.UserID != string(userID) {
-		return dao.Task{}, taskusecase.ErrTaskNotFound
+		return taskdao.Task{}, taskusecase.ErrTaskNotFound
 	}
 	return row, nil
 }
 
-func (repo *projectHandlerTaskRepository) GetByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.TaskID, _ shared.Capability) (dao.Task, error) {
+func (repo *projectHandlerTaskRepository) GetByUserIDWithPermission(ctx context.Context, userID taskdomain.UserID, id taskdomain.TaskID, _ shared.Capability) (taskdao.Task, error) {
 	return repo.GetByUserID(ctx, userID, id)
 }
 
-func (repo *projectHandlerTaskRepository) AssignToProjectByUserID(_ context.Context, userID domain.UserID, id domain.TaskID, projectID domain.ProjectID, expectedRevision int32) (dao.Task, error) {
+func (repo *projectHandlerTaskRepository) AssignToProjectByUserID(_ context.Context, userID taskdomain.UserID, id taskdomain.TaskID, projectID taskdomain.ProjectID, expectedRevision int32) (taskdao.Task, error) {
 	repo.assignCalls++
 	if repo.assignErr != nil {
-		return dao.Task{}, repo.assignErr
+		return taskdao.Task{}, repo.assignErr
 	}
 	row, ok := repo.tasks[string(id)]
 	if !ok || row.UserID != string(userID) {
-		return dao.Task{}, taskusecase.ErrTaskNotFound
+		return taskdao.Task{}, taskusecase.ErrTaskNotFound
 	}
 	if row.Revision != expectedRevision {
-		return dao.Task{}, taskusecase.ErrRevisionConflict
+		return taskdao.Task{}, taskusecase.ErrRevisionConflict
 	}
 	row.ProjectID = string(projectID)
 	row.Revision++
@@ -228,17 +224,17 @@ func (repo *projectHandlerTaskRepository) AssignToProjectByUserID(_ context.Cont
 	return row, nil
 }
 
-func (repo *projectHandlerTaskRepository) RemoveFromProjectByUserID(_ context.Context, userID domain.UserID, id domain.TaskID, projectID domain.ProjectID, expectedRevision int32) (dao.Task, error) {
+func (repo *projectHandlerTaskRepository) RemoveFromProjectByUserID(_ context.Context, userID taskdomain.UserID, id taskdomain.TaskID, projectID taskdomain.ProjectID, expectedRevision int32) (taskdao.Task, error) {
 	repo.removeCalls++
 	if repo.removeErr != nil {
-		return dao.Task{}, repo.removeErr
+		return taskdao.Task{}, repo.removeErr
 	}
 	row, ok := repo.tasks[string(id)]
 	if !ok || row.UserID != string(userID) {
-		return dao.Task{}, taskusecase.ErrTaskNotFound
+		return taskdao.Task{}, taskusecase.ErrTaskNotFound
 	}
 	if row.Revision != expectedRevision {
-		return dao.Task{}, taskusecase.ErrRevisionConflict
+		return taskdao.Task{}, taskusecase.ErrRevisionConflict
 	}
 	if row.ProjectID == string(projectID) {
 		row.ProjectID = ""
@@ -250,14 +246,38 @@ func (repo *projectHandlerTaskRepository) RemoveFromProjectByUserID(_ context.Co
 
 type projectHandlerRepositories struct {
 	taskusecase.Repositories
-	projects *projectHandlerProjectRepository
+	projects *projectHandlerTaskProjectRepository
 	tasks    *projectHandlerTaskRepository
 }
 
-func (repos projectHandlerRepositories) Projects() taskusecase.ProjectRepository {
+func (repos projectHandlerRepositories) TaskProjects() taskusecase.TaskProjectRepository {
 	return repos.projects
 }
 func (repos projectHandlerRepositories) Tasks() taskusecase.TaskRepository { return repos.tasks }
+
+type projectHandlerTaskProjectRepository struct {
+	projects *projectHandlerProjectRepository
+}
+
+func (repo *projectHandlerTaskProjectRepository) project(ctx context.Context, actorID, projectID string) (taskusecase.TaskProject, error) {
+	row, err := repo.projects.GetByUserID(ctx, projectdomain.UserID(actorID), projectdomain.ProjectID(projectID))
+	if errors.Is(err, projectdomain.ErrProjectNotFound) {
+		return taskusecase.TaskProject{}, taskusecase.ErrTaskProjectNotFound
+	}
+	if err != nil {
+		return taskusecase.TaskProject{}, err
+	}
+	return taskusecase.TaskProject{ID: row.ID, OwnerID: row.UserID, DefaultPriority: row.Priority.Value}, nil
+}
+func (repo *projectHandlerTaskProjectRepository) GetProjectByUserID(ctx context.Context, actorID, projectID string) (taskusecase.TaskProject, error) {
+	return repo.project(ctx, actorID, projectID)
+}
+func (repo *projectHandlerTaskProjectRepository) GetProjectByUserIDWithPermission(ctx context.Context, actorID, projectID string, _ shared.Capability) (taskusecase.TaskProject, error) {
+	return repo.project(ctx, actorID, projectID)
+}
+func (repo *projectHandlerTaskProjectRepository) LockProjectByUserIDWithPermission(ctx context.Context, actorID, projectID string, _ shared.Capability) (taskusecase.TaskProject, error) {
+	return repo.project(ctx, actorID, projectID)
+}
 
 type projectHandlerUOW struct {
 	repos taskusecase.Repositories
@@ -273,42 +293,69 @@ func (uow *projectHandlerUOW) Do(ctx context.Context, fn func(context.Context, t
 	return fn(ctx, uow.repos)
 }
 
+type projectHandlerChildren struct{}
+
+func (projectHandlerChildren) DeleteProjectTasks(context.Context, string, string) error {
+	return nil
+}
+func (projectHandlerChildren) DeleteProjectSchedules(context.Context, string, string) error {
+	return nil
+}
+func (projectHandlerChildren) ReassignTasksAfterProjectMemberRemoval(context.Context, string, string, string) error {
+	return nil
+}
+func (projectHandlerChildren) ReassignSchedulesAfterProjectMemberRemoval(context.Context, string, string, string) error {
+	return nil
+}
+
+type projectHandlerProjectUOW struct {
+	repo  *projectHandlerProjectRepository
+	err   error
+	calls int
+}
+
+func (uow *projectHandlerProjectUOW) Do(ctx context.Context, fn func(context.Context, projectusecase.Repository, projectusecase.ProjectChildrenDeleter) error) error {
+	uow.calls++
+	if uow.err != nil {
+		return uow.err
+	}
+	return fn(ctx, uow.repo, projectHandlerChildren{})
+}
+
 type projectHandlerHarness struct {
-	handler  *ProjectHandler
-	projects *projectHandlerProjectRepository
-	tasks    *projectHandlerTaskRepository
-	uow      *projectHandlerUOW
+	handler    *ProjectHandler
+	projects   *projectHandlerProjectRepository
+	tasks      *projectHandlerTaskRepository
+	uow        *projectHandlerUOW
+	projectUOW *projectHandlerProjectUOW
 }
 
 func newProjectHandlerHarness() projectHandlerHarness {
-	projectRow := dao.Project{
+	projectRow := projectdao.Project{
 		ID: "project-1", UserID: projectHandlerUserID,
-		Type:  dao.ProjectType{Value: "work", Label: "Work", LabelJp: "仕事"},
+		Type:  projectdao.ProjectType{Value: "work", Label: "Work", LabelJp: "仕事"},
 		Title: "Current project", Goal: "Ship", Description: "Notes", Progress: 20,
-		Priority:  dao.Priority{Value: "high", Label: "High", LabelJp: "高", Weight: 50},
+		Priority:  projectdao.Priority{Value: "high", Label: "High", LabelJp: "高", Weight: 50},
 		StartDate: projectHandlerString("2026-04-01"), EndDate: projectHandlerString("2026-04-30"),
 		CreatedAt: 100, UpdatedAt: 200, Revision: 1,
 	}
-	projects := &projectHandlerProjectRepository{projects: map[string]dao.Project{"project-1": projectRow}}
-	tasks := &projectHandlerTaskRepository{tasks: map[string]dao.Task{
-		"task-1": {ID: "task-1", UserID: projectHandlerUserID, ProjectID: "project-old", Title: "Move me", Priority: dao.Priority{Value: "low", Label: "Low", Weight: 10}, Status: dao.TaskStatus{Value: "open", Label: "Open"}, Revision: 1},
+	projects := &projectHandlerProjectRepository{projects: map[string]projectdao.Project{"project-1": projectRow}}
+	tasks := &projectHandlerTaskRepository{tasks: map[string]taskdao.Task{
+		"task-1": {ID: "task-1", UserID: projectHandlerUserID, ProjectID: "project-old", Title: "Move me", Priority: taskdao.Priority{Value: "low", Label: "Low", Weight: 10}, Status: taskdao.TaskStatus{Value: "open", Label: "Open"}, Revision: 1},
 	}}
-	repos := projectHandlerRepositories{projects: projects, tasks: tasks}
+	repos := projectHandlerRepositories{projects: &projectHandlerTaskProjectRepository{projects: projects}, tasks: tasks}
 	uow := &projectHandlerUOW{repos: repos}
-	usecases := taskusecase.ProjectUseCases{
-		List:       taskusecase.NewListProjectsUseCase(projects, tasks, nil),
-		Create:     taskusecase.NewCreateProjectUseCase(projects, nil),
-		Get:        taskusecase.NewGetProjectUseCase(projects, tasks, nil),
-		Update:     taskusecase.NewUpdateProjectUseCase(projects, tasks, nil),
-		Delete:     taskusecase.NewDeleteProjectUseCase(uow, nil),
-		ListTasks:  taskusecase.NewListProjectTasksUseCase(projects, tasks, nil),
-		CreateTask: taskusecase.NewCreateTaskInProjectUseCase(uow, nil),
-		AddTask:    taskusecase.NewAddTaskToProjectUseCase(uow, tasks, nil),
-		RemoveTask: taskusecase.NewRemoveTaskFromProjectUseCase(uow, tasks, nil),
+	projectUOW := &projectHandlerProjectUOW{repo: projects}
+	projectUseCases := projectusecase.NewUseCases(projects, projectUOW, nil)
+	taskUseCases := taskusecase.TaskUseCases{
+		ListByProject:     taskusecase.NewListProjectTasksUseCase(repos.projects, tasks, nil),
+		CreateInProject:   taskusecase.NewCreateTaskInProjectUseCase(uow, nil),
+		AddToProject:      taskusecase.NewAddTaskToProjectUseCase(uow, tasks, nil),
+		RemoveFromProject: taskusecase.NewRemoveTaskFromProjectUseCase(uow, tasks, nil),
 	}
 	return projectHandlerHarness{
-		handler:  NewProjectHandler(usecases, &projectHandlerID{}, listTestCodec()),
-		projects: projects, tasks: tasks, uow: uow,
+		handler:  NewProjectHandler(projectUseCases, taskUseCases, &projectHandlerID{}, listTestCodec()),
+		projects: projects, tasks: tasks, uow: uow, projectUOW: projectUOW,
 	}
 }
 
@@ -329,17 +376,17 @@ func projectHandlerRequest(method, target, body string, authenticated bool) *htt
 
 func projectHandlerString(value string) *string { return &value }
 
-func projectHandlerTaskDAO(task domain.Task) dao.Task {
-	return dao.Task{
+func projectHandlerTaskDAO(task taskdomain.Task) taskdao.Task {
+	return taskdao.Task{
 		ID: string(task.ID), UserID: string(task.UserID), ProjectID: string(task.ProjectID), Title: task.Title,
 		Description: task.Description, DueDate: task.DueDate.Unix(), EstimatedMinutes: task.EstimatedMinutes,
 		ActualMinutes: task.ActualMinutes, Progress: task.Progress,
-		Priority: dao.Priority{Value: task.Priority.Value, Label: task.Priority.Label, LabelJp: task.Priority.LabelJp, Weight: task.Priority.Weight},
-		Status:   dao.TaskStatus{Value: task.Status.Value, Label: task.Status.Label, LabelJp: task.Status.LabelJp}, Revision: 1,
+		Priority: taskdao.Priority{Value: task.Priority.Value, Label: task.Priority.Label, LabelJp: task.Priority.LabelJp, Weight: task.Priority.Weight},
+		Status:   taskdao.TaskStatus{Value: task.Status.Value, Label: task.Status.Label, LabelJp: task.Status.LabelJp}, Revision: 1,
 	}
 }
 
-func projectHandlerProjectDAO(project domain.Project) dao.Project {
+func projectHandlerProjectDAO(project projectdomain.Project) projectdao.Project {
 	var startDate, endDate *string
 	if project.Schedule.StartDate != nil {
 		startDate = projectHandlerString(project.Schedule.StartDate.Format("2006-01-02"))
@@ -347,11 +394,11 @@ func projectHandlerProjectDAO(project domain.Project) dao.Project {
 	if project.Schedule.EndDate != nil {
 		endDate = projectHandlerString(project.Schedule.EndDate.Format("2006-01-02"))
 	}
-	return dao.Project{
+	return projectdao.Project{
 		ID: string(project.ID), UserID: string(project.UserID),
-		Type:  dao.ProjectType{Value: project.Type.Value, Label: project.Type.Label, LabelJp: project.Type.LabelJp},
+		Type:  projectdao.ProjectType{Value: project.Type.Value, Label: project.Type.Label, LabelJp: project.Type.LabelJp},
 		Title: project.Title, Goal: project.Goal, Description: project.Description, Progress: project.Progress,
-		Priority:  dao.Priority{Value: project.Priority.Value, Label: project.Priority.Label, LabelJp: project.Priority.LabelJp, Weight: project.Priority.Weight},
+		Priority:  projectdao.Priority{Value: project.Priority.Value, Label: project.Priority.Label, LabelJp: project.Priority.LabelJp, Weight: project.Priority.Weight},
 		StartDate: startDate, EndDate: endDate, Revision: 1,
 	}
 }
@@ -433,7 +480,7 @@ func TestProjectHandlerUpdatePreservesOmittedFieldsAndAppliesDateNull(t *testing
 func TestProjectHandlerProjectTaskRoutesAndPagination(t *testing.T) {
 	t.Run("list tasks pages project-owned rows", func(t *testing.T) {
 		h := newProjectHandlerHarness()
-		h.tasks.pageRows = []dao.Task{
+		h.tasks.pageRows = []taskdao.Task{
 			{ID: "task-a", UserID: projectHandlerUserID, ProjectID: "project-1", Title: "A"},
 			{ID: "task-b", UserID: projectHandlerUserID, ProjectID: "project-1", Title: "B"},
 		}
@@ -461,7 +508,7 @@ func TestProjectHandlerProjectTaskRoutesAndPagination(t *testing.T) {
 	})
 	t.Run("assignment moves one task", func(t *testing.T) {
 		h := newProjectHandlerHarness()
-		h.projects.projects["project-old"] = dao.Project{ID: "project-old", UserID: projectHandlerUserID, Revision: 1}
+		h.projects.projects["project-old"] = projectdao.Project{ID: "project-old", UserID: projectHandlerUserID, Revision: 1}
 		response := httptest.NewRecorder()
 		h.handler.AddTask(response, projectHandlerRequest(http.MethodPost, "/projects/project-1/tasks:add", `{"task_id":"task-1"}`, true))
 		var got ProjectTaskResponse
@@ -474,7 +521,7 @@ func TestProjectHandlerProjectTaskRoutesAndPagination(t *testing.T) {
 	})
 	t.Run("removal detaches one task", func(t *testing.T) {
 		h := newProjectHandlerHarness()
-		h.tasks.tasks["task-1"] = dao.Task{ID: "task-1", UserID: projectHandlerUserID, ProjectID: "project-1", Title: "Remove me", Revision: 1}
+		h.tasks.tasks["task-1"] = taskdao.Task{ID: "task-1", UserID: projectHandlerUserID, ProjectID: "project-1", Title: "Remove me", Revision: 1}
 		response := httptest.NewRecorder()
 		h.handler.RemoveTask(response, projectHandlerRequest(http.MethodPost, "/projects/project-1/tasks:remove", `{"task_id":"task-1"}`, true))
 		var got ProjectTaskResponse
@@ -618,9 +665,9 @@ func TestProjectHandlerCreateTaskMapsConflict(t *testing.T) {
 }
 
 func TestProjectHandlerTaskResponseHasExpectedMapping(t *testing.T) {
-	priority := dao.Priority{Value: "high", Label: "High", LabelJp: "高", Weight: 50}
-	status := dao.TaskStatus{Value: "open", Label: "Open", LabelJp: "未着手"}
-	got := projectTaskResponse(dao.Task{ID: "t", ProjectID: "p", DueDate: time.Date(2026, time.April, 1, 9, 0, 0, 0, time.UTC).Unix(), Priority: priority, Status: status})
+	priority := taskdao.Priority{Value: "high", Label: "High", LabelJp: "高", Weight: 50}
+	status := taskdao.TaskStatus{Value: "open", Label: "Open", LabelJp: "未着手"}
+	got := projectTaskResponse(taskdao.Task{ID: "t", ProjectID: "p", DueDate: time.Date(2026, time.April, 1, 9, 0, 0, 0, time.UTC).Unix(), Priority: priority, Status: status})
 	if got.DueDate == nil || *got.DueDate != "2026-04-01" || got.Priority.Value != "high" || got.Status.Value != "open" {
 		t.Errorf("projectTaskResponse() = %#v", got)
 	}
@@ -633,7 +680,7 @@ func TestProjectHandlerDeleteErrorsMapNotFound(t *testing.T) {
 	h := newProjectHandlerHarness()
 	request := projectHandlerRequest(http.MethodDelete, "/projects/missing", "", true)
 	request.SetPathValue("id", "missing")
-	h.projects.deleteErr = domain.ErrProjectNotFound
+	h.projects.deleteErr = projectdomain.ErrProjectNotFound
 	response := httptest.NewRecorder()
 	h.handler.Delete(response, request)
 	if response.Code != http.StatusNotFound {
@@ -670,7 +717,7 @@ func TestProjectHandlerQueryRejectsDuplicatePaginationValues(t *testing.T) {
 
 func TestProjectHandlerProjectDateResponseCopiesPointers(t *testing.T) {
 	original := "2026-04-01"
-	got := projectResponse(dao.Project{StartDate: &original})
+	got := projectResponse(projectdao.Project{StartDate: &original})
 	if got.StartDate == nil || *got.StartDate != original || got.StartDate == &original {
 		t.Errorf("projectResponse() start date = %v; want independent copy", got.StartDate)
 	}

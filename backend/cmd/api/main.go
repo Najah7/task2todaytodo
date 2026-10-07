@@ -108,14 +108,15 @@ func run() (runErr error) {
 
 	userHandler := rest.NewUserHandler(app.UseCase.User)
 	signupHandler := rest.NewSignupHandler(app.UseCase.User, ulid)
-	loginHandler := rest.NewLoginHandler(app.UseCase.AccessToken)
-	accessTokenHandler := rest.NewAccessTokenHandler(app.UseCase.AccessToken)
-	projectHandler := rest.NewProjectHandler(app.UseCase.Project, ulid, pageTokens)
+	loginHandler := rest.NewLoginHandler(app.UseCase.PersonalAccessToken)
+	personalAccessTokenHandler := rest.NewPersonalAccessTokenHandler(app.UseCase.PersonalAccessToken)
+	projectHandler := rest.NewProjectHandler(app.UseCase.Project, app.UseCase.Task, ulid, pageTokens)
 	taskHandler := rest.NewTaskHandler(app.UseCase.Task, ulid, pageTokens)
 	todoItemHandler := rest.NewTodoItemHandler(app.UseCase.TodoItem, ulid, pageTokens)
-	taskScheduleHandler := rest.NewTaskScheduleHandler(app.UseCase.TaskSchedule, ulid, pageTokens)
-	taskTagHandler := rest.NewTaskTagHandler(app.UseCase.TaskTag, ulid, pageTokens)
-	projectMemberHandler := rest.NewProjectMemberHandler(app.UseCase.Project.Members)
+	scheduleHandler := rest.NewScheduleHandler(app.UseCase.Schedule, ulid, pageTokens)
+	tagHandler := rest.NewTagHandler(app.UseCase.Tag, ulid, pageTokens)
+	taskTagHandler := rest.NewTaskTagHandler(app.UseCase.TaskTag)
+	projectMemberHandler := rest.NewProjectMemberHandler(app.UseCase.Project)
 	roleHandler := rest.NewRoleHandler(app.UseCase.Role)
 
 	r.Get("/swagger/*", httpSwagger.Handler(
@@ -129,10 +130,10 @@ func run() (runErr error) {
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/signup", signupHandler.Signup)
 		r.Post("/login", loginHandler.Login)
-		auth := r.With(middleware.NewAuthMiddleware(app.UseCase.AccessToken.Authenticate))
+		auth := r.With(middleware.NewAuthMiddleware(app.UseCase.PersonalAccessToken.Authenticate))
 
-		// Access Tokens
-		auth.Delete("/access-token:revoke", accessTokenHandler.Revoke)
+		// Personal Access Tokens
+		auth.Delete("/personal-access-token:revoke", personalAccessTokenHandler.Revoke)
 
 		// Users
 		auth.Get("/users/me", userHandler.Get)
@@ -163,6 +164,12 @@ func run() (runErr error) {
 		auth.Post("/projects/{id}/tasks:add", projectHandler.AddTask)
 		auth.Post("/projects/{id}/tasks:remove", projectHandler.RemoveTask)
 
+		// Project Schedules
+		auth.Get("/projects/{id}/schedules", scheduleHandler.ListProject)
+		auth.Post("/projects/{id}/schedules", scheduleHandler.CreateForProject)
+		auth.Post("/projects/{id}/schedules:add", scheduleHandler.AddToProject)
+		auth.Post("/projects/{id}/schedules:remove", scheduleHandler.RemoveFromProject)
+
 		// Tasks
 		auth.Get("/tasks", taskHandler.List)
 		auth.Get("/tasks/{id}", taskHandler.Get)
@@ -190,25 +197,32 @@ func run() (runErr error) {
 		auth.Put("/tasks/{taskId}/todo-items/{id}/frequency", todoItemHandler.UpdateFrequency)
 		auth.Delete("/tasks/{taskId}/todo-items/{id}", todoItemHandler.Delete)
 
-		// Task Schedules
-		auth.Get("/tasks/{taskId}/schedules", taskScheduleHandler.List)
-		auth.Post("/tasks/{taskId}/schedules", taskScheduleHandler.Create)
-		auth.Post("/tasks/{taskId}/schedules/{id}:complete", taskScheduleHandler.Complete)
-		auth.Post("/tasks/{taskId}/schedules/{id}:reopen", taskScheduleHandler.Reopen)
-		auth.Post("/tasks/{taskId}/schedules/{id}:skip", taskScheduleHandler.Skip)
-		auth.Post("/tasks/{taskId}/schedules/{id}:restore", taskScheduleHandler.Restore)
-		auth.Post("/tasks/{taskId}/schedules/{id}:reschedule", taskScheduleHandler.Reschedule)
-		auth.Patch("/tasks/{taskId}/schedules/{id}", taskScheduleHandler.Update)
-		auth.Put("/tasks/{taskId}/schedules/{id}/frequency", taskScheduleHandler.UpdateFrequency)
-		auth.Delete("/tasks/{taskId}/schedules/{id}", taskScheduleHandler.Delete)
+		// Schedules
+		auth.Get("/schedules", scheduleHandler.List)
+		auth.Post("/schedules", scheduleHandler.Create)
+		auth.Get("/schedules/{id}", scheduleHandler.Get)
+		auth.Get("/schedules/{id}/revisions", scheduleHandler.ListRevisions)
+		auth.Get("/schedules/{id}/assignees", scheduleHandler.ListAssignees)
+		auth.Patch("/schedules/{id}/assignees", scheduleHandler.Assign)
+		auth.Post("/schedules/{id}:complete", scheduleHandler.Complete)
+		auth.Post("/schedules/{id}:reopen", scheduleHandler.Reopen)
+		auth.Post("/schedules/{id}:skip", scheduleHandler.Skip)
+		auth.Post("/schedules/{id}:restore", scheduleHandler.Restore)
+		auth.Post("/schedules/{id}:reschedule", scheduleHandler.Reschedule)
+		auth.Patch("/schedules/{id}", scheduleHandler.Update)
+		auth.Put("/schedules/{id}/frequency", scheduleHandler.UpdateFrequency)
+		auth.Delete("/schedules/{id}", scheduleHandler.Delete)
 
-		// Task Tags
-		auth.Get("/task-tags", taskTagHandler.List)
-		auth.Post("/task-tags", taskTagHandler.Create)
+		// Shared Tag catalog and Task associations
+		auth.Get("/tags", tagHandler.List)
+		auth.Post("/tags", tagHandler.Create)
+		auth.Get("/tags/{id}", tagHandler.Get)
+		auth.Patch("/tags/{id}", tagHandler.Rename)
+		auth.Delete("/tags/{id}", tagHandler.Delete)
 		auth.Post("/tasks/{id}/tags:add", taskTagHandler.AddToTask)
 		auth.Post("/tasks/{id}/tags:remove", taskTagHandler.RemoveFromTask)
-		auth.Patch("/task-tags/{id}", taskTagHandler.Rename)
-		auth.Delete("/task-tags/{id}", taskTagHandler.Delete)
+		auth.Post("/schedules/{id}/tags:add", scheduleHandler.AddTag)
+		auth.Post("/schedules/{id}/tags:remove", scheduleHandler.RemoveTag)
 	})
 
 	srv := &http.Server{

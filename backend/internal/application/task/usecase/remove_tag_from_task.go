@@ -21,27 +21,17 @@ func NewRemoveTagFromTaskUseCase(uow removeTagFromTaskUOW, logger logging.Logger
 	return &RemoveTagFromTaskUseCase{logger: logging.OrNop(logger), uow: uow}
 }
 
-func (uc *RemoveTagFromTaskUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, tagID domain.TaskTagID) (err error) {
+func (uc *RemoveTagFromTaskUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, tagID string) (err error) {
 	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "RemoveTagFromTaskUseCase.Execute", err) }()
 
 	return uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		task, err := repos.Tasks().GetByUserIDWithPermission(ctx, userID, taskID, shared.TaskUpdate())
+		_, err := repos.Tasks().GetByUserIDWithPermission(ctx, userID, taskID, shared.TaskUpdate())
 		if err != nil {
 			return err
-		}
-
-		tags := repos.TaskTags()
-		tagOwner := domain.UserID(task.UserID)
-		tag, err := tags.GetByUserID(ctx, tagOwner, tagID)
-		if err != nil {
-			return err
-		}
-		if tag.UserID != task.UserID {
-			return ErrTaskTagNotFound
 		}
 
 		// Repository removal is idempotent when this assignment does not exist.
-		return tags.RemoveFromTask(ctx, userID, taskID, tagID)
+		return repos.TaskTags().RemoveFromTask(ctx, userID, taskID, tagID)
 	})
 
 }

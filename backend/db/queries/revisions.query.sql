@@ -14,6 +14,23 @@ WHERE pr.id = sqlc.arg(id)::text
 ORDER BY pr.revision DESC
 LIMIT sqlc.arg(page_limit)::integer;
 
+-- name: ListScheduleRevisionsByActor :many
+SELECT sr.*
+FROM schedule_revisions AS sr
+JOIN schedules AS s ON s.id = sr.id
+LEFT JOIN projects AS p ON p.id = s.project_id
+WHERE sr.id = sqlc.arg(id)::text
+  AND (
+      (s.deleted_at IS NULL AND (p.id IS NULL OR p.deleted_at IS NULL)
+       AND schedule_has_permission(s.id, sqlc.arg(actor_id)::text, 'schedule', 'read'))
+      OR ((s.deleted_at IS NOT NULL OR p.deleted_at IS NOT NULL)
+       AND (s.user_id = sqlc.arg(actor_id)::text
+            OR (p.id IS NOT NULL AND project_has_permission(p.id, sqlc.arg(actor_id)::text, 'deleted_history', 'read'))))
+  )
+  AND (sqlc.narg(cursor_revision)::integer IS NULL OR sr.revision < sqlc.narg(cursor_revision)::integer)
+ORDER BY sr.revision DESC
+LIMIT sqlc.arg(page_limit)::integer;
+
 -- name: ListTaskRevisionsByActor :many
 SELECT tr.*
 FROM task_revisions AS tr

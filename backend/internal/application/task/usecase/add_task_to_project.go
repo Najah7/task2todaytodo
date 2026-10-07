@@ -50,9 +50,9 @@ func (uc *AddTaskToProjectUseCase) Execute(ctx context.Context, userID domain.Us
 			}{id: domain.ProjectID(task.ProjectID), permission: shared.TaskUpdate()})
 		}
 		sort.Slice(locks, func(i, j int) bool { return locks[i].id < locks[j].id })
-		var targetProject dao.Project
+		var targetProject TaskProject
 		for _, lock := range locks {
-			project, err := repos.Projects().LockByUserIDWithPermission(ctx, userID, lock.id, lock.permission)
+			project, err := repos.TaskProjects().LockProjectByUserIDWithPermission(ctx, string(userID), string(lock.id), lock.permission)
 			if err != nil {
 				return err
 			}
@@ -60,7 +60,7 @@ func (uc *AddTaskToProjectUseCase) Execute(ctx context.Context, userID domain.Us
 				targetProject = project
 			}
 		}
-		if task.UserID != targetProject.UserID {
+		if task.UserID != targetProject.OwnerID {
 			return ErrTaskNotFound
 		}
 		// Re-read after the ordered project locks so a concurrent move cannot

@@ -81,7 +81,7 @@ func (r *todoFrequencyProgressFake) SetStatusByUserID(_ context.Context, _ domai
 func (r *todoFrequencyProgressFake) SetStatusByUserIDWithPermission(ctx context.Context, userID domain.UserID, taskID domain.TaskID, status domain.TaskStatus, _ int32, _ shared.Capability) error {
 	return r.SetStatusByUserID(ctx, userID, taskID, status)
 }
-func (r *todoFrequencyProgressFake) ReadTaskProgressSources(_ context.Context, taskIDs, _ []string, asOf time.Time) (dao.TaskProgressSources, error) {
+func (r *todoFrequencyProgressFake) ReadTaskProgressSources(_ context.Context, taskIDs []string, asOf time.Time) (dao.TaskProgressSources, error) {
 	r.reads = append(r.reads, asOf)
 	root := r.todo.root
 	return dao.TaskProgressSources{

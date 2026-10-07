@@ -27,7 +27,7 @@ type todoItemsHandlerTimezoneReader struct {
 	err      error
 }
 
-func (reader todoItemsHandlerTimezoneReader) GetTimezone(context.Context, domain.UserID) (string, error) {
+func (reader todoItemsHandlerTimezoneReader) GetTimezone(context.Context, string) (string, error) {
 	return reader.timezone, reader.err
 }
 
@@ -60,7 +60,7 @@ func (repository *todoItemsHandlerTaskRepository) SetStatusByUserIDWithPermissio
 	return repository.SetStatusByUserID(ctx, userID, taskID, status)
 }
 
-func (repository todoItemsHandlerTaskRepository) ReadTaskProgressSources(_ context.Context, taskIDs, _ []string, _ time.Time) (dao.TaskProgressSources, error) {
+func (repository todoItemsHandlerTaskRepository) ReadTaskProgressSources(_ context.Context, taskIDs []string, _ time.Time) (dao.TaskProgressSources, error) {
 	sources := dao.TaskProgressSources{
 		Counts:   make(map[string]dao.TaskProgressCounts),
 		Statuses: make(map[string]dao.TaskStatus),

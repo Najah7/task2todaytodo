@@ -15,8 +15,8 @@ type UserRepository interface {
 	UpdateTimezone(ctx context.Context, id domain.UserID, timezone domain.UserTimezone) error
 }
 
-type AccessTokenRepository interface {
-	GetByToken(ctx context.Context, token string) (dao.AccessToken, error)
-	Create(ctx context.Context, token domain.AccessToken) (dao.AccessToken, error)
+type PersonalAccessTokenRepository interface {
+	GetByToken(ctx context.Context, token string) (dao.PersonalAccessToken, error)
+	Create(ctx context.Context, token domain.PersonalAccessToken) (dao.PersonalAccessToken, error)
 	Revoke(ctx context.Context, token string) error
 }

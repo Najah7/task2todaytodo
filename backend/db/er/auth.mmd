@@ -1,6 +1,5 @@
 erDiagram
     %% Composite unique constraint: permissions(resource_id, action, effect).
-    %% projects.type and projects.priority reference task-schema master tables, omitted from this auth view.
     users {
         text id PK "NOT NULL"
         text first_name "NOT NULL"
@@ -12,7 +11,7 @@ erDiagram
         text timezone "NOT NULL"
     }
 
-    access_tokens {
+    personal_access_tokens {
         text token PK "NOT NULL"
         text user_id FK "NOT NULL"
         timestamptz expires_at "NOT NULL"
@@ -34,9 +33,9 @@ erDiagram
 
     permissions {
         bigint permission_id PK "NOT NULL"
-        text resource_id FK, UK "NOT NULL"
-        permission_action action UK "NOT NULL"
-        permission_effect effect UK "NOT NULL"
+        text resource_id FK "NOT NULL"
+        action action "NOT NULL"
+        effect effect "NOT NULL"
         text description "NOT NULL"
         timestamptz created_at "NOT NULL"
     }
@@ -47,39 +46,7 @@ erDiagram
         timestamptz created_at "NOT NULL"
     }
 
-    projects {
-        text id PK, UK "NOT NULL"
-        text user_id FK, UK "NOT NULL"
-        text type FK "NOT NULL"
-        text title "NOT NULL"
-        text goal "NULL"
-        text description "NULL"
-        text priority FK "NOT NULL"
-        date start_date "NULL"
-        date end_date "NULL"
-        integer revision "NOT NULL"
-        timestamptz deleted_at "NULL"
-        text changed_by FK "NOT NULL"
-        timestamptz created_at "NOT NULL"
-        timestamptz updated_at "NOT NULL"
-    }
-
-    project_members {
-        text project_id PK, FK "NOT NULL"
-        text user_id PK, FK "NOT NULL"
-        text role_id FK "NOT NULL"
-        text added_by FK "NOT NULL"
-        timestamptz created_at "NOT NULL"
-        timestamptz updated_at "NOT NULL"
-    }
-
-    users ||..o{ access_tokens : owns
+    users ||..o{ personal_access_tokens : owns
     managed_resources ||..o{ permissions : defines
     roles ||--o{ role_permissions : grants
     permissions ||--o{ role_permissions : granted_as
-    users ||..o{ projects : owns
-    users ||..o{ projects : changed_by
-    projects ||--o{ project_members : has_members
-    users ||--o{ project_members : member
-    users ||..o{ project_members : added_by
-    roles ||..o{ project_members : role

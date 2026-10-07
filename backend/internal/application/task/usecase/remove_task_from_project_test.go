@@ -27,12 +27,12 @@ func (uow *removeTaskFromProjectUOWFake) Do(ctx context.Context, fn func(context
 
 type removeTaskFromProjectRepositoriesFake struct {
 	taskProgressTestRepositories
-	projects ProjectRepository
+	projects TaskProjectRepository
 	tasks    TaskRepository
 	accesses *[]string
 }
 
-func (repos removeTaskFromProjectRepositoriesFake) Projects() ProjectRepository {
+func (repos removeTaskFromProjectRepositoriesFake) TaskProjects() TaskProjectRepository {
 	*repos.accesses = append(*repos.accesses, "projects")
 	return repos.projects
 }
@@ -43,8 +43,7 @@ func (repos removeTaskFromProjectRepositoriesFake) Tasks() TaskRepository {
 }
 
 type removeTaskFromProjectProjectRepositoryFake struct {
-	ProjectRepository
-	project   dao.Project
+	project   TaskProject
 	err       error
 	userID    domain.UserID
 	projectID domain.ProjectID
@@ -52,25 +51,29 @@ type removeTaskFromProjectProjectRepositoryFake struct {
 	accesses  *[]string
 }
 
-func (repo *removeTaskFromProjectProjectRepositoryFake) GetByUserID(_ context.Context, userID domain.UserID, projectID domain.ProjectID) (dao.Project, error) {
+func (repo *removeTaskFromProjectProjectRepositoryFake) GetProjectByUserID(_ context.Context, userID, projectID string) (TaskProject, error) {
 	repo.calls++
-	repo.userID, repo.projectID = userID, projectID
+	repo.userID, repo.projectID = domain.UserID(userID), domain.ProjectID(projectID)
 	*repo.accesses = append(*repo.accesses, "get-project")
 	if repo.err != nil {
-		return dao.Project{}, repo.err
+		return TaskProject{}, repo.err
 	}
 	return repo.project, nil
 }
 
-func (repo *removeTaskFromProjectProjectRepositoryFake) LockByUserIDWithPermission(ctx context.Context, userID domain.UserID, projectID domain.ProjectID, _ shared.Capability) (dao.Project, error) {
-	project, err := repo.GetByUserID(ctx, userID, projectID)
+func (repo *removeTaskFromProjectProjectRepositoryFake) LockProjectByUserIDWithPermission(ctx context.Context, userID, projectID string, _ shared.Capability) (TaskProject, error) {
+	project, err := repo.GetProjectByUserID(ctx, userID, projectID)
 	if err != nil {
-		return dao.Project{}, err
+		return TaskProject{}, err
 	}
-	if project.ID != string(projectID) || project.UserID != string(userID) {
-		return dao.Project{}, domain.ErrProjectNotFound
+	if project.ID != projectID || project.OwnerID != userID {
+		return TaskProject{}, ErrTaskProjectNotFound
 	}
 	return project, nil
+}
+
+func (repo *removeTaskFromProjectProjectRepositoryFake) GetProjectByUserIDWithPermission(ctx context.Context, userID, projectID string, _ shared.Capability) (TaskProject, error) {
+	return repo.GetProjectByUserID(ctx, userID, projectID)
 }
 
 type removeTaskFromProjectTaskRepositoryFake struct {
@@ -115,9 +118,9 @@ func (repo *removeTaskFromProjectTaskRepositoryFake) RemoveFromProjectByUserID(_
 	return repo.removedTask, nil
 }
 
-func newRemoveTaskFromProjectFixture(project dao.Project, task dao.Task) (*removeTaskFromProjectUOWFake, *removeTaskFromProjectProjectRepositoryFake, *removeTaskFromProjectTaskRepositoryFake, *[]string) {
+func newRemoveTaskFromProjectFixture(project legacyProjectFixture, task dao.Task) (*removeTaskFromProjectUOWFake, *removeTaskFromProjectProjectRepositoryFake, *removeTaskFromProjectTaskRepositoryFake, *[]string) {
 	var accesses []string
-	projectRepo := &removeTaskFromProjectProjectRepositoryFake{project: project, accesses: &accesses}
+	projectRepo := &removeTaskFromProjectProjectRepositoryFake{project: TaskProject{ID: project.ID, OwnerID: project.UserID}, accesses: &accesses}
 	taskRepo := &removeTaskFromProjectTaskRepositoryFake{task: task, accesses: &accesses}
 	uow := &removeTaskFromProjectUOWFake{repos: removeTaskFromProjectRepositoriesFake{
 		projects: projectRepo,
@@ -136,7 +139,7 @@ func TestRemoveTaskFromProjectUseCaseExecuteRemovesTaskAndPreservesTaskData(t *t
 		Priority: dao.Priority{Value: "high"}, Status: dao.TaskStatus{Value: "open"}, Revision: 2,
 	}
 	uow, projectRepo, taskRepo, accesses := newRemoveTaskFromProjectFixture(
-		dao.Project{ID: string(projectID), UserID: string(userID)},
+		legacyProjectFixture{ID: string(projectID), UserID: string(userID)},
 		dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: string(projectID), Title: want.Title, Description: want.Description, EstimatedMinutes: &childMinutes, Priority: want.Priority, Status: want.Status, Revision: 1},
 	)
 	taskRepo.removedTask = want
@@ -169,7 +172,7 @@ func TestRemoveTaskFromProjectUseCaseExecuteIsIdempotentWhenTaskNotInProject(t *
 		{name: "belongs to another project", task: dao.Task{ID: "task-1", UserID: string(userID), ProjectID: "project-2", Priority: dao.Priority{Value: "urgent"}, Revision: 1}},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			uow, _, taskRepo, _ := newRemoveTaskFromProjectFixture(dao.Project{ID: string(projectID), UserID: string(userID)}, testCase.task)
+			uow, _, taskRepo, _ := newRemoveTaskFromProjectFixture(legacyProjectFixture{ID: string(projectID), UserID: string(userID)}, testCase.task)
 
 			got, err := NewRemoveTaskFromProjectUseCase(uow, &taskProgressSourceFake{}, nil).Execute(context.Background(), userID, projectID, "task-1", 1)
 			want := testCase.task
@@ -187,11 +190,11 @@ func TestRemoveTaskFromProjectUseCaseExecuteIsIdempotentWhenTaskNotInProject(t *
 func TestRemoveTaskFromProjectUseCaseExecuteReturnsNotFoundForUnownedOrMissingProject(t *testing.T) {
 	for _, testCase := range []struct {
 		name    string
-		project dao.Project
+		project legacyProjectFixture
 		err     error
 	}{
-		{name: "missing project", err: domain.ErrProjectNotFound},
-		{name: "project owned by another user", project: dao.Project{ID: "project-1", UserID: "other-user"}},
+		{name: "missing project", err: ErrTaskProjectNotFound},
+		{name: "project owned by another user", project: legacyProjectFixture{ID: "project-1", UserID: "other-user"}},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			uow, _, taskRepo, _ := newRemoveTaskFromProjectFixture(testCase.project, dao.Task{ID: "task-1", UserID: "user-1", ProjectID: "project-1"})
@@ -200,8 +203,8 @@ func TestRemoveTaskFromProjectUseCaseExecuteReturnsNotFoundForUnownedOrMissingPr
 			}
 
 			got, err := NewRemoveTaskFromProjectUseCase(uow, &taskProgressSourceFake{}, nil).Execute(context.Background(), "user-1", "project-1", "task-1", 1)
-			if !errors.Is(err, domain.ErrProjectNotFound) {
-				t.Errorf("Execute() error = %v, want %v", err, domain.ErrProjectNotFound)
+			if !errors.Is(err, ErrTaskProjectNotFound) {
+				t.Errorf("Execute() error = %v, want %v", err, ErrTaskProjectNotFound)
 			}
 			if got != (dao.Task{}) || taskRepo.getCalls != 0 || taskRepo.removeCalls != 0 {
 				t.Errorf("result = %#v, task reads = %d, removals = %d; want no task access", got, taskRepo.getCalls, taskRepo.removeCalls)
@@ -220,7 +223,7 @@ func TestRemoveTaskFromProjectUseCaseExecuteReturnsNotFoundForUnownedOrMissingTa
 		{name: "task owned by another user", task: dao.Task{ID: "task-1", UserID: "other-user", ProjectID: "project-1"}},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			uow, _, taskRepo, _ := newRemoveTaskFromProjectFixture(dao.Project{ID: "project-1", UserID: "user-1"}, testCase.task)
+			uow, _, taskRepo, _ := newRemoveTaskFromProjectFixture(legacyProjectFixture{ID: "project-1", UserID: "user-1"}, testCase.task)
 			if testCase.err != nil {
 				taskRepo.getErr = testCase.err
 			}
@@ -251,21 +254,21 @@ func TestRemoveTaskFromProjectUseCaseExecutePropagatesUOWError(t *testing.T) {
 
 func TestRemoveTaskFromProjectUseCaseExecutePropagatesRepositoryErrors(t *testing.T) {
 	projectErr := errors.New("project lookup failed")
-	uow, projectRepo, taskRepo, _ := newRemoveTaskFromProjectFixture(dao.Project{ID: "project-1", UserID: "user-1"}, dao.Task{ID: "task-1", UserID: "user-1", ProjectID: "project-1"})
+	uow, projectRepo, taskRepo, _ := newRemoveTaskFromProjectFixture(legacyProjectFixture{ID: "project-1", UserID: "user-1"}, dao.Task{ID: "task-1", UserID: "user-1", ProjectID: "project-1"})
 	projectRepo.err = projectErr
 	if _, err := NewRemoveTaskFromProjectUseCase(uow, &taskProgressSourceFake{}, nil).Execute(context.Background(), "user-1", "project-1", "task-1", 1); !errors.Is(err, projectErr) {
 		t.Errorf("project lookup error = %v, want %v", err, projectErr)
 	}
 
 	taskErr := errors.New("task lookup failed")
-	uow, _, taskRepo, _ = newRemoveTaskFromProjectFixture(dao.Project{ID: "project-1", UserID: "user-1"}, dao.Task{ID: "task-1", UserID: "user-1", ProjectID: "project-1", Revision: 1})
+	uow, _, taskRepo, _ = newRemoveTaskFromProjectFixture(legacyProjectFixture{ID: "project-1", UserID: "user-1"}, dao.Task{ID: "task-1", UserID: "user-1", ProjectID: "project-1", Revision: 1})
 	taskRepo.getErr = taskErr
 	if _, err := NewRemoveTaskFromProjectUseCase(uow, &taskProgressSourceFake{}, nil).Execute(context.Background(), "user-1", "project-1", "task-1", 1); !errors.Is(err, taskErr) {
 		t.Errorf("task lookup error = %v, want %v", err, taskErr)
 	}
 
 	removeErr := errors.New("project removal failed")
-	uow, _, taskRepo, _ = newRemoveTaskFromProjectFixture(dao.Project{ID: "project-1", UserID: "user-1"}, dao.Task{ID: "task-1", UserID: "user-1", ProjectID: "project-1", Revision: 1})
+	uow, _, taskRepo, _ = newRemoveTaskFromProjectFixture(legacyProjectFixture{ID: "project-1", UserID: "user-1"}, dao.Task{ID: "task-1", UserID: "user-1", ProjectID: "project-1", Revision: 1})
 	taskRepo.removeErr = removeErr
 	if got, err := NewRemoveTaskFromProjectUseCase(uow, &taskProgressSourceFake{}, nil).Execute(context.Background(), "user-1", "project-1", "task-1", 1); !errors.Is(err, removeErr) || got != (dao.Task{}) {
 		t.Errorf("removal result = %#v, %v; want zero result and %v", got, err, removeErr)

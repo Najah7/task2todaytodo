@@ -5,25 +5,33 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 )
 
 type listProjectTasksProjectRepositoryFake struct {
-	project dao.Project
+	project TaskProject
 	err     error
 	calls   int
 }
 
-func (repo *listProjectTasksProjectRepositoryFake) GetByUserID(_ context.Context, userID domain.UserID, id domain.ProjectID) (dao.Project, error) {
+func (repo *listProjectTasksProjectRepositoryFake) GetProjectByUserID(_ context.Context, userID, id string) (TaskProject, error) {
 	repo.calls++
 	if repo.err != nil {
-		return dao.Project{}, repo.err
+		return TaskProject{}, repo.err
 	}
-	if repo.project.ID != string(id) || repo.project.UserID != string(userID) {
-		return dao.Project{}, domain.ErrProjectNotFound
+	if repo.project.ID != id || repo.project.OwnerID != userID {
+		return TaskProject{}, ErrTaskProjectNotFound
 	}
 	return repo.project, nil
+}
+
+func (repo *listProjectTasksProjectRepositoryFake) GetProjectByUserIDWithPermission(ctx context.Context, userID, id string, _ shared.Capability) (TaskProject, error) {
+	return repo.GetProjectByUserID(ctx, userID, id)
+}
+func (repo *listProjectTasksProjectRepositoryFake) LockProjectByUserIDWithPermission(ctx context.Context, userID, id string, _ shared.Capability) (TaskProject, error) {
+	return repo.GetProjectByUserID(ctx, userID, id)
 }
 
 type listProjectTasksTaskRepositoryFake struct {
@@ -49,7 +57,7 @@ func (repo *listProjectTasksTaskRepositoryFake) ListByProjectAndUserIDCursor(_ c
 func TestListProjectTasksChecksOwnerAndReturnsCursorPage(t *testing.T) {
 	userID := domain.UserID("user-1")
 	projectID := domain.ProjectID("project-1")
-	projectRepo := &listProjectTasksProjectRepositoryFake{project: dao.Project{ID: string(projectID), UserID: string(userID)}}
+	projectRepo := &listProjectTasksProjectRepositoryFake{project: TaskProject{ID: string(projectID), OwnerID: string(userID)}}
 	rows := []dao.Task{{ID: "new", CursorCreatedAt: "2026-10-04T00:00:00.000002Z"}, {ID: "next", CursorCreatedAt: "2026-10-04T00:00:00.000001Z"}, {ID: "extra"}}
 	taskRepo := &listProjectTasksTaskRepositoryFake{rows: rows, taskProgressSourceFake: taskProgressSourceFake{sources: dao.TaskProgressSources{
 		Counts: map[string]dao.TaskProgressCounts{
@@ -70,10 +78,10 @@ func TestListProjectTasksChecksOwnerAndReturnsCursorPage(t *testing.T) {
 }
 
 func TestListProjectTasksDoesNotQueryChildrenForForeignProject(t *testing.T) {
-	projectRepo := &listProjectTasksProjectRepositoryFake{project: dao.Project{UserID: "other-user"}}
+	projectRepo := &listProjectTasksProjectRepositoryFake{project: TaskProject{OwnerID: "other-user"}}
 	taskRepo := &listProjectTasksTaskRepositoryFake{}
 	_, err := NewListProjectTasksUseCase(projectRepo, taskRepo, nil).Execute(context.Background(), "user-1", "project-1", CursorPageRequest{Size: 10})
-	if !errors.Is(err, domain.ErrProjectNotFound) || taskRepo.calls != 0 {
+	if !errors.Is(err, ErrTaskProjectNotFound) || taskRepo.calls != 0 {
 		t.Fatalf("error=%v child queries=%d", err, taskRepo.calls)
 	}
 }

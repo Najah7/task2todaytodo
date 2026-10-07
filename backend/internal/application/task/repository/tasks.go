@@ -16,6 +16,7 @@ import (
 )
 
 var _ usecase.TaskRepository = TaskRepository{}
+var _ usecase.TaskProjectRepository = TaskRepository{}
 
 type TaskRepository struct {
 	queries *sqlc.Queries
@@ -52,9 +53,47 @@ func (r TaskRepository) GetByUserID(ctx context.Context, userID domain.UserID, i
 	return recordToTask(record), nil
 }
 
+func (r TaskRepository) GetProjectByUserID(ctx context.Context, actorID, projectID string) (usecase.TaskProject, error) {
+	project, err := r.queries.GetProjectByUserID(ctx, sqlc.GetProjectByUserIDParams{ID: projectID, ActorKey: actorID})
+	if err != nil {
+		return usecase.TaskProject{}, taskProjectRepositoryError(err)
+	}
+	return taskProjectRecord(project), nil
+}
+
+func (r TaskRepository) GetProjectByUserIDWithPermission(ctx context.Context, actorID, projectID string, capability shared.Capability) (usecase.TaskProject, error) {
+	project, err := r.queries.GetProjectByUserIDForPermission(ctx, sqlc.GetProjectByUserIDForPermissionParams{ID: projectID, ActorID: actorID, ResourceID: string(capability.Resource), Action: sqlc.Action(capability.Action)})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			if _, lookupErr := r.GetProjectByUserID(ctx, actorID, projectID); lookupErr == nil {
+				return usecase.TaskProject{}, usecase.ErrPermissionDenied
+			}
+		}
+		return usecase.TaskProject{}, taskProjectRepositoryError(err)
+	}
+	return taskProjectRecord(project), nil
+}
+
+func (r TaskRepository) LockProjectByUserIDWithPermission(ctx context.Context, actorID, projectID string, capability shared.Capability) (usecase.TaskProject, error) {
+	project, err := r.queries.LockProjectByUserIDForPermission(ctx, sqlc.LockProjectByUserIDForPermissionParams{ID: projectID, UserID: actorID, ResourceID: string(capability.Resource), Action: sqlc.Action(capability.Action)})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			if _, lookupErr := r.GetProjectByUserID(ctx, actorID, projectID); lookupErr == nil {
+				return usecase.TaskProject{}, usecase.ErrPermissionDenied
+			}
+		}
+		return usecase.TaskProject{}, taskProjectRepositoryError(err)
+	}
+	return taskProjectRecord(project), nil
+}
+
+func taskProjectRecord(project sqlc.Project) usecase.TaskProject {
+	return usecase.TaskProject{ID: project.ID, OwnerID: project.UserID, DefaultPriority: project.Priority}
+}
+
 func (r TaskRepository) GetByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.TaskID, capability shared.Capability) (dao.Task, error) {
 	record, err := r.queries.GetTaskByUserIDForPermission(ctx, sqlc.GetTaskByUserIDForPermissionParams{
-		ID: string(id), ActorID: string(userID), ResourceID: string(capability.Resource), Action: sqlc.PermissionAction(capability.Action),
+		ID: string(id), ActorID: string(userID), ResourceID: string(capability.Resource), Action: sqlc.Action(capability.Action),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -77,7 +116,7 @@ func (r TaskRepository) LockByUserID(ctx context.Context, userID domain.UserID, 
 
 func (r TaskRepository) LockByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.TaskID, capability shared.Capability) (dao.Task, error) {
 	record, err := r.queries.LockTaskByUserIDForPermission(ctx, sqlc.LockTaskByUserIDForPermissionParams{
-		ID: string(id), UserID: string(userID), ResourceID: string(capability.Resource), Action: sqlc.PermissionAction(capability.Action),
+		ID: string(id), UserID: string(userID), ResourceID: string(capability.Resource), Action: sqlc.Action(capability.Action),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -92,7 +131,7 @@ func (r TaskRepository) LockByUserIDWithPermission(ctx context.Context, userID d
 
 func (r TaskRepository) HasPermission(ctx context.Context, userID domain.UserID, id domain.TaskID, capability shared.Capability) (bool, error) {
 	allowed, err := r.queries.HasTaskPermission(ctx, sqlc.HasTaskPermissionParams{
-		TaskID: string(id), ActorID: string(userID), ResourceID: string(capability.Resource), Action: sqlc.PermissionAction(capability.Action),
+		TaskID: string(id), ActorID: string(userID), ResourceID: string(capability.Resource), Action: sqlc.Action(capability.Action),
 	})
 	if err != nil {
 		return false, taskRepositoryError(err)
@@ -111,7 +150,7 @@ func (r TaskRepository) SetStatusByUserID(ctx context.Context, userID domain.Use
 func (r TaskRepository) SetStatusByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.TaskID, status domain.TaskStatus, expectedRevision int32, capability shared.Capability) error {
 	_, err := r.queries.UpdateTaskStatusByUserID(ctx, sqlc.UpdateTaskStatusByUserIDParams{
 		ID: string(id), UserID: string(userID), Status: taskStatusString(status), ExpectedRevision: expectedRevision,
-		ResourceID: string(capability.Resource), Action: sqlc.PermissionAction(capability.Action),
+		ResourceID: string(capability.Resource), Action: sqlc.Action(capability.Action),
 	})
 	if err != nil {
 		return r.taskWriteError(ctx, userID, id, capability, err)
@@ -119,70 +158,52 @@ func (r TaskRepository) SetStatusByUserIDWithPermission(ctx context.Context, use
 	return nil
 }
 
-func (r TaskRepository) ReadTaskProgressSources(ctx context.Context, taskIDs, projectIDs []string, asOf time.Time) (dao.TaskProgressSources, error) {
+func (r TaskRepository) ReadTaskProgressSources(ctx context.Context, taskIDs []string, asOf time.Time) (dao.TaskProgressSources, error) {
 	sources := dao.TaskProgressSources{
 		Counts:   make(map[string]dao.TaskProgressCounts, len(taskIDs)),
 		Statuses: make(map[string]dao.TaskStatus, len(taskIDs)),
 	}
-	if len(taskIDs) == 0 && len(projectIDs) == 0 {
+	if len(taskIDs) == 0 {
 		return sources, nil
 	}
 	rows, err := r.queries.ReadTaskProgressSources(ctx, sqlc.ReadTaskProgressSourcesParams{
-		AsOf: pgtype.Timestamptz{Time: asOf, Valid: true}, TaskIds: taskIDs, ProjectIds: projectIDs,
+		AsOf: pgtype.Timestamptz{Time: asOf, Valid: true}, TaskIds: taskIDs, ProjectIds: nil,
 	})
 	if err != nil {
 		return dao.TaskProgressSources{}, err
 	}
 	for _, row := range rows {
 		sources.Statuses[row.TaskID] = dao.TaskStatus{Value: row.Status}
-		if row.ProjectID.Valid {
-			sources.ProjectTasks = append(sources.ProjectTasks, dao.ProjectProgressTask{
-				ID: row.TaskID, ProjectID: row.ProjectID.String, Status: dao.TaskStatus{Value: row.Status},
-			})
-		}
 		sources.Counts[row.TaskID] = dao.TaskProgressCounts{
-			Total:     int(row.TodoTotal + row.ScheduleTotal),
-			Completed: int(row.TodoCompleted + row.ScheduleCompleted),
+			Total:     int(row.TodoTotal),
+			Completed: int(row.TodoCompleted),
 		}
 		var todoRoots []progressRootRecord
 		if err := json.Unmarshal(row.TodoItemRoots, &todoRoots); err != nil {
 			return dao.TaskProgressSources{}, err
 		}
 		for _, root := range todoRoots {
-			value, err := root.toDAO(row.TaskID, false)
+			value, err := root.toDAO(row.TaskID)
 			if err != nil {
 				return dao.TaskProgressSources{}, err
 			}
 			sources.TodoItemRoots = append(sources.TodoItemRoots, value)
-		}
-		var scheduleRoots []progressRootRecord
-		if err := json.Unmarshal(row.TaskScheduleRoots, &scheduleRoots); err != nil {
-			return dao.TaskProgressSources{}, err
-		}
-		for _, root := range scheduleRoots {
-			value, err := root.toDAO(row.TaskID, true)
-			if err != nil {
-				return dao.TaskProgressSources{}, err
-			}
-			sources.TaskScheduleRoots = append(sources.TaskScheduleRoots, value)
 		}
 	}
 	return sources, nil
 }
 
 type progressRootRecord struct {
-	SeriesID             string    `json:"series_id"`
-	OccurrenceDate       string    `json:"occurrence_date"`
-	Timezone             string    `json:"timezone"`
-	IntervalWeeks        int       `json:"interval_weeks"`
-	FrequencyAnchorDate  *string   `json:"frequency_anchor_date"`
-	Frequencies          []string  `json:"frequencies"`
-	StartAt              time.Time `json:"start_at"`
-	EndAt                time.Time `json:"end_at"`
-	OccurrenceSavedToday bool      `json:"occurrence_saved_today"`
+	SeriesID             string   `json:"series_id"`
+	OccurrenceDate       string   `json:"occurrence_date"`
+	Timezone             string   `json:"timezone"`
+	IntervalWeeks        int      `json:"interval_weeks"`
+	FrequencyAnchorDate  *string  `json:"frequency_anchor_date"`
+	Frequencies          []string `json:"frequencies"`
+	OccurrenceSavedToday bool     `json:"occurrence_saved_today"`
 }
 
-func (root progressRootRecord) toDAO(taskID string, schedule bool) (dao.ProgressRecurrence, error) {
+func (root progressRootRecord) toDAO(taskID string) (dao.ProgressRecurrence, error) {
 	value := dao.ProgressRecurrence{
 		TaskID: taskID, SeriesID: root.SeriesID, OccurrenceDate: root.OccurrenceDate,
 		Timezone: root.Timezone, RepeatState: "active", IntervalWeeks: root.IntervalWeeks,
@@ -194,9 +215,6 @@ func (root progressRootRecord) toDAO(taskID string, schedule bool) (dao.Progress
 			return dao.ProgressRecurrence{}, err
 		}
 		value.FrequencyAnchorDate = date.UTC().Unix()
-	}
-	if schedule {
-		value.StartAt, value.EndAt = root.StartAt.Unix(), root.EndAt.Unix()
 	}
 	return value, nil
 }
@@ -288,19 +306,9 @@ func (r TaskRepository) GetDetailsByUserID(ctx context.Context, userID domain.Us
 	}
 	items := recordsToTodoItemsForTaskRows(itemRecords)
 
-	scheduleRecords, err := r.queries.ListTaskSchedulesByTaskForUser(ctx, sqlc.ListTaskSchedulesByTaskForUserParams{
-		TaskID: string(id),
-		UserID: string(userID),
-	})
-	if err != nil {
-		return dao.TaskDetails{}, err
-	}
-	schedules := recordsToTaskSchedulesForTaskRows(scheduleRecords)
-
 	return dao.TaskDetails{
-		Task:          task,
-		TodoItems:     items,
-		TaskSchedules: schedules,
+		Task:      task,
+		TodoItems: items,
 	}, nil
 }
 
@@ -322,14 +330,6 @@ func (r TaskRepository) GetByPriority(ctx context.Context, priority domain.TaskP
 
 func (r TaskRepository) GetByProject(ctx context.Context, projectID domain.ProjectID) ([]dao.Task, error) {
 	records, err := r.queries.GetTaskByProject(ctx, string(projectID))
-	if err != nil {
-		return nil, err
-	}
-	return recordsToTasks(records), nil
-}
-
-func (r TaskRepository) GetByProjectType(ctx context.Context, projectType domain.ProjectType) ([]dao.Task, error) {
-	records, err := r.queries.GetTaskByProjectType(ctx, projectType.String())
 	if err != nil {
 		return nil, err
 	}

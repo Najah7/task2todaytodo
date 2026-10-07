@@ -35,12 +35,8 @@ type taskRepositories struct {
 	store TaskStore
 }
 
-func (r taskRepositories) Projects() usecase.ProjectRepository {
-	return r.store.Projects
-}
-
-func (r taskRepositories) ProjectTypes() usecase.ProjectTypeRepository {
-	return r.store.ProjectTypes
+func (r taskRepositories) TaskProjects() usecase.TaskProjectRepository {
+	return r.store.Tasks
 }
 
 func (r taskRepositories) Tasks() usecase.TaskRepository {
@@ -57,10 +53,6 @@ func (r taskRepositories) TodoItems() usecase.TodoItemRepository {
 
 func (r taskRepositories) TodoLists() usecase.TodoListRepository {
 	return r.store.TodoLists
-}
-
-func (r taskRepositories) TaskSchedules() usecase.TaskScheduleRepository {
-	return r.store.TaskSchedules
 }
 
 func (r taskRepositories) TaskFrequencies() usecase.TaskFrequencyRepository {

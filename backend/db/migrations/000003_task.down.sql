@@ -1,0 +1,12 @@
+DROP FUNCTION IF EXISTS recurrence_wall_time_exists(timestamp without time zone, text);
+DROP TABLE IF EXISTS todo_item_frequencies;
+DROP TABLE IF EXISTS todo_items;
+DROP TABLE IF EXISTS task_tag_assignments;
+DROP TABLE IF EXISTS tags;
+DROP TABLE IF EXISTS task_revisions;
+DROP TABLE IF EXISTS tasks;
+DROP TABLE IF EXISTS task_status_master;
+DROP TABLE IF EXISTS frequency_master;
+DROP FUNCTION IF EXISTS snapshot_task_revision();
+DROP FUNCTION IF EXISTS prepare_task_revision();
+DROP FUNCTION IF EXISTS task_has_permission(text, text, text, action);

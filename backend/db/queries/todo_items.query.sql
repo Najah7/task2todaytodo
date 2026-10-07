@@ -92,7 +92,7 @@ WHERE ti.id = sqlc.arg(id)::text
   AND ti.task_id = sqlc.arg(task_id)::text
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, sqlc.arg(actor_id)::text, sqlc.arg(resource_id)::text, sqlc.arg(action)::permission_action);
+  AND task_has_permission(t.id, sqlc.arg(actor_id)::text, sqlc.arg(resource_id)::text, sqlc.arg(action)::action);
 
 -- name: ListTodoItemsByTaskAndUserID :many
 SELECT
@@ -191,7 +191,7 @@ JOIN tasks AS t ON t.id = ti.task_id
 WHERE ti.task_id = sqlc.arg(task_id)::text
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, sqlc.arg(actor_id)::text, sqlc.arg(resource_id)::text, sqlc.arg(action)::permission_action)
+  AND task_has_permission(t.id, sqlc.arg(actor_id)::text, sqlc.arg(resource_id)::text, sqlc.arg(action)::action)
 ORDER BY ti.position ASC, ti.occurrence_date ASC;
 
 -- name: ListTodoItemsByTaskAndUserIDCursorPage :many

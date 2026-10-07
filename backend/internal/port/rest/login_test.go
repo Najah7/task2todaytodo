@@ -10,7 +10,7 @@ import (
 )
 
 func TestLoginHandlerRejectsInvalidJSON(t *testing.T) {
-	handler := NewLoginHandler(authusecase.AccessTokenUseCases{})
+	handler := NewLoginHandler(authusecase.PersonalAccessTokenUseCases{})
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, "/api/login", strings.NewReader("{"))
 

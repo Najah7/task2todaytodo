@@ -62,7 +62,7 @@ func (repo *assignTaskTestRepository) UpdateTaskAssigneeByActor(_ context.Contex
 	return repo.updated, nil
 }
 
-func (repo *assignTaskTestRepository) ReadTaskProgressSources(_ context.Context, taskIDs, _ []string, _ time.Time) (dao.TaskProgressSources, error) {
+func (repo *assignTaskTestRepository) ReadTaskProgressSources(_ context.Context, taskIDs []string, _ time.Time) (dao.TaskProgressSources, error) {
 	counts := make(map[string]dao.TaskProgressCounts, len(taskIDs))
 	statuses := make(map[string]dao.TaskStatus, len(taskIDs))
 	for _, taskID := range taskIDs {

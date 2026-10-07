@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	tasktime "github.com/Najah7/task2todaytodo/internal/application/task"
+	calendar "github.com/Najah7/task2todaytodo/internal/application/shared/calendar"
 )
 
 var (
@@ -137,7 +137,7 @@ func NewTodoItemWithRecurrence(item TodoItem) (TodoItem, error) {
 	if item.SeriesID == "" {
 		item.SeriesID = item.ID
 	}
-	item.OccurrenceDate = tasktime.NormalizeCalendarDate(item.OccurrenceDate)
+	item.OccurrenceDate = calendar.NormalizeCalendarDate(item.OccurrenceDate)
 	if err := item.Validate(); err != nil {
 		return NewZeroTodoItem(), err
 	}

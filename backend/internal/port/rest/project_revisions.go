@@ -3,8 +3,8 @@ package rest
 import (
 	"net/http"
 
-	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
-	"github.com/Najah7/task2todaytodo/internal/application/task/usecase"
+	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
+	"github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 )
 
 type ProjectRevisionResponse struct {
@@ -36,13 +36,13 @@ type ProjectRevisionListResponse struct {
 //	@Tags		Projects
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		id		path	string	true	"Project ID"
-//	@Param		page_size	query	int	false	"Items per page"
-//	@Param		page_token	query	string	false	"Opaque next page token"
-//	@Success	200	{object}	ProjectRevisionListResponse
-//	@Failure	400	{object}	ErrResponse
-//	@Failure	401	{object}	ErrResponse
-//	@Failure	404	{object}	ErrResponse
+//	@Param		id			path		string	true	"Project ID"
+//	@Param		page_size	query		int		false	"Items per page"
+//	@Param		page_token	query		string	false	"Opaque next page token"
+//	@Success	200			{object}	ProjectRevisionListResponse
+//	@Failure	400			{object}	ErrResponse
+//	@Failure	401			{object}	ErrResponse
+//	@Failure	404			{object}	ErrResponse
 //	@Router		/projects/{id}/revisions [get]
 func (h *ProjectHandler) ListRevisions(w http.ResponseWriter, r *http.Request) {
 	actor, ok := projectUserID(r.Context())

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
+	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 )
 
 func TestProjectMemberErrorsAreMappedToSafeClientResponses(t *testing.T) {
@@ -17,8 +17,8 @@ func TestProjectMemberErrorsAreMappedToSafeClientResponses(t *testing.T) {
 		status     int
 		detailCode string
 	}{
-		{name: "unknown role", err: taskusecase.ErrProjectMemberRoleNotFound, status: 400, detailCode: "unknown_role"},
-		{name: "unknown user", err: taskusecase.ErrProjectMemberUserNotFound, status: 404, detailCode: "not_found"},
+		{name: "unknown role", err: projectusecase.ErrProjectMemberRoleNotFound, status: 400, detailCode: "unknown_role"},
+		{name: "unknown user", err: projectusecase.ErrProjectMemberUserNotFound, status: 404, detailCode: "not_found"},
 	}
 
 	for _, test := range tests {

@@ -59,7 +59,7 @@ func (r TodoItemRepository) GetForCommand(ctx context.Context, userID domain.Use
 		TaskID:     string(taskID),
 		ActorID:    string(userID),
 		ResourceID: string(capability.Resource),
-		Action:     sqlc.PermissionAction(capability.Action),
+		Action:     sqlc.Action(capability.Action),
 	})
 	if err != nil {
 		return dao.TodoItem{}, todoItemRepositoryError(err)
@@ -109,7 +109,7 @@ func (r TodoItemRepository) ListByTaskForOccurrenceCommand(ctx context.Context, 
 		TaskID:     string(taskID),
 		ActorID:    string(userID),
 		ResourceID: string(capability.Resource),
-		Action:     sqlc.PermissionAction(capability.Action),
+		Action:     sqlc.Action(capability.Action),
 	})
 	if err != nil {
 		return nil, err

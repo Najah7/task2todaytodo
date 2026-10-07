@@ -128,7 +128,7 @@ func TestWriteListResponseAppliesMaskAndReturnsArray(t *testing.T) {
 	}
 	request := listRequest{Mask: mask, Scope: pagination.Scope{UserID: "user-1", List: "tasks", Order: "order", Fields: mask.Canonical()}}
 	response := httptest.NewRecorder()
-	writeListResponse(response, []TaskResponse{{ID: "task-1", Title: "Selected", Description: "hidden"}}, []listAnchor{{ID: "task-1"}}, false, request, nil, taskTagListErrorSpec)
+	writeListResponse(response, []TaskResponse{{ID: "task-1", Title: "Selected", Description: "hidden"}}, []listAnchor{{ID: "task-1"}}, false, request, nil, tagListFailure)
 	if response.Code != 200 || response.Body.String() == "" {
 		t.Fatalf("response status/body=%d/%s", response.Code, response.Body.String())
 	}

@@ -21,9 +21,9 @@ FROM todo_list_items
 WHERE todo_list_id = $1
 ORDER BY position ASC;
 
--- name: ListTodoListTaskSchedules :many
-SELECT tlts.todo_list_id, tlts.task_schedule_id, tlts.created_at
-FROM todo_list_task_schedules AS tlts
-JOIN task_schedules AS ts ON ts.id = tlts.task_schedule_id
-WHERE tlts.todo_list_id = $1
-ORDER BY ts.start_at ASC;
+-- name: ListTodoListSchedules :many
+SELECT tls.todo_list_id, tls.schedule_id, tls.created_at
+FROM todo_list_schedules AS tls
+JOIN schedules AS s ON s.id = tls.schedule_id
+WHERE tls.todo_list_id = $1
+ORDER BY s.start_at ASC;

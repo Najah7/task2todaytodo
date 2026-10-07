@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	tasktime "github.com/Najah7/task2todaytodo/internal/application/task"
+	sharedprogress "github.com/Najah7/task2todaytodo/internal/application/shared/progress"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 )
@@ -18,7 +18,7 @@ func loadTaskProgress(ctx context.Context, source taskProgressSource, tasks []da
 	for _, task := range tasks {
 		ids = append(ids, task.ID)
 	}
-	sources, err := source.ReadTaskProgressSources(ctx, ids, nil, asOf)
+	sources, err := source.ReadTaskProgressSources(ctx, ids, asOf)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -38,11 +38,6 @@ func applyTaskProgressSources(tasks []dao.Task, sources dao.TaskProgressSources,
 					value.Total++
 				}
 			}
-			for _, root := range sources.TaskScheduleRoots {
-				if root.TaskID == task.ID && progressScheduleOccursToday(root, asOf) {
-					value.Total++
-				}
-			}
 		}
 		counts[task.ID] = value
 		task.Progress = taskProgressPercent(task.Status.Value, value)
@@ -52,7 +47,7 @@ func applyTaskProgressSources(tasks []dao.Task, sources dao.TaskProgressSources,
 }
 
 func taskProgressCounts(ctx context.Context, tasks TaskRepository, task dao.Task, asOf time.Time) (dao.Task, dao.TaskProgressCounts, error) {
-	inputs, err := tasks.ReadTaskProgressSources(ctx, []string{task.ID}, nil, asOf)
+	inputs, err := tasks.ReadTaskProgressSources(ctx, []string{task.ID}, asOf)
 	if err != nil {
 		return dao.Task{}, dao.TaskProgressCounts{}, err
 	}
@@ -65,11 +60,6 @@ func taskProgressCounts(ctx context.Context, tasks TaskRepository, task dao.Task
 	// visible only after done-task recurrence suppression ends.
 	for _, root := range inputs.TodoItemRoots {
 		if progressTodoOccursToday(root, asOf) {
-			counts.Total++
-		}
-	}
-	for _, root := range inputs.TaskScheduleRoots {
-		if progressScheduleOccursToday(root, asOf) {
 			counts.Total++
 		}
 	}
@@ -165,24 +155,7 @@ func setTaskStatusForPermission(ctx context.Context, tasks TaskRepository, userI
 }
 
 func taskProgressPercent(status string, counts dao.TaskProgressCounts) int {
-	if status == "done" {
-		return 100
-	}
-	if counts.Total == 0 {
-		return 0
-	}
-	return 100 * counts.Completed / counts.Total
-}
-
-func projectProgressPercent(tasks []dao.Task) int {
-	if len(tasks) == 0 {
-		return 0
-	}
-	total := 0
-	for _, task := range tasks {
-		total += task.Progress
-	}
-	return total / len(tasks)
+	return sharedprogress.TaskPercent(status == "done", counts.Completed, counts.Total)
 }
 
 func applyTaskProgress(ctx context.Context, source taskProgressSource, tasks []dao.Task, asOf time.Time) ([]dao.Task, error) {
@@ -190,109 +163,20 @@ func applyTaskProgress(ctx context.Context, source taskProgressSource, tasks []d
 	return result, err
 }
 
-func applyProjectProgress(ctx context.Context, source taskProgressSource, projects []dao.Project, asOf time.Time) ([]dao.Project, error) {
-	if len(projects) == 0 {
-		return projects, nil
-	}
-	projectIDs := make([]string, 0, len(projects))
-	for _, project := range projects {
-		projectIDs = append(projectIDs, project.ID)
-	}
-	sources, err := source.ReadTaskProgressSources(ctx, nil, projectIDs, asOf)
-	if err != nil {
-		return nil, err
-	}
-	tasks := make([]dao.Task, 0, len(sources.ProjectTasks))
-	for _, row := range sources.ProjectTasks {
-		tasks = append(tasks, dao.Task{ID: row.ID, ProjectID: row.ProjectID, Status: row.Status})
-	}
-	tasks, _, err = applyTaskProgressSources(tasks, sources, asOf)
-	if err != nil {
-		return nil, err
-	}
-	progressByProject := make(map[string][]dao.Task, len(projects))
-	for _, task := range tasks {
-		progressByProject[task.ProjectID] = append(progressByProject[task.ProjectID], task)
-	}
-	for i := range projects {
-		projects[i].Progress = projectProgressPercent(progressByProject[projects[i].ID])
-	}
-	return projects, nil
-}
-
-func applyProjectTaskProgress(ctx context.Context, source taskProgressSource, projectID string, tasks []dao.Task, asOf time.Time) ([]dao.Task, int, error) {
-	tasks, err := applyTaskProgress(ctx, source, tasks, asOf)
-	if err != nil {
-		return nil, 0, err
-	}
-	for i := range tasks {
-		tasks[i].ProjectID = projectID
-	}
-	return tasks, projectProgressPercent(tasks), nil
-}
-
 func progressTodoOccursToday(root dao.ProgressRecurrence, asOf time.Time) bool {
-	if root.OccurrenceSavedToday || root.IntervalWeeks < 1 {
-		return false
-	}
-	location, err := time.LoadLocation(root.Timezone)
-	if err != nil {
-		return false
-	}
-	first, err := parseOccurrenceDate(root.OccurrenceDate)
-	if err != nil {
-		return false
-	}
-	today := localToday(asOf, location)
-	if today.Before(first) {
-		return false
-	}
-	anchor := first
+	anchorDate := ""
 	if root.FrequencyAnchorDate != 0 {
-		anchor = time.Unix(root.FrequencyAnchorDate, 0).UTC()
+		anchorDate = time.Unix(root.FrequencyAnchorDate, 0).UTC().Format("2006-01-02")
 	}
-	frequencies, err := taskFrequenciesFromDAO(root.Frequencies)
-	if err != nil {
-		return false
+	frequencies := make([]string, 0, len(root.Frequencies))
+	for _, frequency := range root.Frequencies {
+		frequencies = append(frequencies, frequency.Value)
 	}
-	dates, err := domain.GenerateRecurrenceDatesFromAnchorLimit(anchor, today, root.IntervalWeeks, frequencies, root.Timezone, 1)
-	return err == nil && len(dates) > 0 && dates[0].Date.Equal(today)
-}
-
-func progressScheduleOccursToday(root dao.ProgressRecurrence, asOf time.Time) bool {
-	if root.OccurrenceSavedToday || root.IntervalWeeks < 1 {
-		return false
-	}
-	location, err := time.LoadLocation(root.Timezone)
-	if err != nil {
-		return false
-	}
-	first, err := parseOccurrenceDate(root.OccurrenceDate)
-	if err != nil {
-		return false
-	}
-	today := localToday(asOf, location)
-	if today.Before(first) {
-		return false
-	}
-	anchor := first
-	if root.FrequencyAnchorDate != 0 {
-		anchor = time.Unix(root.FrequencyAnchorDate, 0).UTC()
-	}
-	frequencies, err := taskFrequenciesFromDAO(root.Frequencies)
-	if err != nil {
-		return false
-	}
-	dates, err := domain.GenerateRecurrenceDatesFromAnchorLimit(anchor, today, root.IntervalWeeks, frequencies, root.Timezone, 1)
-	if err != nil || len(dates) == 0 || !dates[0].Date.Equal(today) {
-		return false
-	}
-	startLocal, endLocal := time.Unix(root.StartAt, 0).In(location), time.Unix(root.EndAt, 0).In(location)
-	if _, ok := tasktime.ResolveWallTime(today, startLocal, 0, location); !ok {
-		return false
-	}
-	_, ok := tasktime.ResolveWallTime(today, endLocal, tasktime.CalendarDayOffset(startLocal, endLocal), location)
-	return ok
+	eligible, err := sharedprogress.VirtualOccurrenceOccursToday(sharedprogress.RecurrenceRule{
+		OccurrenceDate: root.OccurrenceDate, Timezone: root.Timezone, IntervalWeeks: root.IntervalWeeks,
+		FrequencyAnchorDate: anchorDate, Frequencies: frequencies, OccurrenceSavedToday: root.OccurrenceSavedToday,
+	}, asOf)
+	return err == nil && eligible
 }
 
 func progressCountsChanged(before, after dao.TaskProgressCounts) bool {

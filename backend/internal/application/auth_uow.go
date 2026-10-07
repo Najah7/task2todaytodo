@@ -37,8 +37,8 @@ func (r authRepositories) Users() usecase.UserRepository {
 	return r.store.Users
 }
 
-func (r authRepositories) AccessTokens() usecase.AccessTokenRepository {
-	return r.store.AccessTokens
+func (r authRepositories) PersonalAccessTokens() usecase.PersonalAccessTokenRepository {
+	return r.store.PersonalAccessTokens
 }
 
 func (r authRepositories) Roles() usecase.RoleCatalogRepository {

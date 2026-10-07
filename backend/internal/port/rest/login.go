@@ -10,11 +10,11 @@ import (
 )
 
 type LoginHandler struct {
-	accessToken authusecase.AccessTokenUseCases
+	personalAccessToken authusecase.PersonalAccessTokenUseCases
 }
 
-func NewLoginHandler(accessToken authusecase.AccessTokenUseCases) *LoginHandler {
-	return &LoginHandler{accessToken: accessToken}
+func NewLoginHandler(personalAccessToken authusecase.PersonalAccessTokenUseCases) *LoginHandler {
+	return &LoginHandler{personalAccessToken: personalAccessToken}
 }
 
 type LoginRequest struct {
@@ -26,11 +26,11 @@ type LoginRequest struct {
 //
 //	@Summary		Log in
 //	@Description	Authenticates a user and generates an access token.
-//	@Tags			Access Tokens
+//	@Tags			Personal Access Tokens
 //	@Accept			json
 //	@Produce		json
 //	@Param			request	body		LoginRequest	true	"Login request"
-//	@Success		200		{object}	AccessTokenResponse
+//	@Success		200		{object}	PersonalAccessTokenResponse
 //	@Failure		400		{object}	ErrResponse	"Invalid request body"
 //	@Failure		401		{object}	ErrResponse	"Invalid email or password"
 //	@Failure		500		{object}	ErrResponse	"Failed to generate access token"
@@ -40,29 +40,29 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecAccessTokensGenerateFailed, ErrDetailInvalidRequestBody)
+		WriteError(w, http.StatusBadRequest, ErrSpecPersonalAccessTokensGenerateFailed, ErrDetailInvalidRequestBody)
 		return
 	}
 
-	u, err := h.accessToken.Login.Execute(ctx, req.Email, req.Password)
+	u, err := h.personalAccessToken.Login.Execute(ctx, req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, authusecase.ErrInvalidCredentials) {
-			WriteError(w, http.StatusUnauthorized, ErrSpecAccessTokensGenerateFailed, ErrDetailInvalidCredentials)
+			WriteError(w, http.StatusUnauthorized, ErrSpecPersonalAccessTokensGenerateFailed, ErrDetailInvalidCredentials)
 			return
 		}
 
-		WriteError(w, http.StatusInternalServerError, ErrSpecAccessTokensGenerateFailed, ErrDetailFailedUserLookup)
+		WriteError(w, http.StatusInternalServerError, ErrSpecPersonalAccessTokensGenerateFailed, ErrDetailFailedUserLookup)
 		return
 	}
 
-	t, err := h.accessToken.Generate.Execute(ctx, u)
+	t, err := h.personalAccessToken.Generate.Execute(ctx, u)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, ErrSpecAccessTokensGenerateFailed)
+		WriteError(w, http.StatusInternalServerError, ErrSpecPersonalAccessTokensGenerateFailed)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, AccessTokenResponse{
-		Token:     t.Token,
-		ExpiresAt: time.Unix(t.ExpiresAt, 0).In(time.FixedZone("JST", 9*60*60)).Format("2006-01-02 15:04:05"),
+	WriteJSON(w, http.StatusOK, PersonalAccessTokenResponse{
+		PersonalAccessToken: t.Token,
+		ExpiresAt:           time.Unix(t.ExpiresAt, 0).In(time.FixedZone("JST", 9*60*60)).Format("2006-01-02 15:04:05"),
 	})
 }

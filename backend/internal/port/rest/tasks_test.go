@@ -44,14 +44,10 @@ type taskHandlerTaskRepository struct {
 	listCalls   int
 }
 
-func (repo *taskHandlerTaskRepository) ReadTaskProgressSources(_ context.Context, taskIDs, projectIDs []string, _ time.Time) (dao.TaskProgressSources, error) {
+func (repo *taskHandlerTaskRepository) ReadTaskProgressSources(_ context.Context, taskIDs []string, _ time.Time) (dao.TaskProgressSources, error) {
 	requested := make(map[string]bool, len(taskIDs))
 	for _, id := range taskIDs {
 		requested[id] = true
-	}
-	projects := make(map[string]bool, len(projectIDs))
-	for _, id := range projectIDs {
-		projects[id] = true
 	}
 	rows := append([]dao.Task(nil), repo.rows...)
 	if repo.task.ID != "" {
@@ -60,16 +56,13 @@ func (repo *taskHandlerTaskRepository) ReadTaskProgressSources(_ context.Context
 	sources := dao.TaskProgressSources{Counts: make(map[string]dao.TaskProgressCounts), Statuses: make(map[string]dao.TaskStatus)}
 	seen := make(map[string]bool)
 	for _, row := range rows {
-		if seen[row.ID] || (!requested[row.ID] && !projects[row.ProjectID]) {
+		if seen[row.ID] || !requested[row.ID] {
 			continue
 		}
 		seen[row.ID] = true
 		total, completed := 100, row.Progress
 		sources.Counts[row.ID] = dao.TaskProgressCounts{Total: total, Completed: completed}
 		sources.Statuses[row.ID] = row.Status
-		if projects[row.ProjectID] {
-			sources.ProjectTasks = append(sources.ProjectTasks, dao.ProjectProgressTask{ID: row.ID, ProjectID: row.ProjectID, Status: row.Status})
-		}
 	}
 	return sources, nil
 }
@@ -223,29 +216,17 @@ func (taskHandlerTodoRepository) DeleteUneditedFutureByTask(context.Context, dom
 	return 0, nil
 }
 
-type taskHandlerScheduleRepository struct {
-	taskusecase.TaskScheduleRepository
-}
-
-func (taskHandlerScheduleRepository) DeleteUneditedFutureByTask(context.Context, domain.UserID, domain.TaskID, time.Time) error {
-	return nil
-}
-
 type taskHandlerRepositories struct {
 	taskusecase.Repositories
 	tasks     taskusecase.TaskRepository
 	tags      taskusecase.TaskTagRepository
 	todoItems taskusecase.TodoItemRepository
-	schedules taskusecase.TaskScheduleRepository
 }
 
 func (repos taskHandlerRepositories) Tasks() taskusecase.TaskRepository       { return repos.tasks }
 func (repos taskHandlerRepositories) TaskTags() taskusecase.TaskTagRepository { return repos.tags }
 func (repos taskHandlerRepositories) TodoItems() taskusecase.TodoItemRepository {
 	return repos.todoItems
-}
-func (repos taskHandlerRepositories) TaskSchedules() taskusecase.TaskScheduleRepository {
-	return repos.schedules
 }
 
 type taskHandlerUOW struct {
@@ -268,7 +249,7 @@ func newTaskHandlerFixture() (*TaskHandler, *taskHandlerTaskRepository, *taskHan
 	}}
 	tagRepo := &taskHandlerTagRepository{tags: []dao.TaskTag{{ID: "tag-1", UserID: "user-1", Name: "work"}}}
 	repos := taskHandlerRepositories{
-		tasks: taskRepo, tags: tagRepo, todoItems: taskHandlerTodoRepository{}, schedules: taskHandlerScheduleRepository{},
+		tasks: taskRepo, tags: tagRepo, todoItems: taskHandlerTodoRepository{},
 	}
 	uow := &taskHandlerUOW{repos: repos}
 	tasks := taskusecase.TaskUseCases{

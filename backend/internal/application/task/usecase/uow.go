@@ -3,13 +3,11 @@ package usecase
 import "context"
 
 type Repositories interface {
-	Projects() ProjectRepository
-	ProjectTypes() ProjectTypeRepository
+	TaskProjects() TaskProjectRepository
 	Tasks() TaskRepository
 	TaskTags() TaskTagRepository
 	TodoItems() TodoItemRepository
 	TodoLists() TodoListRepository
-	TaskSchedules() TaskScheduleRepository
 	TaskFrequencies() TaskFrequencyRepository
 	TaskPriorities() TaskPriorityRepository
 	TaskStatuses() TaskStatusRepository
