@@ -1,39 +1,29 @@
 # Task2TodayToDo
 
-***Don’t live for tomorrow. Give today everything you’ve got.***
+## Product
 
-task2todaytodo is a unified task and schedule management system that turns one structured source of truth into a daily execution plan.
+The primary value is automatically generating today's TodoList as an execution plan from managed TodoItems and Schedules. Managing Tasks and Schedules together in one platform is the supporting value.
 
-The core problem is that planning tasks across a week or month is easy to start but hard to maintain. Interruptions create drift, and manually repairing a long-term calendar quickly becomes too much work. task2todaytodo avoids that burden by letting users manage tasks and schedules together in a structured source of truth, then generating only today's TodoList when it is needed.
+Reduce the burden of maintaining long-term plans so users can focus on today's work. Keep Schedule times fixed when generating the plan, and place TodoItems into available time in priority order. Users can manually adjust the daily plan.
 
-By separating long-lived task and schedule management from day-by-day execution, the product can create dynamic, flexible TodoLists for the day without forcing users to maintain a perfect long-term schedule.
+## Domain
 
-# Values
+- Project: Groups Tasks and Schedules. Tasks and Schedules may also exist without a Project.
+- Task: Groups TodoItems.
+- TodoItem: Work without a fixed start and end time; one-off or recurring.
+- Schedule: Work with a fixed start and end time; one-off or recurring.
+- TodoList: The generated execution plan for a day, combining TodoItems and Schedules.
 
-- Task Management: manage all tasks in a single place, including projects, tasks, fixed schedules, repeatable work, and one-off work.
-- Schedule Management: manage fixed schedules for tasks, including repeatable and one-off schedules. and also synchronize those schedules with 3rd party calendar systems like Google Calendar and ..etc.
-- Generate Today's TodoList: generate a TodoList as the execution plan for the day, based on managed tasks and schedules.
+## Principles
 
-# Domain Terms
+- Centralize business rules in the backend. Clients own presentation and interaction.
+- Preserve a single source of truth across the system for business rules, data, API contracts, and design values.
+- Build concrete solutions first. Extract abstractions from demonstrated needs; abstract upfront only with a clear, stable requirement.
 
-- Inbox: The unified place where all managed tasks can be collected and reviewed.
-- Project: A unit that groups Tasks and can have a goal, start date, and due date. A Task may also exist without belonging to a Project.
-- Task: A container for smaller units of work. A Task can include TodoItems and TaskSchedules.
-- TodoItem: A small unit of work without a fixed start and end time. TodoItems may be repeatable or one-off.
-- TaskSchedule: A small unit of work with a fixed start and end time. TaskSchedules represent scheduled events and may be repeatable or one-off.
-- TodoList: The execution plan generated for a specific day. It is composed of TaskSchedules and TodoItems, ordered from top to bottom as a timeline for the day.
+## Future direction
 
-# Core Relationships
-- User -> Tasks (To manage tasks for a user)
-- Project -> Tasks (To group tasks under a project)
-- Task -> TodoItems (To break down a task into smaller units of work)
-- Task -> TaskSchedules (To schedule a task at a specific time)
+Planned: Google Calendar integration, MCP support, and a mobile app.
 
-# Repository Layout
+## Local guidance
 
-.
-├── AGENTS.md: Root project context and high-level product specification.
-├── backend: Backend source code and backend-specific guidance. See `backend/AGENT.md` when working there.
-├── docs: Development-time documentation and reference notes.
-├── frontend: Frontend source code and frontend-specific guidance. See files under `frontend/` when working there.
-└── README.md: Basic project information for users and contributors.
+Read [backend/AGENTS.md](backend/AGENTS.md) or [frontend/AGENTS.md](frontend/AGENTS.md) before working in that area. Implementation conventions and commands belong in the local guides and READMEs; detailed behavior belongs in the relevant specifications.
