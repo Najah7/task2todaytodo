@@ -41,30 +41,18 @@ make help        # ヘルプを表示
 
 ### ログとトレース
 
-API は構造化 JSON ログを標準出力に書き込みます。`LOG_LEVEL` は
-`DEBUG`、`INFO`、`WARN`、`ERROR` から設定できます。HTTP リクエストログには
-リクエスト ID が含まれます。有効な UUID の受信 ID は保持し、無効または未指定の
-場合は UUID を生成します。
-アクティブなトレーススパンがある場合、リクエストログには `trace_id`、`span_id`、
-`trace_flags` も含まれます。
+概要と実装・設定ガイドへのリンクは、
+[バックエンドのログとトレースの概要](backend/README.ja.md#ログとトレース)を参照してください。
 
-API は OpenTelemetry のサーバースパンを作成し、W3C Trace Context を伝播します。
-トレースは既定で OTLP (`OTEL_TRACES_EXPORTER=otlp`) を使い、既定のプロトコルは
-`http/protobuf` です。`OTEL_EXPORTER_OTLP_PROTOCOL=grpc` で gRPC を選べます。
-標準の OTLP 環境変数でエンドポイント、ヘッダー、タイムアウト、圧縮、TLS を設定
-できます。Air コンテナから接続できる外部 Collector を指定してください。例えば
-`OTEL_EXPORTER_OTLP_ENDPOINT=http://host.docker.internal:4318` を設定します。
-このリポジトリでは Collector を起動しません。
-サンプリングの既定値は `parentbased_always_on` です。`OTEL_TRACES_SAMPLER` と
-`OTEL_TRACES_SAMPLER_ARG` で別の対応サンプラーや比率を指定できます。
+## フロントエンドのクイックスタート
 
-ローカルの `.env.example` は `OTEL_TRACES_EXPORTER=none` を既定値にしています。
-Collector が使える場合は `otlp` に変更してください。`OTEL_SERVICE_NAME` の既定値は
-`api`、`ENVIRONMENT` は `development`、`APP_VERSION` は `1.0.0` です。
-OpenTelemetry のリソース属性で環境名とバージョンを上書きできます。サービス名は
-標準仕様に従い `OTEL_SERVICE_NAME` が優先されます。解決後の値はログとトレースで
-共有されます。
+前提条件: Node.js、pnpm 10.5.2。リポジトリルートから、別のターミナルで、上記の手順でバックエンドを起動した後にフロントエンドを起動します。Vite は既定で `/api` を `http://127.0.0.1:8080` に転送します。
 
-PostgreSQL の診断には PostgreSQL サーバーのコンテナログを使ってください。
-アプリケーションログに SQL パラメーターや認証情報を出さないでください。Collector
-を使うと、API トレースと PostgreSQL サーバーログを任意の保存先に転送できます。
+```bash
+cd frontend
+pnpm install --frozen-lockfile
+cp .env.example .env # 初回セットアップ時のみ
+pnpm dev
+```
+
+<http://localhost:5173> を開きます。バックエンドの接続先が異なる場合は `frontend/.env` の `API_PROXY_TARGET` を設定してください。コマンドや詳細は[フロントエンド README](frontend/README.md)を参照してください。

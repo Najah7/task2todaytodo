@@ -26,4 +26,4 @@ Planned: Google Calendar integration, MCP support, and a mobile app.
 
 ## Local guidance
 
-Read [backend/AGENTS.md](backend/AGENTS.md) or [frontend/AGENTS.md](frontend/AGENTS.md) before working in that area. Implementation conventions and commands belong in the local guides and READMEs; detailed behavior belongs in the relevant specifications.
+Before working in backend or frontend, read its guide: [backend/AGENTS.md](backend/AGENTS.md) or [frontend/AGENTS.md](frontend/AGENTS.md). Local guides and READMEs define implementation conventions and commands. Relevant specifications define detailed behavior.

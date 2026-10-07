@@ -9,6 +9,9 @@
 ## Components
 
 - Colocate a component's implementation, CSS Module, schema, helpers, and unit tests. Keep private parts nearby.
+- Use `<Component>/index.tsx` as the entry point. For complex components, compose simple parts from `parts/<Part>/index.tsx`, like small extracted functions. Keep decomposition to two levels: the component and its parts. Do not add another `parts/` level inside a part.
+- Parts belong exclusively to their parent. Use ordinary exports and imports; only the parent, tests, and stories may import them. When concrete reuse is needed, consider moving the part to `src/features/shared/components/` as an independent component.
+- Within each feature, component imports must follow the parent-to-child direction; no child-to-parent or sibling-part imports. Independent components in `src/features/shared/` may be imported from any component. These restrictions apply only to component imports, not hooks, helpers, schemas, or i18n utilities.
 - Colocate Storybook stories as `Component.stories.tsx`. Keep shared Storybook decorators, mocks, and helpers under `.storybook/`; feature-specific helpers belong in `.storybook/<feature>/` and use the `~storybook/` alias. Use stories to inspect meaningful UI states with the application's existing styles and tokens.
 - Build for a concrete purpose first. Extract abstractions when multiple concrete uses exist; abstract upfront only with a clear, stable requirement.
 - Share within a feature first. Use `src/features/shared/` only for code used by multiple features; shared code must not depend on those features.
@@ -17,7 +20,7 @@
 
 ## State and API
 
-- Backend data belongs to the backend; TanStack Query owns its client cache. Do not maintain a second server-data cache in Jotai or local State. Editing drafts are local UI state.
+- The backend is the source of truth for server data; TanStack Query owns its client cache. Do not maintain a second server-data cache in Jotai or local State. Editing drafts are local UI state.
 - Use React Router's URL state for routes and shareable navigation state. Keep temporary UI state local. Use Jotai only for frontend-specific state that genuinely needs global access.
 - Generate API types, clients, and Query hooks with Orval from the backend OpenAPI specification. Never hand-edit generated code or duplicate API contracts.
 - Handwrite only necessary integration, such as shared HTTP behavior and actions after a successful request. Do not add wrappers that merely repeat the generated API.

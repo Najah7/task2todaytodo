@@ -41,30 +41,18 @@ make help        # show help
 
 ### Logs and traces
 
-The API writes structured JSON logs to stdout. Set `LOG_LEVEL` to `DEBUG`,
-`INFO`, `WARN`, or `ERROR`. Every HTTP request log includes a request ID;
-valid inbound UUID request IDs are retained and invalid or missing IDs are
-replaced with generated UUIDs.
-Request logs include `trace_id`, `span_id`, and `trace_flags` when an active
-trace span is present.
+See the [backend logging and tracing overview](backend/README.md#logs-and-traces)
+for a short overview and links to implementation and configuration guidance.
 
-The API creates OpenTelemetry server spans and propagates W3C Trace Context.
-Trace export defaults to OTLP (`OTEL_TRACES_EXPORTER=otlp`) with
-`http/protobuf`; `OTEL_EXPORTER_OTLP_PROTOCOL=grpc` selects gRPC. The API
-honors standard OTLP endpoint, headers, timeout, compression, and TLS
-environment settings. Configure an external Collector endpoint, for example
-`OTEL_EXPORTER_OTLP_ENDPOINT=http://host.docker.internal:4318` for a Collector
-reachable from the Air container. The repository does not start a Collector.
-Sampling defaults to `parentbased_always_on`; use `OTEL_TRACES_SAMPLER` and
-`OTEL_TRACES_SAMPLER_ARG` to select another supported SDK sampler or ratio.
+## Frontend quick start
 
-Local `.env.example` defaults to `OTEL_TRACES_EXPORTER=none`; set it to `otlp`
-when a Collector is available. `OTEL_SERVICE_NAME` defaults to `api`,
-`ENVIRONMENT` to `development`, and `APP_VERSION` to `1.0.0`. OpenTelemetry
-resource attributes can override environment and version metadata; service
-name follows the standard `OTEL_SERVICE_NAME` precedence. The resolved values
-are shared by logs and trace resources.
+Prerequisites: Node.js and pnpm 10.5.2. From the repository root, in a separate terminal, start the frontend after starting the backend using the instructions above. Vite proxies `/api` to `http://127.0.0.1:8080` by default.
 
-For PostgreSQL diagnostics, use the PostgreSQL server's container logs. Keep
-SQL parameter values and credentials out of application logs. A Collector can
-route API traces and PostgreSQL server logs to your chosen backend.
+```bash
+cd frontend
+pnpm install --frozen-lockfile
+cp .env.example .env # first setup only
+pnpm dev
+```
+
+Open <http://localhost:5173>. Set `API_PROXY_TARGET` in `frontend/.env` if the backend uses a different address. See the [frontend README](frontend/README.md) for more commands and details.
