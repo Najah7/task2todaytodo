@@ -74,6 +74,8 @@ func (r *scheduleTagsRepositoryFake) ListTagsForSchedules(_ context.Context, act
 
 type scheduleTagsRepositoriesFake struct{ schedules ScheduleRepository }
 
+func (scheduleTagsRepositoriesFake) ProjectLifecycle() shared.ProjectWorkLifecycle { return nil }
+
 func (r scheduleTagsRepositoriesFake) Schedules() ScheduleRepository { return r.schedules }
 
 type scheduleTagsUOWFake struct{ repositories Repositories }

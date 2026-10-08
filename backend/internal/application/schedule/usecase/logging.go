@@ -23,7 +23,7 @@ func logScheduleStateChange(logger logging.Logger, ctx context.Context, operatio
 
 func isExpectedScheduleError(err error) bool {
 	for _, expected := range []error{
-		ErrScheduleProjectNotFound, ErrScheduleAssigneeNotEligible, ErrScheduleScopeInvalid,
+		ErrScheduleProjectNotFound, ErrScheduleProjectChanged, ErrScheduleAssigneeNotEligible, ErrScheduleScopeInvalid,
 		ErrOccurrenceDateRequired, ErrOccurrenceNotFound, ErrOccurrenceInactive, ErrOccurrenceCompleted,
 		ErrOccurrenceRuleMismatch, ErrRescheduleDateMismatch, ErrInvalidSchedulePage, ErrPermissionDenied,
 		domain.ErrScheduleIDEmpty, domain.ErrScheduleUserIDEmpty, domain.ErrScheduleAssigneeIDEmpty,

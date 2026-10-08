@@ -12,6 +12,8 @@ import (
 
 var (
 	ErrScheduleProjectNotFound     = errors.New("project not found")
+	ErrScheduleProjectChanged      = errors.New("schedule project association changed")
+	ErrProjectLifecycleUnavailable = errors.New("project lifecycle service is unavailable")
 	ErrScheduleAssigneeNotEligible = errors.New("schedule assignee is not eligible")
 	ErrScheduleScopeInvalid        = errors.New("schedule scope is invalid")
 	ErrOccurrenceDateRequired      = errors.New("occurrence date is required for recurring series")
@@ -30,6 +32,7 @@ type UserTimezoneReader interface {
 }
 
 type ScheduleRepository interface {
+	CheckProjectPermission(ctx context.Context, actorID domain.UserID, projectID domain.ProjectID, capability shared.Capability) (bool, error)
 	LockProjectForScheduleMutation(ctx context.Context, projectID domain.ProjectID) error
 	LockSeriesProjectForMutation(ctx context.Context, actorID domain.UserID, seriesID domain.ScheduleID, capability shared.Capability) error
 	ListScheduleRevisionsByActor(ctx context.Context, actorID domain.UserID, id domain.ScheduleID, limit int, anchor *CursorAnchor) ([]dao.ScheduleRevision, error)
@@ -63,6 +66,7 @@ type ScheduleRepository interface {
 }
 
 type Repositories interface {
+	ProjectLifecycle() shared.ProjectWorkLifecycle
 	Schedules() ScheduleRepository
 }
 

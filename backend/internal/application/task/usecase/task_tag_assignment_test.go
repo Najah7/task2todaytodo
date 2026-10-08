@@ -40,6 +40,11 @@ func (repo *taskTagAssignmentTaskRepo) GetByUserIDWithPermission(_ context.Conte
 	return repo.task, repo.err
 }
 
+func (repo *taskTagAssignmentTaskRepo) LockByUserIDWithPermission(_ context.Context, _ domain.UserID, _ domain.TaskID, capability shared.Capability) (taskdao.Task, error) {
+	repo.capability = capability
+	return repo.task, repo.err
+}
+
 type taskTagAssignmentRepos struct {
 	Repositories
 	tasks TaskRepository

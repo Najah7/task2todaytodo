@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -147,8 +148,11 @@ func run() (runErr error) {
 
 		// Projects
 		auth.Get("/projects", projectHandler.List)
+		auth.Get("/projects/options", projectHandler.Options)
 		auth.Get("/projects/{id}", projectHandler.Get)
 		auth.Get("/projects/{id}/revisions", projectHandler.ListRevisions)
+		auth.Patch("/projects/{id}/status", projectHandler.ChangeStatus)
+		auth.Post("/projects/{id}/restore", projectHandler.Restore)
 		auth.Post("/projects", projectHandler.Create)
 		auth.Patch("/projects/{id}", projectHandler.Update)
 		auth.Delete("/projects/{id}", projectHandler.Delete)
@@ -232,7 +236,7 @@ func run() (runErr error) {
 		ErrorLog:          log.New(serverLogWriter{logger: logger}, "", 0),
 	}
 
-	logger.Info(context.Background(), "server starting", "address", conf.ServerAddr)
+	logger.Info(context.Background(), "server starting", "address", conf.ServerAddr, "swagger_url", swaggerURL(conf.ServerAddr))
 	operation = "serve_http"
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.ListenAndServe() }()
@@ -256,6 +260,21 @@ func run() (runErr error) {
 		logger.Info(context.Background(), "server stopped")
 	}
 	return nil
+}
+
+func swaggerURL(serverAddr string) string {
+	host, port, err := net.SplitHostPort(serverAddr)
+	if err != nil {
+		host = serverAddr
+		port = ""
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "localhost"
+	}
+	if port != "" {
+		host = net.JoinHostPort(host, port)
+	}
+	return "http://" + host + "/swagger/index.html"
 }
 
 type serverLogWriter struct{ logger logging.Logger }

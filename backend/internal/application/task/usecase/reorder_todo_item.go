@@ -36,10 +36,14 @@ func (uc *ReorderTodoItemUseCase) ExecuteOccurrence(ctx context.Context, userID 
 	asOf := time.Now()
 	var result dao.TodoItem
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		mutate := func() error {
+		mutate := func(_ dao.Task, projectBefore taskProjectMutationSnapshot) error {
 			state, err := loadTodoOccurrenceWithCapability(ctx, repos, userID, taskID, seriesID, occurrenceDate, asOf, shared.TodoItemUpdate())
 			if err != nil {
 				return err
+			}
+			state.projectDone = projectBefore.State.Status == "done"
+			if projectDoneSuppressesTodoOccurrence(state) {
+				return ErrOccurrenceInactive
 			}
 			rows, err := listTodoOccurrenceCommandProjection(ctx, repos.TodoItems(), userID, taskID, shared.TodoItemUpdate())
 			if err != nil {
@@ -74,7 +78,7 @@ func (uc *ReorderTodoItemUseCase) ExecuteOccurrence(ctx context.Context, userID 
 				}
 			}
 			request := CursorPageRequest{Size: len(rootIDs) + 1, FromDate: state.date.Format("2006-01-02"), AsOf: asOf}
-			visible, err := expandTodoItemRowsWithSkipped(rows, request, request.AsOf, false, skipped)
+			visible, err := expandTodoItemRowsWithProjectState(rows, request, request.AsOf, false, state.projectDone, skipped)
 			if err != nil {
 				return err
 			}
@@ -149,7 +153,7 @@ func (uc *ReorderTodoItemUseCase) ExecuteOccurrence(ctx context.Context, userID 
 			}
 			return nil
 		}
-		return withTaskProgressMutationForPermission(ctx, repos, userID, taskID, asOf, shared.TodoItemUpdate(), mutate)
+		return withTaskProgressMutationForPermissionAndState(ctx, repos, userID, taskID, asOf, shared.TodoItemUpdate(), mutate)
 	})
 	return result, err
 

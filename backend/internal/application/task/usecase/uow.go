@@ -2,7 +2,10 @@ package usecase
 
 import "context"
 
+import "github.com/Najah7/task2todaytodo/internal/application/shared"
+
 type Repositories interface {
+	ProjectLifecycle() shared.ProjectWorkLifecycle
 	TaskProjects() TaskProjectRepository
 	Tasks() TaskRepository
 	TaskTags() TaskTagRepository

@@ -42,6 +42,10 @@ func applyProjectProgress(ctx context.Context, reader ProjectProgressReader, pro
 		schedulesByProject[schedule.ProjectID] = append(schedulesByProject[schedule.ProjectID], facts)
 	}
 	for index := range projects {
+		if projects[index].Status == "done" {
+			projects[index].Progress = 100
+			continue
+		}
 		projects[index].Progress, err = domain.CalculateProjectProgress(tasksByProject[projects[index].ID], schedulesByProject[projects[index].ID], asOf)
 		if err != nil {
 			return nil, err

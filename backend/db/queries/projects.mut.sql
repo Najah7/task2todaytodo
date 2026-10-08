@@ -48,3 +48,32 @@ WITH deleted_project AS (
     RETURNING id
 )
 SELECT id FROM deleted_project;
+
+-- name: SetProjectStatusByUserID :one
+UPDATE projects
+SET status = sqlc.arg(status)::text,
+    changed_by = sqlc.arg(user_id)::text
+WHERE id = sqlc.arg(id)::text
+  AND deleted_at IS NULL
+  AND revision = sqlc.arg(expected_revision)::integer
+  AND project_has_permission(id, sqlc.arg(user_id)::text, 'project', 'update')
+RETURNING *;
+
+-- name: RestoreProjectByUserID :one
+UPDATE projects
+SET deleted_at = NULL,
+    changed_by = sqlc.arg(user_id)::text
+WHERE id = sqlc.arg(id)::text
+  AND deleted_at IS NOT NULL
+  AND revision = sqlc.arg(expected_revision)::integer
+  AND project_has_permission(id, sqlc.arg(user_id)::text, 'project', 'delete')
+RETURNING *;
+
+-- name: SetProjectStatusForLifecycle :one
+UPDATE projects
+SET status = sqlc.arg(status)::text,
+    changed_by = sqlc.arg(actor_id)::text
+WHERE id = sqlc.arg(id)::text
+  AND deleted_at IS NULL
+  AND status <> sqlc.arg(status)::text
+RETURNING *;

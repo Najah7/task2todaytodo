@@ -6,11 +6,13 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/logging"
 )
 
 type getProjectRepository interface {
 	GetByUserID(ctx context.Context, userID domain.UserID, id domain.ProjectID) (dao.Project, error)
+	HasPermission(context.Context, domain.UserID, domain.ProjectID, shared.Capability) (bool, error)
 }
 
 type GetProjectUseCase struct {
@@ -28,6 +30,9 @@ func (uc *GetProjectUseCase) Execute(ctx context.Context, userID domain.UserID, 
 
 	project, err := uc.repo.GetByUserID(ctx, userID, projectID)
 	if err != nil {
+		return dao.Project{}, err
+	}
+	if err := readProjectCapabilities(ctx, uc.repo, userID, &project); err != nil {
 		return dao.Project{}, err
 	}
 	projects, err := applyProjectProgress(ctx, uc.progress, []dao.Project{project}, time.Now())

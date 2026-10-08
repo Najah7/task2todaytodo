@@ -110,6 +110,39 @@ func TestCompletingRecurringRootDoesNotCompleteFutureVirtualOccurrences(t *testi
 	}
 }
 
+func TestDoneProjectScheduleListKeepsSavedRowsAndSuppressesVirtualOccurrences(t *testing.T) {
+	rootDate := time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC)
+	startAt := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
+	root := dao.Schedule{
+		ID: "series", UserID: "owner", ProjectID: "project", ProjectDone: true, AssigneeID: "owner", Title: "Weekly focus",
+		IntervalWeeks: 1, Frequencies: []dao.Frequency{{Value: "mon"}}, RepeatState: repeatStateActive,
+		FrequencyAnchorDate: rootDate.Unix(), StartAt: startAt.Unix(), EndAt: startAt.Add(time.Hour).Unix(),
+		SeriesID: "series", OccurrenceDate: rootDate.Format("2006-01-02"), Timezone: "UTC",
+	}
+	savedStart := time.Date(2026, 10, 12, 11, 0, 0, 0, time.UTC)
+	saved := root
+	saved.ID, saved.OccurrenceDate, saved.IsException = "saved", "2026-10-12", true
+	saved.StartAt, saved.EndAt = savedStart.Unix(), savedStart.Add(time.Hour).Unix()
+	asOf := time.Date(2026, 10, 5, 8, 0, 0, 0, time.UTC)
+	rows, err := expandScheduleRows([]dao.Schedule{root, saved}, CursorPageRequest{Size: 10}, asOf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := make(map[string]bool, len(rows))
+	for _, row := range rows {
+		ids[row.ID] = true
+		if row.ID == VirtualOccurrenceID {
+			t.Errorf("done Project emitted unsaved virtual occurrence %s", row.OccurrenceDate)
+		}
+		if row.ID == saved.ID && !row.ProjectDone {
+			t.Errorf("saved occurrence lost done Project projection flag: %+v", row)
+		}
+	}
+	if len(rows) != 2 || !ids[root.ID] || !ids[saved.ID] {
+		t.Fatalf("rows = %+v; want saved root and override only", rows)
+	}
+}
+
 func TestDeletedRootStillProjectsLiveOverrideWithRootOwnership(t *testing.T) {
 	rootDate := time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC)
 	startAt := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)

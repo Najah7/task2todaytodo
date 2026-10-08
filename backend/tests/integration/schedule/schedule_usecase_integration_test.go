@@ -20,6 +20,22 @@ type scheduleDatabaseUOW struct{ pool *pgxpool.Pool }
 type scheduleDatabaseRepositories struct{ schedules usecase.ScheduleRepository }
 
 func (r scheduleDatabaseRepositories) Schedules() usecase.ScheduleRepository { return r.schedules }
+func (scheduleDatabaseRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle {
+	return scheduleIntegrationProjectLifecycle{}
+}
+
+type scheduleIntegrationProjectLifecycle struct{}
+
+func (scheduleIntegrationProjectLifecycle) LockParent(context.Context, string) error { return nil }
+func (scheduleIntegrationProjectLifecycle) ReadStatus(context.Context, string) (string, error) {
+	return "open", nil
+}
+func (scheduleIntegrationProjectLifecycle) CaptureWorkState(context.Context, string, time.Time) (shared.ProjectWorkState, error) {
+	return shared.ProjectWorkState{Status: "open"}, nil
+}
+func (scheduleIntegrationProjectLifecycle) ReconcileWorkState(context.Context, string, string, shared.ProjectWorkState, time.Time) error {
+	return nil
+}
 
 func (u scheduleDatabaseUOW) Do(ctx context.Context, fn func(context.Context, usecase.Repositories) error) error {
 	tx, err := u.pool.Begin(ctx)

@@ -25,8 +25,7 @@ func (uc *RemoveTagFromTaskUseCase) Execute(ctx context.Context, userID domain.U
 	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "RemoveTagFromTaskUseCase.Execute", err) }()
 
 	return uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		_, err := repos.Tasks().GetByUserIDWithPermission(ctx, userID, taskID, shared.TaskUpdate())
-		if err != nil {
+		if _, err := lockTaskForMutation(ctx, repos, userID, taskID, shared.TaskUpdate()); err != nil {
 			return err
 		}
 

@@ -29,6 +29,7 @@ func (uc *AddTaskToProjectUseCase) Execute(ctx context.Context, userID domain.Us
 	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "AddTaskToProjectUseCase.Execute", err) }()
 
 	var result dao.Task
+	asOf := time.Now()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		tasks := repos.Tasks()
 		task, err := tasks.GetByUserIDWithPermission(ctx, userID, taskID, shared.TaskUpdate())
@@ -76,11 +77,41 @@ func (uc *AddTaskToProjectUseCase) Execute(ctx context.Context, userID domain.Us
 			return ErrRevisionConflict
 		}
 
+		lifecycle := repos.ProjectLifecycle()
+		if lifecycle == nil {
+			return ErrProjectLifecycleUnavailable
+		}
+		beforeByProject := make(map[string]shared.ProjectWorkState, 2)
+		for _, projectID := range []string{initialProjectID, string(projectID)} {
+			if projectID == "" {
+				continue
+			}
+			if _, captured := beforeByProject[projectID]; captured {
+				continue
+			}
+			before, err := lifecycle.CaptureWorkState(ctx, projectID, asOf)
+			if err != nil {
+				return err
+			}
+			beforeByProject[projectID] = before
+		}
+
+		changedAssociation := task.ProjectID != string(projectID)
 		if task.ProjectID == string(projectID) {
 			result = task
 		} else {
 			result, err = tasks.AssignToProjectByUserID(ctx, userID, taskID, projectID, expectedRevision)
 			if err != nil {
+				return err
+			}
+		}
+		if changedAssociation {
+			if initialProjectID != "" {
+				if err := lifecycle.ReconcileWorkState(ctx, string(userID), initialProjectID, beforeByProject[initialProjectID], asOf); err != nil {
+					return err
+				}
+			}
+			if err := lifecycle.ReconcileWorkState(ctx, string(userID), string(projectID), beforeByProject[string(projectID)], asOf); err != nil {
 				return err
 			}
 		}

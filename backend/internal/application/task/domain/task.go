@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	sharedstatus "github.com/Najah7/task2todaytodo/internal/application/shared/status"
 )
 
 var (
@@ -42,13 +44,14 @@ func NewTask(
 	userID UserID,
 	title string,
 ) (Task, error) {
+	open, _ := NewTaskStatus(sharedstatus.Open)
 	task := Task{
 		ID:         id,
 		UserID:     userID,
 		AssigneeID: userID,
 		Title:      title,
 		Priority:   taskPriorities["low"],
-		Status:     taskStatuses[taskStatusOpen],
+		Status:     open,
 	}
 	return task, task.Validate()
 }
@@ -70,7 +73,7 @@ func NewTaskWithDetails(
 		priority = taskPriorities["low"]
 	}
 	if status == (TaskStatus{}) {
-		status = taskStatuses[taskStatusOpen]
+		status, _ = NewTaskStatus(sharedstatus.Open)
 	}
 	task := Task{
 		ID:               id,
@@ -137,23 +140,23 @@ func (t Task) IsZero() bool {
 }
 
 func (t Task) Start() Task {
-	return t.withStatus(taskStatusInProgress)
+	return t.withStatus(sharedstatus.InProgress)
 }
 
 func (t Task) Hold() Task {
-	return t.withStatus(taskStatusPending)
+	return t.withStatus(sharedstatus.Pending)
 }
 
 func (t Task) Wait() Task {
-	return t.withStatus(taskStatusWaitingOnOthers)
+	return t.withStatus(sharedstatus.WaitingOnOthers)
 }
 
 func (t Task) Complete() Task {
-	return t.withStatus(taskStatusDone)
+	return t.withStatus(sharedstatus.Done)
 }
 
 func (t Task) Reopen() Task {
-	return t.withStatus(taskStatusOpen)
+	return t.withStatus(sharedstatus.Open)
 }
 
 // AssignTo returns a task assigned to a non-empty user ID. Project membership
@@ -167,7 +170,7 @@ func (t Task) AssignTo(assigneeID UserID) (Task, error) {
 }
 
 func (t Task) withStatus(status string) Task {
-	t.Status = taskStatuses[status]
+	t.Status, _ = NewTaskStatus(status)
 	return t
 }
 
@@ -199,7 +202,7 @@ func (t Task) Validate() error {
 		}
 	}
 	if t.Status != (TaskStatus{}) {
-		if err := t.Status.validate(); err != nil {
+		if _, err := NewTaskStatus(t.Status.Value); err != nil {
 			return err
 		}
 	}

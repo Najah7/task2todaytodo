@@ -30,7 +30,7 @@ SELECT DISTINCT t.user_id
 FROM tasks AS t
 WHERE t.status <> 'done'
   AND t.deleted_at IS NULL
-  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL))
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL AND p.status <> 'done'))
   AND EXISTS (
       SELECT 1 FROM todo_items AS ti
       WHERE ti.task_id = t.id AND ti.id = ti.series_id

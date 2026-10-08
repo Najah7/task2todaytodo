@@ -95,6 +95,10 @@ func TestScheduleUseCaseErrorsMapPermissionsAndOccurrenceConflicts(t *testing.T)
 	if status != http.StatusConflict || detail.Field != "occurrence_date" {
 		t.Fatalf("completed occurrence mapping = %d/%+v", status, detail)
 	}
+	status, detail = scheduleUseCaseError(scheduleusecase.ErrScheduleProjectChanged)
+	if status != http.StatusConflict || detail.Code != "schedule_changed" || detail.Field != "project_id" {
+		t.Fatalf("stale Project association mapping = %d/%+v", status, detail)
+	}
 	status, detail = scheduleUseCaseError(scheduledomain.ErrScheduleTitleEmpty)
 	if status != http.StatusBadRequest || detail.Field != "title" {
 		t.Fatalf("invalid title mapping = %d/%+v", status, detail)

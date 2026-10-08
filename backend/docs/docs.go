@@ -147,6 +147,51 @@ const docTemplate = `{
                 "summary": "List projects",
                 "parameters": [
                     {
+                        "enum": [
+                            "in_progress",
+                            "pending",
+                            "done",
+                            "open",
+                            "waiting_on_others"
+                        ],
+                        "type": "string",
+                        "description": "Filter by Project status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "active",
+                            "trash"
+                        ],
+                        "type": "string",
+                        "description": "active or trash",
+                        "name": "view",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "created_at",
+                            "title",
+                            "progress",
+                            "end_date"
+                        ],
+                        "type": "string",
+                        "description": "Server-side sort column; end_date sorts by remaining days. Null dates sort last; equal dates sort by priority high-first, then stable ID.",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "description": "Sort direction",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Items per page (default 50, maximum 100)",
                         "name": "page_size",
@@ -154,7 +199,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Opaque next page token",
+                        "description": "Opaque cursor for previous or next page",
                         "name": "page_token",
                         "in": "query"
                     },
@@ -253,6 +298,42 @@ const docTemplate = `{
                 }
             }
         },
+        "/projects/options": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "List Project form options",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectOptionsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/projects/{id}": {
             "get": {
                 "security": [
@@ -322,7 +403,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Current project ETag, for example \\",
+                        "description": "Send the current ETag header from the response; it is a quoted revision number.",
                         "name": "If-Match",
                         "in": "header",
                         "required": true
@@ -396,7 +477,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Current project ETag, for example \\",
+                        "description": "Send the current ETag header from the response; it is a quoted revision number.",
                         "name": "If-Match",
                         "in": "header",
                         "required": true
@@ -649,6 +730,82 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}/restore": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Restore project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Send the current ETag header from the response; it is a quoted revision number.",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectResponse"
+                        },
+                        "headers": {
+                            "ETag": {
+                                "type": "string",
+                                "description": "Current project revision"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "Precondition Required",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -981,6 +1138,94 @@ const docTemplate = `{
                 }
             }
         },
+        "/projects/{id}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Change project status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Send the current ETag header from the response; it is a quoted revision number.",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "New Project status",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectResponse"
+                        },
+                        "headers": {
+                            "ETag": {
+                                "type": "string",
+                                "description": "Current project revision"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "Precondition Required",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/projects/{id}/tasks": {
             "get": {
                 "security": [
@@ -992,7 +1237,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Projects"
+                    "Tasks"
                 ],
                 "summary": "List project tasks",
                 "parameters": [
@@ -1068,7 +1313,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Projects"
+                    "Tasks"
                 ],
                 "summary": "Create task in project",
                 "parameters": [
@@ -1143,7 +1388,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Projects"
+                    "Tasks"
                 ],
                 "summary": "Add task to project",
                 "parameters": [
@@ -1231,7 +1476,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Projects"
+                    "Tasks"
                 ],
                 "summary": "Remove task from project",
                 "parameters": [
@@ -4700,12 +4945,16 @@ const docTemplate = `{
         },
         "rest.ProjectCreateRequest": {
             "type": "object",
+            "required": [
+                "title"
+            ],
             "properties": {
                 "description": {
                     "type": "string"
                 },
                 "end_date": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "goal": {
                     "type": "string"
@@ -4714,7 +4963,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "start_date": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "title": {
                     "type": "string"
@@ -4726,6 +4976,12 @@ const docTemplate = `{
         },
         "rest.ProjectListResponse": {
             "type": "object",
+            "required": [
+                "items",
+                "next_page_token",
+                "previous_page_token",
+                "summary"
+            ],
             "properties": {
                 "items": {
                     "type": "array",
@@ -4735,6 +4991,47 @@ const docTemplate = `{
                 },
                 "next_page_token": {
                     "type": "string"
+                },
+                "previous_page_token": {
+                    "type": "string"
+                },
+                "summary": {
+                    "$ref": "#/definitions/rest.ProjectListSummaryResponse"
+                }
+            }
+        },
+        "rest.ProjectListSummaryResponse": {
+            "type": "object",
+            "required": [
+                "due_soon_count",
+                "overdue_count",
+                "status_counts",
+                "timezone",
+                "today",
+                "total_count",
+                "trash_count"
+            ],
+            "properties": {
+                "due_soon_count": {
+                    "type": "integer"
+                },
+                "overdue_count": {
+                    "type": "integer"
+                },
+                "status_counts": {
+                    "$ref": "#/definitions/rest.ProjectStatusCounts"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "today": {
+                    "type": "string"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "trash_count": {
+                    "type": "integer"
                 }
             }
         },
@@ -4792,8 +5089,42 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.ProjectOptionsResponse": {
+            "type": "object",
+            "required": [
+                "priorities",
+                "statuses",
+                "types"
+            ],
+            "properties": {
+                "priorities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ProjectPriorityResponse"
+                    }
+                },
+                "statuses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ProjectTaskStatusResponse"
+                    }
+                },
+                "types": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ProjectTypeResponse"
+                    }
+                }
+            }
+        },
         "rest.ProjectPriorityResponse": {
             "type": "object",
+            "required": [
+                "label",
+                "label_jp",
+                "value",
+                "weight"
+            ],
             "properties": {
                 "label": {
                     "type": "string"
@@ -4811,15 +5142,46 @@ const docTemplate = `{
         },
         "rest.ProjectResponse": {
             "type": "object",
+            "required": [
+                "can_delete",
+                "can_update",
+                "created_at",
+                "deleted_at",
+                "description",
+                "end_date",
+                "goal",
+                "id",
+                "priority",
+                "progress",
+                "remaining_days",
+                "revision",
+                "start_date",
+                "status",
+                "title",
+                "type",
+                "updated_at",
+                "user_id"
+            ],
             "properties": {
+                "can_delete": {
+                    "type": "boolean"
+                },
+                "can_update": {
+                    "type": "boolean"
+                },
                 "created_at": {
                     "type": "integer"
+                },
+                "deleted_at": {
+                    "type": "integer",
+                    "x-nullable": true
                 },
                 "description": {
                     "type": "string"
                 },
                 "end_date": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "goal": {
                     "type": "string"
@@ -4833,11 +5195,26 @@ const docTemplate = `{
                 "progress": {
                     "type": "integer"
                 },
+                "remaining_days": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
                 "revision": {
                     "type": "integer"
                 },
                 "start_date": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "open",
+                        "pending",
+                        "waiting_on_others",
+                        "in_progress",
+                        "done"
+                    ]
                 },
                 "title": {
                     "type": "string"
@@ -4903,6 +5280,9 @@ const docTemplate = `{
                 "start_date": {
                     "type": "string"
                 },
+                "status": {
+                    "type": "string"
+                },
                 "title": {
                     "type": "string"
                 },
@@ -4914,6 +5294,51 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                }
+            }
+        },
+        "rest.ProjectStatusCounts": {
+            "type": "object",
+            "required": [
+                "done",
+                "in_progress",
+                "open",
+                "pending",
+                "waiting_on_others"
+            ],
+            "properties": {
+                "done": {
+                    "type": "integer"
+                },
+                "in_progress": {
+                    "type": "integer"
+                },
+                "open": {
+                    "type": "integer"
+                },
+                "pending": {
+                    "type": "integer"
+                },
+                "waiting_on_others": {
+                    "type": "integer"
+                }
+            }
+        },
+        "rest.ProjectStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "open",
+                        "pending",
+                        "waiting_on_others",
+                        "in_progress",
+                        "done"
+                    ]
                 }
             }
         },
@@ -5025,6 +5450,11 @@ const docTemplate = `{
         },
         "rest.ProjectTypeResponse": {
             "type": "object",
+            "required": [
+                "label",
+                "label_jp",
+                "value"
+            ],
             "properties": {
                 "label": {
                     "type": "string"
@@ -5041,19 +5471,23 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "end_date": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "goal": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "priority": {
                     "type": "string"
                 },
                 "start_date": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "title": {
                     "type": "string"

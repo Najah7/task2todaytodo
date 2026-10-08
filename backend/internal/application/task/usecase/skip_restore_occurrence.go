@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
+	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	"github.com/Najah7/task2todaytodo/internal/logging"
 )
@@ -30,7 +31,7 @@ func (uc *SkipTodoItemUseCase) Execute(ctx context.Context, userID domain.UserID
 
 	asOf := time.Now()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		return withTaskProgressMutationForPermission(ctx, repos, userID, taskID, asOf, shared.OccurrenceUpdate(), func() error {
+		return withTaskProgressMutationForPermissionAndState(ctx, repos, userID, taskID, asOf, shared.OccurrenceUpdate(), func(_ dao.Task, projectBefore taskProjectMutationSnapshot) error {
 			state, err := loadTodoOccurrenceWithCapability(ctx, repos, userID, taskID, seriesID, occurrenceDate, asOf, shared.OccurrenceUpdate())
 			if errors.Is(err, ErrOccurrenceInactive) && state.skipped {
 				return nil
@@ -43,6 +44,9 @@ func (uc *SkipTodoItemUseCase) Execute(ctx context.Context, userID domain.UserID
 			}
 			if state.current != nil && state.current.Completed {
 				return ErrOccurrenceCompleted
+			}
+			if projectBefore.State.Status == "done" && !state.saved {
+				return ErrOccurrenceInactive
 			}
 			store, ok := repos.TodoItems().(todoSkippedOccurrenceStore)
 			if !ok {

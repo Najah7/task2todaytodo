@@ -40,84 +40,86 @@ func (uc *UpdateScheduleUseCase) ExecuteOccurrence(ctx context.Context, actorID 
 	}
 	asOf := uc.now()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		if err := repos.Schedules().LockSeriesProjectForMutation(ctx, actorID, seriesID, shared.ScheduleUpdate()); err != nil {
-			return err
-		}
-		state, err := loadOccurrence(ctx, repos.Schedules(), actorID, seriesID, occurrenceDate, asOf, shared.ScheduleUpdate())
-		if err != nil {
-			return err
-		}
-		if scope == scopeFuture {
-			occurrenceID := domain.ScheduleID(VirtualOccurrenceID)
-			if state.date.Equal(mustParseDate(state.root.OccurrenceDate)) {
-				occurrenceID = domain.ScheduleID(state.root.ID)
+		return withScheduleProjectMutation(ctx, repos, actorID, seriesID, asOf, shared.ScheduleUpdate(), func(_ dao.Schedule, before scheduleProjectMutationSnapshots) error {
+			state, err := loadOccurrence(ctx, repos.Schedules(), actorID, seriesID, occurrenceDate, asOf, shared.ScheduleUpdate())
+			if err != nil {
+				return err
 			}
-			schedule, err := scheduleDomainOccurrence(state.root, nil, state.date, occurrenceID, false, asOf)
+			if scheduleVirtualOccurrenceSuppressed(before, state, false) {
+				return ErrOccurrenceInactive
+			}
+			if scope == scopeFuture {
+				occurrenceID := domain.ScheduleID(VirtualOccurrenceID)
+				if state.date.Equal(mustParseDate(state.root.OccurrenceDate)) {
+					occurrenceID = domain.ScheduleID(state.root.ID)
+				}
+				schedule, err := scheduleDomainOccurrence(state.root, nil, state.date, occurrenceID, false, asOf)
+				if err != nil {
+					return err
+				}
+				applySchedulePatch(&schedule, title, description, location)
+				rootSchedule, err := scheduleDomainOccurrence(state.root, nil, mustParseDate(state.root.OccurrenceDate), domain.ScheduleID(state.root.ID), state.root.Completed, asOf)
+				if err != nil {
+					return err
+				}
+				rootSchedule.Title, rootSchedule.Description, rootSchedule.Location = schedule.Title, schedule.Description, schedule.Location
+				validated, err := domain.NewScheduleWithRecurrence(rootSchedule)
+				if err != nil {
+					return err
+				}
+				if !scheduleIsRecurring(state.root) {
+					output, err = repos.Schedules().UpdateByUserID(ctx, actorID, validated, shared.ScheduleUpdate())
+					return err
+				}
+				writer, err := requireSeriesTemplate(repos.Schedules())
+				if err != nil {
+					return err
+				}
+				snapshotID, err := generatedScheduleID(uc.ID)
+				if err != nil {
+					return err
+				}
+				output, err = writer.UpdateSeriesTemplateByUserID(ctx, actorID, seriesID, snapshotID, validated)
+				return err
+			}
+			var id domain.ScheduleID
+			completed := false
+			if state.current != nil {
+				id, completed = domain.ScheduleID(state.current.ID), state.current.Completed
+			} else if state.rootOccurrence {
+				id = domain.ScheduleID(state.root.ID)
+			} else if !scheduleIsRecurring(state.root) {
+				id = domain.ScheduleID(state.root.ID)
+			} else {
+				id, err = generatedScheduleID(uc.ID)
+				if err != nil {
+					return err
+				}
+			}
+			schedule, err := scheduleDomainOccurrence(state.root, state.current, state.date, id, completed, asOf)
 			if err != nil {
 				return err
 			}
 			applySchedulePatch(&schedule, title, description, location)
-			rootSchedule, err := scheduleDomainOccurrence(state.root, nil, mustParseDate(state.root.OccurrenceDate), domain.ScheduleID(state.root.ID), state.root.Completed, asOf)
+			validated, err := domain.NewScheduleWithRecurrence(schedule)
 			if err != nil {
 				return err
 			}
-			rootSchedule.Title, rootSchedule.Description, rootSchedule.Location = schedule.Title, schedule.Description, schedule.Location
-			validated, err := domain.NewScheduleWithRecurrence(rootSchedule)
-			if err != nil {
-				return err
-			}
-			if !scheduleIsRecurring(state.root) {
+			if !scheduleIsRecurring(state.root) || state.rootOccurrence {
 				output, err = repos.Schedules().UpdateByUserID(ctx, actorID, validated, shared.ScheduleUpdate())
 				return err
 			}
-			writer, err := requireSeriesTemplate(repos.Schedules())
+			writer, err := requireOverride(repos.Schedules())
 			if err != nil {
 				return err
 			}
-			snapshotID, err := generatedScheduleID(uc.ID)
+			savedID, err := writer.UpsertOverrideByUserID(ctx, actorID, validated)
 			if err != nil {
 				return err
 			}
-			output, err = writer.UpdateSeriesTemplateByUserID(ctx, actorID, seriesID, snapshotID, validated)
+			output, err = repos.Schedules().GetByUserIDWithPermission(ctx, actorID, domain.ScheduleID(savedID), shared.ScheduleUpdate())
 			return err
-		}
-		var id domain.ScheduleID
-		completed := false
-		if state.current != nil {
-			id, completed = domain.ScheduleID(state.current.ID), state.current.Completed
-		} else if state.rootOccurrence {
-			id = domain.ScheduleID(state.root.ID)
-		} else if !scheduleIsRecurring(state.root) {
-			id = domain.ScheduleID(state.root.ID)
-		} else {
-			id, err = generatedScheduleID(uc.ID)
-			if err != nil {
-				return err
-			}
-		}
-		schedule, err := scheduleDomainOccurrence(state.root, state.current, state.date, id, completed, asOf)
-		if err != nil {
-			return err
-		}
-		applySchedulePatch(&schedule, title, description, location)
-		validated, err := domain.NewScheduleWithRecurrence(schedule)
-		if err != nil {
-			return err
-		}
-		if !scheduleIsRecurring(state.root) || state.rootOccurrence {
-			output, err = repos.Schedules().UpdateByUserID(ctx, actorID, validated, shared.ScheduleUpdate())
-			return err
-		}
-		writer, err := requireOverride(repos.Schedules())
-		if err != nil {
-			return err
-		}
-		savedID, err := writer.UpsertOverrideByUserID(ctx, actorID, validated)
-		if err != nil {
-			return err
-		}
-		output, err = repos.Schedules().GetByUserIDWithPermission(ctx, actorID, domain.ScheduleID(savedID), shared.ScheduleUpdate())
-		return err
+		})
 	})
 	if err == nil {
 		logScheduleStateChange(uc.logger, ctx, "schedule.update_occurrence", actorID, seriesID)

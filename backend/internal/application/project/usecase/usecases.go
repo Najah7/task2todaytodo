@@ -8,25 +8,31 @@ type ProjectMemberUseCases struct {
 	DeleteMember *DeleteProjectMemberUseCase
 }
 type UseCases struct {
-	Create    *CreateProjectUseCase
-	List      *ListProjectsUseCase
-	Get       *GetProjectUseCase
-	Update    *UpdateProjectUseCase
-	Delete    *DeleteProjectUseCase
-	Members   *ProjectMemberUseCases
-	Revisions *ListProjectRevisionsUseCase
-	Types     *ListProjectTypesUseCase
+	Create       *CreateProjectUseCase
+	List         *ListProjectsUseCase
+	Get          *GetProjectUseCase
+	Update       *UpdateProjectUseCase
+	Delete       *DeleteProjectUseCase
+	Members      *ProjectMemberUseCases
+	Revisions    *ListProjectRevisionsUseCase
+	Types        *ListProjectTypesUseCase
+	Options      *ListProjectOptionsUseCase
+	ChangeStatus *ChangeProjectStatusUseCase
+	Restore      *RestoreProjectUseCase
 }
 
 func NewUseCases(repo Repository, tx UnitOfWork, logger logging.Logger) *UseCases {
 	return &UseCases{
-		Create:    NewCreateProjectUseCase(repo, logger),
-		List:      NewListProjectsUseCase(repo, repo, logger),
-		Get:       NewGetProjectUseCase(repo, repo, logger),
-		Update:    NewUpdateProjectUseCase(repo, repo, logger),
-		Delete:    NewDeleteProjectUseCase(tx, logger),
-		Members:   &ProjectMemberUseCases{ListMembers: NewListProjectMembersUseCase(tx, logger), UpsertMember: NewUpsertProjectMemberUseCase(tx, logger), DeleteMember: NewDeleteProjectMemberUseCase(tx, logger)},
-		Revisions: NewListProjectRevisionsUseCase(repo, logger),
-		Types:     NewListProjectTypesUseCase(repo, logger),
+		Create:       NewCreateProjectUseCase(repo, logger),
+		List:         NewListProjectsUseCase(repo, repo, logger),
+		Get:          NewGetProjectUseCase(repo, repo, logger),
+		Update:       NewUpdateProjectUseCase(repo, repo, logger),
+		Delete:       NewDeleteProjectUseCase(tx, logger),
+		Members:      &ProjectMemberUseCases{ListMembers: NewListProjectMembersUseCase(tx, logger), UpsertMember: NewUpsertProjectMemberUseCase(tx, logger), DeleteMember: NewDeleteProjectMemberUseCase(tx, logger)},
+		Revisions:    NewListProjectRevisionsUseCase(repo, logger),
+		Types:        NewListProjectTypesUseCase(repo, logger),
+		Options:      NewListProjectOptionsUseCase(repo, logger),
+		ChangeStatus: NewChangeProjectStatusUseCase(tx, repo, logger),
+		Restore:      NewRestoreProjectUseCase(tx, repo, logger),
 	}
 }

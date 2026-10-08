@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/Najah7/task2todaytodo/db/sqlc"
+	projectrepo "github.com/Najah7/task2todaytodo/internal/application/project/repository"
+	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	taskrepo "github.com/Najah7/task2todaytodo/internal/application/task/repository"
@@ -168,7 +170,7 @@ func TestOperationOnlyPermissionsDoNotRequireReadOrParentUpdateGrants(t *testing
 		t.Fatalf("task.read without allow = %v, want hidden task", err)
 	}
 	newTaskTitle := "Updated without task.read permission"
-	if _, err := usecase.NewUpdateTaskUseCase(taskRepo, taskRepo, nil).Execute(
+	if _, err := usecase.NewUpdateTaskUseCase(sharingTestUOW{pool: pool}, taskRepo, nil).Execute(
 		ctx, actor, task, 1, usecase.PatchField[string]{Present: true, Value: &newTaskTitle}, usecase.PatchField[string]{},
 		usecase.PatchField[time.Time]{}, usecase.PatchField[int]{}, usecase.PatchField[int]{},
 	); err != nil {
@@ -799,6 +801,11 @@ type sharingTestRepositories struct {
 	taskTags     *taskrepo.TaskTagRepository
 	todoItems    *taskrepo.TodoItemRepository
 	taskProjects usecase.TaskProjectRepository
+	lifecycle    shared.ProjectWorkLifecycle
+}
+
+func (repositories sharingTestRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle {
+	return repositories.lifecycle
 }
 
 type sharingTestTaskProjects struct{ queries *sqlc.Queries }
@@ -878,6 +885,8 @@ func (uow sharingTestUOW) Do(ctx context.Context, run func(context.Context, usec
 		todoItems:    taskrepo.NewTodoItemRepository(tx),
 		taskProjects: sharingTestTaskProjects{queries: sqlc.New(tx)},
 	}
+	projectStore := projectrepo.NewProjectRepository(tx)
+	repositories.lifecycle = projectusecase.NewProjectLifecycleUseCase(projectStore, projectStore)
 	if err := run(ctx, repositories); err != nil {
 		return err
 	}

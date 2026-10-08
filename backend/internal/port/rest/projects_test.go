@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -74,6 +75,91 @@ func (repo *projectHandlerProjectRepository) ListByUserIDCursor(_ context.Contex
 		rows = rows[:limit]
 	}
 	return rows, nil
+}
+
+func (repo *projectHandlerProjectRepository) ListProjectCandidates(_ context.Context, userID projectdomain.UserID, status string, trash bool) ([]projectdao.Project, error) {
+	if repo.listErr != nil {
+		return nil, repo.listErr
+	}
+	return repo.filteredRows(userID, status, trash), nil
+}
+
+func (repo *projectHandlerProjectRepository) ListProjectPage(_ context.Context, userID projectdomain.UserID, request projectusecase.ProjectListRequest, limit int) ([]projectdao.Project, error) {
+	if repo.listErr != nil {
+		return nil, repo.listErr
+	}
+	rows := repo.filteredRows(userID, request.Status, request.Trash)
+	sort.Slice(rows, func(i, j int) bool {
+		a, b := rows[i], rows[j]
+		if request.SortBy == "title" && strings.ToLower(a.Title) != strings.ToLower(b.Title) {
+			if request.SortOrder == "desc" {
+				return strings.ToLower(a.Title) > strings.ToLower(b.Title)
+			}
+			return strings.ToLower(a.Title) < strings.ToLower(b.Title)
+		}
+		if request.SortBy == "end_date" && a.EndDate != nil && b.EndDate != nil && *a.EndDate != *b.EndDate {
+			if request.SortOrder == "desc" {
+				return *a.EndDate > *b.EndDate
+			}
+			return *a.EndDate < *b.EndDate
+		}
+		if a.CreatedAt != b.CreatedAt {
+			if request.SortOrder == "asc" {
+				return a.CreatedAt < b.CreatedAt
+			}
+			return a.CreatedAt > b.CreatedAt
+		}
+		return a.ID < b.ID
+	})
+	if len(rows) > limit {
+		rows = rows[:limit]
+	}
+	return rows, nil
+}
+
+func (repo *projectHandlerProjectRepository) ReadProjectListSummary(_ context.Context, userID projectdomain.UserID, status string, trash bool, asOf time.Time) (projectdao.ProjectListSummary, error) {
+	if repo.listErr != nil {
+		return projectdao.ProjectListSummary{}, repo.listErr
+	}
+	rows := repo.filteredRows(userID, status, trash)
+	summary := projectdao.ProjectListSummary{TotalCount: int64(len(rows)), Today: asOf.UTC().Format("2006-01-02"), Timezone: "UTC"}
+	for _, row := range repo.filteredRows(userID, "", false) {
+		switch row.Status {
+		case "in_progress":
+			summary.InProgressCount++
+		case "pending":
+			summary.PendingCount++
+		case "done":
+			summary.DoneCount++
+		case "waiting_on_others":
+			summary.WaitingOnOthersCount++
+		default:
+			summary.OpenCount++
+		}
+	}
+	for _, row := range repo.projects {
+		if row.UserID == string(userID) && row.DeletedAt != nil {
+			summary.TrashCount++
+		}
+	}
+	return summary, nil
+}
+
+func (repo *projectHandlerProjectRepository) filteredRows(userID projectdomain.UserID, status string, trash bool) []projectdao.Project {
+	rows := make([]projectdao.Project, 0, len(repo.projects))
+	for _, row := range repo.projects {
+		if row.UserID != string(userID) || (row.DeletedAt != nil) != trash || (status != "" && row.Status != status) {
+			continue
+		}
+		row.CanUpdate, row.CanDelete = true, true
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+func (repo *projectHandlerProjectRepository) HasPermission(_ context.Context, actor projectdomain.UserID, id projectdomain.ProjectID, _ shared.Capability) (bool, error) {
+	row, exists := repo.projects[string(id)]
+	return exists && row.UserID == string(actor), nil
 }
 
 func (repo *projectHandlerProjectRepository) Create(_ context.Context, project projectdomain.Project) (projectdao.Project, error) {
@@ -254,6 +340,22 @@ func (repos projectHandlerRepositories) TaskProjects() taskusecase.TaskProjectRe
 	return repos.projects
 }
 func (repos projectHandlerRepositories) Tasks() taskusecase.TaskRepository { return repos.tasks }
+func (projectHandlerRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle {
+	return projectHandlerLifecycle{}
+}
+
+type projectHandlerLifecycle struct{}
+
+func (projectHandlerLifecycle) LockParent(context.Context, string) error { return nil }
+func (projectHandlerLifecycle) ReadStatus(context.Context, string) (string, error) {
+	return "open", nil
+}
+func (projectHandlerLifecycle) CaptureWorkState(context.Context, string, time.Time) (shared.ProjectWorkState, error) {
+	return shared.ProjectWorkState{Status: "open"}, nil
+}
+func (projectHandlerLifecycle) ReconcileWorkState(context.Context, string, string, shared.ProjectWorkState, time.Time) error {
+	return nil
+}
 
 type projectHandlerTaskProjectRepository struct {
 	projects *projectHandlerProjectRepository
@@ -333,8 +435,9 @@ type projectHandlerHarness struct {
 func newProjectHandlerHarness() projectHandlerHarness {
 	projectRow := projectdao.Project{
 		ID: "project-1", UserID: projectHandlerUserID,
-		Type:  projectdao.ProjectType{Value: "work", Label: "Work", LabelJp: "仕事"},
-		Title: "Current project", Goal: "Ship", Description: "Notes", Progress: 20,
+		Status: "open",
+		Type:   projectdao.ProjectType{Value: "work", Label: "Work", LabelJp: "仕事"},
+		Title:  "Current project", Goal: "Ship", Description: "Notes", Progress: 20,
 		Priority:  projectdao.Priority{Value: "high", Label: "High", LabelJp: "高", Weight: 50},
 		StartDate: projectHandlerString("2026-04-01"), EndDate: projectHandlerString("2026-04-30"),
 		CreatedAt: 100, UpdatedAt: 200, Revision: 1,
@@ -396,8 +499,9 @@ func projectHandlerProjectDAO(project projectdomain.Project) projectdao.Project 
 	}
 	return projectdao.Project{
 		ID: string(project.ID), UserID: string(project.UserID),
-		Type:  projectdao.ProjectType{Value: project.Type.Value, Label: project.Type.Label, LabelJp: project.Type.LabelJp},
-		Title: project.Title, Goal: project.Goal, Description: project.Description, Progress: project.Progress,
+		Type:   projectdao.ProjectType{Value: project.Type.Value, Label: project.Type.Label, LabelJp: project.Type.LabelJp},
+		Status: project.Status.Value,
+		Title:  project.Title, Goal: project.Goal, Description: project.Description, Progress: project.Progress,
 		Priority:  projectdao.Priority{Value: project.Priority.Value, Label: project.Priority.Label, LabelJp: project.Priority.LabelJp, Weight: project.Priority.Weight},
 		StartDate: startDate, EndDate: endDate, Revision: 1,
 	}
@@ -408,11 +512,11 @@ func TestProjectHandlerListCreateGetAndDelete(t *testing.T) {
 		h := newProjectHandlerHarness()
 		response := httptest.NewRecorder()
 		h.handler.List(response, projectHandlerRequest(http.MethodGet, "/projects", "", true))
-		var got listEnvelope[ProjectResponse]
+		var got ProjectListResponse
 		if err := json.Unmarshal(response.Body.Bytes(), &got); err != nil {
 			t.Fatal(err)
 		}
-		if response.Code != http.StatusOK || len(got.Items) != 1 || got.Items[0].ID != "project-1" || got.Items[0].Type.Value != "work" || got.Items[0].UserID != projectHandlerUserID {
+		if response.Code != http.StatusOK || len(got.Items) != 1 || got.Items[0].ID != "project-1" || got.Items[0].Type.Value != "work" || got.Items[0].UserID != projectHandlerUserID || got.Summary.TotalCount != 1 {
 			t.Errorf("List() = status %d, body %#v; want project-1", response.Code, got)
 		}
 	})

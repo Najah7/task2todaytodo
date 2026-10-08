@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type capturedLog struct {
@@ -80,6 +82,29 @@ func TestLoginUserUseCaseLogsSecurityEventsWithoutCredentials(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestLoginUserUseCaseLogsMissingEmailAsSafeRejection(t *testing.T) {
+	logger := &captureLogger{}
+	const email = "unknown@example.com"
+	const password = "SecretPassword1!"
+	driverErr := fmt.Errorf("lookup failed: %w", pgx.ErrNoRows)
+	_, err := NewLoginUserUseCase(&stubUserRepository{getByEmailErr: driverErr}, logger).Execute(context.Background(), email, password)
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("Execute() error = %v, want %v", err, ErrInvalidCredentials)
+	}
+	if logger.count("warn") != 1 || logger.count("error") != 0 {
+		t.Fatalf("log counts: warn=%d error=%d, want warn=1 error=0", logger.count("warn"), logger.count("error"))
+	}
+	logs := logger.text()
+	if !strings.Contains(logs, "authentication rejected") || !strings.Contains(logs, "invalid_credentials") {
+		t.Errorf("logs lack safe rejection reason: %s", logs)
+	}
+	for _, credential := range []string{email, password} {
+		if strings.Contains(logs, credential) {
+			t.Errorf("logs contain credential %q: %s", credential, logs)
+		}
 	}
 }
 

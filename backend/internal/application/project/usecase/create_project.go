@@ -6,6 +6,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/logging"
 )
 
@@ -23,6 +24,7 @@ type CreateProjectInput struct {
 
 type createProjectRepository interface {
 	Create(ctx context.Context, project domain.Project) (dao.Project, error)
+	HasPermission(context.Context, domain.UserID, domain.ProjectID, shared.Capability) (bool, error)
 }
 
 type CreateProjectUseCase struct {
@@ -71,6 +73,18 @@ func (uc *CreateProjectUseCase) Execute(ctx context.Context, input CreateProject
 		return dao.Project{}, err
 	}
 
-	return uc.repo.Create(ctx, project)
+	created, err := uc.repo.Create(ctx, project)
+	if err != nil {
+		return dao.Project{}, err
+	}
+	created.CanUpdate, err = uc.repo.HasPermission(ctx, input.UserID, domain.ProjectID(created.ID), shared.ProjectUpdate())
+	if err != nil {
+		return dao.Project{}, err
+	}
+	created.CanDelete, err = uc.repo.HasPermission(ctx, input.UserID, domain.ProjectID(created.ID), shared.ProjectDelete())
+	if err != nil {
+		return dao.Project{}, err
+	}
+	return created, nil
 
 }

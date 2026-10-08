@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
@@ -36,10 +37,11 @@ func (uc *changeTaskStatusUseCase) execute(
 	transition taskStatusTransition,
 ) (dao.Task, error) {
 	var changed dao.Task
+	asOf := time.Now()
 	err := uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		tasks := repos.Tasks()
 		permission := shared.TaskUpdate()
-		current, err := tasks.LockByUserIDWithPermission(ctx, userID, taskID, permission)
+		current, projectBefore, err := lockTaskAndCaptureProjectStateUsing(ctx, repos, tasks, userID, taskID, asOf, permission)
 		if err != nil {
 			return err
 		}
@@ -72,7 +74,13 @@ func (uc *changeTaskStatusUseCase) execute(
 			return err
 		}
 		changed, err = tasks.LockByUserIDWithPermission(ctx, userID, taskID, permission)
-		return err
+		if err != nil {
+			return err
+		}
+		if projectBefore.ID != "" {
+			return repos.ProjectLifecycle().ReconcileWorkState(ctx, string(userID), projectBefore.ID, projectBefore.State, asOf)
+		}
+		return nil
 	})
 	if err != nil {
 		return dao.Task{}, err

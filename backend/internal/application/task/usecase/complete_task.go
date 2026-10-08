@@ -30,9 +30,10 @@ func NewCompleteTaskUseCase(uow completeTaskUOW, now func() time.Time, logger lo
 func (uc *CompleteTaskUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, expectedRevision int32) (changed dao.Task, err error) {
 	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "CompleteTaskUseCase.Execute", err) }()
 
+	asOf := uc.now()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		tasks := repos.Tasks()
-		current, err := tasks.LockByUserIDWithPermission(ctx, userID, taskID, shared.TaskUpdate())
+		current, projectBefore, err := lockTaskAndCaptureProjectStateUsing(ctx, repos, tasks, userID, taskID, asOf, shared.TaskUpdate())
 		if err != nil {
 			return err
 		}
@@ -50,7 +51,13 @@ func (uc *CompleteTaskUseCase) Execute(ctx context.Context, userID domain.UserID
 			return err
 		}
 		changed, err = tasks.LockByUserIDWithPermission(ctx, userID, taskID, shared.TaskUpdate())
-		return err
+		if err != nil {
+			return err
+		}
+		if projectBefore.ID != "" {
+			return repos.ProjectLifecycle().ReconcileWorkState(ctx, string(userID), projectBefore.ID, projectBefore.State, asOf)
+		}
+		return nil
 	})
 	if err == nil {
 		logTaskStateChange(uc.logger, ctx, "task.complete", userID, taskID, "")

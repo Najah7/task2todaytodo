@@ -37,9 +37,12 @@ type ProjectProgressRecurrence struct {
 type Project struct {
 	ID, UserID               string
 	Type                     ProjectType
+	Status                   string
 	Title, Goal, Description string
 	Progress                 int
 	Priority                 Priority
+	CanUpdate, CanDelete     bool
+	RemainingDays            *int
 	StartDate, EndDate       *string
 	CreatedAt, UpdatedAt     int64
 	Revision                 int32
@@ -48,10 +51,19 @@ type Project struct {
 	CursorCreatedAt          string
 }
 
+type ProjectListSummary struct {
+	TotalCount, DueSoonCount, OverdueCount int64
+	InProgressCount, PendingCount          int64
+	DoneCount, OpenCount                   int64
+	WaitingOnOthersCount, TrashCount       int64
+	Today, Timezone                        string
+}
+
 type ProjectType struct {
 	Value, Label, LabelJp string
 	CreatedAt, UpdatedAt  int64
 }
+type ProjectStatusOption struct{ Value, Label, LabelJp string }
 type Priority struct {
 	Value, Label, LabelJp string
 	Weight                int
@@ -64,6 +76,7 @@ type ProjectRevision struct {
 	ID                                               string
 	Revision                                         int32
 	UserID, Type, Title, Goal, Description, Priority string
+	Status                                           string
 	StartDate, EndDate                               *string
 	DeletedAt                                        *int64
 	CreatedAt, UpdatedAt                             int64

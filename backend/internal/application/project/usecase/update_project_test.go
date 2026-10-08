@@ -44,6 +44,10 @@ func (repo *updateProjectRepositoryFake) GetByUserIDWithPermission(ctx context.C
 	return repo.GetByUserID(ctx, userID, projectID)
 }
 
+func (*updateProjectRepositoryFake) HasPermission(context.Context, domain.UserID, domain.ProjectID, shared.Capability) (bool, error) {
+	return true, nil
+}
+
 func (repo *updateProjectRepositoryFake) UpdateByUserID(_ context.Context, userID domain.UserID, project domain.Project, expectedRevision int32) (dao.Project, error) {
 	repo.updateCalls++
 	repo.updateUserID = userID
@@ -319,7 +323,7 @@ func projectFixtureForUser(userID string) dao.Project {
 	start, end := "2026-01-10", "2026-12-20"
 	return dao.Project{
 		ID: "project-1", UserID: userID,
-		Type: dao.ProjectType{Value: "work"}, Title: "Original project",
+		Type: dao.ProjectType{Value: "work"}, Status: "open", Title: "Original project",
 		Goal: "Original goal", Description: "Original description", Progress: 37,
 		Priority: dao.Priority{Value: "medium"}, StartDate: &start, EndDate: &end,
 		CreatedAt: 100, UpdatedAt: 200, Revision: 1,
@@ -338,7 +342,7 @@ func projectToDAO(project domain.Project) dao.Project {
 	}
 	return dao.Project{
 		ID: string(project.ID), UserID: string(project.UserID),
-		Type: dao.ProjectType{Value: project.Type.Value}, Title: project.Title,
+		Type: dao.ProjectType{Value: project.Type.Value}, Status: project.Status.String(), Title: project.Title,
 		Goal: project.Goal, Description: project.Description, Progress: project.Progress,
 		Priority: dao.Priority{Value: project.Priority.Value}, StartDate: startDate, EndDate: endDate,
 		CreatedAt: project.CreatedAt.Unix(), UpdatedAt: project.UpdatedAt.Unix(),

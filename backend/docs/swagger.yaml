@@ -79,16 +79,20 @@ definitions:
         type: string
       end_date:
         type: string
+        x-nullable: true
       goal:
         type: string
       priority:
         type: string
       start_date:
         type: string
+        x-nullable: true
       title:
         type: string
       type:
         type: string
+    required:
+    - title
     type: object
   rest.ProjectListResponse:
     properties:
@@ -98,6 +102,40 @@ definitions:
         type: array
       next_page_token:
         type: string
+      previous_page_token:
+        type: string
+      summary:
+        $ref: '#/definitions/rest.ProjectListSummaryResponse'
+    required:
+    - items
+    - next_page_token
+    - previous_page_token
+    - summary
+    type: object
+  rest.ProjectListSummaryResponse:
+    properties:
+      due_soon_count:
+        type: integer
+      overdue_count:
+        type: integer
+      status_counts:
+        $ref: '#/definitions/rest.ProjectStatusCounts'
+      timezone:
+        type: string
+      today:
+        type: string
+      total_count:
+        type: integer
+      trash_count:
+        type: integer
+    required:
+    - due_soon_count
+    - overdue_count
+    - status_counts
+    - timezone
+    - today
+    - total_count
+    - trash_count
     type: object
   rest.ProjectMemberListResponse:
     properties:
@@ -134,6 +172,25 @@ definitions:
       role_id:
         type: string
     type: object
+  rest.ProjectOptionsResponse:
+    properties:
+      priorities:
+        items:
+          $ref: '#/definitions/rest.ProjectPriorityResponse'
+        type: array
+      statuses:
+        items:
+          $ref: '#/definitions/rest.ProjectTaskStatusResponse'
+        type: array
+      types:
+        items:
+          $ref: '#/definitions/rest.ProjectTypeResponse'
+        type: array
+    required:
+    - priorities
+    - statuses
+    - types
+    type: object
   rest.ProjectPriorityResponse:
     properties:
       label:
@@ -144,15 +201,28 @@ definitions:
         type: string
       weight:
         type: integer
+    required:
+    - label
+    - label_jp
+    - value
+    - weight
     type: object
   rest.ProjectResponse:
     properties:
+      can_delete:
+        type: boolean
+      can_update:
+        type: boolean
       created_at:
         type: integer
+      deleted_at:
+        type: integer
+        x-nullable: true
       description:
         type: string
       end_date:
         type: string
+        x-nullable: true
       goal:
         type: string
       id:
@@ -161,9 +231,21 @@ definitions:
         $ref: '#/definitions/rest.ProjectPriorityResponse'
       progress:
         type: integer
+      remaining_days:
+        type: integer
+        x-nullable: true
       revision:
         type: integer
       start_date:
+        type: string
+        x-nullable: true
+      status:
+        enum:
+        - open
+        - pending
+        - waiting_on_others
+        - in_progress
+        - done
         type: string
       title:
         type: string
@@ -173,6 +255,25 @@ definitions:
         type: integer
       user_id:
         type: string
+    required:
+    - can_delete
+    - can_update
+    - created_at
+    - deleted_at
+    - description
+    - end_date
+    - goal
+    - id
+    - priority
+    - progress
+    - remaining_days
+    - revision
+    - start_date
+    - status
+    - title
+    - type
+    - updated_at
+    - user_id
     type: object
   rest.ProjectRevisionListResponse:
     properties:
@@ -207,6 +308,8 @@ definitions:
         type: integer
       start_date:
         type: string
+      status:
+        type: string
       title:
         type: string
       type:
@@ -215,6 +318,38 @@ definitions:
         type: integer
       user_id:
         type: string
+    type: object
+  rest.ProjectStatusCounts:
+    properties:
+      done:
+        type: integer
+      in_progress:
+        type: integer
+      open:
+        type: integer
+      pending:
+        type: integer
+      waiting_on_others:
+        type: integer
+    required:
+    - done
+    - in_progress
+    - open
+    - pending
+    - waiting_on_others
+    type: object
+  rest.ProjectStatusRequest:
+    properties:
+      status:
+        enum:
+        - open
+        - pending
+        - waiting_on_others
+        - in_progress
+        - done
+        type: string
+    required:
+    - status
     type: object
   rest.ProjectTaskAssignmentRequest:
     properties:
@@ -293,19 +428,27 @@ definitions:
         type: string
       value:
         type: string
+    required:
+    - label
+    - label_jp
+    - value
     type: object
   rest.ProjectUpdateRequestSchema:
     properties:
       description:
         type: string
+        x-nullable: true
       end_date:
         type: string
+        x-nullable: true
       goal:
         type: string
+        x-nullable: true
       priority:
         type: string
       start_date:
         type: string
+        x-nullable: true
       title:
         type: string
       type:
@@ -989,11 +1132,45 @@ paths:
   /projects:
     get:
       parameters:
+      - description: Filter by Project status
+        enum:
+        - in_progress
+        - pending
+        - done
+        - open
+        - waiting_on_others
+        in: query
+        name: status
+        type: string
+      - description: active or trash
+        enum:
+        - active
+        - trash
+        in: query
+        name: view
+        type: string
+      - description: Server-side sort column; end_date sorts by remaining days. Null
+          dates sort last; equal dates sort by priority high-first, then stable ID.
+        enum:
+        - created_at
+        - title
+        - progress
+        - end_date
+        in: query
+        name: sort_by
+        type: string
+      - description: Sort direction
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
       - description: Items per page (default 50, maximum 100)
         in: query
         name: page_size
         type: integer
-      - description: Opaque next page token
+      - description: Opaque cursor for previous or next page
         in: query
         name: page_token
         type: string
@@ -1066,7 +1243,8 @@ paths:
   /projects/{id}:
     delete:
       parameters:
-      - description: Current project ETag, for example \
+      - description: Send the current ETag header from the response; it is a quoted
+          revision number.
         in: header
         name: If-Match
         required: true
@@ -1147,7 +1325,8 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: Current project ETag, for example \
+      - description: Send the current ETag header from the response; it is a quoted
+          revision number.
         in: header
         name: If-Match
         required: true
@@ -1320,6 +1499,56 @@ paths:
       security:
       - BearerAuth: []
       summary: Add or update a project member
+      tags:
+      - Projects
+  /projects/{id}/restore:
+    post:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Send the current ETag header from the response; it is a quoted
+          revision number.
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          headers:
+            ETag:
+              description: Current project revision
+              type: string
+          schema:
+            $ref: '#/definitions/rest.ProjectResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "428":
+          description: Precondition Required
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Restore project
       tags:
       - Projects
   /projects/{id}/revisions:
@@ -1529,6 +1758,64 @@ paths:
       summary: Remove schedule from Project
       tags:
       - Schedules
+  /projects/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Send the current ETag header from the response; it is a quoted
+          revision number.
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: New Project status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.ProjectStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          headers:
+            ETag:
+              description: Current project revision
+              type: string
+          schema:
+            $ref: '#/definitions/rest.ProjectResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "428":
+          description: Precondition Required
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Change project status
+      tags:
+      - Projects
   /projects/{id}/tasks:
     get:
       parameters:
@@ -1576,7 +1863,7 @@ paths:
       - BearerAuth: []
       summary: List project tasks
       tags:
-      - Projects
+      - Tasks
     post:
       consumes:
       - application/json
@@ -1623,7 +1910,7 @@ paths:
       - BearerAuth: []
       summary: Create task in project
       tags:
-      - Projects
+      - Tasks
   /projects/{id}/tasks:add:
     post:
       consumes:
@@ -1680,7 +1967,7 @@ paths:
       - BearerAuth: []
       summary: Add task to project
       tags:
-      - Projects
+      - Tasks
   /projects/{id}/tasks:remove:
     post:
       consumes:
@@ -1736,6 +2023,28 @@ paths:
       security:
       - BearerAuth: []
       summary: Remove task from project
+      tags:
+      - Tasks
+  /projects/options:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.ProjectOptionsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: List Project form options
       tags:
       - Projects
   /roles:

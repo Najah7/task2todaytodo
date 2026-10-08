@@ -169,7 +169,7 @@ func expandScheduleRowsWithSkipped(rows []dao.Schedule, request CursorPageReques
 			}
 			continue
 		}
-		if state == repeatStateActive && root.IntervalWeeks > 0 && !root.Deleted {
+		if state == repeatStateActive && root.IntervalWeeks > 0 && !root.Deleted && !root.ProjectDone {
 			phase := firstDate
 			if root.FrequencyAnchorDate != 0 {
 				phase = time.Unix(root.FrequencyAnchorDate, 0).UTC()
@@ -261,7 +261,7 @@ func scheduleRowOnOrAfter(row dao.Schedule, fromDate time.Time) bool {
 }
 
 func scheduleWithRootRecurrence(row, root dao.Schedule) dao.Schedule {
-	row.UserID, row.ProjectID, row.AssigneeID = root.UserID, root.ProjectID, root.AssigneeID
+	row.UserID, row.ProjectID, row.ProjectDone, row.AssigneeID = root.UserID, root.ProjectID, root.ProjectDone, root.AssigneeID
 	row.IntervalWeeks, row.Frequencies = root.IntervalWeeks, root.Frequencies
 	row.RepeatState, row.FrequencyAnchorDate = root.RepeatState, root.FrequencyAnchorDate
 	return row

@@ -15,7 +15,7 @@ func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, ID shared.ID, log
 		Create:            usecase.NewCreateTaskUseCase(taskStore.Tasks, logger),
 		List:              usecase.NewListTasksUseCase(taskStore.Tasks, logger),
 		Get:               usecase.NewGetTaskUseCase(taskUOW, logger),
-		Update:            usecase.NewUpdateTaskUseCase(taskStore.Tasks, taskStore.Tasks, logger),
+		Update:            usecase.NewUpdateTaskUseCase(taskUOW, taskStore.Tasks, logger),
 		Delete:            usecase.NewDeleteTaskUseCase(taskUOW, logger),
 		Start:             usecase.NewStartTaskUseCase(taskUOW, logger),
 		Hold:              usecase.NewHoldTaskUseCase(taskUOW, logger),

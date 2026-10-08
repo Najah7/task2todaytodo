@@ -40,6 +40,16 @@ func (r *ScheduleRepository) LockProjectForScheduleMutation(ctx context.Context,
 	return nil
 }
 
+func (r *ScheduleRepository) CheckProjectPermission(ctx context.Context, actor domain.UserID, projectID domain.ProjectID, capability shared.Capability) (bool, error) {
+	allowed, err := r.queries.HasProjectPermission(ctx, sqlc.HasProjectPermissionParams{
+		ProjectID: string(projectID), ActorID: string(actor), ResourceID: string(capability.Resource), Action: sqlc.Action(capability.Action),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, usecase.ErrScheduleProjectNotFound
+	}
+	return allowed, err
+}
+
 func (r *ScheduleRepository) LockSeriesProjectForMutation(ctx context.Context, actor domain.UserID, series domain.ScheduleID, capability shared.Capability) error {
 	arg := sqlc.GetScheduleProjectByUserIDForPermissionParams{SeriesID: string(series), ActorID: string(actor), ResourceID: string(capability.Resource), Action: sqlc.Action(capability.Action)}
 	initialProjectID, err := r.queries.GetScheduleProjectByUserIDForPermission(ctx, arg)
@@ -397,9 +407,13 @@ func scheduleRow(v interface{}) dao.Schedule {
 	case sqlc.ListSchedulesForOccurrenceCommandByUserIDRow:
 		return buildSchedule(x.ID, x.UserID, x.ProjectID, x.AssigneeID, x.Title, x.Description, x.Location, x.IntervalWeeks, x.RepeatState, x.FrequencyAnchorDate, x.SeriesID, x.OccurrenceDate, x.Timezone, x.IsException, x.Completed, x.Deleted, x.Frequencies, x.StartAt, x.EndAt, x.CreatedAt, x.UpdatedAt, x.Revision, x.ChangedBy)
 	case sqlc.ListSchedulesForOccurrenceProjectionByAssigneeUserIDRow:
-		return buildSchedule(x.ID, x.UserID, x.ProjectID, x.AssigneeID, x.Title, x.Description, x.Location, x.IntervalWeeks, x.RepeatState, x.FrequencyAnchorDate, x.SeriesID, x.OccurrenceDate, x.Timezone, x.IsException, x.Completed, x.Deleted, x.Frequencies, x.StartAt, x.EndAt, x.CreatedAt, x.UpdatedAt, x.Revision, x.ChangedBy)
+		row := buildSchedule(x.ID, x.UserID, x.ProjectID, x.AssigneeID, x.Title, x.Description, x.Location, x.IntervalWeeks, x.RepeatState, x.FrequencyAnchorDate, x.SeriesID, x.OccurrenceDate, x.Timezone, x.IsException, x.Completed, x.Deleted, x.Frequencies, x.StartAt, x.EndAt, x.CreatedAt, x.UpdatedAt, x.Revision, x.ChangedBy)
+		row.ProjectDone = boolValue(x.ProjectDone)
+		return row
 	case sqlc.ListSchedulesForOccurrenceProjectionByProjectAndUserIDRow:
-		return buildSchedule(x.ID, x.UserID, x.ProjectID, x.AssigneeID, x.Title, x.Description, x.Location, x.IntervalWeeks, x.RepeatState, x.FrequencyAnchorDate, x.SeriesID, x.OccurrenceDate, x.Timezone, x.IsException, x.Completed, x.Deleted, x.Frequencies, x.StartAt, x.EndAt, x.CreatedAt, x.UpdatedAt, x.Revision, x.ChangedBy)
+		row := buildSchedule(x.ID, x.UserID, x.ProjectID, x.AssigneeID, x.Title, x.Description, x.Location, x.IntervalWeeks, x.RepeatState, x.FrequencyAnchorDate, x.SeriesID, x.OccurrenceDate, x.Timezone, x.IsException, x.Completed, x.Deleted, x.Frequencies, x.StartAt, x.EndAt, x.CreatedAt, x.UpdatedAt, x.Revision, x.ChangedBy)
+		row.ProjectDone = boolValue(x.ProjectDone)
+		return row
 	case sqlc.ListActiveScheduleSeriesByAssigneeUserIDRow:
 		return buildSchedule(x.ID, x.UserID, x.ProjectID, x.AssigneeID, x.Title, x.Description, x.Location, x.IntervalWeeks, x.RepeatState, x.FrequencyAnchorDate, x.SeriesID, x.OccurrenceDate, x.Timezone, x.IsException, x.Completed, x.Deleted, x.Frequencies, x.StartAt, x.EndAt, x.CreatedAt, x.UpdatedAt, x.Revision, x.ChangedBy)
 	default:

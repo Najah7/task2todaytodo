@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
@@ -50,26 +51,26 @@ func (uc *AssignScheduleUseCase) Execute(ctx context.Context, actorID domain.Use
 	if assigneeID == "" {
 		return domain.ErrScheduleAssigneeIDEmpty
 	}
+	asOf := time.Now()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		repository := repos.Schedules()
-		if err := repository.LockSeriesProjectForMutation(ctx, actorID, scheduleID, shared.ScheduleAssignmentUpdate()); err != nil {
-			return err
-		}
-		eligibleAssignees, err := repository.ListEligibleAssignees(ctx, actorID, scheduleID)
-		if err != nil {
-			return err
-		}
-		eligible := false
-		for _, assignee := range eligibleAssignees {
-			if assignee.ID == string(assigneeID) {
-				eligible = true
-				break
+		return withScheduleProjectMutation(ctx, repos, actorID, scheduleID, asOf, shared.ScheduleAssignmentUpdate(), func(_ dao.Schedule, _ scheduleProjectMutationSnapshots) error {
+			eligibleAssignees, err := repository.ListEligibleAssignees(ctx, actorID, scheduleID)
+			if err != nil {
+				return err
 			}
-		}
-		if !eligible {
-			return ErrScheduleAssigneeNotEligible
-		}
-		return repository.SetAssigneeByUserID(ctx, actorID, scheduleID, assigneeID)
+			eligible := false
+			for _, assignee := range eligibleAssignees {
+				if assignee.ID == string(assigneeID) {
+					eligible = true
+					break
+				}
+			}
+			if !eligible {
+				return ErrScheduleAssigneeNotEligible
+			}
+			return repository.SetAssigneeByUserID(ctx, actorID, scheduleID, assigneeID)
+		})
 	})
 	if err == nil {
 		logScheduleStateChange(uc.logger, ctx, "schedule.assign", actorID, scheduleID)
@@ -79,19 +80,9 @@ func (uc *AssignScheduleUseCase) Execute(ctx context.Context, actorID domain.Use
 
 func (uc *SetScheduleProjectUseCase) Execute(ctx context.Context, actorID domain.UserID, scheduleID domain.ScheduleID, projectID *domain.ProjectID) (err error) {
 	defer func() { logUnexpectedScheduleFailure(uc.logger, ctx, "SetScheduleProjectUseCase.Execute", err) }()
+	asOf := time.Now()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		if _, err := repos.Schedules().GetByUserIDWithPermission(ctx, actorID, scheduleID, shared.ScheduleUpdate()); err != nil {
-			return err
-		}
-		if projectID != nil {
-			if err := repos.Schedules().LockProjectForScheduleMutation(ctx, *projectID); err != nil {
-				return err
-			}
-		}
-		if err := repos.Schedules().SetProjectByUserID(ctx, actorID, scheduleID, projectID); err != nil {
-			return err
-		}
-		return nil
+		return withScheduleProjectMove(ctx, repos, actorID, scheduleID, projectID, nil, asOf)
 	})
 	if err == nil {
 		logScheduleStateChange(uc.logger, ctx, "schedule.set_project", actorID, scheduleID)
@@ -101,15 +92,9 @@ func (uc *SetScheduleProjectUseCase) Execute(ctx context.Context, actorID domain
 
 func (uc *RemoveScheduleFromProjectUseCase) Execute(ctx context.Context, actorID domain.UserID, scheduleID domain.ScheduleID, expectedProjectID domain.ProjectID) (err error) {
 	defer func() { logUnexpectedScheduleFailure(uc.logger, ctx, "RemoveScheduleFromProjectUseCase.Execute", err) }()
+	asOf := time.Now()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		schedule, err := repos.Schedules().GetByUserIDWithPermission(ctx, actorID, scheduleID, shared.ScheduleUpdate())
-		if err != nil {
-			return err
-		}
-		if schedule.ProjectID != string(expectedProjectID) {
-			return domain.ErrScheduleNotFound
-		}
-		return repos.Schedules().SetProjectByUserID(ctx, actorID, scheduleID, nil)
+		return withScheduleProjectMove(ctx, repos, actorID, scheduleID, nil, &expectedProjectID, asOf)
 	})
 	if err == nil {
 		logScheduleStateChange(uc.logger, ctx, "schedule.remove_from_project", actorID, scheduleID)

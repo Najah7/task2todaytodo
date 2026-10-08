@@ -8,6 +8,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 )
 
 type createProjectRepositoryFake struct {
@@ -23,6 +24,10 @@ func (repo *createProjectRepositoryFake) Create(_ context.Context, project domai
 	return repo.result, repo.err
 }
 
+func (*createProjectRepositoryFake) HasPermission(context.Context, domain.UserID, domain.ProjectID, shared.Capability) (bool, error) {
+	return true, nil
+}
+
 func validCreateProjectInput() CreateProjectInput {
 	return CreateProjectInput{
 		ID:          domain.ProjectID("project-1"),
@@ -34,7 +39,7 @@ func validCreateProjectInput() CreateProjectInput {
 }
 
 func TestCreateProjectUseCaseExecuteCreatesProjectWithDefaultsAndOwner(t *testing.T) {
-	want := dao.Project{ID: "project-1", UserID: "user-1", Title: "Project title"}
+	want := dao.Project{ID: "project-1", UserID: "user-1", Title: "Project title", CanUpdate: true, CanDelete: true}
 	repo := &createProjectRepositoryFake{result: want}
 
 	got, err := NewCreateProjectUseCase(repo, nil).Execute(context.Background(), validCreateProjectInput())

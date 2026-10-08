@@ -72,6 +72,17 @@ func (repo *startTaskTaskRepositoryFake) LockByUserIDWithPermission(ctx context.
 	return repo.LockByUserID(ctx, userID, taskID)
 }
 
+func (repo *startTaskTaskRepositoryFake) GetByUserIDWithPermission(ctx context.Context, userID domain.UserID, taskID domain.TaskID, _ shared.Capability) (dao.Task, error) {
+	task, err := repo.GetByUserID(ctx, userID, taskID)
+	if err != nil {
+		return dao.Task{}, err
+	}
+	if task.ID != string(taskID) || task.UserID != string(userID) {
+		return dao.Task{}, ErrTaskNotFound
+	}
+	return task, nil
+}
+
 func (repo *startTaskTaskRepositoryFake) SetStatusByUserID(_ context.Context, userID domain.UserID, taskID domain.TaskID, status domain.TaskStatus) error {
 	repo.updateCalls++
 	*repo.accesses = append(*repo.accesses, "set-status")
@@ -145,14 +156,14 @@ func TestStartTaskUseCaseTransitions(t *testing.T) {
 			if uow.calls != 1 || !uow.committed || uow.rolledBack {
 				t.Errorf("UOW = calls:%d committed:%t rolledBack:%t, want one commit", uow.calls, uow.committed, uow.rolledBack)
 			}
-			if tasks.getCalls != 2 || tasks.updateCalls != 1 || tasks.userID != userID || tasks.taskID != taskID {
-				t.Errorf("task repository calls/scope = %d/%d user:%q task:%q, want locked read, update, and persisted readback", tasks.getCalls, tasks.updateCalls, tasks.userID, tasks.taskID)
+			if tasks.getCalls != 3 || tasks.updateCalls != 1 || tasks.userID != userID || tasks.taskID != taskID {
+				t.Errorf("task repository calls/scope = %d/%d user:%q task:%q, want association pre-read, locked read, update, and persisted readback", tasks.getCalls, tasks.updateCalls, tasks.userID, tasks.taskID)
 			}
 			if tasks.updated.Status.String() != "in_progress" || tasks.updated.ID != taskID || tasks.updated.UserID != userID || tasks.updated.Title != "Ship release" || tasks.updated.Progress != 37 || tasks.updated.Priority.Value != "high" || tasks.updated.EstimatedMinutes == nil || *tasks.updated.EstimatedMinutes != 42 {
 				t.Errorf("updated task = %#v, want in_progress with existing fields preserved", tasks.updated)
 			}
 
-			wantCalls := []string{"tasks", "get-task", "set-status", "get-task"}
+			wantCalls := []string{"tasks", "get-task", "get-task", "set-status", "get-task"}
 			if !reflect.DeepEqual(*accesses, wantCalls) {
 				t.Errorf("operation order = %v, want %v", *accesses, wantCalls)
 			}

@@ -16,6 +16,7 @@ type ProjectRevisionResponse struct {
 	Goal        string  `json:"goal"`
 	Description string  `json:"description"`
 	Priority    string  `json:"priority"`
+	Status      string  `json:"status"`
 	StartDate   *string `json:"start_date"`
 	EndDate     *string `json:"end_date"`
 	DeletedAt   *int64  `json:"deleted_at"`
@@ -80,7 +81,7 @@ func (h *ProjectHandler) ListRevisions(w http.ResponseWriter, r *http.Request) {
 func projectRevisionResponse(row dao.ProjectRevision) ProjectRevisionResponse {
 	return ProjectRevisionResponse{
 		ID: row.ID, Revision: row.Revision, UserID: row.UserID, Type: row.Type, Title: row.Title,
-		Goal: row.Goal, Description: row.Description, Priority: row.Priority,
+		Goal: row.Goal, Description: row.Description, Priority: row.Priority, Status: row.Status,
 		StartDate: cloneProjectString(row.StartDate), EndDate: cloneProjectString(row.EndDate),
 		DeletedAt: cloneInt64(row.DeletedAt), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		ChangedBy: row.ChangedBy, ChangedAt: row.ChangedAt,

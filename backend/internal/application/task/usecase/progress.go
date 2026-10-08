@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
@@ -9,6 +10,11 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 )
+
+type taskProjectMutationSnapshot struct {
+	ID    string
+	State shared.ProjectWorkState
+}
 
 func loadTaskProgress(ctx context.Context, source taskProgressSource, tasks []dao.Task, asOf time.Time) ([]dao.Task, map[string]dao.TaskProgressCounts, error) {
 	if len(tasks) == 0 {
@@ -73,13 +79,104 @@ func taskMutationCounts(
 	taskID domain.TaskID,
 	asOf time.Time,
 	permission shared.Capability,
-) (dao.Task, dao.TaskProgressCounts, error) {
+) (dao.Task, dao.TaskProgressCounts, taskProjectMutationSnapshot, error) {
+	task, projectBefore, err := lockTaskAndCaptureProjectState(ctx, repos, userID, taskID, asOf, permission)
+	if err != nil {
+		return dao.Task{}, dao.TaskProgressCounts{}, taskProjectMutationSnapshot{}, err
+	}
+	lockedTask, counts, err := taskProgressCounts(ctx, repos.Tasks(), task, asOf)
+	return lockedTask, counts, projectBefore, err
+}
+
+func lockTaskAndCaptureProjectState(
+	ctx context.Context,
+	repos Repositories,
+	userID domain.UserID,
+	taskID domain.TaskID,
+	asOf time.Time,
+	permission shared.Capability,
+) (dao.Task, taskProjectMutationSnapshot, error) {
 	tasks := repos.Tasks()
+	return lockTaskAndCaptureProjectStateUsing(ctx, repos, tasks, userID, taskID, asOf, permission)
+}
+
+func lockTaskForMutation(
+	ctx context.Context,
+	repos Repositories,
+	userID domain.UserID,
+	taskID domain.TaskID,
+	permission shared.Capability,
+) (dao.Task, error) {
+	return lockTaskForMutationUsing(ctx, repos, repos.Tasks(), userID, taskID, permission)
+}
+
+func lockTaskAndCaptureProjectStateUsing(
+	ctx context.Context,
+	repos Repositories,
+	tasks TaskRepository,
+	userID domain.UserID,
+	taskID domain.TaskID,
+	asOf time.Time,
+	permission shared.Capability,
+) (dao.Task, taskProjectMutationSnapshot, error) {
+	task, err := lockTaskForMutationUsing(ctx, repos, tasks, userID, taskID, permission)
+	if err != nil {
+		return dao.Task{}, taskProjectMutationSnapshot{}, err
+	}
+	var projectBefore taskProjectMutationSnapshot
+	if task.ProjectID != "" {
+		lifecycle := repos.ProjectLifecycle()
+		if lifecycle == nil {
+			return dao.Task{}, taskProjectMutationSnapshot{}, ErrProjectLifecycleUnavailable
+		}
+		state, err := lifecycle.CaptureWorkState(ctx, task.ProjectID, asOf)
+		if err != nil {
+			return dao.Task{}, taskProjectMutationSnapshot{}, err
+		}
+		projectBefore = taskProjectMutationSnapshot{ID: task.ProjectID, State: state}
+	}
+	return task, projectBefore, nil
+}
+
+// lockTaskForMutationUsing establishes the global parent-before-child lock
+// order for Task writes. The initial permission-scoped read discovers the
+// parent; after locking it, the Task row is locked and the association is
+// revalidated to close moves/trash races.
+func lockTaskForMutationUsing(
+	ctx context.Context,
+	repos Repositories,
+	tasks TaskRepository,
+	userID domain.UserID,
+	taskID domain.TaskID,
+	permission shared.Capability,
+) (dao.Task, error) {
+	candidate, err := tasks.GetByUserIDWithPermission(ctx, userID, taskID, permission)
+	if err != nil {
+		return dao.Task{}, err
+	}
+	if candidate.ID != string(taskID) {
+		return dao.Task{}, ErrTaskNotFound
+	}
+	if candidate.ProjectID != "" {
+		lifecycle := repos.ProjectLifecycle()
+		if lifecycle == nil {
+			return dao.Task{}, ErrProjectLifecycleUnavailable
+		}
+		if err := lifecycle.LockParent(ctx, candidate.ProjectID); err != nil {
+			if errors.Is(err, shared.ErrProjectUnavailable) {
+				return dao.Task{}, ErrTaskProjectNotFound
+			}
+			return dao.Task{}, err
+		}
+	}
 	task, err := tasks.LockByUserIDWithPermission(ctx, userID, taskID, permission)
 	if err != nil {
-		return dao.Task{}, dao.TaskProgressCounts{}, err
+		return dao.Task{}, err
 	}
-	return taskProgressCounts(ctx, tasks, task, asOf)
+	if task.ProjectID != candidate.ProjectID {
+		return dao.Task{}, ErrRevisionConflict
+	}
+	return task, nil
 }
 
 func finishTaskProgressMutation(
@@ -92,11 +189,15 @@ func finishTaskProgressMutation(
 	before dao.TaskProgressCounts,
 	permission shared.Capability,
 ) error {
-	afterTask, after, err := taskMutationCounts(ctx, repos, userID, taskID, asOf, permission)
+	tasks := repos.Tasks()
+	afterTask, err := tasks.LockByUserIDWithPermission(ctx, userID, taskID, permission)
 	if err != nil {
 		return err
 	}
-	locking := repos.Tasks()
+	afterTask, after, err := taskProgressCounts(ctx, tasks, afterTask, asOf)
+	if err != nil {
+		return err
+	}
 	if beforeTask.Status.Value == "done" || afterTask.Status.Value == "done" {
 		if after.Total-after.Completed <= before.Total-before.Completed {
 			return nil
@@ -105,7 +206,7 @@ func finishTaskProgressMutation(
 		if err != nil {
 			return err
 		}
-		if err := setTaskStatusForPermission(ctx, locking, userID, taskID, open, afterTask.Revision, permission); err != nil {
+		if err := setTaskStatusForPermission(ctx, tasks, userID, taskID, open, afterTask.Revision, permission); err != nil {
 			return err
 		}
 		return nil
@@ -117,7 +218,7 @@ func finishTaskProgressMutation(
 	if err != nil {
 		return err
 	}
-	return setTaskStatusForPermission(ctx, locking, userID, taskID, done, afterTask.Revision, permission)
+	return setTaskStatusForPermission(ctx, tasks, userID, taskID, done, afterTask.Revision, permission)
 }
 
 func withTaskProgressMutation(
@@ -140,14 +241,34 @@ func withTaskProgressMutationForPermission(
 	permission shared.Capability,
 	mutate func() error,
 ) error {
-	task, before, err := taskMutationCounts(ctx, repos, userID, taskID, asOf, permission)
+	return withTaskProgressMutationForPermissionAndState(ctx, repos, userID, taskID, asOf, permission, func(dao.Task, taskProjectMutationSnapshot) error {
+		return mutate()
+	})
+}
+
+func withTaskProgressMutationForPermissionAndState(
+	ctx context.Context,
+	repos Repositories,
+	userID domain.UserID,
+	taskID domain.TaskID,
+	asOf time.Time,
+	permission shared.Capability,
+	mutate func(dao.Task, taskProjectMutationSnapshot) error,
+) error {
+	task, before, projectBefore, err := taskMutationCounts(ctx, repos, userID, taskID, asOf, permission)
 	if err != nil {
 		return err
 	}
-	if err := mutate(); err != nil {
+	if err := mutate(task, projectBefore); err != nil {
 		return err
 	}
-	return finishTaskProgressMutation(ctx, repos, userID, taskID, asOf, task, before, permission)
+	if err := finishTaskProgressMutation(ctx, repos, userID, taskID, asOf, task, before, permission); err != nil {
+		return err
+	}
+	if projectBefore.ID != "" {
+		return repos.ProjectLifecycle().ReconcileWorkState(ctx, string(userID), projectBefore.ID, projectBefore.State, asOf)
+	}
+	return nil
 }
 
 func setTaskStatusForPermission(ctx context.Context, tasks TaskRepository, userID domain.UserID, taskID domain.TaskID, status domain.TaskStatus, expectedRevision int32, permission shared.Capability) error {

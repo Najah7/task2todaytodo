@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
@@ -56,13 +57,32 @@ func (uc *ListTodoItemsUseCase) ExecutePage(ctx context.Context, userID domain.U
 	}
 	var items []dao.TodoItem
 	var taskStatus string
+	var projectDone bool
 	skipped := make(map[string]map[string]bool)
+	asOf, err := listReferenceTime(request, uc.now())
+	if err != nil {
+		return CursorPage[dao.TodoItem]{}, err
+	}
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		task, err := repos.Tasks().GetByUserIDWithPermission(ctx, userID, taskID, shared.TodoItemRead())
 		if err != nil {
 			return err
 		}
 		taskStatus = task.Status.Value
+		if task.ProjectID != "" {
+			lifecycle := repos.ProjectLifecycle()
+			if lifecycle == nil {
+				return ErrProjectLifecycleUnavailable
+			}
+			projectStatus, err := lifecycle.ReadStatus(ctx, task.ProjectID)
+			if errors.Is(err, shared.ErrProjectUnavailable) {
+				return ErrTaskProjectNotFound
+			}
+			if err != nil {
+				return err
+			}
+			projectDone = projectStatus == "done"
+		}
 		items, err = listTodoOccurrenceProjection(ctx, repos.TodoItems(), userID, taskID)
 		if err != nil {
 			return err
@@ -88,11 +108,7 @@ func (uc *ListTodoItemsUseCase) ExecutePage(ctx context.Context, userID domain.U
 	if err != nil {
 		return CursorPage[dao.TodoItem]{}, err
 	}
-	asOf, err := listReferenceTime(request, uc.now())
-	if err != nil {
-		return CursorPage[dao.TodoItem]{}, err
-	}
-	items, err = expandTodoItemRowsWithSkipped(items, request, asOf, taskStatus == "done", skipped)
+	items, err = expandTodoItemRowsWithProjectState(items, request, asOf, taskStatus == "done", projectDone, skipped)
 	if err != nil {
 		return CursorPage[dao.TodoItem]{}, err
 	}

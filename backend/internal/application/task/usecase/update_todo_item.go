@@ -110,10 +110,14 @@ func (uc *UpdateTodoItemUseCase) ExecuteOccurrence(ctx context.Context, userID d
 	}
 	var result dao.TodoItem
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		return withTaskProgressMutationForPermission(ctx, repos, userID, taskID, asOf, shared.TodoItemUpdate(), func() error {
+		return withTaskProgressMutationForPermissionAndState(ctx, repos, userID, taskID, asOf, shared.TodoItemUpdate(), func(_ dao.Task, projectBefore taskProjectMutationSnapshot) error {
 			state, err := loadTodoOccurrenceWithCapability(ctx, repos, userID, taskID, seriesID, occurrenceDate, asOf, shared.TodoItemUpdate())
 			if err != nil {
 				return err
+			}
+			state.projectDone = projectBefore.State.Status == "done"
+			if projectDoneSuppressesTodoOccurrence(state) {
+				return ErrOccurrenceInactive
 			}
 			var id domain.TodoItemID
 			completed := false

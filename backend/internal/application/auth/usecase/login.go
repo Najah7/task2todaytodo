@@ -31,6 +31,7 @@ func (uc *LoginUserUseCase) Execute(ctx context.Context, email, password string)
 	if err != nil {
 		if ctx.Err() == nil && logging.IsNotFound(err) {
 			logAuthenticationRejected(uc.logger, ctx, "invalid_credentials")
+			return "", ErrInvalidCredentials
 		} else {
 			logUnexpectedFailure(uc.logger, ctx, "login.load_user", err)
 		}

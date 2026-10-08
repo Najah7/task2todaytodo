@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	"github.com/Najah7/task2todaytodo/internal/port/rest/fieldmask"
 	"github.com/Najah7/task2todaytodo/internal/port/rest/pagination"
 )
@@ -79,6 +81,50 @@ func TestParseListRequestBindsFromDateAndCarriesFrozenAsOf(t *testing.T) {
 	changedDate := httptest.NewRequest("GET", "/tasks/task-1/todo-items?from_date=2026-10-05&page_token="+token, nil)
 	if _, err := parseListRequestWithFromDate(changedDate, codec, "user-1", "task_todo_items", "task-1", "occurrence_date_asc_position_asc_series_id_asc", schema, true); err == nil {
 		t.Error("token accepted a different from_date")
+	}
+}
+
+func TestProjectListCursorUsesFreshAsOfAndDoesNotPersistIt(t *testing.T) {
+	codec := listTestCodec()
+	firstRequest := httptest.NewRequest("GET", "/projects?sort_by=progress&sort_order=asc", nil)
+	first, _, err := parseProjectListRequest(firstRequest, codec, "user-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldAsOf := "2020-01-01T00:00:00Z"
+	token, err := pagination.Encode(codec, first.Scope, listAnchor{
+		ID: "anchor-project", AsOf: oldAsOf, Direction: "forward", Progress: 25,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := time.Now().UTC()
+	continued := httptest.NewRequest("GET", "/projects?sort_by=progress&sort_order=asc&page_token="+token, nil)
+	parsed, request, err := parseProjectListRequest(continued, codec, "user-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request.AsOf.IsZero() || request.AsOf.Before(before) || request.AsOf.Format(time.RFC3339Nano) == oldAsOf {
+		t.Errorf("Project list continuation AsOf=%s; want fresh current time instead of cursor AsOf %s", request.AsOf, oldAsOf)
+	}
+	if parsed.Anchor == nil {
+		t.Fatal("Project cursor did not decode")
+	}
+	if parsed.Anchor.AsOf != "" {
+		t.Errorf("decoded Project cursor retained AsOf=%q; want only the live keyset tuple", parsed.Anchor.AsOf)
+	}
+	encoded, err := encodeProjectCursor(codec, parsed.Scope, projectusecase.CursorAnchor{
+		ID: "next-project", AsOf: oldAsOf, Direction: "forward", Progress: 30,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := pagination.Decode[listAnchor](codec, encoded, parsed.Scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decoded.AsOf != "" {
+		t.Errorf("encoded Project cursor AsOf=%q; want no frozen evaluation time", decoded.AsOf)
 	}
 }
 

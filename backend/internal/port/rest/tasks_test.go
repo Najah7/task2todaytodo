@@ -159,23 +159,6 @@ func (repo *taskHandlerTaskRepository) DeleteByUserID(_ context.Context, userID 
 	return nil
 }
 
-type taskHandlerUpdateRepository struct{ repo *taskHandlerTaskRepository }
-
-func (repository taskHandlerUpdateRepository) GetByUserID(ctx context.Context, userID domain.UserID, id domain.TaskID) (dao.Task, error) {
-	return repository.repo.GetByUserID(ctx, userID, id)
-}
-
-func (repository taskHandlerUpdateRepository) GetByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.TaskID, _ shared.Capability) (dao.Task, error) {
-	return repository.repo.GetByUserID(ctx, userID, id)
-}
-
-func (repository taskHandlerUpdateRepository) UpdateByUserID(ctx context.Context, userID domain.UserID, task domain.Task, expectedRevision int32) (dao.Task, error) {
-	if task.UserID != userID {
-		return dao.Task{}, taskusecase.ErrTaskNotFound
-	}
-	return repository.repo.UpdateByUserID(ctx, userID, task, expectedRevision)
-}
-
 func taskHandlerDAO(task domain.Task) dao.Task {
 	var dueDate int64
 	if !task.DueDate.IsZero() {
@@ -256,7 +239,7 @@ func newTaskHandlerFixture() (*TaskHandler, *taskHandlerTaskRepository, *taskHan
 		Create:   taskusecase.NewCreateTaskUseCase(taskRepo, nil),
 		List:     taskusecase.NewListTasksUseCase(taskRepo, nil),
 		Get:      taskusecase.NewGetTaskUseCase(uow, nil),
-		Update:   taskusecase.NewUpdateTaskUseCase(taskHandlerUpdateRepository{repo: taskRepo}, taskRepo, nil),
+		Update:   taskusecase.NewUpdateTaskUseCase(uow, taskRepo, nil),
 		Delete:   taskusecase.NewDeleteTaskUseCase(uow, nil),
 		Start:    taskusecase.NewStartTaskUseCase(uow, nil),
 		Hold:     taskusecase.NewHoldTaskUseCase(uow, nil),

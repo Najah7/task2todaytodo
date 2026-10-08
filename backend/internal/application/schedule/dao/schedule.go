@@ -4,6 +4,7 @@ type Schedule struct {
 	ID                  string
 	UserID              string
 	ProjectID           string
+	ProjectDone         bool
 	AssigneeID          string
 	Title               string
 	Description         string

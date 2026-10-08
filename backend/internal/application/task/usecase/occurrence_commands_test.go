@@ -59,6 +59,66 @@ func (u occurrenceCommandsUOW) Do(ctx context.Context, fn func(context.Context, 
 	return fn(ctx, u.repos)
 }
 
+type doneProjectOccurrenceLifecycle struct{}
+
+func (doneProjectOccurrenceLifecycle) LockParent(context.Context, string) error { return nil }
+func (doneProjectOccurrenceLifecycle) ReadStatus(context.Context, string) (string, error) {
+	return "done", nil
+}
+func (doneProjectOccurrenceLifecycle) CaptureWorkState(context.Context, string, time.Time) (shared.ProjectWorkState, error) {
+	return shared.ProjectWorkState{Status: "done"}, nil
+}
+func (doneProjectOccurrenceLifecycle) ReconcileWorkState(context.Context, string, string, shared.ProjectWorkState, time.Time) error {
+	return nil
+}
+
+type projectScopedOccurrenceTaskRepository struct{ taskProgressTestRepository }
+
+func (projectScopedOccurrenceTaskRepository) GetByUserIDWithPermission(_ context.Context, userID domain.UserID, taskID domain.TaskID, _ shared.Capability) (dao.Task, error) {
+	return dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: "project", Status: dao.TaskStatus{Value: "open"}}, nil
+}
+
+func (projectScopedOccurrenceTaskRepository) LockByUserIDWithPermission(_ context.Context, userID domain.UserID, taskID domain.TaskID, _ shared.Capability) (dao.Task, error) {
+	return dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: "project", Status: dao.TaskStatus{Value: "open"}}, nil
+}
+
+type doneProjectOccurrenceRepositories struct {
+	occurrenceRowsRepositories
+	tasks     TaskRepository
+	lifecycle shared.ProjectWorkLifecycle
+}
+
+func (repos doneProjectOccurrenceRepositories) Tasks() TaskRepository { return repos.tasks }
+func (repos doneProjectOccurrenceRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle {
+	return repos.lifecycle
+}
+
+type skippedOccurrenceTodoRepository struct {
+	occurrenceRowsRepo
+	skipped []int64
+	writes  int
+}
+
+func (repo *skippedOccurrenceTodoRepository) ListTodoItemSkippedOccurrences(context.Context, domain.UserID, domain.TaskID, domain.TodoItemID) ([]int64, error) {
+	return repo.skipped, nil
+}
+
+func (repo *skippedOccurrenceTodoRepository) SetTodoItemSkippedOccurrence(_ context.Context, _ domain.UserID, _ domain.TaskID, _ domain.TodoItemID, occurrenceDate time.Time, skipped bool) error {
+	repo.writes++
+	if skipped {
+		repo.skipped = append(repo.skipped, occurrenceDate.Unix())
+		return nil
+	}
+	filtered := repo.skipped[:0]
+	for _, value := range repo.skipped {
+		if time.Unix(value, 0).UTC().Format("2006-01-02") != occurrenceDate.UTC().Format("2006-01-02") {
+			filtered = append(filtered, value)
+		}
+	}
+	repo.skipped = filtered
+	return nil
+}
+
 func TestLoadTodoOccurrenceKeepsRootSnapshotAddressableWithoutTreatingItAsChild(t *testing.T) {
 	root := recurringTodoRoot()
 	root.OccurrenceDate, root.FrequencyAnchorDate = "2026-10-19", mustParseDate("2026-10-19").Unix()
@@ -90,6 +150,61 @@ func TestTodoCommandReadersReceiveTheOperationCapability(t *testing.T) {
 	}
 	if repo.getCapability != capability {
 		t.Errorf("get capability = %#v, want %#v", repo.getCapability, capability)
+	}
+}
+
+func TestDoneProjectBlocksNewTodoSkipButAllowsRestoringSavedSkip(t *testing.T) {
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	daysSinceMonday := (int(today.Weekday()) + 6) % 7
+	rootDate := today.AddDate(0, 0, -daysSinceMonday)
+	virtualDate := rootDate.AddDate(0, 0, 7)
+	root := recurringTodoRoot()
+	root.OccurrenceDate = rootDate.Format("2006-01-02")
+	root.FrequencyAnchorDate = rootDate.Unix()
+	repo := &skippedOccurrenceTodoRepository{
+		occurrenceRowsRepo: occurrenceRowsRepo{rows: []dao.TodoItem{root}},
+	}
+	repos := doneProjectOccurrenceRepositories{
+		occurrenceRowsRepositories: occurrenceRowsRepositories{items: repo},
+		tasks:                      projectScopedOccurrenceTaskRepository{},
+		lifecycle:                  doneProjectOccurrenceLifecycle{},
+	}
+	uow := occurrenceCommandsUOW{repos: repos}
+
+	err := NewSkipTodoItemUseCase(uow, nil).Execute(context.Background(), "user", "task", domain.TodoItemID(root.ID), virtualDate.Format("2006-01-02"))
+	if !errors.Is(err, ErrOccurrenceInactive) {
+		t.Fatalf("skip unsaved virtual occurrence under done Project = %v; want ErrOccurrenceInactive", err)
+	}
+	if repo.writes != 0 {
+		t.Fatalf("blocked skip made %d writes; want no tombstone", repo.writes)
+	}
+
+	repo.skipped = []int64{virtualDate.Unix()}
+	err = NewRestoreTodoItemUseCase(uow, nil).Execute(context.Background(), "user", "task", domain.TodoItemID(root.ID), virtualDate.Format("2006-01-02"))
+	if err != nil {
+		t.Fatalf("restore previously saved skip under done Project: %v", err)
+	}
+	if repo.writes != 1 || len(repo.skipped) != 0 {
+		t.Fatalf("restore writes=%d remaining tombstones=%v; want one restore and no tombstone", repo.writes, repo.skipped)
+	}
+}
+
+func TestDoneProjectTreatsReopenOfUnsavedTodoVirtualAsInactive(t *testing.T) {
+	rootDate, futureDate := nextWeeklyOccurrenceTestDates()
+	root := recurringTodoRoot()
+	root.OccurrenceDate = rootDate.Format("2006-01-02")
+	root.FrequencyAnchorDate = rootDate.Unix()
+	repo := occurrenceRowsRepo{rows: []dao.TodoItem{root}}
+	repos := doneProjectOccurrenceRepositories{
+		occurrenceRowsRepositories: occurrenceRowsRepositories{items: repo},
+		tasks:                      projectScopedOccurrenceTaskRepository{},
+		lifecycle:                  doneProjectOccurrenceLifecycle{},
+	}
+	err := NewReopenTodoItemUseCase(occurrenceCommandsUOW{repos: repos}, nil).ExecuteOccurrence(
+		context.Background(), "user", "task", domain.TodoItemID(root.ID), futureDate.Format("2006-01-02"),
+	)
+	if !errors.Is(err, ErrOccurrenceInactive) {
+		t.Fatalf("reopen unsaved virtual occurrence under done Project = %v, want ErrOccurrenceInactive", err)
 	}
 }
 
@@ -127,6 +242,10 @@ func TestLoadTodoOccurrencePrefersChildAtRootDateRegardlessOfRowOrder(t *testing
 }
 
 type deletedOccurrenceTaskRepository struct{ TaskRepository }
+
+func (deletedOccurrenceTaskRepository) GetByUserIDWithPermission(_ context.Context, userID domain.UserID, taskID domain.TaskID, _ shared.Capability) (dao.Task, error) {
+	return dao.Task{ID: string(taskID), UserID: string(userID), Status: dao.TaskStatus{Value: "open"}}, nil
+}
 
 func (deletedOccurrenceTaskRepository) LockByUserIDWithPermission(_ context.Context, userID domain.UserID, taskID domain.TaskID, _ shared.Capability) (dao.Task, error) {
 	return dao.Task{ID: string(taskID), UserID: string(userID), Status: dao.TaskStatus{Value: "open"}}, nil

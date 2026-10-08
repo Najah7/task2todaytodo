@@ -8,6 +8,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 )
 
 type getProjectRepositoryFake struct {
@@ -37,6 +38,10 @@ func (repo *getProjectRepositoryFake) GetByUserID(_ context.Context, userID doma
 	return project, nil
 }
 
+func (*getProjectRepositoryFake) HasPermission(context.Context, domain.UserID, domain.ProjectID, shared.Capability) (bool, error) {
+	return true, nil
+}
+
 func TestGetProjectUseCaseExecuteReturnsOwnedProject(t *testing.T) {
 	userID := domain.UserID("user-1")
 	projectID := domain.ProjectID("project-1")
@@ -47,6 +52,8 @@ func TestGetProjectUseCaseExecuteReturnsOwnedProject(t *testing.T) {
 		Goal:        "Ship the feature",
 		Description: "Project details",
 		Progress:    25,
+		CanUpdate:   true,
+		CanDelete:   true,
 	}
 	repo := &getProjectRepositoryFake{projects: map[getProjectKey]dao.Project{
 		{userID: userID, projectID: projectID}: want,

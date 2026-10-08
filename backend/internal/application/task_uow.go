@@ -5,20 +5,22 @@ import (
 	"errors"
 	"fmt"
 
+	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/usecase"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type TaskUOW struct {
-	pool  *pgxpool.Pool
-	store TaskStore
+	pool     *pgxpool.Pool
+	store    TaskStore
+	projects ProjectStore
 }
 
-func NewTaskUOW(pool *pgxpool.Pool, store TaskStore) usecase.UOW {
+func NewTaskUOW(pool *pgxpool.Pool, store TaskStore, projects ProjectStore) usecase.UOW {
 	return &TaskUOW{
-		pool:  pool,
-		store: store,
+		pool: pool, store: store, projects: projects,
 	}
 }
 
@@ -27,13 +29,20 @@ func (u *TaskUOW) Do(
 	fn func(ctx context.Context, repos usecase.Repositories) error,
 ) error {
 	return RunInTx(ctx, u.pool, func(tx pgx.Tx) error {
-		return fn(ctx, taskRepositories{store: u.store.WithTx(tx)})
+		projects := u.projects.WithTx(tx).Projects
+		return fn(ctx, taskRepositories{
+			store:     u.store.WithTx(tx),
+			lifecycle: projectusecase.NewProjectLifecycleUseCase(projects, projects),
+		})
 	})
 }
 
 type taskRepositories struct {
-	store TaskStore
+	store     TaskStore
+	lifecycle shared.ProjectWorkLifecycle
 }
+
+func (r taskRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle { return r.lifecycle }
 
 func (r taskRepositories) TaskProjects() usecase.TaskProjectRepository {
 	return r.store.Tasks

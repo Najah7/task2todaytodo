@@ -65,7 +65,9 @@ WITH requested AS (
     SELECT DISTINCT ON (s.project_id, s.series_id, s.occurrence_date)
         s.project_id, s.completed, s.deleted_at, s.skipped_at
     FROM requested s
-    ORDER BY s.project_id, s.series_id, s.occurrence_date, (s.id <> s.series_id) DESC
+    ORDER BY s.project_id, s.series_id, s.occurrence_date,
+             (s.deleted_at IS NOT NULL AND s.skipped_at IS NOT NULL) ASC,
+             (s.id <> s.series_id) DESC
 )
 SELECT project_id,
        COUNT(*) FILTER (WHERE deleted_at IS NULL AND skipped_at IS NULL)::bigint AS total,
@@ -87,6 +89,7 @@ SELECT root.project_id,
         OR EXISTS (
             SELECT 1 FROM schedules child
             WHERE child.series_id = root.id AND child.id <> root.id
+              AND (child.deleted_at IS NULL OR child.is_exception)
               AND child.occurrence_date = (sqlc.arg(as_of)::timestamptz AT TIME ZONE root.timezone)::date
         )) AS occurrence_saved_today
 FROM schedules root

@@ -1083,6 +1083,8 @@ func scheduleUseCaseError(err error) (int, ErrDetail) {
 		return http.StatusForbidden, NewErrDetail("", "permission_denied", "The caller lacks permission for this schedule operation")
 	case errors.Is(err, domain.ErrScheduleNotFound), errors.Is(err, scheduleusecase.ErrScheduleProjectNotFound):
 		return http.StatusNotFound, NewErrDetail("id", "not_found", "Schedule or Project was not found")
+	case errors.Is(err, scheduleusecase.ErrScheduleProjectChanged):
+		return http.StatusConflict, NewErrDetail("project_id", "schedule_changed", "Schedule changed while its Project association was being updated")
 	case errors.Is(err, scheduleusecase.ErrScheduleTagNotFound):
 		return http.StatusNotFound, NewErrDetail("tag_id", "not_found", "Tag was not found")
 	case errors.Is(err, scheduleusecase.ErrOccurrenceNotFound):

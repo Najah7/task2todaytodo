@@ -17,6 +17,7 @@ var ErrProjectPatchRequiredFieldNull = errors.New("required project field cannot
 type updateProjectRepository interface {
 	GetByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.ProjectID, capability shared.Capability) (dao.Project, error)
 	UpdateByUserID(ctx context.Context, userID domain.UserID, project domain.Project, expectedRevision int32) (dao.Project, error)
+	HasPermission(context.Context, domain.UserID, domain.ProjectID, shared.Capability) (bool, error)
 }
 
 type UpdateProjectUseCase struct {
@@ -121,6 +122,9 @@ func (uc *UpdateProjectUseCase) Execute(
 	if err != nil {
 		return dao.Project{}, err
 	}
+	if err := readProjectCapabilities(ctx, uc.repo, userID, &updated); err != nil {
+		return dao.Project{}, err
+	}
 	projects, err := applyProjectProgress(ctx, uc.progress, []dao.Project{updated}, time.Now())
 	if err != nil {
 		return dao.Project{}, err
@@ -146,7 +150,7 @@ func projectFromDAO(project dao.Project) (domain.Project, error) {
 	if err != nil {
 		return domain.Project{}, fmt.Errorf("restore project end date: %w", err)
 	}
-	return domain.NewExistingProject(
+	projectEntity, err := domain.NewExistingProject(
 		domain.ProjectID(project.ID),
 		domain.UserID(project.UserID),
 		projectType,
@@ -160,6 +164,14 @@ func projectFromDAO(project dao.Project) (domain.Project, error) {
 		time.Unix(project.CreatedAt, 0),
 		time.Unix(project.UpdatedAt, 0),
 	)
+	if err != nil {
+		return domain.Project{}, err
+	}
+	status, err := domain.NewProjectStatus(project.Status)
+	if err != nil {
+		return domain.Project{}, err
+	}
+	return projectEntity.WithStatus(status)
 }
 
 func parseProjectDate(value *string) (*time.Time, error) {

@@ -42,3 +42,28 @@ non-done task becomes done when exact counts are complete, including while a
 recurrence remains active. A done task reopens when the mutation adds unfinished
 eligible work. Date rollover and reads never mutate status. Title edits and
 reorders with no count change do not trigger status changes.
+
+Projects use the same five statuses and apply the same count-change guard at
+the direct child-work level. Each live child Task contributes one eligible
+item, completed exactly when its status is `done`; each eligible saved or
+today-virtual Schedule occurrence contributes one eligible item and is complete
+when that occurrence is complete. A Project becomes done only when a mutation
+changes those counts, at least one item is eligible, and all eligible items
+are complete. A done Project reopens only when a mutation increases its count
+of unfinished eligible direct work. Count-neutral edits do not change Project
+status. Explicit Project status changes remain authoritative; a manually
+reopened Project can stay open at progress 100, while a done Project displays
+progress 100.
+
+Project mutation paths capture work state and reconcile automatic status in the
+same transaction. They lock the Project before the child row; moves lock their
+old and new Projects in stable ID order. Child lifecycle reconciliation uses
+the Project owner's internal usecase contract and does not require the actor
+to have `project/update` permission.
+
+A done Project suppresses newly generated virtual recurring Schedule work and
+operations that would create an unsaved virtual occurrence. It does not hide or
+disable saved Task or Schedule children. Restoring a saved skipped occurrence
+is allowed and may reopen the Project if it adds unfinished eligible work.
+A trashed Project hides ordinary child reads and writes; restoring the parent
+does not change child deletion state.

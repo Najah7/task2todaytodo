@@ -13,11 +13,13 @@ import (
 )
 
 type updateTaskRepositoryFake struct {
+	TaskRepository
 	task             dao.Task
 	getErr           error
 	updateErr        error
 	getCalls         int
 	updateCalls      int
+	lockCalls        int
 	getUserID        domain.UserID
 	getTaskID        domain.TaskID
 	updateUser       domain.UserID
@@ -44,6 +46,12 @@ func (repo *updateTaskRepositoryFake) GetByUserIDWithPermission(ctx context.Cont
 	return repo.GetByUserID(ctx, userID, taskID)
 }
 
+func (repo *updateTaskRepositoryFake) LockByUserIDWithPermission(ctx context.Context, userID domain.UserID, taskID domain.TaskID, _ shared.Capability) (dao.Task, error) {
+	repo.lockCalls++
+	repo.callOrder = append(repo.callOrder, "lock-task")
+	return repo.GetByUserID(ctx, userID, taskID)
+}
+
 func (repo *updateTaskRepositoryFake) UpdateByUserID(_ context.Context, userID domain.UserID, task domain.Task, expectedRevision int32) (dao.Task, error) {
 	repo.updateCalls++
 	repo.updateUser = userID
@@ -61,7 +69,7 @@ func TestUpdateTaskUseCaseExecuteUpdatesSpecifiedFieldAndPreservesProtectedField
 	newTitle := "Updated title"
 	repo := &updateTaskRepositoryFake{task: updateTaskFixture()}
 
-	got, err := NewUpdateTaskUseCase(repo, updateTaskProgressSource(), nil).Execute(context.Background(), userID, taskID,
+	got, err := NewUpdateTaskUseCase(&updateTaskUOWFake{repo: repo}, updateTaskProgressSource(), nil).Execute(context.Background(), userID, taskID,
 		1, PatchField[string]{Present: true, Value: &newTitle}, PatchField[string]{},
 		PatchField[time.Time]{}, PatchField[int]{}, PatchField[int]{},
 	)
@@ -80,14 +88,14 @@ func TestUpdateTaskUseCaseExecuteUpdatesSpecifiedFieldAndPreservesProtectedField
 	if repo.updated.Description != "Original description" || repo.updated.DueDate.Unix() != 1_800_000_000 || repo.updated.EstimatedMinutes == nil || *repo.updated.EstimatedMinutes != 45 || repo.updated.ActualMinutes == nil || *repo.updated.ActualMinutes != 12 {
 		t.Errorf("omitted fields not preserved: %#v", repo.updated)
 	}
-	if repo.getUserID != userID || repo.getTaskID != taskID || repo.updateUser != userID || !reflect.DeepEqual(repo.callOrder, []string{"get", "update"}) {
+	if repo.getUserID != userID || repo.getTaskID != taskID || repo.updateUser != userID || repo.lockCalls != 1 || !reflect.DeepEqual(repo.callOrder, []string{"get", "lock-task", "get", "update"}) {
 		t.Errorf("repository scope/order = %q/%q/%q %v", repo.getUserID, repo.getTaskID, repo.updateUser, repo.callOrder)
 	}
 }
 
 func TestUpdateTaskUseCaseExecuteClearsNullableFields(t *testing.T) {
 	repo := &updateTaskRepositoryFake{task: updateTaskFixture()}
-	_, err := NewUpdateTaskUseCase(repo, updateTaskProgressSource(), nil).Execute(context.Background(), "user-1", "task-1",
+	_, err := NewUpdateTaskUseCase(&updateTaskUOWFake{repo: repo}, updateTaskProgressSource(), nil).Execute(context.Background(), "user-1", "task-1",
 		1, PatchField[string]{}, PatchField[string]{Present: true},
 		PatchField[time.Time]{Present: true}, PatchField[int]{Present: true}, PatchField[int]{Present: true},
 	)
@@ -185,8 +193,24 @@ func updateTask(
 	dueDate PatchField[time.Time],
 	estimatedMinutes, actualMinutes PatchField[int],
 ) (dao.Task, error) {
-	return NewUpdateTaskUseCase(repo, updateTaskProgressSource(), nil).Execute(context.Background(), "user-1", "task-1", 1, title, description, dueDate, estimatedMinutes, actualMinutes)
+	uow := &updateTaskUOWFake{repo: repo}
+	return NewUpdateTaskUseCase(uow, updateTaskProgressSource(), nil).Execute(context.Background(), "user-1", "task-1", 1, title, description, dueDate, estimatedMinutes, actualMinutes)
 }
+
+type updateTaskUOWFake struct {
+	repo *updateTaskRepositoryFake
+}
+
+func (uow *updateTaskUOWFake) Do(ctx context.Context, fn func(context.Context, Repositories) error) error {
+	return fn(ctx, updateTaskRepositoriesFake{repo: uow.repo})
+}
+
+type updateTaskRepositoriesFake struct {
+	taskProgressTestRepositories
+	repo *updateTaskRepositoryFake
+}
+
+func (repos updateTaskRepositoriesFake) Tasks() TaskRepository { return repos.repo }
 
 func updateTaskProgressSource() *taskProgressSourceFake {
 	return &taskProgressSourceFake{sources: dao.TaskProgressSources{

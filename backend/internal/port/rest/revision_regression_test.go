@@ -35,7 +35,7 @@ func TestTaskUpdateIfMatchStatusesAndSuccessETag(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := &revisionUpdateRepository{task: revisionTaskDAO(), updateErr: tc.updateErr}
 			handler := NewTaskHandler(taskusecase.TaskUseCases{
-				Update: taskusecase.NewUpdateTaskUseCase(repo, repo, nil),
+				Update: taskusecase.NewUpdateTaskUseCase(revisionUpdateUOW{repo: repo}, repo, nil),
 			}, taskHandlerID{value: "unused"}, listTestCodec())
 			request := newRevisionTaskRequest(http.MethodPatch, "/tasks/task-1", `{"title":"Updated title"}`, "user-1")
 			if tc.setIfMatch {
@@ -162,6 +162,7 @@ func TestTaskRevisionPageTokenBindsActorAndTaskResource(t *testing.T) {
 }
 
 type revisionUpdateRepository struct {
+	taskusecase.TaskRepository
 	task             dao.Task
 	updateErr        error
 	expectedRevision int32
@@ -173,6 +174,10 @@ func (repo *revisionUpdateRepository) GetByUserID(_ context.Context, _ domain.Us
 }
 
 func (repo *revisionUpdateRepository) GetByUserIDWithPermission(ctx context.Context, userID domain.UserID, taskID domain.TaskID, _ shared.Capability) (dao.Task, error) {
+	return repo.GetByUserID(ctx, userID, taskID)
+}
+
+func (repo *revisionUpdateRepository) LockByUserIDWithPermission(ctx context.Context, userID domain.UserID, taskID domain.TaskID, _ shared.Capability) (dao.Task, error) {
 	return repo.GetByUserID(ctx, userID, taskID)
 }
 
@@ -197,6 +202,19 @@ func (repo *revisionUpdateRepository) ReadTaskProgressSources(_ context.Context,
 	}
 	return dao.TaskProgressSources{Counts: counts, Statuses: statuses}, nil
 }
+
+type revisionUpdateUOW struct{ repo *revisionUpdateRepository }
+
+func (uow revisionUpdateUOW) Do(ctx context.Context, fn func(context.Context, taskusecase.Repositories) error) error {
+	return fn(ctx, revisionUpdateRepositories{repo: uow.repo})
+}
+
+type revisionUpdateRepositories struct {
+	taskusecase.Repositories
+	repo *revisionUpdateRepository
+}
+
+func (repos revisionUpdateRepositories) Tasks() taskusecase.TaskRepository { return repos.repo }
 
 type revisionHistoryReaderCall struct {
 	actor          domain.UserID

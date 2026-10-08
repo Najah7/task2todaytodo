@@ -187,3 +187,26 @@ func TestReopenedTaskCanProjectTodayAgainUnlessSkipped(t *testing.T) {
 		}
 	}
 }
+
+func TestDoneProjectSuppressesTodoVirtualsButKeepsSavedOccurrences(t *testing.T) {
+	root := recurringTodoRoot()
+	asOf := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+	request := CursorPageRequest{Size: 10, FromDate: "2026-10-07"}
+	rows, err := expandTodoItemRowsWithProjectState([]dao.TodoItem{root}, request, asOf, false, true, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("done Project emitted virtual TodoItems: %#v", rows)
+	}
+
+	saved := root
+	saved.ID, saved.OccurrenceDate, saved.Completed, saved.IsException = "saved-occurrence", "2026-10-12", true, true
+	rows, err = expandTodoItemRowsWithProjectState([]dao.TodoItem{root, saved}, request, asOf, false, true, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].ID != saved.ID || rows[0].OccurrenceDate != saved.OccurrenceDate {
+		t.Fatalf("done Project saved-occurrence projection = %#v; want saved occurrence only", rows)
+	}
+}

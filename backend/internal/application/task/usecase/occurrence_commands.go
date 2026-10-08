@@ -39,10 +39,12 @@ func getTodoItemForCommand(ctx context.Context, repo TodoItemRepository, userID 
 }
 
 type todoOccurrenceState struct {
-	root    dao.TodoItem
-	current *dao.TodoItem
-	date    time.Time
-	skipped bool
+	root        dao.TodoItem
+	current     *dao.TodoItem
+	date        time.Time
+	skipped     bool
+	saved       bool
+	projectDone bool
 }
 
 func frequenciesDAO(frequencies domain.TaskFrequencies) []dao.TaskFrequency {
@@ -118,7 +120,7 @@ func loadTodoOccurrenceWithCapability(ctx context.Context, repos Repositories, u
 			return todoOccurrenceState{}, ErrOccurrenceInactive
 		}
 	}
-	state := todoOccurrenceState{root: root, current: current, date: date}
+	state := todoOccurrenceState{root: root, current: current, date: date, saved: saved}
 	if skipped, ok := repos.TodoItems().(todoSkippedOccurrenceCommandStore); ok {
 		dates, err := skipped.ListTodoItemSkippedOccurrencesForCapability(ctx, userID, taskID, seriesID, capability)
 		if err != nil {
@@ -146,6 +148,10 @@ func loadTodoOccurrenceWithCapability(ctx context.Context, repos Repositories, u
 		return state, ErrOccurrenceInactive
 	}
 	return state, nil
+}
+
+func projectDoneSuppressesTodoOccurrence(state todoOccurrenceState) bool {
+	return state.projectDone && !state.saved
 }
 
 func validateTodoOccurrenceDate(root dao.TodoItem, date time.Time) error {

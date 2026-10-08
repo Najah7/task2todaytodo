@@ -13,19 +13,14 @@ import (
 
 var ErrTaskPatchRequiredFieldNull = errors.New("required task field cannot be null")
 
-type updateTaskRepository interface {
-	GetByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.TaskID, capability shared.Capability) (dao.Task, error)
-	UpdateByUserID(ctx context.Context, userID domain.UserID, task domain.Task, expectedRevision int32) (dao.Task, error)
-}
-
 type UpdateTaskUseCase struct {
-	repo     updateTaskRepository
+	uow      UOW
 	progress taskProgressSource
 	logger   logging.Logger
 }
 
-func NewUpdateTaskUseCase(repo updateTaskRepository, progress taskProgressSource, logger logging.Logger) *UpdateTaskUseCase {
-	return &UpdateTaskUseCase{logger: logging.OrNop(logger), repo: repo, progress: progress}
+func NewUpdateTaskUseCase(uow UOW, progress taskProgressSource, logger logging.Logger) *UpdateTaskUseCase {
+	return &UpdateTaskUseCase{logger: logging.OrNop(logger), uow: uow, progress: progress}
 }
 
 func (uc *UpdateTaskUseCase) Execute(
@@ -45,58 +40,65 @@ func (uc *UpdateTaskUseCase) Execute(
 		return dao.Task{}, ErrTaskPatchRequiredFieldNull
 	}
 
-	current, err := uc.repo.GetByUserIDWithPermission(ctx, userID, taskID, shared.TaskUpdate())
-	if err != nil {
-		return dao.Task{}, err
-	}
-	task, err := taskFromDAO(current)
-	if err != nil {
-		logTaskRestoreFailure(uc.logger, ctx, "task.update.restore", err)
-		return dao.Task{}, err
-	}
-
-	if title.Present {
-		task.Title = *title.Value
-	}
-	if description.Present {
-		task.Description = ""
-		if description.Value != nil {
-			task.Description = *description.Value
+	var updated dao.Task
+	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
+		current, err := lockTaskForMutation(ctx, repos, userID, taskID, shared.TaskUpdate())
+		if err != nil {
+			return err
 		}
-	}
-	if dueDate.Present {
-		task.DueDate = time.Time{}
-		if dueDate.Value != nil {
-			task.DueDate = *dueDate.Value
+		if current.Revision != expectedRevision {
+			return ErrRevisionConflict
 		}
-	}
-	if estimatedMinutes.Present {
-		task.EstimatedMinutes = copyOptionalInt(estimatedMinutes.Value)
-	}
-	if actualMinutes.Present {
-		task.ActualMinutes = copyOptionalInt(actualMinutes.Value)
-	}
+		task, err := taskFromDAO(current)
+		if err != nil {
+			logTaskRestoreFailure(uc.logger, ctx, "task.update.restore", err)
+			return err
+		}
 
-	validated, err := domain.NewExistingTask(
-		task.ID,
-		task.UserID,
-		task.ProjectID,
-		task.Title,
-		task.Description,
-		task.DueDate,
-		task.EstimatedMinutes,
-		task.ActualMinutes,
-		task.Progress,
-		task.Priority,
-		task.Status,
-		task.AssigneeID,
-		task.CreatedAt,
-		task.UpdatedAt,
-	)
-	if err != nil {
-		return dao.Task{}, err
-	}
-	updated, err := uc.repo.UpdateByUserID(ctx, userID, validated, expectedRevision)
+		if title.Present {
+			task.Title = *title.Value
+		}
+		if description.Present {
+			task.Description = ""
+			if description.Value != nil {
+				task.Description = *description.Value
+			}
+		}
+		if dueDate.Present {
+			task.DueDate = time.Time{}
+			if dueDate.Value != nil {
+				task.DueDate = *dueDate.Value
+			}
+		}
+		if estimatedMinutes.Present {
+			task.EstimatedMinutes = copyOptionalInt(estimatedMinutes.Value)
+		}
+		if actualMinutes.Present {
+			task.ActualMinutes = copyOptionalInt(actualMinutes.Value)
+		}
+
+		validated, err := domain.NewExistingTask(
+			task.ID,
+			task.UserID,
+			task.ProjectID,
+			task.Title,
+			task.Description,
+			task.DueDate,
+			task.EstimatedMinutes,
+			task.ActualMinutes,
+			task.Progress,
+			task.Priority,
+			task.Status,
+			task.AssigneeID,
+			task.CreatedAt,
+			task.UpdatedAt,
+		)
+		if err != nil {
+			return err
+		}
+		updated, err = repos.Tasks().UpdateByUserID(ctx, userID, validated, expectedRevision)
+		return err
+	})
 	if err != nil {
 		return dao.Task{}, err
 	}

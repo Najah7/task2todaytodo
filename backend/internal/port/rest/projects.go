@@ -13,6 +13,7 @@ import (
 	projectdomain "github.com/Najah7/task2todaytodo/internal/application/project/domain"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
+	sharedstatus "github.com/Najah7/task2todaytodo/internal/application/shared/status"
 	taskdao "github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	taskdomain "github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
@@ -35,47 +36,82 @@ func NewProjectHandler(projects *projectusecase.UseCases, tasks taskusecase.Task
 }
 
 type ProjectTypeResponse struct {
-	Value   string `json:"value"`
-	Label   string `json:"label"`
-	LabelJp string `json:"label_jp"`
+	Value   string `json:"value" validate:"required"`
+	Label   string `json:"label" validate:"required"`
+	LabelJp string `json:"label_jp" validate:"required"`
 }
 
 type ProjectPriorityResponse struct {
-	Value   string `json:"value"`
-	Label   string `json:"label"`
-	LabelJp string `json:"label_jp"`
-	Weight  int    `json:"weight"`
+	Value   string `json:"value" validate:"required"`
+	Label   string `json:"label" validate:"required"`
+	LabelJp string `json:"label_jp" validate:"required"`
+	Weight  int    `json:"weight" validate:"required"`
 }
 
 type ProjectResponse struct {
-	ID          string                  `json:"id"`
-	UserID      string                  `json:"user_id"`
-	Type        ProjectTypeResponse     `json:"type"`
-	Title       string                  `json:"title"`
-	Goal        string                  `json:"goal"`
-	Description string                  `json:"description"`
-	Progress    int                     `json:"progress"`
-	Priority    ProjectPriorityResponse `json:"priority"`
-	StartDate   *string                 `json:"start_date"`
-	EndDate     *string                 `json:"end_date"`
-	CreatedAt   int64                   `json:"created_at"`
-	UpdatedAt   int64                   `json:"updated_at"`
-	Revision    int32                   `json:"revision"`
+	ID            string                  `json:"id" validate:"required"`
+	UserID        string                  `json:"user_id" validate:"required"`
+	Type          ProjectTypeResponse     `json:"type" validate:"required"`
+	Title         string                  `json:"title" validate:"required"`
+	Goal          string                  `json:"goal" validate:"required"`
+	Description   string                  `json:"description" validate:"required"`
+	Progress      int                     `json:"progress" validate:"required"`
+	Status        string                  `json:"status" validate:"required" enums:"open,pending,waiting_on_others,in_progress,done"`
+	Priority      ProjectPriorityResponse `json:"priority" validate:"required"`
+	StartDate     *string                 `json:"start_date" validate:"required" extensions:"x-nullable"`
+	EndDate       *string                 `json:"end_date" validate:"required" extensions:"x-nullable"`
+	RemainingDays *int                    `json:"remaining_days" validate:"required" extensions:"x-nullable"`
+	DeletedAt     *int64                  `json:"deleted_at" validate:"required" extensions:"x-nullable"`
+	CanUpdate     bool                    `json:"can_update" validate:"required"`
+	CanDelete     bool                    `json:"can_delete" validate:"required"`
+	CreatedAt     int64                   `json:"created_at" validate:"required"`
+	UpdatedAt     int64                   `json:"updated_at" validate:"required"`
+	Revision      int32                   `json:"revision" validate:"required"`
 }
 
 type ProjectListResponse struct {
-	Items         []ProjectResponse `json:"items"`
-	NextPageToken string            `json:"next_page_token"`
+	Items             []ProjectResponse          `json:"items" validate:"required"`
+	Summary           ProjectListSummaryResponse `json:"summary" validate:"required"`
+	NextPageToken     string                     `json:"next_page_token" validate:"required"`
+	PreviousPageToken string                     `json:"previous_page_token" validate:"required"`
+}
+
+type ProjectListSummaryResponse struct {
+	TotalCount   int64               `json:"total_count" validate:"required"`
+	DueSoonCount int64               `json:"due_soon_count" validate:"required"`
+	OverdueCount int64               `json:"overdue_count" validate:"required"`
+	StatusCounts ProjectStatusCounts `json:"status_counts" validate:"required"`
+	TrashCount   int64               `json:"trash_count" validate:"required"`
+	Today        string              `json:"today" validate:"required"`
+	Timezone     string              `json:"timezone" validate:"required"`
+}
+
+type ProjectStatusCounts struct {
+	InProgress      int64 `json:"in_progress" validate:"required"`
+	Pending         int64 `json:"pending" validate:"required"`
+	Done            int64 `json:"done" validate:"required"`
+	Open            int64 `json:"open" validate:"required"`
+	WaitingOnOthers int64 `json:"waiting_on_others" validate:"required"`
+}
+
+type ProjectOptionsResponse struct {
+	Types      []ProjectTypeResponse       `json:"types" validate:"required"`
+	Priorities []ProjectPriorityResponse   `json:"priorities" validate:"required"`
+	Statuses   []ProjectTaskStatusResponse `json:"statuses" validate:"required"`
+}
+
+type ProjectStatusRequest struct {
+	Status string `json:"status" validate:"required" enums:"open,pending,waiting_on_others,in_progress,done"`
 }
 
 type ProjectCreateRequest struct {
 	Type        string  `json:"type"`
-	Title       string  `json:"title"`
+	Title       string  `json:"title" validate:"required"`
 	Goal        string  `json:"goal"`
 	Description string  `json:"description"`
 	Priority    string  `json:"priority"`
-	StartDate   *string `json:"start_date"`
-	EndDate     *string `json:"end_date"`
+	StartDate   *string `json:"start_date" extensions:"x-nullable"`
+	EndDate     *string `json:"end_date" extensions:"x-nullable"`
 }
 
 type ProjectTaskCreateRequest struct {
@@ -125,12 +161,12 @@ type ProjectUpdateRequest map[string]json.RawMessage
 // The handler keeps a raw object so it can distinguish omitted fields from null.
 type ProjectUpdateRequestSchema struct {
 	Title       *string `json:"title"`
-	Goal        *string `json:"goal"`
-	Description *string `json:"description"`
+	Goal        *string `json:"goal" extensions:"x-nullable"`
+	Description *string `json:"description" extensions:"x-nullable"`
 	Type        *string `json:"type"`
 	Priority    *string `json:"priority"`
-	StartDate   *string `json:"start_date"`
-	EndDate     *string `json:"end_date"`
+	StartDate   *string `json:"start_date" extensions:"x-nullable"`
+	EndDate     *string `json:"end_date" extensions:"x-nullable"`
 }
 
 var (
@@ -139,6 +175,9 @@ var (
 	projectListTasksFailure  = NewFailureErrSpec(ResourceTasks, ActionList, "Failed to list project tasks")
 	projectAddTaskFailure    = NewFailureErrSpec(ResourceTasks, "add_to_project", "Failed to add task to project")
 	projectRemoveTaskFailure = NewFailureErrSpec(ResourceTasks, "remove_from_project", "Failed to remove task from project")
+	projectStatusFailure     = NewFailureErrSpec(ResourceProjects, ActionUpdate, "Failed to update project status")
+	projectRestoreFailure    = NewFailureErrSpec(ResourceProjects, "restore", "Failed to restore project")
+	projectOptionsFailure    = NewFailureErrSpec(ResourceProjects, "options", "Failed to list project form options")
 )
 
 // List returns projects owned by or shared with the authenticated user.
@@ -147,8 +186,12 @@ var (
 //	@Tags		Projects
 //	@Produce	json
 //	@Security	BearerAuth
+//	@Param		status		query		string	false	"Filter by Project status"																													Enums(in_progress,pending,done,open,waiting_on_others)
+//	@Param		view		query		string	false	"active or trash"																															Enums(active,trash)
+//	@Param		sort_by		query		string	false	"Server-side sort column; end_date sorts by remaining days. Null dates sort last; equal dates sort by priority high-first, then stable ID."	Enums(created_at,title,progress,end_date)
+//	@Param		sort_order	query		string	false	"Sort direction"																															Enums(asc,desc)
 //	@Param		page_size	query		int		false	"Items per page (default 50, maximum 100)"
-//	@Param		page_token	query		string	false	"Opaque next page token"
+//	@Param		page_token	query		string	false	"Opaque cursor for previous or next page"
 //	@Param		fields		query		string	false	"Response field mask"
 //	@Success	200			{object}	ProjectListResponse
 //	@Failure	400			{object}	ErrResponse
@@ -161,27 +204,45 @@ func (h *ProjectHandler) List(w http.ResponseWriter, r *http.Request) {
 		writeProjectError(w, http.StatusUnauthorized, projectListFailure, ErrDetailUnauthorized)
 		return
 	}
-	request, err := parseListRequest(r, h.pageTokens, string(userID), "projects", "", "created_at_desc_id_desc", listEnvelope[ProjectResponse]{})
+	listReq, filter, err := parseProjectListRequest(r, h.pageTokens, string(userID))
 	if err != nil {
 		writeListError(w, projectListFailure, err)
 		return
 	}
-	var cursor *projectusecase.CursorAnchor
-	if request.Anchor != nil {
-		cursor = &projectusecase.CursorAnchor{At: request.Anchor.At, ID: request.Anchor.ID}
-	}
-	page, err := h.projects.List.ExecutePage(r.Context(), userID, projectusecase.CursorPageRequest{Size: request.Size, Anchor: cursor})
+	page, err := h.projects.List.ExecuteFilteredPage(r.Context(), userID, filter)
 	if err != nil {
 		writeProjectUseCaseError(w, projectListFailure, err)
 		return
 	}
 	items := make([]ProjectResponse, 0, len(page.Items))
-	anchors := make([]listAnchor, 0, len(page.Items))
 	for _, row := range page.Items {
 		items = append(items, projectResponse(row))
-		anchors = append(anchors, listAnchor{At: row.CursorCreatedAt, ID: row.ID})
 	}
-	writeListResponse(w, items, anchors, page.Next != nil, request, h.pageTokens, projectListFailure)
+	summary := ProjectListSummaryResponse{
+		TotalCount: page.Summary.TotalCount, DueSoonCount: page.Summary.DueSoonCount,
+		OverdueCount: page.Summary.OverdueCount, TrashCount: page.Summary.TrashCount,
+		Today: page.Summary.Today, Timezone: page.Summary.Timezone,
+		StatusCounts: ProjectStatusCounts{InProgress: page.Summary.InProgressCount, Pending: page.Summary.PendingCount, Done: page.Summary.DoneCount, Open: page.Summary.OpenCount, WaitingOnOthers: page.Summary.WaitingOnOthersCount},
+	}
+	response := ProjectListResponse{Items: items, Summary: summary}
+	if page.Next != nil {
+		response.NextPageToken, err = encodeProjectCursor(h.pageTokens, listReq.Scope, *page.Next)
+	}
+	if err == nil && page.Previous != nil {
+		response.PreviousPageToken, err = encodeProjectCursor(h.pageTokens, listReq.Scope, *page.Previous)
+	}
+	if err != nil {
+		writeProjectError(w, http.StatusInternalServerError, projectListFailure, ErrDetailInternalServerError)
+		return
+	}
+	encoded, err := listReq.Mask.Project(response)
+	if err != nil {
+		writeProjectError(w, http.StatusInternalServerError, projectListFailure, ErrDetailInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(encoded)
 }
 
 // Create creates a project for the authenticated user.
@@ -232,6 +293,48 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusCreated, projectResponse(project))
 }
 
+// Options returns backend-owned Project form catalogs.
+//
+//	@Summary	List Project form options
+//	@Tags		Projects
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Success	200	{object}	ProjectOptionsResponse
+//	@Failure	401	{object}	ErrResponse
+//	@Failure	500	{object}	ErrResponse
+//	@Router		/projects/options [get]
+func (h *ProjectHandler) Options(w http.ResponseWriter, r *http.Request) {
+	if _, ok := projectUserID(r.Context()); !ok {
+		writeProjectError(w, http.StatusUnauthorized, projectOptionsFailure, ErrDetailUnauthorized)
+		return
+	}
+	options, err := h.projects.Options.Execute(r.Context())
+	if err != nil {
+		writeProjectUseCaseError(w, projectOptionsFailure, err)
+		return
+	}
+	response := ProjectOptionsResponse{}
+	for _, item := range options.Types {
+		response.Types = append(response.Types, ProjectTypeResponse{Value: item.Value, Label: item.Label, LabelJp: item.LabelJp})
+	}
+	for _, item := range options.Priorities {
+		response.Priorities = append(response.Priorities, ProjectPriorityResponse{Value: item.Value, Label: item.Label, LabelJp: item.LabelJp, Weight: item.Weight})
+	}
+	for _, item := range options.Statuses {
+		response.Statuses = append(response.Statuses, ProjectTaskStatusResponse{Value: item.Value, Label: item.Label, LabelJp: item.LabelJp})
+	}
+	if response.Types == nil {
+		response.Types = []ProjectTypeResponse{}
+	}
+	if response.Priorities == nil {
+		response.Priorities = []ProjectPriorityResponse{}
+	}
+	if response.Statuses == nil {
+		response.Statuses = []ProjectTaskStatusResponse{}
+	}
+	WriteJSON(w, http.StatusOK, response)
+}
+
 // Get returns a project the authenticated user may read.
 //
 //	@Summary	Get project
@@ -267,7 +370,7 @@ func (h *ProjectHandler) Get(w http.ResponseWriter, r *http.Request) {
 // Update partially updates a project. Null clears nullable goal, description,
 // start_date, and end_date; omitted fields keep their stored values.
 //
-//	@Param		If-Match	header		string		true	"Current project ETag, for example \"3\""
+//	@Param		If-Match	header		string		true	"Send the current ETag header from the response; it is a quoted revision number."
 //	@Header		200			{string}	ETag		"Current project revision"
 //	@Failure	409			{object}	ErrResponse	"Revision conflict"
 //	@Failure	428			{object}	ErrResponse	"If-Match is required"
@@ -356,9 +459,94 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, projectResponse(project))
 }
 
-// Delete logically deletes a project and all of its tasks and child records.
+// ChangeStatus changes a Project status immediately.
 //
-//	@Param		If-Match	header		string		true	"Current project ETag, for example \"3\""
+//	@Summary	Change project status
+//	@Tags		Projects
+//	@Accept		json
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		id			path		string					true	"Project ID"
+//	@Param		If-Match	header		string					true	"Send the current ETag header from the response; it is a quoted revision number."
+//	@Param		request		body		ProjectStatusRequest	true	"New Project status"
+//	@Success	200			{object}	ProjectResponse
+//	@Header		200			{string}	ETag	"Current project revision"
+//	@Failure	400			{object}	ErrResponse
+//	@Failure	401			{object}	ErrResponse
+//	@Failure	404			{object}	ErrResponse
+//	@Failure	409			{object}	ErrResponse
+//	@Failure	428			{object}	ErrResponse
+//	@Router		/projects/{id}/status [patch]
+func (h *ProjectHandler) ChangeStatus(w http.ResponseWriter, r *http.Request) {
+	userID, ok := projectUserID(r.Context())
+	if !ok {
+		writeProjectError(w, http.StatusUnauthorized, projectStatusFailure, ErrDetailUnauthorized)
+		return
+	}
+	projectID, ok := projectPathID(w, r, projectStatusFailure)
+	if !ok {
+		return
+	}
+	expected, ok := expectedRevision(w, r, projectStatusFailure)
+	if !ok {
+		return
+	}
+	var request ProjectStatusRequest
+	if !decodeProjectJSON(w, r, &request) || request.Status == "" {
+		writeProjectError(w, http.StatusBadRequest, projectStatusFailure, projectInvalidBody("status", "invalid_status", "Status must be one of the supported values"))
+		return
+	}
+	project, err := h.projects.ChangeStatus.Execute(r.Context(), userID, projectID, expected, request.Status)
+	if err != nil {
+		writeProjectUseCaseError(w, projectStatusFailure, err)
+		return
+	}
+	setResourceETag(w, project.Revision)
+	WriteJSON(w, http.StatusOK, projectResponse(project))
+}
+
+// Restore clears a Project's tombstone while preserving the Project and descendants.
+//
+//	@Summary	Restore project
+//	@Tags		Projects
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		id			path		string	true	"Project ID"
+//	@Param		If-Match	header		string	true	"Send the current ETag header from the response; it is a quoted revision number."
+//	@Success	200			{object}	ProjectResponse
+//	@Header		200			{string}	ETag	"Current project revision"
+//	@Failure	400			{object}	ErrResponse
+//	@Failure	401			{object}	ErrResponse
+//	@Failure	404			{object}	ErrResponse
+//	@Failure	409			{object}	ErrResponse
+//	@Failure	428			{object}	ErrResponse
+//	@Router		/projects/{id}/restore [post]
+func (h *ProjectHandler) Restore(w http.ResponseWriter, r *http.Request) {
+	userID, ok := projectUserID(r.Context())
+	if !ok {
+		writeProjectError(w, http.StatusUnauthorized, projectRestoreFailure, ErrDetailUnauthorized)
+		return
+	}
+	projectID, ok := projectPathID(w, r, projectRestoreFailure)
+	if !ok {
+		return
+	}
+	expected, ok := expectedRevision(w, r, projectRestoreFailure)
+	if !ok {
+		return
+	}
+	project, err := h.projects.Restore.Execute(r.Context(), userID, projectID, expected)
+	if err != nil {
+		writeProjectUseCaseError(w, projectRestoreFailure, err)
+		return
+	}
+	setResourceETag(w, project.Revision)
+	WriteJSON(w, http.StatusOK, projectResponse(project))
+}
+
+// Delete hides a project and its descendants from ordinary views until restored.
+//
+//	@Param		If-Match	header		string		true	"Send the current ETag header from the response; it is a quoted revision number."
 //	@Failure	409			{object}	ErrResponse	"Revision conflict"
 //	@Failure	428			{object}	ErrResponse	"If-Match is required"
 //
@@ -396,7 +584,7 @@ func (h *ProjectHandler) Delete(w http.ResponseWriter, r *http.Request) {
 // ListTasks returns a page of tasks for a project the authenticated user may read.
 //
 //	@Summary	List project tasks
-//	@Tags		Projects
+//	@Tags		Tasks
 //	@Produce	json
 //	@Security	BearerAuth
 //	@Param		id			path		string	true	"Project ID"
@@ -445,7 +633,7 @@ func (h *ProjectHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 // CreateTask creates a task in a project the authenticated user may edit.
 //
 //	@Summary	Create task in project
-//	@Tags		Projects
+//	@Tags		Tasks
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
@@ -499,7 +687,7 @@ func (h *ProjectHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 //	@Failure	428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary	Add task to project
-//	@Tags		Projects
+//	@Tags		Tasks
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
@@ -547,7 +735,7 @@ func (h *ProjectHandler) AddTask(w http.ResponseWriter, r *http.Request) {
 //	@Failure	428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary	Remove task from project
-//	@Tags		Projects
+//	@Tags		Tasks
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
@@ -693,11 +881,20 @@ func projectResponse(project projectdao.Project) ProjectResponse {
 		ID:     project.ID,
 		UserID: project.UserID,
 		Type:   ProjectTypeResponse{Value: project.Type.Value, Label: project.Type.Label, LabelJp: project.Type.LabelJp},
-		Title:  project.Title, Goal: project.Goal, Description: project.Description, Progress: project.Progress,
+		Title:  project.Title, Goal: project.Goal, Description: project.Description, Progress: project.Progress, Status: project.Status,
 		Priority:  ProjectPriorityResponse{Value: project.Priority.Value, Label: project.Priority.Label, LabelJp: project.Priority.LabelJp, Weight: project.Priority.Weight},
 		StartDate: cloneProjectString(project.StartDate), EndDate: cloneProjectString(project.EndDate),
+		RemainingDays: cloneProjectInt(project.RemainingDays), DeletedAt: cloneInt64(project.DeletedAt), CanUpdate: project.CanUpdate, CanDelete: project.CanDelete,
 		CreatedAt: project.CreatedAt, UpdatedAt: project.UpdatedAt, Revision: project.Revision,
 	}
+}
+
+func cloneProjectInt(value *int) *int {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
 }
 
 func projectTaskResponse(task taskdao.Task) ProjectTaskResponse {
@@ -753,6 +950,8 @@ func projectUseCaseError(err error) (int, ErrDetail) {
 		return http.StatusBadRequest, projectInvalidBody("title", "required", "Title is required")
 	case errors.Is(err, projectdomain.ErrProjectTypeEmpty), errors.Is(err, projectdomain.ErrProjectTypeInvalid):
 		return http.StatusBadRequest, projectInvalidBody("type", "invalid_project_type", "Type is not supported")
+	case errors.Is(err, sharedstatus.ErrEmpty), errors.Is(err, sharedstatus.ErrInvalid):
+		return http.StatusBadRequest, projectInvalidBody("status", "invalid_status", "Status is not supported")
 	case errors.Is(err, taskdomain.ErrTaskPriorityEmpty), errors.Is(err, taskdomain.ErrTaskPriorityInvalid), errors.Is(err, projectdomain.ErrProjectPriorityEmpty), errors.Is(err, projectdomain.ErrProjectPriorityInvalid):
 		return http.StatusBadRequest, projectInvalidBody("priority", "invalid_priority", "Priority is not supported")
 	case errors.Is(err, projectdomain.ErrProjectEndDateBeforeStartDate):
@@ -761,6 +960,8 @@ func projectUseCaseError(err error) (int, ErrDetail) {
 		return http.StatusBadRequest, projectInvalidBody("", "null_not_allowed", "Required fields cannot be null")
 	case errors.Is(err, taskusecase.ErrInvalidTaskPage), errors.Is(err, projectusecase.ErrInvalidProjectPage):
 		return http.StatusBadRequest, projectInvalidBody("page_size", "invalid_pagination", "Page size or cursor is invalid")
+	case errors.Is(err, projectusecase.ErrInvalidProjectListRequest):
+		return http.StatusBadRequest, NewErrDetail("query", "invalid_project_list_request", "Project filters, sort order, or cursor are invalid")
 	default:
 		return http.StatusInternalServerError, ErrDetailInternalServerError
 	}

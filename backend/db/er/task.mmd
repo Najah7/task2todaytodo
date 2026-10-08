@@ -18,7 +18,7 @@ erDiagram
         text priority PK "NOT NULL"
     }
 
-    task_status_master {
+    status_master {
         text status PK "NOT NULL"
         text label "NOT NULL"
         text label_jp "NOT NULL"
@@ -119,7 +119,7 @@ erDiagram
     users ||..o{ tasks : changed_by
     projects |o..o{ tasks : optional_project_owner_pair
     priority_master ||..o{ tasks : prioritizes
-    task_status_master ||..o{ tasks : status
+    status_master ||..o{ tasks : status
     tasks ||--o{ task_revisions : has_revisions
     users ||..o{ task_revisions : changed_by
     users ||..o{ tags : owns

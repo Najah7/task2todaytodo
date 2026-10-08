@@ -2,9 +2,12 @@ package rest
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
+	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
+	sharedstatus "github.com/Najah7/task2todaytodo/internal/application/shared/status"
 	"github.com/Najah7/task2todaytodo/internal/port/rest/fieldmask"
 	"github.com/Najah7/task2todaytodo/internal/port/rest/pagination"
 )
@@ -18,6 +21,11 @@ type listAnchor struct {
 	SeriesID       string `json:"series_id,omitempty"`
 	OccurrenceDate string `json:"occurrence_date,omitempty"`
 	AsOf           string `json:"as_of,omitempty"`
+	Direction      string `json:"direction,omitempty"`
+	SortValue      string `json:"sort_value,omitempty"`
+	SortValueNull  bool   `json:"sort_value_null,omitempty"`
+	PriorityWeight int    `json:"priority_weight,omitempty"`
+	Progress       int    `json:"progress,omitempty"`
 }
 
 type listEnvelope[T any] struct {
@@ -110,6 +118,75 @@ func parseListRequestWithFromDate(r *http.Request, codec *pagination.Codec, user
 		}
 	}
 	return request, nil
+}
+
+func parseProjectListRequest(r *http.Request, codec *pagination.Codec, userID string) (listRequest, projectusecase.ProjectListRequest, error) {
+	query := r.URL.Query()
+	for _, key := range []string{"status", "view", "sort_by", "sort_order"} {
+		if len(query[key]) > 1 {
+			return listRequest{}, projectusecase.ProjectListRequest{}, invalidListRequestError{field: key}
+		}
+	}
+	status := query.Get("status")
+	if status != "" {
+		if _, err := sharedstatus.New(status); err != nil {
+			return listRequest{}, projectusecase.ProjectListRequest{}, invalidListRequestError{field: "status"}
+		}
+	}
+	view := query.Get("view")
+	if view == "" {
+		view = "active"
+	}
+	if view != "active" && view != "trash" {
+		return listRequest{}, projectusecase.ProjectListRequest{}, invalidListRequestError{field: "view"}
+	}
+	if view == "trash" && status != "" {
+		return listRequest{}, projectusecase.ProjectListRequest{}, invalidListRequestError{field: "status"}
+	}
+	sortBy := query.Get("sort_by")
+	if sortBy == "" {
+		sortBy = "created_at"
+	}
+	sortOrder := query.Get("sort_order")
+	if sortOrder == "" {
+		if sortBy == "created_at" {
+			sortOrder = "desc"
+		} else {
+			sortOrder = "asc"
+		}
+	}
+	order := "created_at_desc_id_desc"
+	if status != "" || view != "active" || sortBy != "created_at" || sortOrder != "desc" {
+		order = fmt.Sprintf("status=%s|view=%s|sort=%s|direction=%s", status, view, sortBy, sortOrder)
+	}
+	parsed, err := parseListRequest(r, codec, userID, "projects", "", order, ProjectListResponse{})
+	if err != nil {
+		return listRequest{}, projectusecase.ProjectListRequest{}, err
+	}
+	asOf := time.Now().UTC()
+	var cursor *projectusecase.CursorAnchor
+	if parsed.Anchor != nil {
+		parsed.Anchor.AsOf = ""
+		cursor = &projectusecase.CursorAnchor{
+			At: parsed.Anchor.At, ID: parsed.Anchor.ID,
+			Direction: parsed.Anchor.Direction, SortValue: parsed.Anchor.SortValue,
+			SortValueNull: parsed.Anchor.SortValueNull, PriorityWeight: parsed.Anchor.PriorityWeight,
+			Progress: parsed.Anchor.Progress,
+		}
+	}
+	request := projectusecase.ProjectListRequest{
+		Size: parsed.Size, Status: status, Trash: view == "trash", SortBy: sortBy,
+		SortOrder: sortOrder, Anchor: cursor, AsOf: asOf,
+	}
+	return parsed, request, nil
+}
+
+func encodeProjectCursor(codec *pagination.Codec, scope pagination.Scope, anchor projectusecase.CursorAnchor) (string, error) {
+	return pagination.Encode(codec, scope, listAnchor{
+		At: anchor.At, ID: anchor.ID, Direction: anchor.Direction,
+		SortValue: anchor.SortValue, SortValueNull: anchor.SortValueNull,
+		PriorityWeight: anchor.PriorityWeight, Progress: anchor.Progress,
+	})
 }
 
 func writeListError(w http.ResponseWriter, spec ErrSpec, err error) {

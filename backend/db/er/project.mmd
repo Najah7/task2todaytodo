@@ -27,6 +27,14 @@ erDiagram
         timestamptz updated_at "NOT NULL"
     }
 
+    status_master {
+        text status PK "NOT NULL"
+        text label "NOT NULL"
+        text label_jp "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
     projects {
         text id PK "NOT NULL"
         text user_id FK "NOT NULL"
@@ -35,6 +43,7 @@ erDiagram
         text goal "NULL"
         text description "NULL"
         text priority FK "NOT NULL"
+        text status FK "NOT NULL"
         date start_date "NULL"
         date end_date "NULL"
         integer revision "NOT NULL"
@@ -62,6 +71,7 @@ erDiagram
         text goal "NULL"
         text description "NULL"
         text priority "NOT NULL"
+        text status "NOT NULL"
         date start_date "NULL"
         date end_date "NULL"
         timestamptz deleted_at "NULL"
@@ -75,6 +85,7 @@ erDiagram
     users ||..o{ projects : changed_by
     project_type_master ||..o{ projects : classifies
     priority_master ||..o{ projects : prioritizes
+    status_master ||..o{ projects : status
     projects ||--o{ project_members : shares_with
     users ||--o{ project_members : member
     roles ||..o{ project_members : assigned_role

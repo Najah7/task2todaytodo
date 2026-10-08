@@ -42,6 +42,10 @@ func (repo taskTagRESTTaskRepository) GetByUserIDWithPermission(context.Context,
 	return repo.task, repo.err
 }
 
+func (repo taskTagRESTTaskRepository) LockByUserIDWithPermission(context.Context, taskdomain.UserID, taskdomain.TaskID, shared.Capability) (taskdao.Task, error) {
+	return repo.task, repo.err
+}
+
 type taskTagRESTRepositories struct {
 	taskusecase.Repositories
 	tasks taskusecase.TaskRepository

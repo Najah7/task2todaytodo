@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
@@ -29,6 +30,7 @@ type listTodoItemsRepositoriesFake struct {
 	taskProgressTestRepositories
 	tasks     TaskRepository
 	todoItems TodoItemRepository
+	lifecycle shared.ProjectWorkLifecycle
 	accesses  *[]string
 }
 
@@ -40,6 +42,32 @@ func (repos listTodoItemsRepositoriesFake) Tasks() TaskRepository {
 func (repos listTodoItemsRepositoriesFake) TodoItems() TodoItemRepository {
 	*repos.accesses = append(*repos.accesses, "todo-items")
 	return repos.todoItems
+}
+
+func (repos listTodoItemsRepositoriesFake) ProjectLifecycle() shared.ProjectWorkLifecycle {
+	if repos.lifecycle != nil {
+		return repos.lifecycle
+	}
+	return repos.taskProgressTestRepositories.ProjectLifecycle()
+}
+
+type listTodoItemsProjectLifecycleFake struct {
+	status       string
+	readCalls    int
+	captureCalls int
+}
+
+func (*listTodoItemsProjectLifecycleFake) LockParent(context.Context, string) error { return nil }
+func (f *listTodoItemsProjectLifecycleFake) ReadStatus(context.Context, string) (string, error) {
+	f.readCalls++
+	return f.status, nil
+}
+func (f *listTodoItemsProjectLifecycleFake) CaptureWorkState(context.Context, string, time.Time) (shared.ProjectWorkState, error) {
+	f.captureCalls++
+	return shared.ProjectWorkState{Status: f.status}, nil
+}
+func (*listTodoItemsProjectLifecycleFake) ReconcileWorkState(context.Context, string, string, shared.ProjectWorkState, time.Time) error {
+	return nil
 }
 
 type listTodoItemsTaskRepositoryFake struct {
@@ -196,5 +224,29 @@ func TestListTodoItemsUseCaseExecutePropagatesUOWError(t *testing.T) {
 	}
 	if uow.calls != 1 {
 		t.Errorf("UOW calls = %d, want 1", uow.calls)
+	}
+}
+
+func TestListTodoItemsPageReadsOnlyProjectStatusForDoneSuppression(t *testing.T) {
+	var accesses []string
+	taskRepo := &listTodoItemsTaskRepositoryFake{
+		task:     dao.Task{ID: "task-1", UserID: "user-1", ProjectID: "project-1"},
+		accesses: &accesses,
+	}
+	itemsRepo := &listTodoItemsRepositoryFake{accesses: &accesses}
+	lifecycle := &listTodoItemsProjectLifecycleFake{status: "done"}
+	uow := &listTodoItemsUOWFake{repos: listTodoItemsRepositoriesFake{
+		tasks: taskRepo, todoItems: itemsRepo, lifecycle: lifecycle, accesses: &accesses,
+	}}
+
+	page, err := NewListTodoItemsUseCase(uow, nil).ExecutePage(context.Background(), "user-1", "task-1", CursorPageRequest{Size: 20})
+	if err != nil {
+		t.Fatalf("ExecutePage() error = %v", err)
+	}
+	if lifecycle.readCalls != 1 || lifecycle.captureCalls != 0 {
+		t.Fatalf("Project lifecycle calls = ReadStatus:%d CaptureWorkState:%d; want status-only read", lifecycle.readCalls, lifecycle.captureCalls)
+	}
+	if len(page.Items) != 0 {
+		t.Errorf("ExecutePage() items = %#v, want no generated items", page.Items)
 	}
 }

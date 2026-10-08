@@ -2,7 +2,11 @@ package usecase
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func TestLoginUserUseCaseExecute(t *testing.T) {
@@ -32,4 +36,16 @@ func TestLoginUserUseCaseExecute(t *testing.T) {
 func TestLoginUserUseCasePropagatesRepositoryError(t *testing.T) {
 	_, err := NewLoginUserUseCase(&stubUserRepository{getByEmailErr: errGetUserByEmail}, nil).Execute(context.Background(), "user@example.com", "Password1!")
 	assertServiceErrorIs(t, err, errGetUserByEmail)
+}
+
+func TestLoginUserUseCaseMapsWrappedDriverNoRowsToInvalidCredentials(t *testing.T) {
+	driverErr := fmt.Errorf("get user by email: %w", pgx.ErrNoRows)
+	_, err := NewLoginUserUseCase(&stubUserRepository{getByEmailErr: driverErr}, nil).Execute(context.Background(), "unknown@example.com", "Password1!")
+
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("Execute() error = %v, want %v", err, ErrInvalidCredentials)
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		t.Errorf("Execute() exposed missing-user driver error: %v", err)
+	}
 }

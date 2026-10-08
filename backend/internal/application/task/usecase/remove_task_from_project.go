@@ -28,10 +28,15 @@ func (uc *RemoveTaskFromProjectUseCase) Execute(ctx context.Context, userID doma
 	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "RemoveTaskFromProjectUseCase.Execute", err) }()
 
 	var result dao.Task
+	asOf := time.Now()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		project, err := repos.TaskProjects().LockProjectByUserIDWithPermission(ctx, string(userID), string(projectID), shared.TaskUpdate())
 		if err != nil {
 			return err
+		}
+		lifecycle := repos.ProjectLifecycle()
+		if lifecycle == nil {
+			return ErrProjectLifecycleUnavailable
 		}
 
 		tasks := repos.Tasks()
@@ -51,12 +56,19 @@ func (uc *RemoveTaskFromProjectUseCase) Execute(ctx context.Context, userID doma
 		if task.ProjectID != string(projectID) {
 			result = task
 		} else {
+			before, err := lifecycle.CaptureWorkState(ctx, string(projectID), asOf)
+			if err != nil {
+				return err
+			}
 			result, err = tasks.RemoveFromProjectByUserID(ctx, userID, taskID, projectID, expectedRevision)
 			if err != nil {
 				return err
 			}
+			if err := lifecycle.ReconcileWorkState(ctx, string(userID), string(projectID), before, asOf); err != nil {
+				return err
+			}
 		}
-		rows, err := applyTaskProgress(ctx, tasks, []dao.Task{result}, time.Now())
+		rows, err := applyTaskProgress(ctx, tasks, []dao.Task{result}, asOf)
 		if err != nil {
 			return err
 		}

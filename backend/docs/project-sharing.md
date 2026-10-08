@@ -37,7 +37,10 @@ All routes below use the `/api` prefix and require bearer authentication.
 | Route | Behavior |
 | --- | --- |
 | `GET /projects` | Lists projects owned by the caller or shared with current read access |
+| `GET /projects/options` | Returns the shared Project type, priority, and status catalogs |
 | `GET /projects/{id}` | Reads project details and calculated progress |
+| `PATCH /projects/{id}/status` | Changes only Project status; requires the current Project ETag in `If-Match` |
+| `POST /projects/{id}/restore` | Restores a trashed Project; requires delete permission and the current Project ETag |
 | `GET /projects/{id}/tasks` | Lists visible Tasks in that Project, regardless of assignee |
 | `GET /projects/{id}/schedules` | Lists visible Schedules in that Project, regardless of assignee |
 | `POST /projects/{id}/schedules` | Creates a Schedule owned by the Project owner and initially assigned to that owner |
@@ -102,18 +105,41 @@ Schedule-owned and do not depend on Task revisions.
 
 ## Deletion and recurrence skips
 
-Deleting a Project sets `deleted_at` and atomically soft-deletes its Tasks,
-TodoItems, and Schedules. Deleting a Task soft-deletes its TodoItems only;
-Schedules are independent resources. Deleted resources and children are
-omitted from ordinary reads and cannot be edited or restored. Revision history
-is retained. Before deletion, current readers may read history. After deletion,
-history requires `deleted_history/read` (or implicit owner authority); removed
-members lose access even if they created an earlier revision.
+Deleting a Project soft-deletes only the Project row. Its Tasks, TodoItems,
+and Schedules retain their records and revisions. A trashed Project and its
+children are hidden from ordinary Project and child reads and writes until the
+Project is restored; restore changes only the parent. Project trash listing
+requires `project/delete`. Revision history is retained and keeps the existing
+`deleted_history/read` policy. Deleting a Task soft-deletes its TodoItems only;
+Schedules are independent resources.
 
 Skipping a recurrence occurrence sets `skipped_at`; it does not set
 `deleted_at`. Editors may skip and restore occurrences. Resource deletion is
 separate and irreversible, and skip restoration cannot resurrect a deleted
 occurrence or a child of a deleted Task or Project.
 
-These schema changes update the initial migrations and target new databases;
-they do not provide an upgrade/backfill migration for existing databases.
+## Project status and automatic lifecycle
+
+Projects and Tasks share the five status values `open`, `in_progress`,
+`pending`, `waiting_on_others`, and `done`. Status catalogs come from the shared
+`status_master` table and the shared application status catalog. Migration
+`000006_project_status` renames the original Task-only `task_status_master`
+without changing its rows, then adds Project status and revision history against
+that same master. A Project is automatically marked done when a child mutation
+changes its eligible work and leaves at least one eligible item with every
+direct Task done and every eligible Schedule occurrence complete. A done
+Project reopens only when a child mutation adds unfinished eligible work;
+unrelated edits and count-neutral changes do not reopen it. Explicit status
+changes persist the requested status. A manually reopened Project remains open
+even when its progress is 100; a Project whose status is done displays progress
+100.
+
+A done Project suppresses newly generated virtual recurring Schedule work and
+direct operations that would materialize an unsaved occurrence. Saved Task and
+Schedule children remain readable and editable, and saved skipped occurrences
+can be restored. A trashed Project hides all child operations, independently of
+the done-state recurrence rule.
+
+The Project schema uses the versioned migrations under `db/migrations`; apply
+all pending migrations when upgrading an existing database. The Task and
+Project ER diagrams both show their foreign keys to the shared `status_master`.

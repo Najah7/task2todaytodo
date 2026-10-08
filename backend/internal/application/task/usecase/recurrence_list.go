@@ -42,6 +42,10 @@ func expandTodoItemRows(rows []dao.TodoItem, request CursorPageRequest, asOf tim
 }
 
 func expandTodoItemRowsWithSkipped(rows []dao.TodoItem, request CursorPageRequest, asOf time.Time, taskDone bool, skipped map[string]map[string]bool) ([]dao.TodoItem, error) {
+	return expandTodoItemRowsWithProjectState(rows, request, asOf, taskDone, false, skipped)
+}
+
+func expandTodoItemRowsWithProjectState(rows []dao.TodoItem, request CursorPageRequest, asOf time.Time, taskDone, projectDone bool, skipped map[string]map[string]bool) ([]dao.TodoItem, error) {
 	if skipped == nil {
 		skipped = map[string]map[string]bool{}
 	}
@@ -101,7 +105,7 @@ func expandTodoItemRowsWithSkipped(rows []dao.TodoItem, request CursorPageReques
 			}
 			continue
 		}
-		if state == repeatStateActive && root.IntervalWeeks > 0 && !root.Deleted && !taskDone {
+		if state == repeatStateActive && root.IntervalWeeks > 0 && !root.Deleted && !taskDone && !projectDone {
 			phase := firstDate
 			if root.FrequencyAnchorDate != 0 {
 				phase = time.Unix(root.FrequencyAnchorDate, 0).UTC()
@@ -154,6 +158,9 @@ func expandTodoItemRowsWithSkipped(rows []dao.TodoItem, request CursorPageReques
 			}
 		}
 		if state == repeatStateActive && !taskDone && !firstDate.Before(localToday(asOf, location)) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasTodoItem(out, root.ID, root.OccurrenceDate) {
+			out = append(out, root)
+		}
+		if state == repeatStateActive && projectDone && !firstDate.Before(localToday(asOf, location)) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasTodoItem(out, root.ID, root.OccurrenceDate) {
 			out = append(out, root)
 		}
 		if request.FromDate != "" && firstDate.Before(localToday(asOf, location)) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasTodoItem(out, root.ID, root.OccurrenceDate) {

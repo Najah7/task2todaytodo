@@ -28,12 +28,12 @@ container_started=1
 port=""
 for _ in $(seq 1 60); do
 	port="$(docker port "$container_name" 5432/tcp | sed 's/.*://')"
-	if [ -n "$port" ] && docker exec "$container_name" pg_isready -U "$postgres_user" -d "$database_name" >/dev/null 2>&1; then
+	if [ -n "$port" ] && docker exec "$container_name" pg_isready -h 127.0.0.1 -U "$postgres_user" -d "$database_name" >/dev/null 2>&1; then
 		break
 	fi
 	sleep 1
 done
-if [ -z "$port" ] || ! docker exec "$container_name" pg_isready -U "$postgres_user" -d "$database_name" >/dev/null 2>&1; then
+if [ -z "$port" ] || ! docker exec "$container_name" pg_isready -h 127.0.0.1 -U "$postgres_user" -d "$database_name" >/dev/null 2>&1; then
 	echo "PostgreSQL integration container did not become ready" >&2
 	exit 1
 fi

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared/calendar"
+	sharedstatus "github.com/Najah7/task2todaytodo/internal/application/shared/status"
 )
 
 type ProjectID string
@@ -102,11 +103,24 @@ type Project struct {
 	ID                       ProjectID
 	UserID                   UserID
 	Type                     ProjectType
+	Status                   ProjectStatus
 	Title, Goal, Description string
 	Progress                 int
 	Priority                 Priority
 	Schedule                 ProjectSchedule
 	CreatedAt, UpdatedAt     time.Time
+}
+
+type ProjectStatus = sharedstatus.Status
+
+func NewProjectStatus(value string) (ProjectStatus, error) { return sharedstatus.New(value) }
+
+func (p Project) WithStatus(status ProjectStatus) (Project, error) {
+	if _, err := sharedstatus.New(status.Value); err != nil {
+		return Project{}, err
+	}
+	p.Status = status
+	return p, nil
 }
 
 func NewProject(id ProjectID, userID UserID, typ ProjectType, priority Priority, title string, startDate, endDate *time.Time) (Project, error) {
@@ -117,7 +131,8 @@ func NewProject(id ProjectID, userID UserID, typ ProjectType, priority Priority,
 	if err != nil {
 		return Project{}, err
 	}
-	p := Project{ID: id, UserID: userID, Type: typ, Priority: priority, Title: title, Schedule: schedule}
+	open, _ := sharedstatus.New(sharedstatus.Open)
+	p := Project{ID: id, UserID: userID, Type: typ, Status: open, Priority: priority, Title: title, Schedule: schedule}
 	return p, p.Validate()
 }
 func NewProjectWithDetails(id ProjectID, userID UserID, typ ProjectType, title, goal, description string, progress int, priority Priority, startDate, endDate *time.Time) (Project, error) {
@@ -133,7 +148,8 @@ func NewExistingProject(id ProjectID, userID UserID, typ ProjectType, title, goa
 	if err != nil {
 		return Project{}, err
 	}
-	p := Project{ID: id, UserID: userID, Type: typ, Title: title, Goal: goal, Description: description, Progress: progress, Priority: priority, Schedule: schedule, CreatedAt: createdAt, UpdatedAt: updatedAt}
+	open, _ := sharedstatus.New(sharedstatus.Open)
+	p := Project{ID: id, UserID: userID, Type: typ, Status: open, Title: title, Goal: goal, Description: description, Progress: progress, Priority: priority, Schedule: schedule, CreatedAt: createdAt, UpdatedAt: updatedAt}
 	if err := p.Validate(); err != nil {
 		return Project{}, err
 	}
@@ -147,6 +163,9 @@ func (p Project) Validate() error {
 		return ErrProjectUserIDEmpty
 	}
 	if _, err := NewProjectType(p.Type.Value); err != nil {
+		return err
+	}
+	if _, err := sharedstatus.New(p.Status.Value); err != nil {
 		return err
 	}
 	if p.Priority != (Priority{}) {

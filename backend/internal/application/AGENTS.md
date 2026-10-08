@@ -124,9 +124,10 @@ READ:  Repository -> DAO -> UseCase/REST handler
 - A UOW normally exposes repositories for its context. A cross-context
   orchestration UOW may additionally expose only narrow, consumer-defined
   command ports with primitive inputs. Root wiring implements them through
-  owner repositories bound to the same transaction. Project deletion and member
-  removal coordinate Task and Schedule bulk commands this way. Do not expose
-  foreign repositories or domain types through the UOW.
+  owner repositories bound to the same transaction. Project member removal
+  coordinates Task and Schedule reassignment commands this way. Project
+  deletion changes only the parent Project row and does not invoke child bulk
+  commands. Do not expose foreign repositories or domain types through the UOW.
 - Repository implementations may expose `WithTx(tx)` internally; do not add it
   to usecase repository ports. The usecase decides the transaction boundary.
 - The UOW guarantees atomicity and rollback. It does not own business policy,

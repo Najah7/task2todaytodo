@@ -64,14 +64,14 @@ func TestProjectScheduleAndTaskCreateUseProjectOwnerAndRecordMemberActor(t *test
 	})
 
 	store := application.NewStore(pool)
-	taskUOW := application.NewTaskUOW(pool, store.Task)
+	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project)
 	task, err := taskusecase.NewCreateTaskInProjectUseCase(taskUOW, nil).Execute(ctx, taskusecase.CreateTaskInProjectInput{
 		ID: taskdomain.TaskID(taskID), UserID: taskdomain.UserID(actorID), ProjectID: taskdomain.ProjectID(projectID), Title: "Created by editor",
 	})
 	if err != nil {
 		t.Fatalf("create shared Task: %v", err)
 	}
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule)
+	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
 	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
 	schedule, err := scheduleusecase.NewCreateScheduleUseCase(scheduleUOW, projectAuditTimezoneReader{}, nil).Execute(ctx, scheduleusecase.CreateScheduleInput{
 		ID: scheduledomain.ScheduleID(scheduleID), UserID: scheduledomain.UserID(actorID), ProjectID: scheduledomain.ProjectID(projectID),
@@ -278,8 +278,8 @@ func TestProjectMemberRemovalRacesCannotLeaveRemovedAssignee(t *testing.T) {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=ANY($1::text[])`, []string{ownerID, memberID})
 	})
 	store := application.NewStore(pool)
-	taskUOW := application.NewTaskUOW(pool, store.Task)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule)
+	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project)
+	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
 	raceCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -336,7 +336,7 @@ func TestProjectMemberRemovalRacesCannotLeaveRemovedAssignee(t *testing.T) {
 	}
 }
 
-func TestProjectDeletionSoftDeletesTaskAndScheduleChildren(t *testing.T) {
+func TestProjectDeletionLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, projectID := ulid.Make().String(), ulid.Make().String()
@@ -371,13 +371,17 @@ func TestProjectDeletionSoftDeletesTaskAndScheduleChildren(t *testing.T) {
 	if err := projectusecase.NewDeleteProjectUseCase(uow, nil).Execute(ctx, projectdomain.UserID(ownerID), projectdomain.ProjectID(projectID), 1); err != nil {
 		t.Fatalf("delete Project: %v", err)
 	}
-	for _, row := range []struct{ table, id string }{{"projects", projectID}, {"tasks", taskID}, {"todo_items", todoID}, {"schedules", scheduleID}} {
+	for _, row := range []struct {
+		table string
+		id    string
+		want  bool
+	}{{"projects", projectID, true}, {"tasks", taskID, false}, {"todo_items", todoID, false}, {"schedules", scheduleID, false}} {
 		var deleted bool
 		if err := pool.QueryRow(ctx, fmt.Sprintf(`SELECT deleted_at IS NOT NULL FROM %s WHERE id=$1`, row.table), row.id).Scan(&deleted); err != nil {
 			t.Fatal(err)
 		}
-		if !deleted {
-			t.Errorf("%s %s remained live after Project deletion", row.table, row.id)
+		if deleted != row.want {
+			t.Errorf("%s %s deleted=%t after Project deletion; want %t", row.table, row.id, deleted, row.want)
 		}
 	}
 	var taskRevision, scheduleRevision, projectRevision int32
@@ -391,8 +395,8 @@ func TestProjectDeletionSoftDeletesTaskAndScheduleChildren(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT revision,changed_by FROM projects WHERE id=$1`, projectID).Scan(&projectRevision, &projectActor); err != nil {
 		t.Fatal(err)
 	}
-	if taskRevision != 2 || scheduleRevision != 2 || projectRevision != 2 || taskActor != ownerID || scheduleActor != ownerID || projectActor != ownerID {
-		t.Fatalf("delete revisions Task=%d/%q Schedule=%d/%q Project=%d/%q; want revision 2 attributed to owner", taskRevision, taskActor, scheduleRevision, scheduleActor, projectRevision, projectActor)
+	if taskRevision != 1 || scheduleRevision != 1 || projectRevision != 2 || taskActor != ownerID || scheduleActor != ownerID || projectActor != ownerID {
+		t.Fatalf("delete revisions Task=%d/%q Schedule=%d/%q Project=%d/%q; want unchanged child revisions 1 and parent revision 2 attributed to owner", taskRevision, taskActor, scheduleRevision, scheduleActor, projectRevision, projectActor)
 	}
 }
 
@@ -502,7 +506,7 @@ func TestProjectProgressUsesScheduleWallTimeAcrossDSTGap(t *testing.T) {
 	}
 }
 
-func TestProjectTaskAndScheduleCreationRaceWithDeletionLeavesNoLiveChildren(t *testing.T) {
+func TestProjectTaskAndScheduleCreationRaceWithParentOnlyDeletion(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, editorID, projectID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
@@ -529,8 +533,8 @@ func TestProjectTaskAndScheduleCreationRaceWithDeletionLeavesNoLiveChildren(t *t
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=ANY($1::text[])`, []string{ownerID, editorID})
 	})
 	store := application.NewStore(pool)
-	taskUOW := application.NewTaskUOW(pool, store.Task)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule)
+	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project)
+	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
 	taskIDValue, scheduleIDValue := taskdomain.TaskID(taskID), scheduledomain.ScheduleID(scheduleID)
 	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
@@ -568,8 +572,19 @@ func TestProjectTaskAndScheduleCreationRaceWithDeletionLeavesNoLiveChildren(t *t
 	if deleteErr != nil {
 		t.Fatalf("delete Project during child creation: %v", deleteErr)
 	}
-	_ = taskErr
-	_ = scheduleErr
+	if taskErr != nil && !errors.Is(taskErr, taskusecase.ErrTaskProjectNotFound) {
+		t.Fatalf("Task creation race error = %v; want success or deleted Project", taskErr)
+	}
+	if scheduleErr != nil && !errors.Is(scheduleErr, scheduleusecase.ErrScheduleProjectNotFound) {
+		t.Fatalf("Schedule creation race error = %v; want success or deleted Project", scheduleErr)
+	}
+	var projectDeleted bool
+	if err := pool.QueryRow(ctx, `SELECT deleted_at IS NOT NULL FROM projects WHERE id=$1`, projectID).Scan(&projectDeleted); err != nil {
+		t.Fatal(err)
+	}
+	if !projectDeleted {
+		t.Fatal("Project is live after successful deletion")
+	}
 	var activeTasks, activeSchedules int32
 	if err := pool.QueryRow(ctx, `SELECT count(*)::integer FROM tasks WHERE project_id=$1 AND deleted_at IS NULL`, projectID).Scan(&activeTasks); err != nil {
 		t.Fatal(err)
@@ -577,12 +592,19 @@ func TestProjectTaskAndScheduleCreationRaceWithDeletionLeavesNoLiveChildren(t *t
 	if err := pool.QueryRow(ctx, `SELECT count(*)::integer FROM schedules WHERE project_id=$1 AND deleted_at IS NULL`, projectID).Scan(&activeSchedules); err != nil {
 		t.Fatal(err)
 	}
-	if activeTasks != 0 || activeSchedules != 0 {
-		t.Fatalf("deleted Project retains live children: Tasks=%d Schedules=%d (create errors Task=%v Schedule=%v)", activeTasks, activeSchedules, taskErr, scheduleErr)
+	wantTasks, wantSchedules := int32(0), int32(0)
+	if taskErr == nil {
+		wantTasks = 1
+	}
+	if scheduleErr == nil {
+		wantSchedules = 1
+	}
+	if activeTasks != wantTasks || activeSchedules != wantSchedules {
+		t.Fatalf("parent-only delete race child states: Tasks=%d/%d Schedules=%d/%d (create errors Task=%v Schedule=%v)", activeTasks, wantTasks, activeSchedules, wantSchedules, taskErr, scheduleErr)
 	}
 }
 
-func TestProjectDeletionCascadesTodoCreatedWhileWaitingForTaskLock(t *testing.T) {
+func TestProjectDeletionLeavesTodoCreatedBeforeParentLockUntouched(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, editorID, projectID, taskID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
@@ -652,7 +674,7 @@ func TestProjectDeletionCascadesTodoCreatedWhileWaitingForTaskLock(t *testing.T)
 	childPool := projectRaceNamedPool(t, childApp)
 	deletePool := projectRaceNamedPool(t, deleteApp)
 	childStore, deleteStore := application.NewStore(childPool), application.NewStore(deletePool)
-	create := taskusecase.NewCreateTodoItemUseCase(application.NewTaskUOW(childPool, childStore.Task), projectTaskAuditTimezoneReader{}, nil)
+	create := taskusecase.NewCreateTodoItemUseCase(application.NewTaskUOW(childPool, childStore.Task, childStore.Project), projectTaskAuditTimezoneReader{}, nil)
 	remove := projectusecase.NewDeleteProjectUseCase(application.NewProjectUOW(deletePool, deleteStore.Project, deleteStore.Task, deleteStore.Schedule), nil)
 	raceCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
@@ -682,19 +704,20 @@ func TestProjectDeletionCascadesTodoCreatedWhileWaitingForTaskLock(t *testing.T)
 		select {
 		case err := <-operation.ch:
 			if err != nil {
-				t.Fatalf("%s during Todo cascade race: %v", operation.name, err)
+				t.Fatalf("%s during parent-only Project deletion race: %v", operation.name, err)
 			}
 		case <-raceCtx.Done():
 			t.Fatalf("%s did not finish before race deadline: %v", operation.name, raceCtx.Err())
 		}
 	}
-	for table, id := range map[string]string{"tasks": taskID, "todo_items": todoID} {
+	for table, id := range map[string]string{"projects": projectID, "tasks": taskID, "todo_items": todoID} {
 		var deleted bool
 		if err := pool.QueryRow(ctx, `SELECT deleted_at IS NOT NULL FROM `+table+` WHERE id=$1`, id).Scan(&deleted); err != nil {
-			t.Fatalf("read %s after Project delete/Todo create race: %v", table, err)
+			t.Fatalf("read %s after parent-only Project delete/Todo create race: %v", table, err)
 		}
-		if !deleted {
-			t.Errorf("%s %s remains active after Project deletion", table, id)
+		wantDeleted := table == "projects"
+		if deleted != wantDeleted {
+			t.Errorf("%s %s deleted=%t after Project deletion race; want %t", table, id, deleted, wantDeleted)
 		}
 	}
 }

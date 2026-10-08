@@ -2,6 +2,7 @@
 SELECT s.id, s.user_id, s.project_id, s.assignee_id, s.title, s.description, s.location,
        r.interval_weeks, r.repeat_state, r.frequency_anchor_date,
        s.series_id, s.occurrence_date, s.timezone, s.is_exception, s.completed,
+       COALESCE((SELECT p.status = 'done' FROM projects p WHERE p.id = s.project_id AND p.deleted_at IS NULL), false) AS project_done,
        (s.deleted_at IS NOT NULL) AS deleted,
        ARRAY(SELECT f.frequency FROM schedule_frequencies f WHERE f.schedule_id = s.series_id ORDER BY f.frequency)::text[] AS frequencies,
        s.start_at, s.end_at, s.created_at, s.updated_at, s.revision, s.changed_by
@@ -39,6 +40,7 @@ FOR UPDATE;
 SELECT s.id, s.user_id, s.project_id, s.assignee_id, s.title, s.description, s.location,
        r.interval_weeks, r.repeat_state, r.frequency_anchor_date,
        s.series_id, s.occurrence_date, s.timezone, s.is_exception, s.completed,
+       COALESCE((SELECT p.status = 'done' FROM projects p WHERE p.id = s.project_id AND p.deleted_at IS NULL), false) AS project_done,
        (s.deleted_at IS NOT NULL) AS deleted,
        ARRAY(SELECT f.frequency FROM schedule_frequencies f WHERE f.schedule_id = s.series_id ORDER BY f.frequency)::text[] AS frequencies,
        s.start_at, s.end_at, s.created_at, s.updated_at, s.revision, s.changed_by
@@ -60,6 +62,7 @@ ORDER BY s.start_at, s.id;
 SELECT s.id, s.user_id, s.project_id, s.assignee_id, s.title, s.description, s.location,
        r.interval_weeks, r.repeat_state, r.frequency_anchor_date,
        s.series_id, s.occurrence_date, s.timezone, s.is_exception, s.completed,
+       COALESCE((SELECT p.status = 'done' FROM projects p WHERE p.id = s.project_id AND p.deleted_at IS NULL), false) AS project_done,
        (s.deleted_at IS NOT NULL) AS deleted,
        ARRAY(SELECT f.frequency FROM schedule_frequencies f WHERE f.schedule_id = s.series_id ORDER BY f.frequency)::text[] AS frequencies,
        s.start_at, s.end_at, s.created_at, s.updated_at, s.revision, s.changed_by
@@ -117,6 +120,7 @@ FROM schedules s
 WHERE s.id = s.series_id AND s.assignee_id = sqlc.arg(user_id)::text
   AND s.repeat_state = 'active' AND s.deleted_at IS NULL
   AND (s.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = s.project_id AND p.deleted_at IS NULL))
+  AND (s.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = s.project_id AND p.deleted_at IS NULL AND p.status <> 'done'))
   AND schedule_has_permission(s.id, sqlc.arg(user_id)::text, 'schedule', 'read')
 ORDER BY s.id;
 

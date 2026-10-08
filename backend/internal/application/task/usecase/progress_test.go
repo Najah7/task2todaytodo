@@ -17,6 +17,22 @@ type taskProgressTestRepository struct{ TaskRepository }
 type taskProgressTestRepositories struct{ Repositories }
 
 func (taskProgressTestRepositories) Tasks() TaskRepository { return taskProgressTestRepository{} }
+func (taskProgressTestRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle {
+	return inertProjectWorkLifecycle{}
+}
+
+type inertProjectWorkLifecycle struct{}
+
+func (inertProjectWorkLifecycle) LockParent(context.Context, string) error { return nil }
+func (inertProjectWorkLifecycle) ReadStatus(context.Context, string) (string, error) {
+	return "open", nil
+}
+func (inertProjectWorkLifecycle) CaptureWorkState(context.Context, string, time.Time) (shared.ProjectWorkState, error) {
+	return shared.ProjectWorkState{Status: "open"}, nil
+}
+func (inertProjectWorkLifecycle) ReconcileWorkState(context.Context, string, string, shared.ProjectWorkState, time.Time) error {
+	return nil
+}
 
 func (taskProgressTestRepository) ReadTaskProgressSources(_ context.Context, taskIDs []string, _ time.Time) (dao.TaskProgressSources, error) {
 	sources := dao.TaskProgressSources{Counts: map[string]dao.TaskProgressCounts{}, Statuses: map[string]dao.TaskStatus{}}
@@ -27,6 +43,10 @@ func (taskProgressTestRepository) ReadTaskProgressSources(_ context.Context, tas
 }
 
 func (taskProgressTestRepository) LockByUserID(_ context.Context, userID domain.UserID, taskID domain.TaskID) (dao.Task, error) {
+	return dao.Task{ID: string(taskID), UserID: string(userID), Priority: dao.Priority{Value: "low"}, Status: dao.TaskStatus{Value: "open"}}, nil
+}
+
+func (taskProgressTestRepository) GetByUserIDWithPermission(_ context.Context, userID domain.UserID, taskID domain.TaskID, _ shared.Capability) (dao.Task, error) {
 	return dao.Task{ID: string(taskID), UserID: string(userID), Priority: dao.Priority{Value: "low"}, Status: dao.TaskStatus{Value: "open"}}, nil
 }
 

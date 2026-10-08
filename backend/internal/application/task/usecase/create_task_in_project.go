@@ -34,8 +34,17 @@ func (uc *CreateTaskInProjectUseCase) Execute(ctx context.Context, input CreateT
 	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "CreateTaskInProjectUseCase.Execute", err) }()
 
 	var created dao.Task
+	asOf := time.Now()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		project, err := repos.TaskProjects().LockProjectByUserIDWithPermission(ctx, string(input.UserID), string(input.ProjectID), shared.TaskCreate())
+		if err != nil {
+			return err
+		}
+		lifecycle := repos.ProjectLifecycle()
+		if lifecycle == nil {
+			return ErrProjectLifecycleUnavailable
+		}
+		before, err := lifecycle.CaptureWorkState(ctx, project.ID, asOf)
 		if err != nil {
 			return err
 		}
@@ -75,7 +84,10 @@ func (uc *CreateTaskInProjectUseCase) Execute(ctx context.Context, input CreateT
 			return err
 		}
 		created, err = repos.Tasks().CreateInProject(ctx, input.UserID, task)
-		return err
+		if err != nil {
+			return err
+		}
+		return lifecycle.ReconcileWorkState(ctx, string(input.UserID), project.ID, before, asOf)
 	})
 	if err != nil {
 		return dao.Task{}, err

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
 	"github.com/Najah7/task2todaytodo/internal/logging"
 )
@@ -36,6 +37,7 @@ func NewCreateScheduleUseCase(uow UOW, timezones UserTimezoneReader, logger logg
 func (uc *CreateScheduleUseCase) Execute(ctx context.Context, input CreateScheduleInput) (output dao.Schedule, err error) {
 	defer func() { logUnexpectedScheduleFailure(uc.logger, ctx, "CreateScheduleUseCase.Execute", err) }()
 	var created dao.Schedule
+	asOf := time.Now()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		timezone, err := uc.timezones.GetTimezone(ctx, string(input.UserID))
 		if err != nil {
@@ -64,12 +66,24 @@ func (uc *CreateScheduleUseCase) Execute(ctx context.Context, input CreateSchedu
 			return err
 		}
 		if input.ProjectID != "" {
+			if err := requireScheduleProjectPermission(ctx, repos.Schedules(), input.UserID, input.ProjectID, shared.ScheduleCreate()); err != nil {
+				return err
+			}
+		}
+		before, err := lockAndCaptureScheduleProjects(ctx, repos, []string{string(input.ProjectID)}, asOf)
+		if err != nil {
+			return err
+		}
+		if input.ProjectID != "" {
 			if err := repos.Schedules().LockProjectForScheduleMutation(ctx, input.ProjectID); err != nil {
 				return err
 			}
 		}
 		created, err = repos.Schedules().CreateByUserID(ctx, input.UserID, root)
-		return err
+		if err != nil {
+			return err
+		}
+		return finishScheduleProjectMutation(ctx, repos, input.UserID, before, asOf)
 	})
 	if err != nil {
 		return dao.Schedule{}, err

@@ -28,7 +28,7 @@ func (r *ProjectRepository) ListProjectRevisionsByActor(ctx context.Context, act
 	}
 	out := make([]dao.ProjectRevision, 0, len(rows))
 	for _, x := range rows {
-		out = append(out, dao.ProjectRevision{ID: x.ID, Revision: x.Revision, UserID: x.UserID, Type: x.Type, Title: x.Title, Goal: textValue(x.Goal), Description: textValue(x.Description), Priority: x.Priority, StartDate: dateString(x.StartDate), EndDate: dateString(x.EndDate), DeletedAt: unixPointer(x.DeletedAt), CreatedAt: x.CreatedAt.Time.Unix(), UpdatedAt: x.UpdatedAt.Time.Unix(), ChangedBy: x.ChangedBy, ChangedAt: x.ChangedAt.Time.Unix(), CursorAt: x.ChangedAt.Time.UTC().Format(time.RFC3339Nano)})
+		out = append(out, dao.ProjectRevision{ID: x.ID, Revision: x.Revision, UserID: x.UserID, Type: x.Type, Title: x.Title, Goal: textValue(x.Goal), Description: textValue(x.Description), Priority: x.Priority, Status: x.Status, StartDate: dateString(x.StartDate), EndDate: dateString(x.EndDate), DeletedAt: unixPointer(x.DeletedAt), CreatedAt: x.CreatedAt.Time.Unix(), UpdatedAt: x.UpdatedAt.Time.Unix(), ChangedBy: x.ChangedBy, ChangedAt: x.ChangedAt.Time.Unix(), CursorAt: x.ChangedAt.Time.UTC().Format(time.RFC3339Nano)})
 	}
 	return out, nil
 }
