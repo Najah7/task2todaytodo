@@ -7,6 +7,7 @@ const icons: Record<Tab, ReactNode> = {
   projects: <path d="M3 7V5h6l2 2h10v13H3z" />,
   tasks: <path d="m3 6 2 2 3-3m-5 7 2 2 3-3m-5 7 2 2 3-3M11 6h10M11 12h10M11 18h10" />,
   calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4m10-4v4M3 10h18" /></>,
+  members: <><circle cx="9" cy="7" r="4" /><path d="M2 21v-2a7 7 0 0 1 14 0v2M16 3a4 4 0 0 1 0 8m3 3a7 7 0 0 1 3 5v2" /></>,
   kpi: <path d="M3 3v18h18M7 17v-6m5 6V6m5 11V9" />,
   profile: <><circle cx="12" cy="7" r="4" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" /></>,
 }

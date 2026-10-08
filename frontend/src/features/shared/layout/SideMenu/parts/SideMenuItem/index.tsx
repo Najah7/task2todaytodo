@@ -16,6 +16,7 @@ const labelKeys: Record<Tab, MessageKey> = {
   projects: "sidebar.item.projects",
   tasks: "sidebar.item.tasks",
   calendar: "sidebar.item.calendar",
+  members: "sidebar.item.members",
   kpi: "sidebar.item.kpi",
   profile: "sidebar.item.profile",
 }
