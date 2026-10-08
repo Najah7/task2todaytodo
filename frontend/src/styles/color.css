@@ -8,6 +8,8 @@
   --color-attention: #ff5a1f;
   --color-attention-text: #c2410c;
   --color-attention-soft: #fff1ea;
+  --color-overdue-background: #eaf2f8;
+  --color-overdue-foreground: #285171;
   --color-success-text: #1b7a3d;
   --color-success-soft: #eaf6ee;
   --color-danger: #d12f2f;
@@ -56,6 +58,8 @@
   --color-on-primary: #17181c;
   --color-attention-text: #ff9c73;
   --color-attention-soft: #3a2117;
+  --color-overdue-background: #203449;
+  --color-overdue-foreground: #b8d8f2;
   --color-success-text: #6fcf97;
   --color-success-soft: #1c3326;
   --color-danger: #ff6b66;

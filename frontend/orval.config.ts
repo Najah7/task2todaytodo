@@ -3,6 +3,12 @@ import { fileURLToPath } from "node:url"
 import { defineConfig } from "orval"
 
 const clientPath = fileURLToPath(new URL("./src/api/generated/auth.ts", import.meta.url))
+const projectsClientPath = fileURLToPath(new URL("./src/api/generated/projects.ts", import.meta.url))
+
+async function replaceSharedHttpImport(path: string) {
+  const client = await readFile(path, "utf8")
+  await writeFile(path, client.replaceAll(/from (["'])\.\.\/http(?:\.ts)?\1/g, 'from "~/api/http"'))
+}
 
 export default defineConfig({
   auth: {
@@ -28,8 +34,34 @@ export default defineConfig({
     },
     hooks: {
       afterAllFilesWrite: async () => {
-        const client = await readFile(clientPath, "utf8")
-        await writeFile(clientPath, client.replaceAll(/from (["'])\.\.\/http(?:\.ts)?\1/g, 'from "~/api/http"'))
+        await replaceSharedHttpImport(clientPath)
+      },
+    },
+  },
+  projects: {
+    input: {
+      target: "../backend/docs/swagger.json",
+      filters: { tags: ["Projects"] },
+    },
+    output: {
+      baseUrl: "/api",
+      target: projectsClientPath,
+      tsconfig: "./tsconfig.app.json",
+      client: "react-query",
+      httpClient: "fetch",
+      override: {
+        mutator: {
+          path: "./src/api/http.ts",
+          name: "apiFetch",
+          alias: { "~": fileURLToPath(new URL("./src", import.meta.url)) },
+        },
+        fetch: { includeHttpResponseReturnType: false, forceSuccessResponse: true },
+        query: { version: 5 },
+      },
+    },
+    hooks: {
+      afterAllFilesWrite: async () => {
+        await replaceSharedHttpImport(projectsClientPath)
       },
     },
   },

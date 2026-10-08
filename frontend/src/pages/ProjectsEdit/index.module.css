@@ -1,0 +1,11 @@
+.state {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: var(--space-md);
+}
+
+.state h1,
+.state p {
+  margin: 0;
+}

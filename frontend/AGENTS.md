@@ -33,6 +33,13 @@
 - `src/styles/` is the design-value source of truth; `DESIGN.md` references it. Use global `text-*` typography classes and CSS variables instead of redefining values locally.
 - Prefer `rem` for scalable dimensions and `em` for media queries; `px` is appropriate for thin borders and outlines.
 
+## Notifications
+
+- Define a small shared toast interface in `src/features/shared/notification`; features use this interface for toast notifications.
+- Show field validation errors, such as required fields and date relationships, persistently next to the relevant inputs.
+- Use toasts to report success or failure for create, save, status change, move to trash, restore, and network errors.
+- After a failed status change, notify the user with a toast and refetch the relevant server state to reconcile the UI.
+
 ## Tests
 
 - `e2e/`: Playwright tests for important user journeys against the real backend and database. Do not mock API responses.

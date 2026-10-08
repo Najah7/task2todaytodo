@@ -1,0 +1,209 @@
+.tableScroll {
+  max-width: 100%;
+  min-width: 0;
+  overflow: auto;
+}
+
+.tableScroll:focus-visible {
+  outline: var(--focus-width) solid var(--color-primary);
+  outline-offset: calc(-1 * var(--focus-width));
+}
+
+.table {
+  width: 100%;
+  min-width: 68rem;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.table th {
+  height: var(--size-table-header-height);
+  padding: 0 var(--space-md);
+  background: var(--color-raised);
+  color: var(--color-text-body);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table th:last-child,
+.table td:last-child {
+  position: sticky;
+  right: 0;
+}
+
+.table th:last-child {
+  z-index: 2;
+  background: var(--color-raised);
+  box-shadow: inset var(--border-width) 0 0 var(--color-border-strong);
+}
+
+.table td:last-child {
+  z-index: 1;
+  background: var(--color-surface);
+  box-shadow: inset var(--border-width) 0 0 var(--color-border);
+}
+
+.table tbody tr:hover td:last-child {
+  background: var(--color-row-selected);
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: var(--space-20);
+}
+
+.table th:nth-child(2),
+.table td:nth-child(2),
+.table th:nth-child(4),
+.table td:nth-child(4),
+.table th:nth-child(5),
+.table td:nth-child(5) {
+  text-align: right;
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: var(--size-table-header-height);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sortButton span {
+  color: var(--color-primary);
+  font-size: 1rem;
+}
+
+.table td {
+  height: var(--size-table-row-height);
+  padding: var(--space-sm) var(--space-md);
+  border-top: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-body);
+  vertical-align: middle;
+}
+
+.table tbody tr:hover td {
+  background: var(--color-row-selected);
+}
+
+.numeric {
+  font-variant-numeric: var(--font-variant-numeric);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.projectName {
+  display: grid;
+  gap: var(--space-xs);
+  max-width: 22rem;
+  overflow-wrap: anywhere;
+}
+
+.projectName strong {
+  color: var(--color-text);
+}
+
+.projectName span {
+  color: var(--color-text-muted);
+}
+
+.progressCell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  min-width: 7rem;
+}
+
+.progressTrack {
+  width: min(5.25rem, 40%);
+  height: var(--size-progress-height);
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+}
+
+.progressFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+}
+
+.overdue {
+  display: inline-block;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-xs);
+  background: var(--color-overdue-background);
+  color: var(--color-overdue-foreground);
+  white-space: nowrap;
+}
+
+.today {
+  display: inline-block;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-xs);
+  background: var(--color-attention-background);
+  color: var(--color-attention-foreground);
+}
+
+.statusSelect {
+  max-width: 11rem;
+  min-height: var(--size-inline-editor-height);
+  padding-inline: var(--space-sm);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-xs);
+  white-space: nowrap;
+}
+
+.iconButton {
+  display: inline-grid;
+  place-items: center;
+  width: var(--size-button-small-height);
+  height: var(--size-button-small-height);
+  padding: var(--space-sm);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  color: var(--color-danger-text);
+  cursor: pointer;
+}
+
+.iconButton:hover:not(:disabled) {
+  background: var(--color-danger-soft);
+}
+
+.iconButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.iconButton svg {
+  width: var(--size-control-icon-small);
+  height: var(--size-control-icon-small);
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: var(--icon-stroke-width);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}

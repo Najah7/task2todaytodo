@@ -11,6 +11,17 @@ export class SessionError extends Error {
   }
 }
 
+export function getAuthFieldError(error: unknown): { field: "email" | "password"; translationKey: MessageKey } | null {
+  if (!(error instanceof ApiError)) return null
+  const details = (error.data as RestErrResponse | undefined)?.error?.details ?? []
+  for (const detail of details) {
+    if (detail.code === "invalid_email") return { field: "email", translationKey: "auth.error.invalidEmail" }
+    if (detail.code === "email_already_exists") return { field: "email", translationKey: "auth.error.emailExists" }
+    if (detail.code === "invalid_password") return { field: "password", translationKey: "auth.error.invalidPassword" }
+  }
+  return null
+}
+
 export function getAuthErrorMessage(error: unknown): MessageKey {
   if (error instanceof SessionError) return error.translationKey
   if (error instanceof ApiError) {

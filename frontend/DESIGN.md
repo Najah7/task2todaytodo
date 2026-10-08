@@ -29,8 +29,8 @@ Task2TodayTodo turns big tasks into today's to-dos. The user collects tasks, spl
 The visual language is a deliberate crossover: **a to-do list × freee** (the Japanese cloud accounting app). We borrow freee's way of handling business data, not its brand:
 
 - A calm **warm-gray ground** with **white cards** in light mode, and **warm-charcoal ground** with **slightly lighter cards** in dark mode.
-- **Black actions** in light mode and **near-white actions** in dark mode. Orange appears only when something needs attention or marks "now". There is no blue in the product UI.
-- **Business-grade tables**: column headers on a tinted row, right-aligned tabular numbers, and a **totals row** (合計) at the bottom.
+- **Black actions** in light mode and **near-white actions** in dark mode. Orange appears only when something needs attention or marks "now". Blue is reserved for the agreed pale overdue-days label on Projects; use its semantic theme tokens and do not use blue for other roles.
+- **Business-grade tables**: column headers on a tinted row and right-aligned tabular numbers. Add a **totals row** (合計) only where the screen specification calls for one; Projects explicitly has none.
 - **Suggest, then confirm.** Like freee's automatic bookkeeping, the app pre-fills a guess (project, date) and the user approves it with a per-row **登録 (Register)** button, or approves many at once with **まとめて登録 (Register selected)**.
 - **Plan vs. actual (予実)** thinking in reporting: planned time, actual time, variance, completion rate.
 
@@ -40,7 +40,7 @@ The tone is polite and helpful, never chatty. It uses short です・ます sent
 
 ## Colors
 
-Use [color.css](src/styles/color.css) for all color values and pairs. Its `:root` definitions provide light mode and `:root[data-display="dark"]` provides dark mode. Both modes use the same variable names and typography. Neutrals carry structure, theme-specific primary colors carry action, and orange carries attention. The UI has no blue.
+Use [color.css](src/styles/color.css) for all color values and pairs. Its `:root` definitions provide light mode and `:root[data-display="dark"]` provides dark mode. Both modes use the same variable names and typography. Neutrals carry structure, theme-specific primary colors carry action, orange carries attention, and the overdue pair marks only overdue Project days.
 
 At startup, use the saved display mode or the OS preference (`prefers-color-scheme`) when no selection is saved. Place DisplaySwitcher next to LanguageSwitcher in both application and authentication headers. Manual choices are saved in `localStorage`; if storage is unavailable, the selection applies for the current session. [features/display](src/features/display/index.ts) initializes the mode before React renders and applies manual changes in event handlers.
 
@@ -57,6 +57,7 @@ At startup, use the saved display mode or the OS preference (`prefers-color-sche
 | Actions | `--color-action-background`, `--color-action-text` | Primary buttons and checked/selected controls |
 | Selection | `--color-selected-background`, `--color-selected-text`, `--color-selected-border` | Active navigation, suggestions, info bands, and calendar events |
 | Attention | `--color-attention-background`, `--color-attention-foreground` | Waiting counts and deadline warnings |
+| Overdue label | `--color-overdue-background`, `--color-overdue-foreground` | Project rows showing `超過xx日` / `Overdue by xx days` |
 | Success | `--color-success-background`, `--color-success-foreground` | Done state |
 | Danger | `--color-danger` | Negative variances and Sunday dates |
 | Errors | `--color-danger-text`, `--color-danger-soft`, `--color-danger-border` | Error messages and banners |
@@ -64,7 +65,7 @@ At startup, use the saved display mode or the OS preference (`prefers-color-sche
 | Selected row | `--color-row-selected` | Selected table rows |
 | Weekend | `--color-weekend` | Weekend calendar columns |
 
-Use `--color-primary` for links, progress fills, actual-time bars, today's date, and the Next tag. Use `--color-primary-strong` for emphasized navigation/info text, `--color-avatar` for the avatar background, and `--color-chart-planned` for planned chart bars. Use `--color-attention` for the logo and calendar's current-time marker. Orange never marks an action; small orange text and badges use the attention foreground/background pair. Text on primary actions uses `--color-on-primary`, which becomes dark in dark mode.
+Use `--color-primary` for links, progress fills, actual-time bars, today's date, and the Next tag. Use `--color-primary-strong` for emphasized navigation/info text, `--color-avatar` for the avatar background, and `--color-chart-planned` for planned chart bars. Use `--color-attention` for the logo and calendar's current-time marker. The Projects overdue-day label is the only blue exception and uses `--color-overdue-background` / `--color-overdue-foreground`. Orange never marks an action; small orange text and badges use the attention foreground/background pair. Text on primary actions uses `--color-on-primary`, which becomes dark in dark mode.
 
 ## Typography
 
@@ -155,11 +156,12 @@ Do not stack shadows or use elevation to indicate focus.
 - 予定 (Scheduled): normal body text on raised with a divider-colored outline.
 - 未着手 (Not started): body text on surface with a strong border.
 - 今日 / deadline warnings: attention pair.
+- Project overdue days: overdue pair, with the row copy `超過xx日` / `Overdue by xx days`.
 - 推測 (Suggested): selection pair, `text-caption`, and `--size-suggestion-tag-height`.
 
 **Tabs.** Use `--size-tab-height`, horizontal `--space-md` padding, and `text-body`. The active tab uses primary text, `text-body-strong`, and an underline at `--size-tab-indicator`. Each tab has a count chip; waiting items use the attention pair. Example: 振り分け待ち 4 / 登録済み 9 / 対象外 1.
 
-**Tables.** Headers use raised, `text-label`, and `--size-table-header-height`. Rows use surface, `text-body`, `--size-table-row-height`, and divider-colored borders. Numbers use `text-numeric` and right alignment. The 合計 totals row uses raised and `text-body-strong`. Selected rows use `--color-row-selected`. Inline editors use `--size-inline-editor-height` and `--radius-xs`.
+**Tables.** Headers use raised, `text-label`, and `--size-table-header-height`. Rows use surface, `text-body`, `--size-table-row-height`, and divider-colored borders. Numbers use `text-numeric` and right alignment. Where specified, a 合計 totals row uses raised and `text-body-strong`; Projects has no totals row. Selected rows use `--color-row-selected`. Inline editors use `--size-inline-editor-height` and `--radius-xs`.
 
 **Suggestion row (Task Inbox).** Columns: checkbox · subtask title (parent task beneath in `text-caption`) · estimate · project select · date select with 推測 · 登録 button. A bulk bar reads 2件を選択中 followed by まとめて登録. An info band uses the selection pair, `text-description`, and `--padding-info-band` to preview the effect, such as 今日の見積りは 2:45 → 3:50 になります.
 
@@ -195,9 +197,12 @@ Do not stack shadows or use elevation to indicate focus.
   - 今日のタスク (Today's tasks) table: status · time · task · project · estimate · action. The next task carries a small 開始 (Start) primary button. A totals row closes the table.
   - Side column: 今日の進捗 (Today's progress, `1 / 4` with a progress bar) and 次の予定 (Next event).
 - **Task Inbox**: tabs, then one card holding the filter bar (project, date, text filter, bulk register), the suggestion table and the info band. Header actions: ルールを設定 (Set rules, neutral) and ＋タスクを追加 (Add task, primary).
-- **Projects**: tabs 進行中 / 完了 / アーカイブ (Active / Done / Archived).
-  - One card: a summary strip (active, subtasks done, due within 2 weeks in orange, today's tasks), then the project table. Columns: project and description · progress · subtasks · deadline · days left (orange tag when within 2 weeks) · today's tasks · 開く (Open). A totals row closes it.
-  - Second card: 期限が近いサブタスク (Subtasks due soon), each with an outline 今日に登録 (Add to today) button.
+- **Projects**: tabs 進行中 / 保留 / 完了 / オープン / 他者待ち / ゴミ箱 (In progress / Pending / Done / Open / Waiting on others / Trash), in that order; default 進行中. Trash remains in the same list layout.
+  - One card: a four-cell summary strip for selected status and total count, end dates from today through 14 days ahead, overdue count, and today's Projects placeholder `- 件`. Counts cover the full selected tab, not the visible cursor page.
+  - Table columns: project title and goal · progress · deadline · remaining days · today's tasks placeholder · status select · edit/trash action. Trash rows replace edit/status controls with restore. Do not show subtasks, completion counts, a totals row, or a separate upcoming-subtask card. Keep per-Project progress bars and percentages.
+  - User-sortable data columns are title, progress, deadline, and remaining days. Sorting is single-column and server-side before 20-row cursor pagination. Default deadline order is earliest first, with overdue rows first and no deadline last. For an equal date, higher priority comes first. Keep deterministic ties.
+  - The `今日のタスク` / `Today's tasks` cells remain `-` placeholders until TodoList-based Project counts exist. Overdue copy uses the overdue color pair. Other deadlines use the existing neutral and attention roles.
+- **Project form**: create `/projects/new` and edit `/projects/:id/edit` use the same form layout. Keep one wide card with a left label column and right input column, row dividers, and a raised footer action bar. Fields: required project title · Goal (WHY) · Details · type · priority · start date · end date. Put Details immediately after Goal (WHY); keep the API fields `goal` and `description`. Initial type is `other`, priority is `low`, and both dates are empty. Do not include weekly work hours or templates. Validate end date against start date but allow past dates. Keep field errors beside their inputs. Save only on explicit submit.
 - **Calendar**: one card with a toolbar (今日 (Today), previous/next, the date range, and a 日/週/月 (Day/Week/Month) segmented control), the week grid, and a legend.
 - **KPI Dashboard**: a period row (週次 (Weekly) select and a stepper), then the summary strip (達成率 (completion rate), 実績時間 (actual time), 予定時間 (planned time), 予定との差異 (variance)). Below it, the chart card 日別の予定と実績 (planned vs. actual by day) next to the table card プロジェクト別 (by project): planned · actual · variance · completion, closed by a totals row and a footnote explaining ▲.
 - **Login**: see Forms.
@@ -225,6 +230,6 @@ Do not stack shadows or use elevation to indicate focus.
 - **Do** write short, polite です・ます copy using タスク, プロジェクト, and 今日.
 - **Do** use the CSS ground and surface roles consistently.
 - **Don't** stack shadows, use heavy shadows, or float the layout bars.
-- **Don't** use gradients, illustrations, or emoji in product UI.
+- **Don't** use blue outside the Projects overdue-day label. Don't use gradients, illustrations, or emoji in product UI.
 - **Don't** copy freee's logo, mascot, illustrations, or exact screens. Borrow interaction patterns and density only.
 - **Don't** typeset the wordmark live or use Outfit elsewhere in the UI.

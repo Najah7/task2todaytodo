@@ -34,7 +34,7 @@ export const InvalidCredentials: Story = {
   play: async ({ canvasElement }) => {
     await fillCredentials(canvasElement)
     await submitForm(canvasElement)
-    await expect(await within(canvasElement).findByRole("alert")).toBeVisible()
+    await expect(await within(canvasElement).findByText(/メールアドレスまたはパスワードが正しくありません。|The email or password is incorrect\./)).toBeVisible()
   },
 }
 

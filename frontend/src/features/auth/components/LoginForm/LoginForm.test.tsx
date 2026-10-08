@@ -1,8 +1,10 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, expect, test, vi } from "vitest"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter, Route, Routes } from "react-router"
 import { LanguageProvider } from "~/features/i18n"
 import LanguageSwitcher from "~/features/i18n/LanguageSwitcher"
+import { NotificationViewport } from "~/features/shared/notification"
 import LoginForm from "./index"
 
 const { login } = vi.hoisted(() => ({ login: vi.fn() }))
@@ -17,15 +19,18 @@ afterEach(cleanup)
 
 function renderForm() {
   render(
-    <LanguageProvider>
-      <MemoryRouter initialEntries={["/login"]}>
-        <LanguageSwitcher />
-        <Routes>
-          <Route path="/login" element={<LoginForm />} />
-          <Route path="/today" element={<h1>Today</h1>} />
-        </Routes>
-      </MemoryRouter>
-    </LanguageProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <LanguageProvider>
+        <MemoryRouter initialEntries={["/login"]}>
+          <LanguageSwitcher />
+          <Routes>
+            <Route path="/login" element={<LoginForm />} />
+            <Route path="/today" element={<h1>Today</h1>} />
+          </Routes>
+          <NotificationViewport />
+        </MemoryRouter>
+      </LanguageProvider>
+    </QueryClientProvider>,
   )
 }
 
@@ -63,7 +68,7 @@ test("submission stays disabled during a request and recovers after a network fa
   fireEvent.click(screen.getByRole("button", { name: "ログイン" }))
   expect(await screen.findByRole("button", { name: "ログイン中…" })).toHaveProperty("disabled", true)
   await act(async () => rejectRequest(new TypeError("Failed to fetch")))
-  expect(await screen.findByRole("alert")).toHaveProperty("textContent", "サーバーに接続できませんでした。通信環境を確認して再度お試しください。")
+  expect(await screen.findByText("サーバーに接続できませんでした。通信環境を確認して再度お試しください。")).toBeTruthy()
   expect(screen.getByRole("button", { name: "ログイン" })).toHaveProperty("disabled", false)
 })
 
@@ -76,7 +81,7 @@ test.each(["missing token", "storage failure"])("does not navigate after %s", as
   fillCredentials()
   fireEvent.click(screen.getByRole("button", { name: "ログイン" }))
   const message = failure === "missing token" ? "ログイン情報を取得できませんでした" : "ログイン情報を保存できませんでした"
-  expect((await screen.findByRole("alert")).textContent).toContain(message)
+  expect(await screen.findByText(new RegExp(message))).toBeTruthy()
   expect(screen.queryByRole("heading", { name: "Today" })).toBeNull()
   expect(localStorage.getItem("personal_access_token")).toBeNull()
 })

@@ -36,7 +36,7 @@ export const EmailAlreadyExists: Story = {
   play: async ({ canvasElement }) => {
     await fillCredentials(canvasElement, true)
     await submitForm(canvasElement)
-    await expect(await within(canvasElement).findByRole("alert")).toBeVisible()
+    await expect(await within(canvasElement).findByText(/このメールアドレスは登録済みです。ログインしてください。|This email is already registered\. Please log in\./)).toBeVisible()
   },
 }
 

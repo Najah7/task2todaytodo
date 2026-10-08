@@ -1,0 +1,56 @@
+.dialog {
+  width: min(32rem, calc(100vw - 2rem));
+  max-width: 32rem;
+  max-height: min(90dvh, 42rem);
+  padding: 0;
+  overflow: auto;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-dialog);
+}
+
+.dialog::backdrop {
+  background: var(--color-overlay);
+}
+
+.content {
+  padding: var(--space-xl);
+}
+
+.content h2 {
+  margin: 0;
+}
+
+.description {
+  margin: var(--space-md) 0 0;
+  color: var(--color-text-body);
+  white-space: pre-line;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-xl);
+  border-top: var(--border-width) solid var(--color-border);
+  background: var(--color-raised);
+}
+
+.destructive {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+}
+
+.destructive:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+@media (max-width: 37.5em) {
+  .actions > button {
+    flex: 1 1 auto;
+  }
+}

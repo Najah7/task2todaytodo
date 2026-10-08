@@ -1,0 +1,24 @@
+.viewport[data-sonner-toaster] {
+  --width: min(26rem, calc(100vw - 2rem));
+  --normal-bg: var(--color-surface);
+  --normal-border: var(--color-border-strong);
+  --normal-text: var(--color-text);
+  --success-bg: var(--color-success-background);
+  --success-border: var(--color-border-strong);
+  --success-text: var(--color-success-foreground);
+  --error-bg: var(--color-danger-soft);
+  --error-border: var(--color-danger-border);
+  --error-text: var(--color-danger-text);
+  font-family: inherit;
+}
+
+.viewport :global([data-sonner-toast]) {
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  font-family: inherit;
+  font-size: 0.875rem;
+}
+
+.viewport :global([data-sonner-toast] [data-description]) {
+  color: var(--color-text-body);
+}
