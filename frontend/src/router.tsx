@@ -29,7 +29,7 @@ export const router = createBrowserRouter([
       { path: "/projects/new", element: <App><ProjectsNewPage /></App> },
       { path: "/projects/:id/edit", element: <App><ProjectsEditPage /></App> },
       { path: "/tasks", element: <App><PageHeading messageKey="page.tasks.title" /></App> },
-      { path: "/calendar", element: <App><PageHeading messageKey="page.calendar.title" /></App> },
+      { path: "/schedules", element: <App><PageHeading messageKey="page.schedules.title" /></App> },
       { path: "/members", element: <App><PageHeading messageKey="page.members.title" /></App> },
       { path: "/kpi", element: <App><PageHeading messageKey="page.kpi.title" /></App> },
       { path: "/profile", element: <App><PageHeading messageKey="page.profile.title" /></App> },

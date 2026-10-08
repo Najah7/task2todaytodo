@@ -34,7 +34,7 @@ test("root, deep links, and protected routes redirect before rendering when toke
     if (url.pathname.startsWith("/api/projects")) projectRequests.push(url.pathname)
   })
 
-  for (const path of ["/", "/today", "/projects?status=open", "/projects/new", "/projects/deep-link-id/edit", "/calendar", "/profile", "/not-found"]) {
+  for (const path of ["/", "/today", "/projects?status=open", "/projects/new", "/projects/deep-link-id/edit", "/schedules", "/profile", "/not-found"]) {
     await page.goto(path)
     await expect(page).toHaveURL("/login")
     await expect(page.getByRole("region", { name: "ログイン" })).toBeVisible()
