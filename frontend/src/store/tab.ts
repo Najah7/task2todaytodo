@@ -1,4 +1,4 @@
-export const tabs = ["today", "inbox", "projects", "calendar", "kpi", "profile"] as const
+export const tabs = ["today", "inbox", "projects", "tasks", "calendar", "kpi", "profile"] as const
 
 export type Tab = (typeof tabs)[number]
 
