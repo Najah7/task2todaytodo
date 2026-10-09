@@ -1,5 +1,110 @@
 basePath: /api
 definitions:
+  rest.ActionItemCreateRequest:
+    properties:
+      description:
+        type: string
+      due_date:
+        type: string
+      frequencies:
+        items:
+          type: string
+        type: array
+      interval_weeks:
+        type: integer
+      title:
+        type: string
+    type: object
+  rest.ActionItemFrequencyUpdateRequest:
+    properties:
+      frequencies:
+        items:
+          type: string
+        type: array
+      interval_weeks:
+        type: integer
+    required:
+    - frequencies
+    - interval_weeks
+    type: object
+  rest.ActionItemListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/rest.ActionItemResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
+  rest.ActionItemOccurrenceRequest:
+    properties:
+      occurrence_date:
+        type: string
+    type: object
+  rest.ActionItemReorderRequest:
+    properties:
+      occurrence_date:
+        type: string
+      position:
+        type: integer
+    type: object
+  rest.ActionItemResponse:
+    properties:
+      completed:
+        type: boolean
+      created_at:
+        type: integer
+      description:
+        type: string
+      due_date:
+        type: string
+      frequencies:
+        items:
+          type: string
+        type: array
+      frequency_anchor_date:
+        type: string
+      id:
+        type: string
+      interval_weeks:
+        type: integer
+      is_exception:
+        type: boolean
+      occurrence_date:
+        type: string
+      position:
+        type: integer
+      repeat_state:
+        type: string
+      series_id:
+        type: string
+      task_id:
+        type: string
+      timezone:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: integer
+    type: object
+  rest.ActionItemUpdateRequest:
+    properties:
+      description:
+        type: string
+      due_date:
+        type: string
+      occurrence_date:
+        type: string
+      scope:
+        enum:
+        - current
+        - future
+        type: string
+      title:
+        type: string
+    required:
+    - scope
+    type: object
   rest.Err:
     properties:
       code:
@@ -902,111 +1007,6 @@ definitions:
         $ref: '#/definitions/rest.optionalJSON-int'
       title:
         $ref: '#/definitions/rest.optionalJSON-string'
-    type: object
-  rest.TodoItemCreateRequest:
-    properties:
-      description:
-        type: string
-      due_date:
-        type: string
-      frequencies:
-        items:
-          type: string
-        type: array
-      interval_weeks:
-        type: integer
-      title:
-        type: string
-    type: object
-  rest.TodoItemFrequencyUpdateRequest:
-    properties:
-      frequencies:
-        items:
-          type: string
-        type: array
-      interval_weeks:
-        type: integer
-    required:
-    - frequencies
-    - interval_weeks
-    type: object
-  rest.TodoItemListResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/rest.TodoItemResponse'
-        type: array
-      next_page_token:
-        type: string
-    type: object
-  rest.TodoItemOccurrenceRequest:
-    properties:
-      occurrence_date:
-        type: string
-    type: object
-  rest.TodoItemReorderRequest:
-    properties:
-      occurrence_date:
-        type: string
-      position:
-        type: integer
-    type: object
-  rest.TodoItemResponse:
-    properties:
-      completed:
-        type: boolean
-      created_at:
-        type: integer
-      description:
-        type: string
-      due_date:
-        type: string
-      frequencies:
-        items:
-          type: string
-        type: array
-      frequency_anchor_date:
-        type: string
-      id:
-        type: string
-      interval_weeks:
-        type: integer
-      is_exception:
-        type: boolean
-      occurrence_date:
-        type: string
-      position:
-        type: integer
-      repeat_state:
-        type: string
-      series_id:
-        type: string
-      task_id:
-        type: string
-      timezone:
-        type: string
-      title:
-        type: string
-      updated_at:
-        type: integer
-    type: object
-  rest.TodoItemUpdateRequest:
-    properties:
-      description:
-        type: string
-      due_date:
-        type: string
-      occurrence_date:
-        type: string
-      scope:
-        enum:
-        - current
-        - future
-        type: string
-      title:
-        type: string
-    required:
-    - scope
     type: object
   rest.UserInfoUpdateRequest:
     properties:
@@ -3521,9 +3521,9 @@ paths:
       summary: Wait on task
       tags:
       - Tasks
-  /tasks/{taskId}/todo-items:
+  /tasks/{taskId}/action-items:
     get:
-      description: Returns TodoItems for the authenticated user's task.
+      description: Returns ActionItems for the authenticated user's task.
       parameters:
       - description: Task ID
         in: path
@@ -3553,7 +3553,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rest.TodoItemListResponse'
+            $ref: '#/definitions/rest.ActionItemListResponse'
         "400":
           description: Invalid task ID
           schema:
@@ -3567,18 +3567,18 @@ paths:
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "500":
-          description: Failed to list todo items
+          description: Failed to list action items
           schema:
             $ref: '#/definitions/rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: List todo items
+      summary: List action items
       tags:
-      - TodoItems
+      - ActionItems
     post:
       consumes:
       - application/json
-      description: Creates a one-off or recurring TodoItem owned by the authenticated
+      description: Creates a one-off or recurring ActionItem owned by the authenticated
         user.
       parameters:
       - description: Task ID
@@ -3586,19 +3586,19 @@ paths:
         name: taskId
         required: true
         type: string
-      - description: TodoItem fields
+      - description: ActionItem fields
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.TodoItemCreateRequest'
+          $ref: '#/definitions/rest.ActionItemCreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/rest.TodoItemResponse'
+            $ref: '#/definitions/rest.ActionItemResponse'
         "400":
           description: Invalid request
           schema:
@@ -3612,24 +3612,24 @@ paths:
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "500":
-          description: Failed to create todo item
+          description: Failed to create action item
           schema:
             $ref: '#/definitions/rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Create todo item
+      summary: Create action item
       tags:
-      - TodoItems
-  /tasks/{taskId}/todo-items/{id}:
+      - ActionItems
+  /tasks/{taskId}/action-items/{id}:
     delete:
-      description: Deletes the entire TodoItem series, or one-off TodoItem.
+      description: Deletes the entire ActionItem series, or one-off ActionItem.
       parameters:
       - description: Task ID
         in: path
         name: taskId
         required: true
         type: string
-      - description: TodoItem series ID
+      - description: ActionItem series ID
         in: path
         name: id
         required: true
@@ -3646,18 +3646,18 @@ paths:
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "404":
-          description: Task or todo item not found
+          description: Task or action item not found
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "500":
-          description: Failed to delete todo item
+          description: Failed to delete action item
           schema:
             $ref: '#/definitions/rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Delete todo item
+      summary: Delete action item
       tags:
-      - TodoItems
+      - ActionItems
     patch:
       consumes:
       - application/json
@@ -3672,7 +3672,7 @@ paths:
         name: taskId
         required: true
         type: string
-      - description: TodoItem series ID
+      - description: ActionItem series ID
         in: path
         name: id
         required: true
@@ -3682,14 +3682,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.TodoItemUpdateRequest'
+          $ref: '#/definitions/rest.ActionItemUpdateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rest.TodoItemResponse'
+            $ref: '#/definitions/rest.ActionItemResponse'
         "400":
           description: Invalid request or scope
           schema:
@@ -3699,7 +3699,7 @@ paths:
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "404":
-          description: Task or todo item not found
+          description: Task or action item not found
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "409":
@@ -3707,15 +3707,15 @@ paths:
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "500":
-          description: Failed to update todo item
+          description: Failed to update action item
           schema:
             $ref: '#/definitions/rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Update todo item
+      summary: Update action item
       tags:
-      - TodoItems
-  /tasks/{taskId}/todo-items/{id}/frequency:
+      - ActionItems
+  /tasks/{taskId}/action-items/{id}/frequency:
     put:
       consumes:
       - application/json
@@ -3729,7 +3729,7 @@ paths:
         name: taskId
         required: true
         type: string
-      - description: TodoItem root ID
+      - description: ActionItem root ID
         in: path
         name: id
         required: true
@@ -3739,7 +3739,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.TodoItemFrequencyUpdateRequest'
+          $ref: '#/definitions/rest.ActionItemFrequencyUpdateRequest'
       produces:
       - application/json
       responses:
@@ -3764,19 +3764,19 @@ paths:
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "500":
-          description: Failed to update todo item frequency
+          description: Failed to update action item frequency
           schema:
             $ref: '#/definitions/rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Update todo item frequency
+      summary: Update action item frequency
       tags:
-      - TodoItems
-  /tasks/{taskId}/todo-items/{id}:complete:
+      - ActionItems
+  /tasks/{taskId}/action-items/{id}:complete:
     post:
       consumes:
       - application/json
-      description: Marks one TodoItem occurrence complete. Recurring items require
+      description: Marks one ActionItem occurrence complete. Recurring items require
         occurrence_date; one-off items may omit it. occurrence_date identifies scheduled
         occurrence and may differ from due_date after an edit.
       parameters:
@@ -3785,7 +3785,7 @@ paths:
         name: taskId
         required: true
         type: string
-      - description: TodoItem series ID
+      - description: ActionItem series ID
         in: path
         name: id
         required: true
@@ -3794,7 +3794,7 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/rest.TodoItemOccurrenceRequest'
+          $ref: '#/definitions/rest.ActionItemOccurrenceRequest'
       produces:
       - application/json
       responses:
@@ -3820,14 +3820,14 @@ paths:
             $ref: '#/definitions/rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Complete todo item
+      summary: Complete action item
       tags:
-      - TodoItems
-  /tasks/{taskId}/todo-items/{id}:reopen:
+      - ActionItems
+  /tasks/{taskId}/action-items/{id}:reopen:
     post:
       consumes:
       - application/json
-      description: Reopens one TodoItem occurrence. Recurring items require occurrence_date;
+      description: Reopens one ActionItem occurrence. Recurring items require occurrence_date;
         one-off items may omit it. occurrence_date identifies scheduled occurrence
         and may differ from due_date after an edit.
       parameters:
@@ -3836,7 +3836,7 @@ paths:
         name: taskId
         required: true
         type: string
-      - description: TodoItem series ID
+      - description: ActionItem series ID
         in: path
         name: id
         required: true
@@ -3845,7 +3845,7 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/rest.TodoItemOccurrenceRequest'
+          $ref: '#/definitions/rest.ActionItemOccurrenceRequest'
       produces:
       - application/json
       responses:
@@ -3871,22 +3871,22 @@ paths:
             $ref: '#/definitions/rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Reopen todo item
+      summary: Reopen action item
       tags:
-      - TodoItems
-  /tasks/{taskId}/todo-items/{id}:reorder:
+      - ActionItems
+  /tasks/{taskId}/action-items/{id}:reorder:
     post:
       consumes:
       - application/json
-      description: Moves the TodoItem to a new zero-based position for the same occurrence
-        date.
+      description: Moves the ActionItem to a new zero-based position for the same
+        occurrence date.
       parameters:
       - description: Task ID
         in: path
         name: taskId
         required: true
         type: string
-      - description: TodoItem series ID
+      - description: ActionItem series ID
         in: path
         name: id
         required: true
@@ -3896,14 +3896,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.TodoItemReorderRequest'
+          $ref: '#/definitions/rest.ActionItemReorderRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rest.TodoItemResponse'
+            $ref: '#/definitions/rest.ActionItemResponse'
         "400":
           description: Invalid position
           schema:
@@ -3913,7 +3913,7 @@ paths:
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "404":
-          description: Task or todo item not found
+          description: Task or action item not found
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "409":
@@ -3921,15 +3921,15 @@ paths:
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "500":
-          description: Failed to reorder todo item
+          description: Failed to reorder action item
           schema:
             $ref: '#/definitions/rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Reorder todo item
+      summary: Reorder action item
       tags:
-      - TodoItems
-  /tasks/{taskId}/todo-items/{id}:restore:
+      - ActionItems
+  /tasks/{taskId}/action-items/{id}:restore:
     post:
       consumes:
       - application/json
@@ -3939,7 +3939,7 @@ paths:
         name: taskId
         required: true
         type: string
-      - description: TodoItem series ID
+      - description: ActionItem series ID
         in: path
         name: id
         required: true
@@ -3949,7 +3949,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.TodoItemOccurrenceRequest'
+          $ref: '#/definitions/rest.ActionItemOccurrenceRequest'
       produces:
       - application/json
       responses:
@@ -3975,10 +3975,10 @@ paths:
             $ref: '#/definitions/rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Restore todo item occurrence
+      summary: Restore action item occurrence
       tags:
-      - TodoItems
-  /tasks/{taskId}/todo-items/{id}:skip:
+      - ActionItems
+  /tasks/{taskId}/action-items/{id}:skip:
     post:
       consumes:
       - application/json
@@ -3988,7 +3988,7 @@ paths:
         name: taskId
         required: true
         type: string
-      - description: TodoItem series ID
+      - description: ActionItem series ID
         in: path
         name: id
         required: true
@@ -3998,7 +3998,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.TodoItemOccurrenceRequest'
+          $ref: '#/definitions/rest.ActionItemOccurrenceRequest'
       produces:
       - application/json
       responses:
@@ -4028,9 +4028,9 @@ paths:
             $ref: '#/definitions/rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Skip todo item occurrence
+      summary: Skip action item occurrence
       tags:
-      - TodoItems
+      - ActionItems
   /users/me:
     get:
       description: Returns the authenticated user's profile.

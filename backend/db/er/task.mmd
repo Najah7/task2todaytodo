@@ -1,9 +1,9 @@
 erDiagram
     %% External references: users, projects, priority_master, roles, and project_members.
     %% Composite FK: tasks(project_id, user_id) -> projects(id, user_id).
-    %% Composite self-FK: todo_items(series_id, task_id) -> todo_items(id, task_id).
-    %% Composite unique keys: tags(user_id, name), todo_items(id, task_id).
-    %% Partial unique index: todo_items(series_id, occurrence_date), only when id <> series_id.
+    %% Composite self-FK: action_items(series_id, task_id) -> action_items(id, task_id).
+    %% Composite unique keys: tags(user_id, name), action_items(id, task_id).
+    %% Partial unique index: action_items(series_id, occurrence_date), only when id <> series_id.
 
     users {
         text id PK "NOT NULL"
@@ -87,7 +87,7 @@ erDiagram
         timestamptz created_at "NOT NULL"
     }
 
-    todo_items {
+    action_items {
         text id PK "NOT NULL"
         text task_id FK "NOT NULL"
         text title "NOT NULL"
@@ -108,8 +108,8 @@ erDiagram
         timestamptz updated_at "NOT NULL"
     }
 
-    todo_item_frequencies {
-        text todo_item_id PK, FK "NOT NULL"
+    action_item_frequencies {
+        text action_item_id PK, FK "NOT NULL"
         text frequency PK, FK "NOT NULL"
         timestamptz created_at "NOT NULL"
     }
@@ -125,7 +125,7 @@ erDiagram
     users ||..o{ tags : owns
     tasks ||--o{ task_tag_assignments : has_tags
     tags ||--o{ task_tag_assignments : assigned_to_tasks
-    tasks ||..o{ todo_items : contains
-    todo_items ||..o{ todo_items : series_parent_same_task
-    todo_items ||--o{ todo_item_frequencies : repeats_on
-    frequency_master ||--o{ todo_item_frequencies : used_by_item
+    tasks ||..o{ action_items : contains
+    action_items ||..o{ action_items : series_parent_same_task
+    action_items ||--o{ action_item_frequencies : repeats_on
+    frequency_master ||--o{ action_item_frequencies : used_by_item

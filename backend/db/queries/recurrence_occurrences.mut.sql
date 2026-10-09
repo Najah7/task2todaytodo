@@ -1,5 +1,5 @@
--- name: UpsertTodoItemOverrideByTaskAndUserID :one
-INSERT INTO todo_items (
+-- name: UpsertActionItemOverrideByTaskAndUserID :one
+INSERT INTO action_items (
     id, task_id, title, description, due_date, completed, position,
     series_id, occurrence_date, timezone, is_exception, repeat_state,
     frequency_anchor_date, interval_weeks, deleted_at, skipped_at
@@ -9,9 +9,9 @@ SELECT sqlc.arg(id)::text, t.id, sqlc.arg(title)::text, sqlc.narg(description)::
        root.id, sqlc.arg(occurrence_date)::date, sqlc.arg(timezone)::text, true, NULL, NULL, 0,
        CASE WHEN sqlc.arg(deleted)::boolean THEN now() ELSE NULL END, NULL
 FROM tasks t
-JOIN todo_items root ON root.id = sqlc.arg(series_id)::text AND root.task_id = t.id
+JOIN action_items root ON root.id = sqlc.arg(series_id)::text AND root.task_id = t.id
 WHERE t.id = sqlc.arg(task_id)::text
-  AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'todo_item', 'update')
+  AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'action_item', 'update')
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
   AND root.deleted_at IS NULL
@@ -25,11 +25,11 @@ ON CONFLICT (series_id, occurrence_date) WHERE id <> series_id DO UPDATE SET
     is_exception = true,
     deleted_at = EXCLUDED.deleted_at,
     updated_at = now()
-WHERE todo_items.deleted_at IS NULL
+WHERE action_items.deleted_at IS NULL
 RETURNING id;
 
--- name: SkipTodoItemOccurrenceByTaskAndUserID :one
-INSERT INTO todo_items (
+-- name: SkipActionItemOccurrenceByTaskAndUserID :one
+INSERT INTO action_items (
     id, task_id, title, description, due_date, completed, position,
     series_id, occurrence_date, timezone, is_exception, repeat_state,
     frequency_anchor_date, interval_weeks, deleted_at, skipped_at
@@ -37,7 +37,7 @@ INSERT INTO todo_items (
 SELECT sqlc.arg(id)::text, root.task_id, root.title, root.description, root.due_date,
        false, root.position, root.id, sqlc.arg(occurrence_date)::date, root.timezone,
        false, NULL, NULL, 0, NULL, now()
-FROM todo_items root
+FROM action_items root
 JOIN tasks t ON t.id = root.task_id
 WHERE root.id = sqlc.arg(series_id)::text
   AND root.task_id = sqlc.arg(task_id)::text
@@ -47,14 +47,14 @@ WHERE root.id = sqlc.arg(series_id)::text
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
 ON CONFLICT (series_id, occurrence_date) WHERE id <> series_id
-DO UPDATE SET skipped_at = COALESCE(todo_items.skipped_at, now()), updated_at = now()
-WHERE todo_items.deleted_at IS NULL
+DO UPDATE SET skipped_at = COALESCE(action_items.skipped_at, now()), updated_at = now()
+WHERE action_items.deleted_at IS NULL
 RETURNING id;
 
--- name: RestoreEditedTodoItemOccurrenceByTaskAndUserID :exec
-UPDATE todo_items child
+-- name: RestoreEditedActionItemOccurrenceByTaskAndUserID :exec
+UPDATE action_items child
 SET skipped_at = NULL, updated_at = now()
-FROM todo_items root, tasks t
+FROM action_items root, tasks t
 WHERE child.series_id = root.id
   AND root.task_id = t.id
   AND child.series_id = sqlc.arg(series_id)::text
@@ -68,9 +68,9 @@ WHERE child.series_id = root.id
   AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'occurrence', 'update')
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL));
--- name: DeleteSkippedTodoItemOccurrenceByTaskAndUserID :exec
-DELETE FROM todo_items child
-USING todo_items root, tasks t
+-- name: DeleteSkippedActionItemOccurrenceByTaskAndUserID :exec
+DELETE FROM action_items child
+USING action_items root, tasks t
 WHERE child.series_id = root.id
   AND root.task_id = t.id
   AND child.series_id = sqlc.arg(series_id)::text

@@ -16,7 +16,7 @@ type UseCase struct {
 	Role                authusecase.RoleUseCases
 	Project             *projectusecase.UseCases
 	Task                taskusecase.TaskUseCases
-	TodoItem            taskusecase.TodoItemUseCases
+	ActionItem          taskusecase.ActionItemUseCases
 	Schedule            scheduleusecase.ScheduleUseCases
 	Tag                 tagusecase.CatalogUseCases
 	TaskTag             taskusecase.TaskTagUseCases
@@ -31,7 +31,7 @@ func NewUseCase(authStore AuthStore, projectStore ProjectStore, taskStore TaskSt
 		Role:                NewRoleUseCases(authStore, logger),
 		Project:             NewProjectUseCases(projectStore, projectUOW, logger),
 		Task:                NewTaskUseCases(taskStore, taskUOW, ID, logger),
-		TodoItem:            NewTodoItemUseCases(taskUOW, authStore, ID, logger),
+		ActionItem:          NewActionItemUseCases(taskUOW, authStore, ID, logger),
 		Schedule:            schedules,
 		TaskTag:             NewTaskTagUseCases(taskUOW, logger),
 		Tag:                 tags,

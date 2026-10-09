@@ -12,23 +12,23 @@ import (
 )
 
 const addTodoListItem = `-- name: AddTodoListItem :one
-INSERT INTO todo_list_items (todo_list_id, todo_item_id, position)
+INSERT INTO todo_list_items (todo_list_id, action_item_id, position)
 VALUES ($1, $2, $3)
-RETURNING todo_list_id, todo_item_id, position, created_at
+RETURNING todo_list_id, action_item_id, position, created_at
 `
 
 type AddTodoListItemParams struct {
-	TodoListID string
-	TodoItemID string
-	Position   int32
+	TodoListID   string
+	ActionItemID string
+	Position     int32
 }
 
 func (q *Queries) AddTodoListItem(ctx context.Context, arg AddTodoListItemParams) (TodoListItem, error) {
-	row := q.db.QueryRow(ctx, addTodoListItem, arg.TodoListID, arg.TodoItemID, arg.Position)
+	row := q.db.QueryRow(ctx, addTodoListItem, arg.TodoListID, arg.ActionItemID, arg.Position)
 	var i TodoListItem
 	err := row.Scan(
 		&i.TodoListID,
-		&i.TodoItemID,
+		&i.ActionItemID,
 		&i.Position,
 		&i.CreatedAt,
 	)
@@ -91,16 +91,16 @@ func (q *Queries) DeleteTodoList(ctx context.Context, id string) error {
 const removeTodoListItem = `-- name: RemoveTodoListItem :exec
 DELETE FROM todo_list_items
 WHERE todo_list_id = $1
-  AND todo_item_id = $2
+  AND action_item_id = $2
 `
 
 type RemoveTodoListItemParams struct {
-	TodoListID string
-	TodoItemID string
+	TodoListID   string
+	ActionItemID string
 }
 
 func (q *Queries) RemoveTodoListItem(ctx context.Context, arg RemoveTodoListItemParams) error {
-	_, err := q.db.Exec(ctx, removeTodoListItem, arg.TodoListID, arg.TodoItemID)
+	_, err := q.db.Exec(ctx, removeTodoListItem, arg.TodoListID, arg.ActionItemID)
 	return err
 }
 
@@ -124,22 +124,22 @@ const updateTodoListItemPosition = `-- name: UpdateTodoListItemPosition :one
 UPDATE todo_list_items
 SET position = $3
 WHERE todo_list_id = $1
-  AND todo_item_id = $2
-RETURNING todo_list_id, todo_item_id, position, created_at
+  AND action_item_id = $2
+RETURNING todo_list_id, action_item_id, position, created_at
 `
 
 type UpdateTodoListItemPositionParams struct {
-	TodoListID string
-	TodoItemID string
-	Position   int32
+	TodoListID   string
+	ActionItemID string
+	Position     int32
 }
 
 func (q *Queries) UpdateTodoListItemPosition(ctx context.Context, arg UpdateTodoListItemPositionParams) (TodoListItem, error) {
-	row := q.db.QueryRow(ctx, updateTodoListItemPosition, arg.TodoListID, arg.TodoItemID, arg.Position)
+	row := q.db.QueryRow(ctx, updateTodoListItemPosition, arg.TodoListID, arg.ActionItemID, arg.Position)
 	var i TodoListItem
 	err := row.Scan(
 		&i.TodoListID,
-		&i.TodoItemID,
+		&i.ActionItemID,
 		&i.Position,
 		&i.CreatedAt,
 	)

@@ -10,11 +10,11 @@
 | `GET /tasks` | `created_at DESC, id DESC` |
 | `GET /projects/{id}/tasks` | `created_at DESC, id DESC` |
 | `GET /tags` | `name ASC, id ASC` |
-| `GET /tasks/{taskId}/todo-items` | `position ASC, occurrence_date ASC, id ASC` |
+| `GET /tasks/{taskId}/action-items` | `position ASC, occurrence_date ASC, id ASC` |
 | `GET /schedules` | `start_at ASC, id ASC` |
 | `GET /projects/{id}/schedules` | `start_at ASC, id ASC` |
 
-Tag の名前順、TodoItem の手動順、Schedule の開始時刻順を維持する。`created_at + id` は作成順の3つの List に使う。他の List では、その表示順に対応する値と `id` を cursor に使う。
+Tag の名前順、ActionItem の手動順、Schedule の開始時刻順を維持する。`created_at + id` は作成順の3つの List に使う。他の List では、その表示順に対応する値と `id` を cursor に使う。
 
 ## ページング契約
 

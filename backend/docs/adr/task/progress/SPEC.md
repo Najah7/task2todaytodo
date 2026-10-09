@@ -1,14 +1,14 @@
 # Progress specification
 
 Task progress is an integer percentage calculated for each response from that
-Task's TodoItems only. Schedules do not affect Task progress. Project progress
+Task's ActionItems only. Schedules do not affect Task progress. Project progress
 is the truncated mean of each Task's exposed percentage and each eligible
 Schedule occurrence as a separate `0` or `100` value. A recurring Schedule
 series contributes one item per eligible occurrence. A Project with no Tasks
 and no eligible Schedule occurrences has progress `0`. No progress value is
 persisted or accepted as create or update input.
 
-For a Task, eligible work is the set of nondeleted saved TodoItem occurrences,
+For a Task, eligible work is the set of nondeleted saved ActionItem occurrences,
 plus otherwise-unsaved virtual occurrences due today in each recurrence's
 timezone. Future virtual occurrences are excluded; unsaved past occurrences
 are not reconstructed. Saved occurrences at any date, including future edited
@@ -21,13 +21,13 @@ Occurrence identity is `(resource kind, series_id, occurrence_date)`. A saved
 child overrides its root or virtual occurrence at that key. A softdeleted child
 suppresses that key rather than exposing the root or virtual occurrence.
 Skipped and deleted occurrences do not count; restoring makes the occurrence
-eligible again. TodoItems have equal weight within Task progress. In Project
+eligible again. ActionItems have equal weight within Task progress. In Project
 progress, each Task's whole percentage and each eligible Schedule occurrence
 have equal weight.
 
 Task progress is `floor(100 * completed / total)`. A non-done task with no
 eligible occurrences has progress `0`; a done task always exposes `100`.
-Automatic Task completion uses exact TodoItem counts (`total > 0 && completed == total`), not
+Automatic Task completion uses exact ActionItem counts (`total > 0 && completed == total`), not
 the rounded percentage.
 
 Explicit task status operations preserve the requested status and recalculate

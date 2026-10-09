@@ -37,9 +37,9 @@ func (uow *completeTaskUOWFake) Do(ctx context.Context, fn func(context.Context,
 
 type completeTaskRepositoriesFake struct {
 	taskProgressTestRepositories
-	tasks     TaskRepository
-	todoItems TodoItemRepository
-	accesses  *[]string
+	tasks       TaskRepository
+	actionItems ActionItemRepository
+	accesses    *[]string
 }
 
 func (repos completeTaskRepositoriesFake) Tasks() TaskRepository {
@@ -47,9 +47,9 @@ func (repos completeTaskRepositoriesFake) Tasks() TaskRepository {
 	return repos.tasks
 }
 
-func (repos completeTaskRepositoriesFake) TodoItems() TodoItemRepository {
-	*repos.accesses = append(*repos.accesses, "todo-items")
-	return repos.todoItems
+func (repos completeTaskRepositoriesFake) ActionItems() ActionItemRepository {
+	*repos.accesses = append(*repos.accesses, "action-items")
+	return repos.actionItems
 }
 
 type completeTaskTaskRepositoryFake struct {
@@ -115,8 +115,8 @@ func (repo *completeTaskTaskRepositoryFake) UpdateByUserID(_ context.Context, us
 	return dao.Task{ID: string(task.ID), UserID: string(task.UserID), Status: dao.TaskStatus{Value: task.Status.String()}, Revision: expectedRevision + 1}, nil
 }
 
-type completeTaskTodoItemRepositoryFake struct {
-	TodoItemRepository
+type completeTaskActionItemRepositoryFake struct {
+	ActionItemRepository
 	err      error
 	calls    int
 	userID   domain.UserID
@@ -125,14 +125,14 @@ type completeTaskTodoItemRepositoryFake struct {
 	accesses *[]string
 }
 
-func (repo *completeTaskTodoItemRepositoryFake) DeleteUneditedFutureByTask(_ context.Context, userID domain.UserID, taskID domain.TaskID, fromAt time.Time) (int64, error) {
+func (repo *completeTaskActionItemRepositoryFake) DeleteUneditedFutureByTask(_ context.Context, userID domain.UserID, taskID domain.TaskID, fromAt time.Time) (int64, error) {
 	repo.calls++
 	repo.userID, repo.taskID, repo.fromAt = userID, taskID, fromAt
-	*repo.accesses = append(*repo.accesses, "delete-future-todo-items")
+	*repo.accesses = append(*repo.accesses, "delete-future-action-items")
 	return 0, repo.err
 }
 
-func newCompleteTaskFixture(status string) (*CompleteTaskUseCase, *completeTaskUOWFake, *completeTaskTaskRepositoryFake, *completeTaskTodoItemRepositoryFake, *[]string) {
+func newCompleteTaskFixture(status string) (*CompleteTaskUseCase, *completeTaskUOWFake, *completeTaskTaskRepositoryFake, *completeTaskActionItemRepositoryFake, *[]string) {
 	var accesses []string
 	taskRepo := &completeTaskTaskRepositoryFake{
 		task: dao.Task{
@@ -142,19 +142,19 @@ func newCompleteTaskFixture(status string) (*CompleteTaskUseCase, *completeTaskU
 		},
 		accesses: &accesses,
 	}
-	todoRepo := &completeTaskTodoItemRepositoryFake{accesses: &accesses}
+	actionItemRepo := &completeTaskActionItemRepositoryFake{accesses: &accesses}
 	uow := &completeTaskUOWFake{repos: completeTaskRepositoriesFake{
-		tasks: taskRepo, todoItems: todoRepo, accesses: &accesses,
+		tasks: taskRepo, actionItems: actionItemRepo, accesses: &accesses,
 	}}
 	fixedNow := time.Date(2026, time.October, 3, 0, 30, 0, 0, time.UTC)
 	uc := NewCompleteTaskUseCase(uow, func() time.Time { return fixedNow }, nil)
-	return uc, uow, taskRepo, todoRepo, &accesses
+	return uc, uow, taskRepo, actionItemRepo, &accesses
 }
 
 func TestCompleteTaskUseCaseCompletesTaskAndListUsesTaskStatus(t *testing.T) {
 	for _, status := range []string{"open", "in_progress", "pending", "waiting_on_others", "done"} {
 		t.Run(status, func(t *testing.T) {
-			uc, uow, taskRepo, todoRepo, accesses := newCompleteTaskFixture(status)
+			uc, uow, taskRepo, actionItemRepo, accesses := newCompleteTaskFixture(status)
 			userID, taskID := domain.UserID("user-1"), domain.TaskID("task-1")
 
 			got, err := uc.Execute(context.Background(), userID, taskID, 1)
@@ -164,8 +164,8 @@ func TestCompleteTaskUseCaseCompletesTaskAndListUsesTaskStatus(t *testing.T) {
 			if got.Revision != 2 || got.Status.Value != "done" {
 				t.Errorf("Execute() = revision %d, status %q; want revision 2, done", got.Revision, got.Status.Value)
 			}
-			if uow.calls != 1 || taskRepo.getCalls != 2 || taskRepo.updateCalls != 1 || todoRepo.calls != 0 {
-				t.Fatalf("calls = UOW:%d get:%d update:%d todo:%d, want status update and persisted readback", uow.calls, taskRepo.getCalls, taskRepo.updateCalls, todoRepo.calls)
+			if uow.calls != 1 || taskRepo.getCalls != 2 || taskRepo.updateCalls != 1 || actionItemRepo.calls != 0 {
+				t.Fatalf("calls = UOW:%d get:%d update:%d actionItem:%d, want status update and persisted readback", uow.calls, taskRepo.getCalls, taskRepo.updateCalls, actionItemRepo.calls)
 			}
 			if taskRepo.updated.Status.String() != "done" || taskRepo.task.Status.Value != "done" {
 				t.Errorf("updated status = %q/%q, want done", taskRepo.updated.Status.String(), taskRepo.task.Status.Value)
@@ -180,13 +180,13 @@ func TestCompleteTaskUseCaseCompletesTaskAndListUsesTaskStatus(t *testing.T) {
 
 func TestCompleteTaskUseCaseReturnsOwnershipErrorBeforeMutation(t *testing.T) {
 	t.Run("missing or unowned task", func(t *testing.T) {
-		uc, uow, taskRepo, todoRepo, _ := newCompleteTaskFixture("open")
+		uc, uow, taskRepo, actionItemRepo, _ := newCompleteTaskFixture("open")
 		taskRepo.task.UserID = "other-user"
 		if _, err := uc.Execute(context.Background(), "user-1", "task-1", 1); !errors.Is(err, ErrTaskNotFound) {
 			t.Errorf("Execute() error = %v, want %v", err, ErrTaskNotFound)
 		}
-		if uow.calls != 1 || taskRepo.getCalls != 1 || taskRepo.updateCalls != 0 || todoRepo.calls != 0 {
-			t.Errorf("calls = UOW:%d get:%d update:%d todo:%d, want only owner-scoped load", uow.calls, taskRepo.getCalls, taskRepo.updateCalls, todoRepo.calls)
+		if uow.calls != 1 || taskRepo.getCalls != 1 || taskRepo.updateCalls != 0 || actionItemRepo.calls != 0 {
+			t.Errorf("calls = UOW:%d get:%d update:%d actionItem:%d, want only owner-scoped load", uow.calls, taskRepo.getCalls, taskRepo.updateCalls, actionItemRepo.calls)
 		}
 	})
 }

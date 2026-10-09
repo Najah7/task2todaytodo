@@ -6,7 +6,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
 )
 
-// Recurrence types and errors remain aliases for the Task context's TodoItem
+// Recurrence types and errors remain aliases for the Task context's ActionItem
 // API. Recurrence policy and generation live in application/shared/recurrence.
 type RecurrenceDate = recurrence.RecurrenceDate
 type RecurrenceMetadata = recurrence.Metadata

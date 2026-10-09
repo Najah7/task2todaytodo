@@ -34,22 +34,22 @@ func logTaskRestoreFailure(logger logging.Logger, ctx context.Context, operation
 
 func isExpectedTaskError(err error) bool {
 	for _, expected := range []error{
-		ErrTaskNotFound, ErrTaskProjectNotFound, ErrTodoItemTaskNotFound, ErrTodoItemNotFound,
-		ErrTodoItemPositionConflict, ErrOccurrenceDateRequired, ErrOccurrenceNotFound,
+		ErrTaskNotFound, ErrTaskProjectNotFound, ErrActionItemTaskNotFound, ErrActionItemNotFound,
+		ErrActionItemPositionConflict, ErrOccurrenceDateRequired, ErrOccurrenceNotFound,
 		ErrOccurrenceInactive, ErrOccurrenceCompleted, ErrOccurrenceRuleMismatch,
 		ErrTaskTagNotFound, ErrTaskTagAssignmentNotOwned,
 		ErrTaskPatchRequiredFieldNull,
-		ErrInvalidTaskPage, ErrTodoItemPatchRequiredFieldNull, ErrTodoItemScopeInvalid,
-		ErrTodoItemFutureDueDateUnsupported, ErrTodoItemPositionOutOfRange,
+		ErrInvalidTaskPage, ErrActionItemPatchRequiredFieldNull, ErrActionItemScopeInvalid,
+		ErrActionItemFutureDueDateUnsupported, ErrActionItemPositionOutOfRange,
 		domain.ErrTaskFrequencyEmpty, domain.ErrTaskFrequencyInvalid, domain.ErrTaskIDEmpty,
 		domain.ErrTaskUserIDEmpty, domain.ErrTaskTitleEmpty, domain.ErrTaskEstimatedMinutesInvalid,
 		domain.ErrTaskActualMinutesInvalid, domain.ErrTaskProgressInvalid, domain.ErrRecurrenceIntervalWeeksLess,
 		domain.ErrRecurrenceTimezoneInvalid, domain.ErrRecurrenceMetadataInvalid, domain.ErrRecurrenceLimitInvalid,
 		domain.ErrRecurrenceHorizonInvalid, domain.ErrTaskStatusEmpty, domain.ErrTaskStatusInvalid,
 		domain.ErrTaskPriorityEmpty, domain.ErrTaskPriorityInvalid, domain.ErrTodoListIDEmpty,
-		domain.ErrTodoListUserIDEmpty, domain.ErrTodoListListDateEmpty, domain.ErrTodoItemIDEmpty,
-		domain.ErrTodoItemTaskIDEmpty, domain.ErrTodoItemTitleEmpty, domain.ErrTodoItemPositionLess,
-		domain.ErrTodoItemIntervalWeeksLess,
+		domain.ErrTodoListUserIDEmpty, domain.ErrTodoListListDateEmpty, domain.ErrActionItemIDEmpty,
+		domain.ErrActionItemTaskIDEmpty, domain.ErrActionItemTitleEmpty, domain.ErrActionItemPositionLess,
+		domain.ErrActionItemIntervalWeeksLess,
 	} {
 		if errors.Is(err, expected) {
 			return true

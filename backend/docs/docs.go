@@ -3858,21 +3858,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/tasks/{taskId}/todo-items": {
+        "/tasks/{taskId}/action-items": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns TodoItems for the authenticated user's task.",
+                "description": "Returns ActionItems for the authenticated user's task.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "TodoItems"
+                    "ActionItems"
                 ],
-                "summary": "List todo items",
+                "summary": "List action items",
                 "parameters": [
                     {
                         "type": "string",
@@ -3910,7 +3910,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.TodoItemListResponse"
+                            "$ref": "#/definitions/rest.ActionItemListResponse"
                         }
                     },
                     "400": {
@@ -3932,7 +3932,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Failed to list todo items",
+                        "description": "Failed to list action items",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -3945,7 +3945,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a one-off or recurring TodoItem owned by the authenticated user.",
+                "description": "Creates a one-off or recurring ActionItem owned by the authenticated user.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3953,9 +3953,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "TodoItems"
+                    "ActionItems"
                 ],
-                "summary": "Create todo item",
+                "summary": "Create action item",
                 "parameters": [
                     {
                         "type": "string",
@@ -3965,12 +3965,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "TodoItem fields",
+                        "description": "ActionItem fields",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.TodoItemCreateRequest"
+                            "$ref": "#/definitions/rest.ActionItemCreateRequest"
                         }
                     }
                 ],
@@ -3978,7 +3978,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/rest.TodoItemResponse"
+                            "$ref": "#/definitions/rest.ActionItemResponse"
                         }
                     },
                     "400": {
@@ -4000,7 +4000,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Failed to create todo item",
+                        "description": "Failed to create action item",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -4008,18 +4008,18 @@ const docTemplate = `{
                 }
             }
         },
-        "/tasks/{taskId}/todo-items/{id}": {
+        "/tasks/{taskId}/action-items/{id}": {
             "delete": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deletes the entire TodoItem series, or one-off TodoItem.",
+                "description": "Deletes the entire ActionItem series, or one-off ActionItem.",
                 "tags": [
-                    "TodoItems"
+                    "ActionItems"
                 ],
-                "summary": "Delete todo item",
+                "summary": "Delete action item",
                 "parameters": [
                     {
                         "type": "string",
@@ -4030,7 +4030,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "TodoItem series ID",
+                        "description": "ActionItem series ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -4053,13 +4053,13 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Task or todo item not found",
+                        "description": "Task or action item not found",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
                     "500": {
-                        "description": "Failed to delete todo item",
+                        "description": "Failed to delete action item",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -4080,9 +4080,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "TodoItems"
+                    "ActionItems"
                 ],
-                "summary": "Update todo item",
+                "summary": "Update action item",
                 "parameters": [
                     {
                         "type": "string",
@@ -4093,7 +4093,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "TodoItem series ID",
+                        "description": "ActionItem series ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -4104,7 +4104,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.TodoItemUpdateRequest"
+                            "$ref": "#/definitions/rest.ActionItemUpdateRequest"
                         }
                     }
                 ],
@@ -4112,7 +4112,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.TodoItemResponse"
+                            "$ref": "#/definitions/rest.ActionItemResponse"
                         }
                     },
                     "400": {
@@ -4128,7 +4128,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Task or todo item not found",
+                        "description": "Task or action item not found",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -4140,7 +4140,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Failed to update todo item",
+                        "description": "Failed to update action item",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -4148,7 +4148,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/tasks/{taskId}/todo-items/{id}/frequency": {
+        "/tasks/{taskId}/action-items/{id}/frequency": {
             "put": {
                 "security": [
                     {
@@ -4163,9 +4163,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "TodoItems"
+                    "ActionItems"
                 ],
-                "summary": "Update todo item frequency",
+                "summary": "Update action item frequency",
                 "parameters": [
                     {
                         "type": "string",
@@ -4176,7 +4176,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "TodoItem root ID",
+                        "description": "ActionItem root ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -4187,7 +4187,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.TodoItemFrequencyUpdateRequest"
+                            "$ref": "#/definitions/rest.ActionItemFrequencyUpdateRequest"
                         }
                     }
                 ],
@@ -4223,7 +4223,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Failed to update todo item frequency",
+                        "description": "Failed to update action item frequency",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -4231,14 +4231,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/tasks/{taskId}/todo-items/{id}:complete": {
+        "/tasks/{taskId}/action-items/{id}:complete": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Marks one TodoItem occurrence complete. Recurring items require occurrence_date; one-off items may omit it. occurrence_date identifies scheduled occurrence and may differ from due_date after an edit.",
+                "description": "Marks one ActionItem occurrence complete. Recurring items require occurrence_date; one-off items may omit it. occurrence_date identifies scheduled occurrence and may differ from due_date after an edit.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4246,9 +4246,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "TodoItems"
+                    "ActionItems"
                 ],
-                "summary": "Complete todo item",
+                "summary": "Complete action item",
                 "parameters": [
                     {
                         "type": "string",
@@ -4259,7 +4259,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "TodoItem series ID",
+                        "description": "ActionItem series ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -4269,7 +4269,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/rest.TodoItemOccurrenceRequest"
+                            "$ref": "#/definitions/rest.ActionItemOccurrenceRequest"
                         }
                     }
                 ],
@@ -4307,14 +4307,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/tasks/{taskId}/todo-items/{id}:reopen": {
+        "/tasks/{taskId}/action-items/{id}:reopen": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Reopens one TodoItem occurrence. Recurring items require occurrence_date; one-off items may omit it. occurrence_date identifies scheduled occurrence and may differ from due_date after an edit.",
+                "description": "Reopens one ActionItem occurrence. Recurring items require occurrence_date; one-off items may omit it. occurrence_date identifies scheduled occurrence and may differ from due_date after an edit.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4322,9 +4322,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "TodoItems"
+                    "ActionItems"
                 ],
-                "summary": "Reopen todo item",
+                "summary": "Reopen action item",
                 "parameters": [
                     {
                         "type": "string",
@@ -4335,7 +4335,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "TodoItem series ID",
+                        "description": "ActionItem series ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -4345,7 +4345,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/rest.TodoItemOccurrenceRequest"
+                            "$ref": "#/definitions/rest.ActionItemOccurrenceRequest"
                         }
                     }
                 ],
@@ -4383,14 +4383,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/tasks/{taskId}/todo-items/{id}:reorder": {
+        "/tasks/{taskId}/action-items/{id}:reorder": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Moves the TodoItem to a new zero-based position for the same occurrence date.",
+                "description": "Moves the ActionItem to a new zero-based position for the same occurrence date.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4398,9 +4398,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "TodoItems"
+                    "ActionItems"
                 ],
-                "summary": "Reorder todo item",
+                "summary": "Reorder action item",
                 "parameters": [
                     {
                         "type": "string",
@@ -4411,7 +4411,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "TodoItem series ID",
+                        "description": "ActionItem series ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -4422,7 +4422,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.TodoItemReorderRequest"
+                            "$ref": "#/definitions/rest.ActionItemReorderRequest"
                         }
                     }
                 ],
@@ -4430,7 +4430,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.TodoItemResponse"
+                            "$ref": "#/definitions/rest.ActionItemResponse"
                         }
                     },
                     "400": {
@@ -4446,7 +4446,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Task or todo item not found",
+                        "description": "Task or action item not found",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -4458,7 +4458,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Failed to reorder todo item",
+                        "description": "Failed to reorder action item",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -4466,7 +4466,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/tasks/{taskId}/todo-items/{id}:restore": {
+        "/tasks/{taskId}/action-items/{id}:restore": {
             "post": {
                 "security": [
                     {
@@ -4480,9 +4480,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "TodoItems"
+                    "ActionItems"
                 ],
-                "summary": "Restore todo item occurrence",
+                "summary": "Restore action item occurrence",
                 "parameters": [
                     {
                         "type": "string",
@@ -4493,7 +4493,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "TodoItem series ID",
+                        "description": "ActionItem series ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -4504,7 +4504,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.TodoItemOccurrenceRequest"
+                            "$ref": "#/definitions/rest.ActionItemOccurrenceRequest"
                         }
                     }
                 ],
@@ -4542,7 +4542,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/tasks/{taskId}/todo-items/{id}:skip": {
+        "/tasks/{taskId}/action-items/{id}:skip": {
             "post": {
                 "security": [
                     {
@@ -4556,9 +4556,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "TodoItems"
+                    "ActionItems"
                 ],
-                "summary": "Skip todo item occurrence",
+                "summary": "Skip action item occurrence",
                 "parameters": [
                     {
                         "type": "string",
@@ -4569,7 +4569,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "TodoItem series ID",
+                        "description": "ActionItem series ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -4580,7 +4580,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.TodoItemOccurrenceRequest"
+                            "$ref": "#/definitions/rest.ActionItemOccurrenceRequest"
                         }
                     }
                 ],
@@ -4829,6 +4829,166 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "rest.ActionItemCreateRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "frequencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "interval_weeks": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ActionItemFrequencyUpdateRequest": {
+            "type": "object",
+            "required": [
+                "frequencies",
+                "interval_weeks"
+            ],
+            "properties": {
+                "frequencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "interval_weeks": {
+                    "type": "integer"
+                }
+            }
+        },
+        "rest.ActionItemListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ActionItemResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ActionItemOccurrenceRequest": {
+            "type": "object",
+            "properties": {
+                "occurrence_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ActionItemReorderRequest": {
+            "type": "object",
+            "properties": {
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                }
+            }
+        },
+        "rest.ActionItemResponse": {
+            "type": "object",
+            "properties": {
+                "completed": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "frequencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "frequency_anchor_date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "interval_weeks": {
+                    "type": "integer"
+                },
+                "is_exception": {
+                    "type": "boolean"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "repeat_state": {
+                    "type": "string"
+                },
+                "series_id": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                }
+            }
+        },
+        "rest.ActionItemUpdateRequest": {
+            "type": "object",
+            "required": [
+                "scope"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string",
+                    "enum": [
+                        "current",
+                        "future"
+                    ]
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "rest.Err": {
             "type": "object",
             "properties": {
@@ -6185,166 +6345,6 @@ const docTemplate = `{
                 },
                 "title": {
                     "$ref": "#/definitions/rest.optionalJSON-string"
-                }
-            }
-        },
-        "rest.TodoItemCreateRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "due_date": {
-                    "type": "string"
-                },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.TodoItemFrequencyUpdateRequest": {
-            "type": "object",
-            "required": [
-                "frequencies",
-                "interval_weeks"
-            ],
-            "properties": {
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                }
-            }
-        },
-        "rest.TodoItemListResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/rest.TodoItemResponse"
-                    }
-                },
-                "next_page_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.TodoItemOccurrenceRequest": {
-            "type": "object",
-            "properties": {
-                "occurrence_date": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.TodoItemReorderRequest": {
-            "type": "object",
-            "properties": {
-                "occurrence_date": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
-        "rest.TodoItemResponse": {
-            "type": "object",
-            "properties": {
-                "completed": {
-                    "type": "boolean"
-                },
-                "created_at": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "due_date": {
-                    "type": "string"
-                },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "frequency_anchor_date": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                },
-                "is_exception": {
-                    "type": "boolean"
-                },
-                "occurrence_date": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "repeat_state": {
-                    "type": "string"
-                },
-                "series_id": {
-                    "type": "string"
-                },
-                "task_id": {
-                    "type": "string"
-                },
-                "timezone": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "integer"
-                }
-            }
-        },
-        "rest.TodoItemUpdateRequest": {
-            "type": "object",
-            "required": [
-                "scope"
-            ],
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "due_date": {
-                    "type": "string"
-                },
-                "occurrence_date": {
-                    "type": "string"
-                },
-                "scope": {
-                    "type": "string",
-                    "enum": [
-                        "current",
-                        "future"
-                    ]
-                },
-                "title": {
-                    "type": "string"
                 }
             }
         },

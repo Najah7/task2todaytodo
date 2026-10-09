@@ -37,10 +37,10 @@ func TestCursorListRepositories(t *testing.T) {
 		('99999999999999999999999905',$1,$2,'task-3','2026-01-01T00:00:00.000003Z')`, user, project); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO todo_items(id,task_id,title,position,series_id,occurrence_date,timezone) VALUES
-		('99999999999999999999999909',$1,'todo-1',1,'99999999999999999999999909','2026-01-01','UTC'),
-		('99999999999999999999999910',$1,'todo-2',2,'99999999999999999999999910','2026-01-01','UTC'),
-		('99999999999999999999999911',$1,'todo-3',3,'99999999999999999999999911','2026-01-01','UTC')`, task); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,series_id,occurrence_date,timezone) VALUES
+		('99999999999999999999999909',$1,'actionItem-1',1,'99999999999999999999999909','2026-01-01','UTC'),
+		('99999999999999999999999910',$1,'actionItem-2',2,'99999999999999999999999910','2026-01-01','UTC'),
+		('99999999999999999999999911',$1,'actionItem-3',3,'99999999999999999999999911','2026-01-01','UTC')`, task); err != nil {
 		t.Fatal(err)
 	}
 
@@ -65,14 +65,14 @@ func TestCursorListRepositories(t *testing.T) {
 		t.Fatalf("project tasks next page=%+v err=%v", projectTasksNext, err)
 	}
 
-	todo := repository.NewTodoItemRepository(tx)
-	todoRows, err := todo.ListByTaskCursor(ctx, domain.UserID(user), domain.TaskID(task), 2, nil)
-	if err != nil || len(todoRows) != 2 || todoRows[0].Position != 1 || todoRows[1].Position != 2 {
-		t.Fatalf("todo order=%+v err=%v", todoRows, err)
+	actionItem := repository.NewActionItemRepository(tx)
+	actionItemRows, err := actionItem.ListByTaskCursor(ctx, domain.UserID(user), domain.TaskID(task), 2, nil)
+	if err != nil || len(actionItemRows) != 2 || actionItemRows[0].Position != 1 || actionItemRows[1].Position != 2 {
+		t.Fatalf("action item order=%+v err=%v", actionItemRows, err)
 	}
-	todoNext, err := todo.ListByTaskCursor(ctx, domain.UserID(user), domain.TaskID(task), 2, &usecase.CursorAnchor{Position: todoRows[1].Position, Date: todoRows[1].OccurrenceDate, ID: todoRows[1].ID})
-	if err != nil || len(todoNext) != 1 || todoNext[0].ID == todoRows[1].ID {
-		t.Fatalf("todo boundary=%+v err=%v", todoNext, err)
+	actionItemNext, err := actionItem.ListByTaskCursor(ctx, domain.UserID(user), domain.TaskID(task), 2, &usecase.CursorAnchor{Position: actionItemRows[1].Position, Date: actionItemRows[1].OccurrenceDate, ID: actionItemRows[1].ID})
+	if err != nil || len(actionItemNext) != 1 || actionItemNext[0].ID == actionItemRows[1].ID {
+		t.Fatalf("action item boundary=%+v err=%v", actionItemNext, err)
 	}
 
 }

@@ -9,7 +9,7 @@ type Repositories interface {
 	TaskProjects() TaskProjectRepository
 	Tasks() TaskRepository
 	TaskTags() TaskTagRepository
-	TodoItems() TodoItemRepository
+	ActionItems() ActionItemRepository
 	TodoLists() TodoListRepository
 	TaskFrequencies() TaskFrequencyRepository
 	TaskPriorities() TaskPriorityRepository

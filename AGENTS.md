@@ -2,17 +2,17 @@
 
 ## Product
 
-The primary value is automatically generating today's TodoList as an execution plan from managed TodoItems and Schedules. Managing Tasks and Schedules together in one platform is the supporting value.
+The primary value is automatically generating today's TodoList as an execution plan from managed ActionItems and Schedules. Managing Tasks and Schedules together in one platform is the supporting value.
 
-Reduce the burden of maintaining long-term plans so users can focus on today's work. Keep Schedule times fixed when generating the plan, and place TodoItems into available time in priority order. Users can manually adjust the daily plan.
+Reduce the burden of maintaining long-term plans so users can focus on today's work. Keep Schedule times fixed when generating the plan, and place ActionItems into available time in priority order. Users can manually adjust the daily plan.
 
 ## Domain
 
 - Project: Groups Tasks and Schedules. Tasks and Schedules may also exist without a Project.
-- Task: Groups TodoItems.
-- TodoItem: Work without a fixed start and end time; one-off or recurring.
+- Task: Groups ActionItems.
+- ActionItem: Work without a fixed start and end time; one-off or recurring.
 - Schedule: Work with a fixed start and end time; one-off or recurring.
-- TodoList: The generated execution plan for a day, combining TodoItems and Schedules.
+- TodoList: The generated execution plan for a day, combining ActionItems and Schedules.
 
 ## Principles
 

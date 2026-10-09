@@ -340,7 +340,7 @@ func TestProjectDeletionLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, projectID := ulid.Make().String(), ulid.Make().String()
-	taskID, todoID, scheduleID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
+	taskID, actionItemID, scheduleID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Delete',$2,'unused','UTC')`, ownerID, ownerID+"@project-flow.test"); err != nil {
 		t.Fatal(err)
 	}
@@ -350,7 +350,7 @@ func TestProjectDeletionLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,changed_by) VALUES($1,$2,$3,$2,'Child task',$2)`, taskID, ownerID, projectID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO todo_items(id,task_id,title,position,series_id,occurrence_date,timezone) VALUES($1,$2,'Child todo',0,$1,'2026-10-07','UTC')`, todoID, taskID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,series_id,occurrence_date,timezone) VALUES($1,$2,'Child actionItem',0,$1,'2026-10-07','UTC')`, actionItemID, taskID); err != nil {
 		t.Fatal(err)
 	}
 	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
@@ -375,7 +375,7 @@ func TestProjectDeletionLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 		table string
 		id    string
 		want  bool
-	}{{"projects", projectID, true}, {"tasks", taskID, false}, {"todo_items", todoID, false}, {"schedules", scheduleID, false}} {
+	}{{"projects", projectID, true}, {"tasks", taskID, false}, {"action_items", actionItemID, false}, {"schedules", scheduleID, false}} {
 		var deleted bool
 		if err := pool.QueryRow(ctx, fmt.Sprintf(`SELECT deleted_at IS NOT NULL FROM %s WHERE id=$1`, row.table), row.id).Scan(&deleted); err != nil {
 			t.Fatal(err)
@@ -417,17 +417,17 @@ func TestProjectProgressCombinesPerTaskFloorsAndScheduleOccurrencesFromDB(t *tes
 			t.Fatal(err)
 		}
 	}
-	insertTodo := func(id, taskID string, position int, completed bool) {
+	insertActionItem := func(id, taskID string, position int, completed bool) {
 		t.Helper()
-		if _, err := pool.Exec(ctx, `INSERT INTO todo_items(id,task_id,title,position,series_id,occurrence_date,timezone,completed) VALUES($1,$2,$3,$4,$1,'2026-10-07','UTC',$5)`, id, taskID, "Todo", position, completed); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,series_id,occurrence_date,timezone,completed) VALUES($1,$2,$3,$4,$1,'2026-10-07','UTC',$5)`, id, taskID, "ActionItem", position, completed); err != nil {
 			t.Fatal(err)
 		}
 	}
-	insertTodo(ulid.Make().String(), taskIDs[0], 0, true)
-	insertTodo(ulid.Make().String(), taskIDs[0], 1, false)
-	insertTodo(ulid.Make().String(), taskIDs[0], 2, false)
-	insertTodo(ulid.Make().String(), taskIDs[1], 0, true)
-	insertTodo(ulid.Make().String(), taskIDs[1], 1, false)
+	insertActionItem(ulid.Make().String(), taskIDs[0], 0, true)
+	insertActionItem(ulid.Make().String(), taskIDs[0], 1, false)
+	insertActionItem(ulid.Make().String(), taskIDs[0], 2, false)
+	insertActionItem(ulid.Make().String(), taskIDs[1], 0, true)
+	insertActionItem(ulid.Make().String(), taskIDs[1], 1, false)
 	start := time.Now().UTC().Truncate(time.Minute)
 	if _, err := pool.Exec(ctx, `INSERT INTO schedules(id,user_id,project_id,assignee_id,title,start_at,end_at,series_id,occurrence_date,timezone,repeat_state,completed,changed_by) VALUES($1,$2,$3,$2,'Completed occurrence',$4,$5,$1,$6::date,'UTC','one_off',true,$2)`, scheduleID, ownerID, projectID, start, start.Add(time.Hour), start.Format("2006-01-02")); err != nil {
 		t.Fatal(err)
@@ -604,27 +604,27 @@ func TestProjectTaskAndScheduleCreationRaceWithParentOnlyDeletion(t *testing.T) 
 	}
 }
 
-func TestProjectDeletionLeavesTodoCreatedBeforeParentLockUntouched(t *testing.T) {
+func TestProjectDeletionLeavesActionItemCreatedBeforeParentLockUntouched(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, editorID, projectID, taskID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	for _, id := range []string{ownerID, editorID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Todo race',$2,'unused','UTC')`, id, id+"@project-flow.test"); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','ActionItem race',$2,'unused','UTC')`, id, id+"@project-flow.test"); err != nil {
 			t.Fatalf("insert user: %v", err)
 		}
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','Todo create/delete race','low',$2)`, projectID, ownerID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','ActionItem create/delete race','low',$2)`, projectID, ownerID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO project_members(project_id,user_id,role_id,added_by) VALUES($1,$2,'editor',$3)`, projectID, editorID, ownerID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,changed_by) VALUES($1,$2,$3,$2,'Todo race task',$2)`, taskID, ownerID, projectID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,changed_by) VALUES($1,$2,$3,$2,'ActionItem race task',$2)`, taskID, ownerID, projectID); err != nil {
 		t.Fatal(err)
 	}
-	todoID := ulid.Make().String()
-	functionName := "project_pause_todo_" + strings.ToLower(todoID)
-	triggerName := "project_pause_todo_trigger_" + strings.ToLower(todoID)
+	actionItemID := ulid.Make().String()
+	functionName := "project_pause_actionItem_" + strings.ToLower(actionItemID)
+	triggerName := "project_pause_actionItem_trigger_" + strings.ToLower(actionItemID)
 	if _, err := pool.Exec(ctx, fmt.Sprintf(`
 		CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$
 		BEGIN
@@ -633,17 +633,17 @@ func TestProjectDeletionLeavesTodoCreatedBeforeParentLockUntouched(t *testing.T)
 		END;
 		$$
 	`, functionName)); err != nil {
-		t.Fatalf("create Todo insert synchronization function: %v", err)
+		t.Fatalf("create ActionItem insert synchronization function: %v", err)
 	}
 	triggerCreated := true
 	t.Cleanup(func() {
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if triggerCreated {
-			_, _ = pool.Exec(cleanupCtx, fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON todo_items`, triggerName))
+			_, _ = pool.Exec(cleanupCtx, fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON action_items`, triggerName))
 			_, _ = pool.Exec(cleanupCtx, fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
 		}
-		_, _ = pool.Exec(cleanupCtx, `DELETE FROM todo_items WHERE id=$1`, todoID)
+		_, _ = pool.Exec(cleanupCtx, `DELETE FROM action_items WHERE id=$1`, actionItemID)
 		_, _ = pool.Exec(cleanupCtx, `DELETE FROM task_revisions WHERE id=$1`, taskID)
 		_, _ = pool.Exec(cleanupCtx, `DELETE FROM project_revisions WHERE id=$1`, projectID)
 		_, _ = pool.Exec(cleanupCtx, `DELETE FROM tasks WHERE id=$1`, taskID)
@@ -651,8 +651,8 @@ func TestProjectDeletionLeavesTodoCreatedBeforeParentLockUntouched(t *testing.T)
 		_, _ = pool.Exec(cleanupCtx, `DELETE FROM projects WHERE id=$1`, projectID)
 		_, _ = pool.Exec(cleanupCtx, `DELETE FROM users WHERE id=ANY($1::text[])`, []string{ownerID, editorID})
 	})
-	if _, err := pool.Exec(ctx, fmt.Sprintf(`CREATE TRIGGER %s BEFORE INSERT ON todo_items FOR EACH ROW EXECUTE FUNCTION %s()`, triggerName, functionName)); err != nil {
-		t.Fatalf("create Todo insert synchronization trigger: %v", err)
+	if _, err := pool.Exec(ctx, fmt.Sprintf(`CREATE TRIGGER %s BEFORE INSERT ON action_items FOR EACH ROW EXECUTE FUNCTION %s()`, triggerName, functionName)); err != nil {
+		t.Fatalf("create ActionItem insert synchronization trigger: %v", err)
 	}
 
 	lockConnection, err := pool.Acquire(ctx)
@@ -667,21 +667,21 @@ func TestProjectDeletionLeavesTodoCreatedBeforeParentLockUntouched(t *testing.T)
 		lockConnection.Release()
 	}()
 	if _, err := lockConnection.Exec(ctx, `SELECT pg_advisory_lock(hashtext($1))`, taskID); err != nil {
-		t.Fatalf("hold Todo insert advisory lock: %v", err)
+		t.Fatalf("hold ActionItem insert advisory lock: %v", err)
 	}
 
-	childApp, deleteApp := "project-todo-child-"+taskID, "project-todo-delete-"+taskID
+	childApp, deleteApp := "project-actionItem-child-"+taskID, "project-actionItem-delete-"+taskID
 	childPool := projectRaceNamedPool(t, childApp)
 	deletePool := projectRaceNamedPool(t, deleteApp)
 	childStore, deleteStore := application.NewStore(childPool), application.NewStore(deletePool)
-	create := taskusecase.NewCreateTodoItemUseCase(application.NewTaskUOW(childPool, childStore.Task, childStore.Project), projectTaskAuditTimezoneReader{}, nil)
+	create := taskusecase.NewCreateActionItemUseCase(application.NewTaskUOW(childPool, childStore.Task, childStore.Project), projectTaskAuditTimezoneReader{}, nil)
 	remove := projectusecase.NewDeleteProjectUseCase(application.NewProjectUOW(deletePool, deleteStore.Project, deleteStore.Task, deleteStore.Schedule), nil)
 	raceCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	createResult := make(chan error, 1)
 	go func() {
-		_, err := create.Execute(raceCtx, taskusecase.CreateTodoItemInput{
-			ID: taskdomain.TodoItemID(todoID), UserID: taskdomain.UserID(editorID), TaskID: taskdomain.TaskID(taskID), Title: "Created during Project deletion",
+		_, err := create.Execute(raceCtx, taskusecase.CreateActionItemInput{
+			ID: taskdomain.ActionItemID(actionItemID), UserID: taskdomain.UserID(editorID), TaskID: taskdomain.TaskID(taskID), Title: "Created during Project deletion",
 		})
 		createResult <- err
 	}()
@@ -693,14 +693,14 @@ func TestProjectDeletionLeavesTodoCreatedBeforeParentLockUntouched(t *testing.T)
 	}()
 	waitForProjectApplicationLockWait(t, pool, deleteApp)
 	if _, err := lockConnection.Exec(ctx, `SELECT pg_advisory_unlock(hashtext($1))`, taskID); err != nil {
-		t.Fatalf("release Todo insert advisory lock: %v", err)
+		t.Fatalf("release ActionItem insert advisory lock: %v", err)
 	}
 	lockHeld = false
 
 	for _, operation := range []struct {
 		name string
 		ch   <-chan error
-	}{{"Todo creation", createResult}, {"Project deletion", deleteResult}} {
+	}{{"ActionItem creation", createResult}, {"Project deletion", deleteResult}} {
 		select {
 		case err := <-operation.ch:
 			if err != nil {
@@ -710,10 +710,10 @@ func TestProjectDeletionLeavesTodoCreatedBeforeParentLockUntouched(t *testing.T)
 			t.Fatalf("%s did not finish before race deadline: %v", operation.name, raceCtx.Err())
 		}
 	}
-	for table, id := range map[string]string{"projects": projectID, "tasks": taskID, "todo_items": todoID} {
+	for table, id := range map[string]string{"projects": projectID, "tasks": taskID, "action_items": actionItemID} {
 		var deleted bool
 		if err := pool.QueryRow(ctx, `SELECT deleted_at IS NOT NULL FROM `+table+` WHERE id=$1`, id).Scan(&deleted); err != nil {
-			t.Fatalf("read %s after parent-only Project delete/Todo create race: %v", table, err)
+			t.Fatalf("read %s after parent-only Project delete/ActionItem create race: %v", table, err)
 		}
 		wantDeleted := table == "projects"
 		if deleted != wantDeleted {

@@ -11,10 +11,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const listTodoItemSkippedOccurrencesByTaskAndUserID = `-- name: ListTodoItemSkippedOccurrencesByTaskAndUserID :many
+const listActionItemSkippedOccurrencesByTaskAndUserID = `-- name: ListActionItemSkippedOccurrencesByTaskAndUserID :many
 SELECT child.occurrence_date
-FROM todo_items child
-JOIN todo_items root ON root.id = child.series_id AND root.series_id = root.id
+FROM action_items child
+JOIN action_items root ON root.id = child.series_id AND root.series_id = root.id
 JOIN tasks t ON t.id = root.task_id
 WHERE child.series_id = $1::text
   AND root.task_id = $2::text
@@ -24,18 +24,18 @@ WHERE child.series_id = $1::text
   AND root.deleted_at IS NULL
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, $3::text, 'todo_item', 'read')
+  AND task_has_permission(t.id, $3::text, 'action_item', 'read')
 ORDER BY child.occurrence_date
 `
 
-type ListTodoItemSkippedOccurrencesByTaskAndUserIDParams struct {
+type ListActionItemSkippedOccurrencesByTaskAndUserIDParams struct {
 	SeriesID string
 	TaskID   string
 	UserID   string
 }
 
-func (q *Queries) ListTodoItemSkippedOccurrencesByTaskAndUserID(ctx context.Context, arg ListTodoItemSkippedOccurrencesByTaskAndUserIDParams) ([]pgtype.Date, error) {
-	rows, err := q.db.Query(ctx, listTodoItemSkippedOccurrencesByTaskAndUserID, arg.SeriesID, arg.TaskID, arg.UserID)
+func (q *Queries) ListActionItemSkippedOccurrencesByTaskAndUserID(ctx context.Context, arg ListActionItemSkippedOccurrencesByTaskAndUserIDParams) ([]pgtype.Date, error) {
+	rows, err := q.db.Query(ctx, listActionItemSkippedOccurrencesByTaskAndUserID, arg.SeriesID, arg.TaskID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -54,10 +54,10 @@ func (q *Queries) ListTodoItemSkippedOccurrencesByTaskAndUserID(ctx context.Cont
 	return items, nil
 }
 
-const listTodoItemSkippedOccurrencesForCapabilityByTaskAndUserID = `-- name: ListTodoItemSkippedOccurrencesForCapabilityByTaskAndUserID :many
+const listActionItemSkippedOccurrencesForCapabilityByTaskAndUserID = `-- name: ListActionItemSkippedOccurrencesForCapabilityByTaskAndUserID :many
 SELECT child.occurrence_date
-FROM todo_items child
-JOIN todo_items root ON root.id = child.series_id AND root.series_id = root.id
+FROM action_items child
+JOIN action_items root ON root.id = child.series_id AND root.series_id = root.id
 JOIN tasks t ON t.id = root.task_id
 WHERE child.series_id = $1::text
   AND root.task_id = $2::text
@@ -71,7 +71,7 @@ WHERE child.series_id = $1::text
 ORDER BY child.occurrence_date
 `
 
-type ListTodoItemSkippedOccurrencesForCapabilityByTaskAndUserIDParams struct {
+type ListActionItemSkippedOccurrencesForCapabilityByTaskAndUserIDParams struct {
 	SeriesID   string
 	TaskID     string
 	ActorID    string
@@ -79,8 +79,8 @@ type ListTodoItemSkippedOccurrencesForCapabilityByTaskAndUserIDParams struct {
 	Action     Action
 }
 
-func (q *Queries) ListTodoItemSkippedOccurrencesForCapabilityByTaskAndUserID(ctx context.Context, arg ListTodoItemSkippedOccurrencesForCapabilityByTaskAndUserIDParams) ([]pgtype.Date, error) {
-	rows, err := q.db.Query(ctx, listTodoItemSkippedOccurrencesForCapabilityByTaskAndUserID,
+func (q *Queries) ListActionItemSkippedOccurrencesForCapabilityByTaskAndUserID(ctx context.Context, arg ListActionItemSkippedOccurrencesForCapabilityByTaskAndUserIDParams) ([]pgtype.Date, error) {
+	rows, err := q.db.Query(ctx, listActionItemSkippedOccurrencesForCapabilityByTaskAndUserID,
 		arg.SeriesID,
 		arg.TaskID,
 		arg.ActorID,

@@ -13,9 +13,9 @@
 | 現状 | 影響 |
 | --- | --- |
 | `task/usecase/pagination.go` は Task 専用の offset、既定50・最大100 | cursor の共通処理に置き換える。`ListTasks` と `ListProjectTasks` の旧 request/result とテストを更新 |
-| Projects・Tags・TodoItems・TaskSchedules の List は全件返却 | 全6本を `LIMIT page_size + 1` の keyset query に変更 |
+| Projects・Tags・ActionItems・TaskSchedules の List は全件返却 | 全6本を `LIMIT page_size + 1` の keyset query に変更 |
 | Tasks 2本は `{items,next_offset}`、Tags は `{tags}`、残り3本は配列 | 全6本を `{items,next_page_token}` に統一 |
-| Task と Project は `created_at,id`、Tag は `name,id`、TodoItem は `position,occurrence_date`、Schedule は `start_at` 順 | 後者2本に `id` を最終同値判定として追加し、各順序に対応する cursor 境界を使う |
+| Task と Project は `created_at,id`、Tag は `name,id`、ActionItem は `position,occurrence_date`、Schedule は `start_at` 順 | 後者2本に `id` を最終同値判定として追加し、各順序に対応する cursor 境界を使う |
 | DB の時刻は `timestamptz`、公開 DAO の時刻は Unix 秒へ丸められる | cursor は DB の時刻精度を保持する。公開 `created_at` から cursor を再構成しない |
 | `backend/AGENTS.md` は一操作一 UseCase と `shared` から task/auth への依存禁止を規定 | `List*UseCase` は残す。共有処理は UseCase ではない独立部品にする |
 
@@ -49,21 +49,21 @@
 | Projects | `(created_at, id) < (:at, :id)` | `projects.query.sql` / `repository/projects.go` |
 | Tasks、Project 内 Tasks | `(created_at, id) < (:at, :id)` | `tasks.query.sql` / `repository/tasks.go` |
 | Tags | `name > :name OR (name = :name AND id > :id)`。`citext` の DB 比較をそのまま使う | `task_tags.query.sql` / `repository/task_tags.go` |
-| TodoItems | `(position, occurrence_date, id) > (:position, :date, :id)` | `todo_items.query.sql` / `repository/todo_items.go` |
+| ActionItems | `(position, occurrence_date, id) > (:position, :date, :id)` | `action_items.query.sql` / `repository/action_items.go` |
 | TaskSchedules | `(start_at, id) > (:at, :id)` | `task_schedules.query.sql` / `repository/task_schedules.go` |
 
-- `created_at` と `start_at` は DB の `timestamptz` 精度で token に格納する。公開 DAO の Unix 秒や RFC3339 の表示値を cursor に使わない。`occurrence_date` は現行 migration 適用後に NOT NULL。TodoItem の query は削除済みの回を除く既存条件を保つ。
+- `created_at` と `start_at` は DB の `timestamptz` 精度で token に格納する。公開 DAO の Unix 秒や RFC3339 の表示値を cursor に使わない。`occurrence_date` は現行 migration 適用後に NOT NULL。ActionItem の query は削除済みの回を除く既存条件を保つ。
 - 最初のページと続きのページで SQL を分けてもよい。任意の cursor 条件を一つの `OR` に押し込むより、対象索引を使う計画が安定する形を `EXPLAIN` で選ぶ。
 - Project 内 Tasks と Task 配下の2 List は、既存の親所有確認と子 query の `user_id` 制約を保つ。グローバルな Tasks 一覧も `user_id` で限定する。token の scope 照合はこれらの代替にしない。
 - 既存の内部用 `List*` SQL は呼び出し先を確認し、公開 List 用 query だけを置換する。SQL ソース変更後に `make sqlc-gen` を実行し、生成コードは手編集しない。
-- 新しい migration（現行の次番号）で、少なくとも Projects `(user_id, created_at DESC, id DESC)`、Tasks `(user_id, created_at DESC, id DESC)` と `(user_id, project_id, created_at DESC, id DESC)`、未削除 TodoItems `(task_id, position, occurrence_date, id)`、未削除 Schedules `(task_id, start_at, id)` を候補にする。Tags の既存 `(user_id, name)` unique index と既存 Schedules index を含め、実データに近い `EXPLAIN` で重複・不要な索引を判断してから確定する。migration には down を付ける。
+- 新しい migration（現行の次番号）で、少なくとも Projects `(user_id, created_at DESC, id DESC)`、Tasks `(user_id, created_at DESC, id DESC)` と `(user_id, project_id, created_at DESC, id DESC)`、未削除 ActionItems `(task_id, position, occurrence_date, id)`、未削除 Schedules `(task_id, start_at, id)` を候補にする。Tags の既存 `(user_id, name)` unique index と既存 Schedules index を含め、実データに近い `EXPLAIN` で重複・不要な索引を判断してから確定する。migration には down を付ける。
 
 この索引確認は cursor pagination の検索性能を保つための作業。field mask に応じて DB の取得列・関連データを省く最適化とは別である。
 
 ### 4. UseCase・handler・配線
 
-- `usecase/list_tasks.go`、`list_project_tasks.go`、`list_projects.go`、`list_task_tags.go`、`list_todo_items.go`、`list_task_schedules.go` の各 `Execute` をページ入力・ページ結果に変更する。旧 `task/usecase/pagination.go` の offset 契約を削除する。各 UseCase は対応する keyset repository port を持つ。
-- `handler/{tasks,projects,task_tags,todo_items,task_schedules}.go` の List のみを変更し、全6本で共通 query の読み取り・エラー・envelope・field mask 投影を使う。`limit` と `offset` が来たら400とし、黙って無視しない。親IDの不正と所有者不一致は現行の公開エラー方針を保つ。
+- `usecase/list_tasks.go`、`list_project_tasks.go`、`list_projects.go`、`list_task_tags.go`、`list_action_items.go`、`list_task_schedules.go` の各 `Execute` をページ入力・ページ結果に変更する。旧 `task/usecase/pagination.go` の offset 契約を削除する。各 UseCase は対応する keyset repository port を持つ。
+- `handler/{tasks,projects,task_tags,action_items,task_schedules}.go` の List のみを変更し、全6本で共通 query の読み取り・エラー・envelope・field mask 投影を使う。`limit` と `offset` が来たら400とし、黙って無視しない。親IDの不正と所有者不一致は現行の公開エラー方針を保つ。
 - `application/application.go` で新しい List UseCase / repository port と token codec を配線し、`cmd/api/main.go` から必要な handler に同じ codec を渡す。新 route は追加しない。秘密鍵の設定は起動時に検証する。
 - List response DTO と Swagger 注釈を `{items,next_page_token}`、`page_size`、`page_token`、`fields`、400 応答に更新し、`make swagger-gen` で生成物を更新する。Task と Project 内 Task の item 表現の差は今回変更しない。
 
@@ -71,7 +71,7 @@
 
 1. 共通部品の unit test: ページサイズの既定・上限・不正値、`limit + 1` の境界、token の暗号化・URL 安全性・改ざん・24時間期限・scope/親ID/mask/order 不一致・`page_size` 変更、field mask の nested/alias/wildcard/無指定/不正構文/未知項目/zero・null 値保持。
 2. 各 List UseCase の test: 空ページ、最後のページ、同値 sort key、所有者・親の確認、DB エラー、最後に返した item を次境界に使うこと。Task と Schedule の時刻は同一秒内の異なる値でも境界が壊れないこと。
-3. PostgreSQL を使う repository integration test: 6 List の `ORDER BY` と keyset predicate の一致、ページ間に同一 item が出ないこと、Tag の `citext` 順、TodoItem の position/occurrence_date、Schedule の start_at、未削除条件とユーザー分離を確認する。並べ替え・時刻変更中のページ取得は SPEC の live read 契約として確認する。
+3. PostgreSQL を使う repository integration test: 6 List の `ORDER BY` と keyset predicate の一致、ページ間に同一 item が出ないこと、Tag の `citext` 順、ActionItem の position/occurrence_date、Schedule の start_at、未削除条件とユーザー分離を確認する。並べ替え・時刻変更中のページ取得は SPEC の live read 契約として確認する。
 4. HTTP test: 全6 route の共通形式、各 item schema で有効な mask（Tag は `items(id,name)`、他は `items(id,title)` など）と `next_page_token` の併用、mask から token を外した応答、旧 offset 引数・異常 token・不正 mask の400、親の404、認証401。既存 handler test の旧配列・`next_offset` 期待値を更新する。
 5. Go 1.25 で `go test ./...`、`go build ./cmd/api`、migration up/down、`make sqlc-gen` と `make swagger-gen` 後の差分を確認する。必要な索引は `EXPLAIN` で検証し、最終差分に無関係な変更を混ぜない。
 

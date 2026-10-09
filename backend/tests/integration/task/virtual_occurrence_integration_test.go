@@ -21,12 +21,12 @@ func (occurrenceTestID) Generate() string { return ulid.Make().String() }
 
 type occurrenceTestRepositories struct {
 	usecase.Repositories
-	task usecase.TaskRepository
-	todo usecase.TodoItemRepository
+	task       usecase.TaskRepository
+	actionItem usecase.ActionItemRepository
 }
 
-func (r occurrenceTestRepositories) Tasks() usecase.TaskRepository         { return r.task }
-func (r occurrenceTestRepositories) TodoItems() usecase.TodoItemRepository { return r.todo }
+func (r occurrenceTestRepositories) Tasks() usecase.TaskRepository             { return r.task }
+func (r occurrenceTestRepositories) ActionItems() usecase.ActionItemRepository { return r.actionItem }
 
 type occurrenceTestUOW struct{ pool *pgxpool.Pool }
 
@@ -37,7 +37,7 @@ func (u occurrenceTestUOW) Do(ctx context.Context, fn func(context.Context, usec
 	}
 	defer tx.Rollback(ctx)
 	repos := occurrenceTestRepositories{
-		task: taskrepo.NewTaskRepository(tx), todo: taskrepo.NewTodoItemRepository(tx),
+		task: taskrepo.NewTaskRepository(tx), actionItem: taskrepo.NewActionItemRepository(tx),
 	}
 	if err := fn(ctx, repos); err != nil {
 		return err
@@ -57,27 +57,27 @@ func TestVirtualOccurrenceMutationsPersistRealULIDs(t *testing.T) {
 	}
 	rootDate := recurrenceDate("2026-10-05")
 
-	todoID := domain.TodoItemID(id.Generate())
-	todo, err := domain.NewTodoItemWithDetails(todoID, taskID, "Weekly work", "", rootDate, false, 0, 1, domain.TaskFrequencies{monday})
+	actionItemID := domain.ActionItemID(id.Generate())
+	actionItem, err := domain.NewActionItemWithDetails(actionItemID, taskID, "Weekly work", "", rootDate, false, 0, 1, domain.TaskFrequencies{monday})
 	if err != nil {
 		t.Fatal(err)
 	}
-	todo, err = todo.WithRecurrence(domain.RecurrenceMetadata{SeriesID: string(todoID), OccurrenceDate: rootDate, Timezone: "Asia/Tokyo"})
+	actionItem, err = actionItem.WithRecurrence(domain.RecurrenceMetadata{SeriesID: string(actionItemID), OccurrenceDate: rootDate, Timezone: "Asia/Tokyo"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := taskrepo.NewTodoItemRepository(pool).CreateForOwnedTask(ctx, userID, todo, false); err != nil {
+	if _, err := taskrepo.NewActionItemRepository(pool).CreateForOwnedTask(ctx, userID, actionItem, false); err != nil {
 		t.Fatal(err)
 	}
 
 	title := "Edited weekly work"
-	updated, err := usecase.NewUpdateTodoItemUseCase(uow, nil, id).ExecuteOccurrence(ctx, userID, taskID, todoID, "2026-10-12", "current", usecase.PatchField[string]{Present: true, Value: &title}, usecase.PatchField[string]{}, usecase.PatchField[time.Time]{})
+	updated, err := usecase.NewUpdateActionItemUseCase(uow, nil, id).ExecuteOccurrence(ctx, userID, taskID, actionItemID, "2026-10-12", "current", usecase.PatchField[string]{Present: true, Value: &title}, usecase.PatchField[string]{}, usecase.PatchField[time.Time]{})
 	if err != nil {
-		t.Fatalf("update virtual todo: %v", err)
+		t.Fatalf("update virtual actionItem: %v", err)
 	}
 	assertRealOccurrenceID(t, updated.ID)
-	if err := usecase.NewCompleteTodoItemUseCase(uow, nil, id).ExecuteOccurrence(ctx, userID, taskID, todoID, "2026-10-19"); err != nil {
-		t.Fatalf("complete virtual todo: %v", err)
+	if err := usecase.NewCompleteActionItemUseCase(uow, nil, id).ExecuteOccurrence(ctx, userID, taskID, actionItemID, "2026-10-19"); err != nil {
+		t.Fatalf("complete virtual actionItem: %v", err)
 	}
 
 }
@@ -92,16 +92,16 @@ func assertRealOccurrenceID(t *testing.T, value string) {
 	}
 }
 
-func assertSavedOccurrence(t *testing.T, rows []dao.TodoItem, date string, completed bool) {
+func assertSavedOccurrence(t *testing.T, rows []dao.ActionItem, date string, completed bool) {
 	t.Helper()
 	for _, row := range rows {
 		if row.OccurrenceDate == date {
 			assertRealOccurrenceID(t, row.ID)
 			if row.Completed != completed {
-				t.Errorf("todo %s completed = %v, want %v", date, row.Completed, completed)
+				t.Errorf("actionItem %s completed = %v, want %v", date, row.Completed, completed)
 			}
 			return
 		}
 	}
-	t.Errorf("todo %s was not saved", date)
+	t.Errorf("actionItem %s was not saved", date)
 }

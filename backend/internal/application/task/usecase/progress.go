@@ -39,8 +39,8 @@ func applyTaskProgressSources(tasks []dao.Task, sources dao.TaskProgressSources,
 		}
 		value := sources.Counts[task.ID]
 		if task.Status.Value != "done" {
-			for _, root := range sources.TodoItemRoots {
-				if root.TaskID == task.ID && progressTodoOccursToday(root, asOf) {
+			for _, root := range sources.ActionItemRoots {
+				if root.TaskID == task.ID && progressActionItemOccursToday(root, asOf) {
 					value.Total++
 				}
 			}
@@ -64,8 +64,8 @@ func taskProgressCounts(ctx context.Context, tasks TaskRepository, task dao.Task
 	// For mutation comparisons, project a done task's current virtual set as if
 	// it were reopened. This detects a restored skipped occurrence that becomes
 	// visible only after done-task recurrence suppression ends.
-	for _, root := range inputs.TodoItemRoots {
-		if progressTodoOccursToday(root, asOf) {
+	for _, root := range inputs.ActionItemRoots {
+		if progressActionItemOccursToday(root, asOf) {
 			counts.Total++
 		}
 	}
@@ -284,7 +284,7 @@ func applyTaskProgress(ctx context.Context, source taskProgressSource, tasks []d
 	return result, err
 }
 
-func progressTodoOccursToday(root dao.ProgressRecurrence, asOf time.Time) bool {
+func progressActionItemOccursToday(root dao.ProgressRecurrence, asOf time.Time) bool {
 	anchorDate := ""
 	if root.FrequencyAnchorDate != 0 {
 		anchorDate = time.Unix(root.FrequencyAnchorDate, 0).UTC().Format("2006-01-02")

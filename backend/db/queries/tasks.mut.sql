@@ -106,7 +106,7 @@ WITH deleted_task AS (
       AND task_has_permission(id, sqlc.arg(user_id), 'task', 'delete')
     RETURNING id
 ), deleted_items AS (
-    UPDATE todo_items SET deleted_at = now(), updated_at = now()
+    UPDATE action_items SET deleted_at = now(), updated_at = now()
     WHERE task_id IN (SELECT id FROM deleted_task) AND deleted_at IS NULL
     RETURNING id
 )
@@ -118,8 +118,8 @@ SET deleted_at = now(), changed_by = sqlc.arg(actor_id)::text
 WHERE t.project_id = sqlc.arg(project_id)::text
   AND t.deleted_at IS NULL;
 
--- name: DeleteProjectTodoItemsByActor :execrows
-UPDATE todo_items AS i
+-- name: DeleteProjectActionItemsByActor :execrows
+UPDATE action_items AS i
 SET deleted_at = now(), updated_at = now()
 WHERE i.task_id IN (
     SELECT t.id FROM tasks AS t

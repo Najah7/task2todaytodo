@@ -56,8 +56,8 @@ func (r taskRepositories) TaskTags() usecase.TaskTagRepository {
 	return r.store.TaskTags
 }
 
-func (r taskRepositories) TodoItems() usecase.TodoItemRepository {
-	return r.store.TodoItems
+func (r taskRepositories) ActionItems() usecase.ActionItemRepository {
+	return r.store.ActionItems
 }
 
 func (r taskRepositories) TodoLists() usecase.TodoListRepository {

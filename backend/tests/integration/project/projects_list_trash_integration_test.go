@@ -267,14 +267,14 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 	fixture := newProjectRepositoryFixture(t, pool)
 	ctx := t.Context()
 	taskIDs := []string{ulid.Make().String(), ulid.Make().String()}
-	todoIDs := []string{ulid.Make().String(), ulid.Make().String()}
+	actionItemIDs := []string{ulid.Make().String(), ulid.Make().String()}
 	scheduleIDs := []string{ulid.Make().String(), ulid.Make().String()}
 	start := time.Date(2026, 10, 8, 9, 0, 0, 0, time.UTC)
 	for i, taskID := range taskIDs {
 		if _, err := fixture.tx.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,status,changed_by) VALUES($1,$2,$3,$2,$4,'open',$2)`, taskID, fixture.ownerID, fixture.projectID, []string{"Individually deleted Task", "Live Task"}[i]); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := fixture.tx.Exec(ctx, `INSERT INTO todo_items(id,task_id,title,position,series_id,occurrence_date,timezone) VALUES($1,$2,$3,0,$1,'2026-10-08','UTC')`, todoIDs[i], taskID, "Todo item"); err != nil {
+		if _, err := fixture.tx.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,series_id,occurrence_date,timezone) VALUES($1,$2,$3,0,$1,'2026-10-08','UTC')`, actionItemIDs[i], taskID, "Action item"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -285,7 +285,7 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 		}
 	}
 	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM todo_items WHERE id=ANY($1::text[])`, todoIDs)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM action_items WHERE id=ANY($1::text[])`, actionItemIDs)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM task_revisions WHERE id=ANY($1::text[])`, taskIDs)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_revisions WHERE id=ANY($1::text[])`, scheduleIDs)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM schedules WHERE id=ANY($1::text[])`, scheduleIDs)
@@ -305,16 +305,16 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 
 	beforeTasks := projectListReadChildStates(t, pool, "tasks", taskIDs)
 	beforeSchedules := projectListReadChildStates(t, pool, "schedules", scheduleIDs)
-	var beforeTodoDeleted []bool
-	for _, todoID := range todoIDs {
+	var beforeActionItemDeleted []bool
+	for _, actionItemID := range actionItemIDs {
 		var deleted bool
-		if err := pool.QueryRow(ctx, `SELECT deleted_at IS NOT NULL FROM todo_items WHERE id=$1`, todoID).Scan(&deleted); err != nil {
+		if err := pool.QueryRow(ctx, `SELECT deleted_at IS NOT NULL FROM action_items WHERE id=$1`, actionItemID).Scan(&deleted); err != nil {
 			t.Fatal(err)
 		}
-		beforeTodoDeleted = append(beforeTodoDeleted, deleted)
+		beforeActionItemDeleted = append(beforeActionItemDeleted, deleted)
 	}
-	if !beforeTasks[0].deleted || beforeTasks[1].deleted || !beforeSchedules[0].deleted || beforeSchedules[1].deleted || !beforeTodoDeleted[0] || beforeTodoDeleted[1] {
-		t.Fatalf("child fixture states not established: Tasks=%+v Schedules=%+v TodoDeleted=%v", beforeTasks, beforeSchedules, beforeTodoDeleted)
+	if !beforeTasks[0].deleted || beforeTasks[1].deleted || !beforeSchedules[0].deleted || beforeSchedules[1].deleted || !beforeActionItemDeleted[0] || beforeActionItemDeleted[1] {
+		t.Fatalf("child fixture states not established: Tasks=%+v Schedules=%+v ActionItemDeleted=%v", beforeTasks, beforeSchedules, beforeActionItemDeleted)
 	}
 
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
@@ -333,7 +333,7 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 	}
 	assertProjectListChildStates(t, pool, "after Project trash", "tasks", taskIDs, beforeTasks)
 	assertProjectListChildStates(t, pool, "after Project trash", "schedules", scheduleIDs, beforeSchedules)
-	assertProjectListTodoDeleted(t, pool, todoIDs, beforeTodoDeleted)
+	assertProjectListActionItemDeleted(t, pool, actionItemIDs, beforeActionItemDeleted)
 
 	restored, err := projectusecase.NewRestoreProjectUseCase(projectUOW, store.Project.Projects, nil).Execute(ctx, projectdomain.UserID(fixture.ownerID), projectdomain.ProjectID(fixture.projectID), 2)
 	if err != nil {
@@ -350,7 +350,7 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 	}
 	assertProjectListChildStates(t, pool, "after Project restore", "tasks", taskIDs, beforeTasks)
 	assertProjectListChildStates(t, pool, "after Project restore", "schedules", scheduleIDs, beforeSchedules)
-	assertProjectListTodoDeleted(t, pool, todoIDs, beforeTodoDeleted)
+	assertProjectListActionItemDeleted(t, pool, actionItemIDs, beforeActionItemDeleted)
 }
 
 type projectListChildState struct {
@@ -385,20 +385,20 @@ func assertProjectListChildStates(t *testing.T, pool interface {
 	}
 }
 
-func assertProjectListTodoDeleted(t *testing.T, pool interface {
+func assertProjectListActionItemDeleted(t *testing.T, pool interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, ids []string, want []bool) {
 	t.Helper()
 	got := make([]bool, 0, len(ids))
 	for _, id := range ids {
 		var deleted bool
-		if err := pool.QueryRow(t.Context(), `SELECT deleted_at IS NOT NULL FROM todo_items WHERE id=$1`, id).Scan(&deleted); err != nil {
+		if err := pool.QueryRow(t.Context(), `SELECT deleted_at IS NOT NULL FROM action_items WHERE id=$1`, id).Scan(&deleted); err != nil {
 			t.Fatal(err)
 		}
 		got = append(got, deleted)
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("TodoItem deleted states=%v, want preserved %v", got, want)
+		t.Errorf("ActionItem deleted states=%v, want preserved %v", got, want)
 	}
 }
 

@@ -54,16 +54,16 @@ func recurrenceDate(value string) time.Time {
 	return date
 }
 
-func TestTodoItemsAllowSameDayPositionTies(t *testing.T) {
+func TestActionItemsAllowSameDayPositionTies(t *testing.T) {
 	pool := recurrenceIntegrationPool(t)
 	userID, taskID := seedRecurrenceTask(t, pool, "Asia/Tokyo")
-	repo := taskrepo.NewTodoItemRepository(pool)
+	repo := taskrepo.NewActionItemRepository(pool)
 	ctx := t.Context()
 	date := recurrenceDate("2026-10-03")
 	wantPosition := 4
-	ids := []domain.TodoItemID{domain.TodoItemID(ulid.Make().String()), domain.TodoItemID(ulid.Make().String())}
+	ids := []domain.ActionItemID{domain.ActionItemID(ulid.Make().String()), domain.ActionItemID(ulid.Make().String())}
 	for index, id := range ids {
-		item, err := domain.NewTodoItemWithDetails(id, taskID, "Same-position item", "", date, false, wantPosition, 0, nil)
+		item, err := domain.NewActionItemWithDetails(id, taskID, "Same-position item", "", date, false, wantPosition, 0, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -90,15 +90,15 @@ func TestTodoItemsAllowSameDayPositionTies(t *testing.T) {
 	}
 }
 
-func TestCreateTodoItemPositionStartsAtZeroForEachOccurrenceDate(t *testing.T) {
+func TestCreateActionItemPositionStartsAtZeroForEachOccurrenceDate(t *testing.T) {
 	pool := recurrenceIntegrationPool(t)
 	userID, taskID := seedRecurrenceTask(t, pool, "UTC")
-	repo := taskrepo.NewTodoItemRepository(pool)
+	repo := taskrepo.NewActionItemRepository(pool)
 	ctx := t.Context()
 	for index, dateText := range []string{"2026-10-03", "2026-10-04"} {
 		date := recurrenceDate(dateText)
-		id := domain.TodoItemID(ulid.Make().String())
-		item, err := domain.NewTodoItemWithDetails(id, taskID, "Day item", "", date, false, 0, 0, nil)
+		id := domain.ActionItemID(ulid.Make().String())
+		item, err := domain.NewActionItemWithDetails(id, taskID, "Day item", "", date, false, 0, 0, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -116,18 +116,18 @@ func TestCreateTodoItemPositionStartsAtZeroForEachOccurrenceDate(t *testing.T) {
 	}
 }
 
-func TestStopTodoItemRecurrenceRetainsStoppedRootState(t *testing.T) {
+func TestStopActionItemRecurrenceRetainsStoppedRootState(t *testing.T) {
 	pool := recurrenceIntegrationPool(t)
 	userID, taskID := seedRecurrenceTask(t, pool, "Asia/Tokyo")
-	repo := taskrepo.NewTodoItemRepository(pool)
+	repo := taskrepo.NewActionItemRepository(pool)
 	ctx := t.Context()
-	seriesID := domain.TodoItemID(ulid.Make().String())
+	seriesID := domain.ActionItemID(ulid.Make().String())
 	rootDate := recurrenceDate("2026-10-03")
 	frequency, err := domain.NewTaskFrequency("sat")
 	if err != nil {
 		t.Fatal(err)
 	}
-	root, err := domain.NewTodoItemWithDetails(seriesID, taskID, "Weekly review", "", rootDate, false, 0, 1, domain.TaskFrequencies{frequency})
+	root, err := domain.NewActionItemWithDetails(seriesID, taskID, "Weekly review", "", rootDate, false, 0, 1, domain.TaskFrequencies{frequency})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestStopTodoItemRecurrenceRetainsStoppedRootState(t *testing.T) {
 	if _, err := repo.CreateForOwnedTask(ctx, userID, root, false); err != nil {
 		t.Fatalf("create root: %v", err)
 	}
-	if err := repo.StopTodoItemRecurrence(ctx, userID, taskID, seriesID); err != nil {
+	if err := repo.StopActionItemRecurrence(ctx, userID, taskID, seriesID); err != nil {
 		t.Fatalf("stop series: %v", err)
 	}
 	rootRow, err := repo.GetForOwnedTask(ctx, userID, taskID, seriesID)
@@ -149,7 +149,7 @@ func TestStopTodoItemRecurrenceRetainsStoppedRootState(t *testing.T) {
 		t.Errorf("stopped root = %+v; want stopped recurring root with preserved anchor and no weekdays", rootRow)
 	}
 	var roots int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM todo_items WHERE id = $1 AND series_id = id AND deleted_at IS NULL`, string(seriesID)).Scan(&roots); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM action_items WHERE id = $1 AND series_id = id AND deleted_at IS NULL`, string(seriesID)).Scan(&roots); err != nil {
 		t.Fatalf("read saved root occurrence: %v", err)
 	}
 	if roots != 1 {

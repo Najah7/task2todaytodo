@@ -147,15 +147,15 @@ func TestOperationOnlyPermissionsDoNotRequireReadOrParentUpdateGrants(t *testing
 	roleID := fixture.customRole(t, "operation_only")
 	fixture.addMember(t, actorID, roleID)
 	taskID := fixture.task(t, fixture.ownerID, "Operation-only task")
-	todoID := fixture.todoItem(t, taskID)
-	if _, err := fixture.tx.Exec(ctx, `UPDATE todo_items SET completed = true WHERE id = $1`, todoID); err != nil {
-		t.Fatalf("complete operation-only todo fixture: %v", err)
+	actionItemID := fixture.actionItem(t, taskID)
+	if _, err := fixture.tx.Exec(ctx, `UPDATE action_items SET completed = true WHERE id = $1`, actionItemID); err != nil {
+		t.Fatalf("complete operation-only actionItem fixture: %v", err)
 	}
 	fixture.commit(t)
 
 	for _, grant := range []struct{ resource, action string }{
 		{"task", "update"},
-		{"todo_item", "update"},
+		{"action_item", "update"},
 	} {
 		permissionID := sharingPermissionID(t, pool, grant.resource, grant.action, "allow")
 		if _, err := pool.Exec(ctx, `INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)`, roleID, permissionID); err != nil {
@@ -182,27 +182,27 @@ func TestOperationOnlyPermissionsDoNotRequireReadOrParentUpdateGrants(t *testing
 		t.Fatalf("remove task.update grant before child-only operation: %v", err)
 	}
 	today := time.Now().UTC().Truncate(time.Minute)
-	newTodoTitle := "Updated without todo_item.read or task.update permission"
-	if _, err := usecase.NewUpdateTodoItemUseCase(sharingTestUOW{pool: pool}, nil).ExecuteOccurrence(
-		ctx, actor, task, domain.TodoItemID(todoID), today.Format("2006-01-02"), "current",
-		usecase.PatchField[string]{Present: true, Value: &newTodoTitle}, usecase.PatchField[string]{}, usecase.PatchField[time.Time]{},
+	newActionItemTitle := "Updated without action_item.read or task.update permission"
+	if _, err := usecase.NewUpdateActionItemUseCase(sharingTestUOW{pool: pool}, nil).ExecuteOccurrence(
+		ctx, actor, task, domain.ActionItemID(actionItemID), today.Format("2006-01-02"), "current",
+		usecase.PatchField[string]{Present: true, Value: &newActionItemTitle}, usecase.PatchField[string]{}, usecase.PatchField[time.Time]{},
 	); err != nil {
-		t.Fatalf("todo_item.update with no read or task.update grant: %v", err)
+		t.Fatalf("action_item.update with no read or task.update grant: %v", err)
 	}
 	if err := usecase.NewDeleteTaskUseCase(sharingTestUOW{pool: pool}, nil).Execute(ctx, actor, task, 2); !errors.Is(err, usecase.ErrTaskNotFound) {
 		t.Fatalf("task.delete without read/delete allow = %v, want hidden task", err)
 	}
 
-	var taskTitle, todoTitle, taskStatus string
+	var taskTitle, actionTitle, taskStatus string
 	var taskRevision int32
 	if err := pool.QueryRow(ctx, `SELECT title, status, revision FROM tasks WHERE id = $1`, taskID).Scan(&taskTitle, &taskStatus, &taskRevision); err != nil {
 		t.Fatalf("read task after operation-only child update: %v", err)
 	}
-	if err := pool.QueryRow(ctx, `SELECT title FROM todo_items WHERE id = $1`, todoID).Scan(&todoTitle); err != nil {
-		t.Fatalf("read updated todo title: %v", err)
+	if err := pool.QueryRow(ctx, `SELECT title FROM action_items WHERE id = $1`, actionItemID).Scan(&actionTitle); err != nil {
+		t.Fatalf("read updated actionItem title: %v", err)
 	}
-	if taskTitle != newTaskTitle || todoTitle != newTodoTitle || taskStatus != "open" || taskRevision != 2 {
-		t.Fatalf("operation-only persisted state task=%q todo=%q status=%q revision=%d; want updated titles, open/2", taskTitle, todoTitle, taskStatus, taskRevision)
+	if taskTitle != newTaskTitle || actionTitle != newActionItemTitle || taskStatus != "open" || taskRevision != 2 {
+		t.Fatalf("operation-only persisted state task=%q actionItem=%q status=%q revision=%d; want updated titles, open/2", taskTitle, actionTitle, taskStatus, taskRevision)
 	}
 }
 
@@ -240,7 +240,7 @@ func TestSharedTaskCreationUsesProjectOwnerAndRecordsMemberActor(t *testing.T) {
 	}
 }
 
-func TestSharedTodoItemReadWriteAndDeletePermissions(t *testing.T) {
+func TestSharedActionItemReadWriteAndDeletePermissions(t *testing.T) {
 	pool := recurrenceIntegrationPool(t)
 	ctx := t.Context()
 	fixture := newSharingFixture(t, pool)
@@ -249,54 +249,54 @@ func TestSharedTodoItemReadWriteAndDeletePermissions(t *testing.T) {
 	fixture.addMember(t, editorID, "editor")
 	fixture.addMember(t, adminID, "admin")
 	taskID := fixture.task(t, viewerID, "Shared child task")
-	initialTodoID := fixture.todoItem(t, taskID)
+	initialActionItemID := fixture.actionItem(t, taskID)
 	fixture.commit(t)
 
 	uow := sharingTestUOW{pool: pool}
 	today := time.Now().UTC().Truncate(time.Minute)
 	date := today.Format("2006-01-02")
 	pageRequest := usecase.CursorPageRequest{Size: 10, FromDate: date}
-	todoList := usecase.NewListTodoItemsUseCase(uow, nil)
-	viewerTodos, err := todoList.Execute(ctx, domain.UserID(viewerID), domain.TaskID(taskID))
-	if err != nil || len(viewerTodos) != 1 || viewerTodos[0].ID != initialTodoID {
-		t.Fatalf("viewer todo list = %+v, error %v; want initial shared todo", viewerTodos, err)
+	actionItemList := usecase.NewListActionItemsUseCase(uow, nil)
+	viewerActionItems, err := actionItemList.Execute(ctx, domain.UserID(viewerID), domain.TaskID(taskID))
+	if err != nil || len(viewerActionItems) != 1 || viewerActionItems[0].ID != initialActionItemID {
+		t.Fatalf("viewer actionItem list = %+v, error %v; want initial shared actionItem", viewerActionItems, err)
 	}
-	viewerTodoPage, err := todoList.ExecutePage(ctx, domain.UserID(viewerID), domain.TaskID(taskID), pageRequest)
-	if err != nil || len(viewerTodoPage.Items) != 1 || viewerTodoPage.Items[0].ID != initialTodoID {
-		t.Fatalf("viewer todo page = %+v, error %v; want initial shared todo", viewerTodoPage, err)
+	viewerActionItemPage, err := actionItemList.ExecutePage(ctx, domain.UserID(viewerID), domain.TaskID(taskID), pageRequest)
+	if err != nil || len(viewerActionItemPage.Items) != 1 || viewerActionItemPage.Items[0].ID != initialActionItemID {
+		t.Fatalf("viewer actionItem page = %+v, error %v; want initial shared actionItem", viewerActionItemPage, err)
 	}
 
 	timezones := sharingTimezoneReader{}
-	viewerCreate := usecase.NewCreateTodoItemUseCase(uow, timezones, nil)
-	if _, err := viewerCreate.Execute(ctx, usecase.CreateTodoItemInput{
-		ID: domain.TodoItemID(ulid.Make().String()), UserID: domain.UserID(viewerID), TaskID: domain.TaskID(taskID), Title: "Viewer write must fail",
+	viewerCreate := usecase.NewCreateActionItemUseCase(uow, timezones, nil)
+	if _, err := viewerCreate.Execute(ctx, usecase.CreateActionItemInput{
+		ID: domain.ActionItemID(ulid.Make().String()), UserID: domain.UserID(viewerID), TaskID: domain.TaskID(taskID), Title: "Viewer write must fail",
 	}); !errors.Is(err, usecase.ErrPermissionDenied) {
-		t.Fatalf("viewer assignee create-todo error = %v, want permission denied", err)
+		t.Fatalf("viewer assignee create-actionItem error = %v, want permission denied", err)
 	}
 
-	createdTodo, err := usecase.NewCreateTodoItemUseCase(uow, timezones, nil).Execute(ctx, usecase.CreateTodoItemInput{
-		ID: domain.TodoItemID(ulid.Make().String()), UserID: domain.UserID(editorID), TaskID: domain.TaskID(taskID),
-		Title: "Editor created todo", DueDate: today,
+	createdActionItem, err := usecase.NewCreateActionItemUseCase(uow, timezones, nil).Execute(ctx, usecase.CreateActionItemInput{
+		ID: domain.ActionItemID(ulid.Make().String()), UserID: domain.UserID(editorID), TaskID: domain.TaskID(taskID),
+		Title: "Editor created actionItem", DueDate: today,
 	})
 	if err != nil {
-		t.Fatalf("create todo as shared editor: %v", err)
+		t.Fatalf("create actionItem as shared editor: %v", err)
 	}
 
-	updatedTodoTitle := "Editor updated todo"
-	updatedTodo, err := usecase.NewUpdateTodoItemUseCase(uow, nil).ExecuteOccurrence(
-		ctx, domain.UserID(editorID), domain.TaskID(taskID), domain.TodoItemID(createdTodo.SeriesID), createdTodo.OccurrenceDate, "current",
-		usecase.PatchField[string]{Present: true, Value: &updatedTodoTitle}, usecase.PatchField[string]{}, usecase.PatchField[time.Time]{},
+	updatedActionItemTitle := "Editor updated actionItem"
+	updatedActionItem, err := usecase.NewUpdateActionItemUseCase(uow, nil).ExecuteOccurrence(
+		ctx, domain.UserID(editorID), domain.TaskID(taskID), domain.ActionItemID(createdActionItem.SeriesID), createdActionItem.OccurrenceDate, "current",
+		usecase.PatchField[string]{Present: true, Value: &updatedActionItemTitle}, usecase.PatchField[string]{}, usecase.PatchField[time.Time]{},
 	)
-	if err != nil || updatedTodo.Title != updatedTodoTitle {
-		t.Fatalf("edit shared todo = %+v, error %v; want title %q", updatedTodo, err, updatedTodoTitle)
+	if err != nil || updatedActionItem.Title != updatedActionItemTitle {
+		t.Fatalf("edit shared actionItem = %+v, error %v; want title %q", updatedActionItem, err, updatedActionItemTitle)
 	}
 
-	deleteTodo := usecase.NewDeleteTodoItemUseCase(uow, nil)
-	if err := deleteTodo.Execute(ctx, domain.UserID(editorID), domain.TaskID(taskID), domain.TodoItemID(createdTodo.ID)); !errors.Is(err, usecase.ErrPermissionDenied) {
-		t.Fatalf("editor todo deletion error = %v, want permission denied", err)
+	deleteActionItem := usecase.NewDeleteActionItemUseCase(uow, nil)
+	if err := deleteActionItem.Execute(ctx, domain.UserID(editorID), domain.TaskID(taskID), domain.ActionItemID(createdActionItem.ID)); !errors.Is(err, usecase.ErrPermissionDenied) {
+		t.Fatalf("editor actionItem deletion error = %v, want permission denied", err)
 	}
-	if err := deleteTodo.Execute(ctx, domain.UserID(adminID), domain.TaskID(taskID), domain.TodoItemID(createdTodo.ID)); err != nil {
-		t.Fatalf("admin todo deletion: %v", err)
+	if err := deleteActionItem.Execute(ctx, domain.UserID(adminID), domain.TaskID(taskID), domain.ActionItemID(createdActionItem.ID)); err != nil {
+		t.Fatalf("admin actionItem deletion: %v", err)
 	}
 }
 
@@ -541,12 +541,12 @@ func TestConcurrentTaskAssignmentAndProjectMoveKeepAssigneeEligible(t *testing.T
 	}
 }
 
-func TestDeleteTaskSoftDeletesTodoItems(t *testing.T) {
+func TestDeleteTaskSoftDeletesActionItems(t *testing.T) {
 	pool := recurrenceIntegrationPool(t)
 	ctx := t.Context()
 	fixture := newSharingFixture(t, pool)
 	taskID := fixture.task(t, fixture.ownerID, "Task to delete")
-	todoID := fixture.todoItem(t, taskID)
+	actionItemID := fixture.actionItem(t, taskID)
 	fixture.commit(t)
 
 	remove := usecase.NewDeleteTaskUseCase(sharingTestUOW{pool: pool}, nil)
@@ -564,7 +564,7 @@ func TestDeleteTaskSoftDeletesTodoItems(t *testing.T) {
 		}
 	}
 	assertDeleted("tasks", taskID)
-	assertDeleted("todo_items", todoID)
+	assertDeleted("action_items", actionItemID)
 
 	var revision, snapshots int32
 	var changedBy string
@@ -587,8 +587,8 @@ func TestDeleteTaskSoftDeletesTodoItems(t *testing.T) {
 	if afterRetrySnapshots != snapshots {
 		t.Fatalf("rejected deleted-task mutation added history: before=%d after=%d", snapshots, afterRetrySnapshots)
 	}
-	if err := usecase.NewDeleteTodoItemUseCase(sharingTestUOW{pool: pool}, nil).Execute(
-		ctx, domain.UserID(fixture.ownerID), domain.TaskID(taskID), domain.TodoItemID(todoID),
+	if err := usecase.NewDeleteActionItemUseCase(sharingTestUOW{pool: pool}, nil).Execute(
+		ctx, domain.UserID(fixture.ownerID), domain.TaskID(taskID), domain.ActionItemID(actionItemID),
 	); !errors.Is(err, usecase.ErrTaskNotFound) {
 		t.Fatalf("child mutation under deleted task error = %v, want task not found", err)
 	}
@@ -771,17 +771,17 @@ func (fixture *sharingFixture) task(t *testing.T, assigneeID, title string) stri
 	return taskID
 }
 
-func (fixture *sharingFixture) todoItem(t *testing.T, taskID string) string {
+func (fixture *sharingFixture) actionItem(t *testing.T, taskID string) string {
 	t.Helper()
 	date := time.Now().UTC().Format("2006-01-02")
-	todoID := ulid.Make().String()
+	actionItemID := ulid.Make().String()
 	if _, err := fixture.tx.Exec(t.Context(), `
-		INSERT INTO todo_items (id, task_id, title, position, series_id, occurrence_date, timezone)
-		VALUES ($1, $2, 'Todo child', 0, $1, $3::date, 'UTC')
-	`, todoID, taskID, date); err != nil {
-		t.Fatalf("insert todo child: %v", err)
+		INSERT INTO action_items (id, task_id, title, position, series_id, occurrence_date, timezone)
+		VALUES ($1, $2, 'ActionItem child', 0, $1, $3::date, 'UTC')
+	`, actionItemID, taskID, date); err != nil {
+		t.Fatalf("insert actionItem child: %v", err)
 	}
-	return todoID
+	return actionItemID
 }
 
 func (fixture *sharingFixture) commit(t *testing.T) {
@@ -799,7 +799,7 @@ type sharingTestRepositories struct {
 	usecase.Repositories
 	tasks        *taskrepo.TaskRepository
 	taskTags     *taskrepo.TaskTagRepository
-	todoItems    *taskrepo.TodoItemRepository
+	actionItems  *taskrepo.ActionItemRepository
 	taskProjects usecase.TaskProjectRepository
 	lifecycle    shared.ProjectWorkLifecycle
 }
@@ -865,8 +865,8 @@ func (repositories sharingTestRepositories) TaskTags() usecase.TaskTagRepository
 	return repositories.taskTags
 }
 
-func (repositories sharingTestRepositories) TodoItems() usecase.TodoItemRepository {
-	return repositories.todoItems
+func (repositories sharingTestRepositories) ActionItems() usecase.ActionItemRepository {
+	return repositories.actionItems
 }
 
 type sharingTestUOW struct {
@@ -882,7 +882,7 @@ func (uow sharingTestUOW) Do(ctx context.Context, run func(context.Context, usec
 	repositories := sharingTestRepositories{
 		tasks:        taskrepo.NewTaskRepository(tx),
 		taskTags:     taskrepo.NewTaskTagRepository(tx),
-		todoItems:    taskrepo.NewTodoItemRepository(tx),
+		actionItems:  taskrepo.NewActionItemRepository(tx),
 		taskProjects: sharingTestTaskProjects{queries: sqlc.New(tx)},
 	}
 	projectStore := projectrepo.NewProjectRepository(tx)

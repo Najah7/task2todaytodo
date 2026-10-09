@@ -8,7 +8,7 @@ const (
 	ResourceResponses            = "responses"
 	ResourceTaskFrequencies      = "task_frequencies"
 	ResourceTasks                = "tasks"
-	ResourceTodoItems            = "todo_items"
+	ResourceActionItems          = "action_items"
 	ResourceTaskPriorities       = "task_priorities"
 	ResourceTaskStatuses         = "task_statuses"
 	ResourceUsers                = "users"
@@ -60,9 +60,9 @@ var (
 	ErrSpecTasksGetFailed                     = NewFailureErrSpec(ResourceTasks, ActionGet, "Failed to get task")
 	ErrSpecTasksUpdateFailed                  = NewFailureErrSpec(ResourceTasks, ActionUpdate, "Failed to update task")
 	ErrSpecTasksDeleteFailed                  = NewFailureErrSpec(ResourceTasks, ActionDelete, "Failed to delete task")
-	ErrSpecTodoItemsCreateFailed              = NewFailureErrSpec(ResourceTodoItems, ActionCreate, "Failed to create todo item")
-	ErrSpecTodoItemsUpdateFailed              = NewFailureErrSpec(ResourceTodoItems, ActionUpdate, "Failed to update todo item")
-	ErrSpecTodoItemsDeleteFailed              = NewFailureErrSpec(ResourceTodoItems, ActionDelete, "Failed to delete todo item")
+	ErrSpecActionItemsCreateFailed            = NewFailureErrSpec(ResourceActionItems, ActionCreate, "Failed to create action item")
+	ErrSpecActionItemsUpdateFailed            = NewFailureErrSpec(ResourceActionItems, ActionUpdate, "Failed to update action item")
+	ErrSpecActionItemsDeleteFailed            = NewFailureErrSpec(ResourceActionItems, ActionDelete, "Failed to delete action item")
 	ErrSpecTaskPrioritiesListFailed           = NewFailureErrSpec(ResourceTaskPriorities, ActionList, "Failed to list task priorities")
 	ErrSpecTaskStatusesListFailed             = NewFailureErrSpec(ResourceTaskStatuses, ActionList, "Failed to list task statuses")
 	ErrSpecUsersCreateFailed                  = NewFailureErrSpec(ResourceUsers, ActionCreate, "Failed to create user")

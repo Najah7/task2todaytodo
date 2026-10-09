@@ -40,8 +40,8 @@ func recordsToTasks(records []sqlc.Task) []dao.Task {
 	return tasks
 }
 
-func recordToTodoItem(record sqlc.TodoItem) dao.TodoItem {
-	return todoItemDAO(
+func recordToActionItem(record sqlc.ActionItem) dao.ActionItem {
+	return actionItemDAO(
 		record.ID,
 		record.TaskID,
 		record.Title,
@@ -61,22 +61,22 @@ func recordToTodoItem(record sqlc.TodoItem) dao.TodoItem {
 	)
 }
 
-func recordToCreatedTodoItemRow(record sqlc.CreateTodoItemRow) dao.TodoItem {
-	return todoItemDAO(record.ID, record.TaskID, record.Title, record.Description,
+func recordToCreatedActionItemRow(record sqlc.CreateActionItemRow) dao.ActionItem {
+	return actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
 		record.DueDate, record.Completed, record.Position, record.IntervalWeeks, nil,
 		record.SeriesID, record.OccurrenceDate, record.Timezone, record.IsException,
 		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt)
 }
 
-func recordToUpdatedTodoItemRow(record sqlc.UpdateTodoItemRow) dao.TodoItem {
-	return todoItemDAO(record.ID, record.TaskID, record.Title, record.Description,
+func recordToUpdatedActionItemRow(record sqlc.UpdateActionItemRow) dao.ActionItem {
+	return actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
 		record.DueDate, record.Completed, record.Position, record.IntervalWeeks, nil,
 		record.SeriesID, record.OccurrenceDate, record.Timezone, record.IsException,
 		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt)
 }
 
-func recordToTodoItemRow(record sqlc.GetTodoItemRow) dao.TodoItem {
-	item := todoItemDAO(
+func recordToActionItemRow(record sqlc.GetActionItemRow) dao.ActionItem {
+	item := actionItemDAO(
 		record.ID,
 		record.TaskID,
 		record.Title,
@@ -101,8 +101,8 @@ func recordToTodoItemRow(record sqlc.GetTodoItemRow) dao.TodoItem {
 	return item
 }
 
-func recordToTodoItemByTaskAndUserIDRow(record sqlc.GetTodoItemByTaskAndUserIDRow) dao.TodoItem {
-	item := todoItemDAO(record.ID, record.TaskID, record.Title, record.Description,
+func recordToActionItemByTaskAndUserIDRow(record sqlc.GetActionItemByTaskAndUserIDRow) dao.ActionItem {
+	item := actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
 		record.DueDate, record.Completed, record.Position, record.IntervalWeeks, record.Frequencies,
 		record.SeriesID, record.OccurrenceDate, record.Timezone, record.IsException,
 		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt)
@@ -113,8 +113,8 @@ func recordToTodoItemByTaskAndUserIDRow(record sqlc.GetTodoItemByTaskAndUserIDRo
 	return item
 }
 
-func recordToCreatedTodoItemByTaskAndUserIDRow(record sqlc.CreateTodoItemByTaskAndUserIDRow) dao.TodoItem {
-	return todoItemDAO(
+func recordToCreatedActionItemByTaskAndUserIDRow(record sqlc.CreateActionItemByTaskAndUserIDRow) dao.ActionItem {
+	return actionItemDAO(
 		record.ID,
 		record.TaskID,
 		record.Title,
@@ -134,31 +134,31 @@ func recordToCreatedTodoItemByTaskAndUserIDRow(record sqlc.CreateTodoItemByTaskA
 	)
 }
 
-func recordToCreatedTodoItemOccurrenceByTaskAndUserIDRow(record sqlc.CreateTodoItemOccurrenceByTaskAndUserIDRow) dao.TodoItem {
-	return todoItemDAO(record.ID, record.TaskID, record.Title, record.Description,
+func recordToCreatedActionItemOccurrenceByTaskAndUserIDRow(record sqlc.CreateActionItemOccurrenceByTaskAndUserIDRow) dao.ActionItem {
+	return actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
 		record.DueDate, record.Completed, record.Position, record.IntervalWeeks, record.Frequencies,
 		record.SeriesID, record.OccurrenceDate, record.Timezone, record.IsException,
 		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt)
 }
 
-func recordToUpdatedTodoItemByTaskAndUserIDRow(record sqlc.UpdateTodoItemByTaskAndUserIDRow) dao.TodoItem {
-	return todoItemDAO(record.ID, record.TaskID, record.Title, record.Description,
+func recordToUpdatedActionItemByTaskAndUserIDRow(record sqlc.UpdateActionItemByTaskAndUserIDRow) dao.ActionItem {
+	return actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
 		record.DueDate, record.Completed, record.Position, record.IntervalWeeks, record.Frequencies,
 		record.SeriesID, record.OccurrenceDate, record.Timezone, record.IsException,
 		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt)
 }
 
-func recordToReorderedTodoItemByTaskAndUserIDRow(record sqlc.ReorderTodoItemsByTaskAndUserIDRow) dao.TodoItem {
-	return todoItemDAO(record.ID, record.TaskID, record.Title, record.Description,
+func recordToReorderedActionItemByTaskAndUserIDRow(record sqlc.ReorderActionItemsByTaskAndUserIDRow) dao.ActionItem {
+	return actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
 		record.DueDate, record.Completed, record.Position, record.IntervalWeeks, record.Frequencies,
 		record.SeriesID, record.OccurrenceDate, record.Timezone, record.IsException,
 		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt)
 }
 
-func recordsToTodoItems(records []sqlc.ListTodoItemsByTaskAndUserIDRow) []dao.TodoItem {
-	items := make([]dao.TodoItem, 0, len(records))
+func recordsToActionItems(records []sqlc.ListActionItemsByTaskAndUserIDRow) []dao.ActionItem {
+	items := make([]dao.ActionItem, 0, len(records))
 	for _, record := range records {
-		item := todoItemDAO(
+		item := actionItemDAO(
 			record.ID,
 			record.TaskID,
 			record.Title,
@@ -185,10 +185,10 @@ func recordsToTodoItems(records []sqlc.ListTodoItemsByTaskAndUserIDRow) []dao.To
 	return items
 }
 
-func recordsToTodoItemsForTaskRows(records []sqlc.ListTodoItemsByTaskForUserRow) []dao.TodoItem {
-	items := make([]dao.TodoItem, 0, len(records))
+func recordsToActionItemsForTaskRows(records []sqlc.ListActionItemsByTaskForUserRow) []dao.ActionItem {
+	items := make([]dao.ActionItem, 0, len(records))
 	for _, record := range records {
-		items = append(items, todoItemDAO(
+		items = append(items, actionItemDAO(
 			record.ID,
 			record.TaskID,
 			record.Title,
@@ -210,7 +210,7 @@ func recordsToTodoItemsForTaskRows(records []sqlc.ListTodoItemsByTaskForUserRow)
 	return items
 }
 
-func todoItemDAO(
+func actionItemDAO(
 	id string,
 	taskID string,
 	title string,
@@ -227,7 +227,7 @@ func todoItemDAO(
 	deleted bool,
 	createdAt pgtype.Timestamptz,
 	updatedAt pgtype.Timestamptz,
-) dao.TodoItem {
+) dao.ActionItem {
 	occurrenceDateString := ""
 	if date := pgDateString(occurrenceDate); date != nil {
 		occurrenceDateString = *date
@@ -241,7 +241,7 @@ func todoItemDAO(
 			frequencyAnchorDate = pgDateUnix(occurrenceDate)
 		}
 	}
-	return dao.TodoItem{
+	return dao.ActionItem{
 		ID:                  id,
 		TaskID:              taskID,
 		Title:               title,

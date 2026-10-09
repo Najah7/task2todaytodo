@@ -33,7 +33,7 @@ Shared-file changes require an explicit handoff. The progress owner alone edits 
 - Per-Task rounding before Project averaging; completed Task behavior; empty, Task-only, Schedule-only, and mixed Projects.
 - Saved override/skip precedence, live overrides after root deletion, local-today virtual occurrences, future exclusion, timezone/DST handling, and existing invalid-input behavior.
 - Same-series Schedule tags through root/saved occurrences and list projections; no Tag-only revision increments; owner and permission denials.
-- Project deletion/member removal atomic rollback and actor/revision attribution; child-create/delete, TodoItem insertion/deletion, and reassignment races.
+- Project deletion/member removal atomic rollback and actor/revision attribution; child-create/delete, ActionItem insertion/deletion, and reassignment races.
 - Task Project association permission/error behavior and Project-first locking within the Task UOW.
 - Auth timezone lookup and recurrence metadata/date initialization.
 

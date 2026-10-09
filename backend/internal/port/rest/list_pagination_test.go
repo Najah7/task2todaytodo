@@ -62,9 +62,9 @@ func TestParseListRequestBindsTokenToListScopeAndMask(t *testing.T) {
 
 func TestParseListRequestBindsFromDateAndCarriesFrozenAsOf(t *testing.T) {
 	codec := listTestCodec()
-	schema := listEnvelope[TodoItemResponse]{}
-	first := httptest.NewRequest("GET", "/tasks/task-1/todo-items?from_date=2026-10-04", nil)
-	parsed, err := parseListRequestWithFromDate(first, codec, "user-1", "task_todo_items", "task-1", "occurrence_date_asc_position_asc_series_id_asc", schema, true)
+	schema := listEnvelope[ActionItemResponse]{}
+	first := httptest.NewRequest("GET", "/tasks/task-1/action-items?from_date=2026-10-04", nil)
+	parsed, err := parseListRequestWithFromDate(first, codec, "user-1", "task_action_items", "task-1", "occurrence_date_asc_position_asc_series_id_asc", schema, true)
 	if err != nil || parsed.FromDate != "2026-10-04" {
 		t.Fatalf("first page=%+v err=%v", parsed, err)
 	}
@@ -73,13 +73,13 @@ func TestParseListRequestBindsFromDateAndCarriesFrozenAsOf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	continued := httptest.NewRequest("GET", "/tasks/task-1/todo-items?from_date=2026-10-04&page_token="+token, nil)
-	request, err := parseListRequestWithFromDate(continued, codec, "user-1", "task_todo_items", "task-1", "occurrence_date_asc_position_asc_series_id_asc", schema, true)
+	continued := httptest.NewRequest("GET", "/tasks/task-1/action-items?from_date=2026-10-04&page_token="+token, nil)
+	request, err := parseListRequestWithFromDate(continued, codec, "user-1", "task_action_items", "task-1", "occurrence_date_asc_position_asc_series_id_asc", schema, true)
 	if err != nil || request.Anchor == nil || request.AsOf.IsZero() || request.Anchor.SeriesID != "series-1" {
 		t.Fatalf("continuation=%+v err=%v", request, err)
 	}
-	changedDate := httptest.NewRequest("GET", "/tasks/task-1/todo-items?from_date=2026-10-05&page_token="+token, nil)
-	if _, err := parseListRequestWithFromDate(changedDate, codec, "user-1", "task_todo_items", "task-1", "occurrence_date_asc_position_asc_series_id_asc", schema, true); err == nil {
+	changedDate := httptest.NewRequest("GET", "/tasks/task-1/action-items?from_date=2026-10-05&page_token="+token, nil)
+	if _, err := parseListRequestWithFromDate(changedDate, codec, "user-1", "task_action_items", "task-1", "occurrence_date_asc_position_asc_series_id_asc", schema, true); err == nil {
 		t.Error("token accepted a different from_date")
 	}
 }

@@ -7,18 +7,18 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 )
 
-func recurringTodoRoot() dao.TodoItem {
-	return dao.TodoItem{ID: "series", TaskID: "task", Title: "work", Position: 3, IntervalWeeks: 1, Frequencies: []dao.TaskFrequency{{Value: "mon"}}, RepeatState: repeatStateActive, FrequencyAnchorDate: mustParseDate("2026-10-05").Unix(), SeriesID: "series", OccurrenceDate: "2026-10-05", Timezone: "UTC"}
+func recurringActionItemRoot() dao.ActionItem {
+	return dao.ActionItem{ID: "series", TaskID: "task", Title: "work", Position: 3, IntervalWeeks: 1, Frequencies: []dao.TaskFrequency{{Value: "mon"}}, RepeatState: repeatStateActive, FrequencyAnchorDate: mustParseDate("2026-10-05").Unix(), SeriesID: "series", OccurrenceDate: "2026-10-05", Timezone: "UTC"}
 }
-func TestTodoListClampsVirtualGenerationToLocalTodayAndKeepsRequestedSavedHistory(t *testing.T) {
-	root := recurringTodoRoot()
+func TestActionItemListClampsVirtualGenerationToLocalTodayAndKeepsRequestedSavedHistory(t *testing.T) {
+	root := recurringActionItemRoot()
 	saved := root
 	saved.ID = "edited"
 	saved.OccurrenceDate = "2026-10-12"
 	saved.IsException = true
 	saved.Title = "edited history"
 	asOf := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
-	rows, err := expandTodoItemRowsWithSkipped([]dao.TodoItem{root, saved}, CursorPageRequest{Size: 20, FromDate: "2026-10-01"}, asOf, false, nil)
+	rows, err := expandActionItemRowsWithSkipped([]dao.ActionItem{root, saved}, CursorPageRequest{Size: 20, FromDate: "2026-10-01"}, asOf, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestTodoListClampsVirtualGenerationToLocalTodayAndKeepsRequestedSavedHistor
 	if !foundSaved || !foundRoot {
 		t.Fatalf("saved past history missing, rows=%#v", rows)
 	}
-	rows, err = expandTodoItemRowsWithSkipped([]dao.TodoItem{root, saved}, CursorPageRequest{Size: 20}, asOf, false, nil)
+	rows, err = expandActionItemRowsWithSkipped([]dao.ActionItem{root, saved}, CursorPageRequest{Size: 20}, asOf, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,12 +60,12 @@ func TestTodoListClampsVirtualGenerationToLocalTodayAndKeepsRequestedSavedHistor
 	}
 }
 
-func TestTodoListFrequencyAnchorIsPhaseNotGuaranteedOccurrence(t *testing.T) {
-	root := recurringTodoRoot()
+func TestActionItemListFrequencyAnchorIsPhaseNotGuaranteedOccurrence(t *testing.T) {
+	root := recurringActionItemRoot()
 	root.OccurrenceDate = "2026-10-06"
 	root.FrequencyAnchorDate = mustParseDate("2026-10-06").Unix()
 	root.Frequencies = []dao.TaskFrequency{{Value: "mon"}}
-	rows, err := expandTodoItemRowsWithSkipped([]dao.TodoItem{root}, CursorPageRequest{Size: 3}, time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC), false, nil)
+	rows, err := expandActionItemRowsWithSkipped([]dao.ActionItem{root}, CursorPageRequest{Size: 3}, time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC), false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,11 +79,11 @@ func TestTodoListFrequencyAnchorIsPhaseNotGuaranteedOccurrence(t *testing.T) {
 	}
 }
 
-func TestTodoListKeepsFutureRootSnapshotWhenFrequencyDoesNotMatchRootDay(t *testing.T) {
-	root := recurringTodoRoot()
+func TestActionItemListKeepsFutureRootSnapshotWhenFrequencyDoesNotMatchRootDay(t *testing.T) {
+	root := recurringActionItemRoot()
 	root.OccurrenceDate = "2026-10-20"
 	root.FrequencyAnchorDate = mustParseDate("2026-10-19").Unix()
-	rows, err := expandTodoItemRowsWithSkipped([]dao.TodoItem{root}, CursorPageRequest{Size: 5}, time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC), false, nil)
+	rows, err := expandActionItemRowsWithSkipped([]dao.ActionItem{root}, CursorPageRequest{Size: 5}, time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC), false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,9 +92,9 @@ func TestTodoListKeepsFutureRootSnapshotWhenFrequencyDoesNotMatchRootDay(t *test
 	}
 }
 
-func TestTodoListVirtualPositionAdvancesFromBasePosition(t *testing.T) {
-	root := recurringTodoRoot()
-	rows, err := expandTodoItemRowsWithSkipped([]dao.TodoItem{root}, CursorPageRequest{Size: 4}, time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC), false, nil)
+func TestActionItemListVirtualPositionAdvancesFromBasePosition(t *testing.T) {
+	root := recurringActionItemRoot()
+	rows, err := expandActionItemRowsWithSkipped([]dao.ActionItem{root}, CursorPageRequest{Size: 4}, time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC), false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,13 +109,13 @@ func TestTodoListVirtualPositionAdvancesFromBasePosition(t *testing.T) {
 }
 
 func TestDeletedOccurrenceTombstonesSuppressVirtualsWithoutLeakingIntoProjection(t *testing.T) {
-	t.Run("todo item", func(t *testing.T) {
-		root := recurringTodoRoot()
+	t.Run("action item", func(t *testing.T) {
+		root := recurringActionItemRoot()
 		deleted := root
 		deleted.ID = "deleted-occurrence"
 		deleted.OccurrenceDate = "2026-10-12"
 		deleted.Deleted = true
-		rows, err := expandTodoItemRowsWithSkipped([]dao.TodoItem{root, deleted}, CursorPageRequest{Size: 5}, time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC), false, nil)
+		rows, err := expandActionItemRowsWithSkipped([]dao.ActionItem{root, deleted}, CursorPageRequest{Size: 5}, time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC), false, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -127,10 +127,10 @@ func TestDeletedOccurrenceTombstonesSuppressVirtualsWithoutLeakingIntoProjection
 	})
 }
 
-func TestTodoListPositionRemainsStableAcrossPages(t *testing.T) {
-	root := recurringTodoRoot()
+func TestActionItemListPositionRemainsStableAcrossPages(t *testing.T) {
+	root := recurringActionItemRoot()
 	asOf := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
-	rows, err := expandTodoItemRowsWithSkipped([]dao.TodoItem{root}, CursorPageRequest{Size: 2, Anchor: &CursorAnchor{OccurrenceDate: "2026-10-12", SeriesID: "series", AsOf: asOf.Format(time.RFC3339Nano)}}, asOf, false, nil)
+	rows, err := expandActionItemRowsWithSkipped([]dao.ActionItem{root}, CursorPageRequest{Size: 2, Anchor: &CursorAnchor{OccurrenceDate: "2026-10-12", SeriesID: "series", AsOf: asOf.Format(time.RFC3339Nano)}}, asOf, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,11 +146,11 @@ func TestTodoListPositionRemainsStableAcrossPages(t *testing.T) {
 }
 
 func TestOneOffListsSavedCurrentOverrideInsteadOfRootSnapshot(t *testing.T) {
-	root := recurringTodoRoot()
+	root := recurringActionItemRoot()
 	root.IntervalWeeks, root.Frequencies, root.RepeatState = 0, nil, repeatStateOneOff
 	child := root
 	child.ID, child.Title, child.IsException = "edited-child", "edited", true
-	rows, err := expandTodoItemRowsWithSkipped([]dao.TodoItem{root, child}, CursorPageRequest{Size: 5}, mustParseDate(root.OccurrenceDate), false, nil)
+	rows, err := expandActionItemRowsWithSkipped([]dao.ActionItem{root, child}, CursorPageRequest{Size: 5}, mustParseDate(root.OccurrenceDate), false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,16 +160,16 @@ func TestOneOffListsSavedCurrentOverrideInsteadOfRootSnapshot(t *testing.T) {
 }
 
 func TestReopenedTaskCanProjectTodayAgainUnlessSkipped(t *testing.T) {
-	root := recurringTodoRoot()
+	root := recurringActionItemRoot()
 	asOf := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
-	doneRows, err := expandTodoItemRowsWithSkipped([]dao.TodoItem{root}, CursorPageRequest{Size: 5}, asOf, true, nil)
+	doneRows, err := expandActionItemRowsWithSkipped([]dao.ActionItem{root}, CursorPageRequest{Size: 5}, asOf, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(doneRows) != 0 {
 		t.Fatalf("done task virtual rows=%#v", doneRows)
 	}
-	reopenedRows, err := expandTodoItemRowsWithSkipped([]dao.TodoItem{root}, CursorPageRequest{Size: 5}, asOf, false, nil)
+	reopenedRows, err := expandActionItemRowsWithSkipped([]dao.ActionItem{root}, CursorPageRequest{Size: 5}, asOf, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +177,7 @@ func TestReopenedTaskCanProjectTodayAgainUnlessSkipped(t *testing.T) {
 		t.Fatalf("reopened task did not resume today: %#v", reopenedRows)
 	}
 	skipped := map[string]map[string]bool{"series": {"2026-10-05": true}}
-	restoredRows, err := expandTodoItemRowsWithSkipped([]dao.TodoItem{root}, CursorPageRequest{Size: 5}, asOf, false, skipped)
+	restoredRows, err := expandActionItemRowsWithSkipped([]dao.ActionItem{root}, CursorPageRequest{Size: 5}, asOf, false, skipped)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,21 +188,21 @@ func TestReopenedTaskCanProjectTodayAgainUnlessSkipped(t *testing.T) {
 	}
 }
 
-func TestDoneProjectSuppressesTodoVirtualsButKeepsSavedOccurrences(t *testing.T) {
-	root := recurringTodoRoot()
+func TestDoneProjectSuppressesActionItemVirtualsButKeepsSavedOccurrences(t *testing.T) {
+	root := recurringActionItemRoot()
 	asOf := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
 	request := CursorPageRequest{Size: 10, FromDate: "2026-10-07"}
-	rows, err := expandTodoItemRowsWithProjectState([]dao.TodoItem{root}, request, asOf, false, true, nil)
+	rows, err := expandActionItemRowsWithProjectState([]dao.ActionItem{root}, request, asOf, false, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(rows) != 0 {
-		t.Fatalf("done Project emitted virtual TodoItems: %#v", rows)
+		t.Fatalf("done Project emitted virtual ActionItems: %#v", rows)
 	}
 
 	saved := root
 	saved.ID, saved.OccurrenceDate, saved.Completed, saved.IsException = "saved-occurrence", "2026-10-12", true, true
-	rows, err = expandTodoItemRowsWithProjectState([]dao.TodoItem{root, saved}, request, asOf, false, true, nil)
+	rows, err = expandActionItemRowsWithProjectState([]dao.ActionItem{root, saved}, request, asOf, false, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

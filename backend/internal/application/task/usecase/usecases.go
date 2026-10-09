@@ -20,17 +20,17 @@ type TaskUseCases struct {
 	Revisions         *ListTaskRevisionsUseCase
 }
 
-type TodoItemUseCases struct {
-	Create          *CreateTodoItemUseCase
-	List            *ListTodoItemsUseCase
-	Update          *UpdateTodoItemUseCase
-	Delete          *DeleteTodoItemUseCase
-	Complete        *CompleteTodoItemUseCase
-	Reopen          *ReopenTodoItemUseCase
-	Skip            *SkipTodoItemUseCase
-	Restore         *RestoreTodoItemUseCase
-	Reorder         *ReorderTodoItemUseCase
-	UpdateFrequency *UpdateTodoItemFrequencyUseCase
+type ActionItemUseCases struct {
+	Create          *CreateActionItemUseCase
+	List            *ListActionItemsUseCase
+	Update          *UpdateActionItemUseCase
+	Delete          *DeleteActionItemUseCase
+	Complete        *CompleteActionItemUseCase
+	Reopen          *ReopenActionItemUseCase
+	Skip            *SkipActionItemUseCase
+	Restore         *RestoreActionItemUseCase
+	Reorder         *ReorderActionItemUseCase
+	UpdateFrequency *UpdateActionItemFrequencyUseCase
 }
 
 type TaskTagUseCases struct {

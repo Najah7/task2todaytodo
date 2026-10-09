@@ -14,7 +14,7 @@ func TestSharedResourcePermissionDenialsMapToForbidden(t *testing.T) {
 		mapError func(error) (int, ErrDetail)
 	}{
 		{name: "task", mapError: taskErrorResponse},
-		{name: "todo item", mapError: todoItemErrorResponse},
+		{name: "action item", mapError: actionItemErrorResponse},
 		{name: "schedule", mapError: scheduleUseCaseError},
 	}
 	for _, test := range tests {

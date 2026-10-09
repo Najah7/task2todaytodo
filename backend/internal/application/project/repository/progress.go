@@ -24,12 +24,12 @@ func (r *ProjectRepository) ReadProjectProgressSources(ctx context.Context, proj
 	}
 	for _, row := range taskRows {
 		var roots []projectTaskProgressRoot
-		if err := json.Unmarshal(row.TodoItemRoots, &roots); err != nil {
+		if err := json.Unmarshal(row.ActionItemRoots, &roots); err != nil {
 			return dao.ProjectProgressSources{}, err
 		}
 		task := dao.ProjectTaskProgress{
 			ProjectID: row.ProjectID.String, TaskID: row.TaskID, Done: row.Status == "done",
-			Total: int(row.TodoTotal), Completed: int(row.TodoCompleted),
+			Total: int(row.ActionItemTotal), Completed: int(row.ActionItemCompleted),
 		}
 		for _, root := range roots {
 			task.Roots = append(task.Roots, dao.ProjectProgressRecurrence{

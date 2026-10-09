@@ -14,9 +14,9 @@ var (
 	ErrTaskNotFound                = errors.New("task not found")
 	ErrTaskProjectNotFound         = errors.New("project not found")
 	ErrProjectLifecycleUnavailable = errors.New("project lifecycle service is unavailable")
-	ErrTodoItemTaskNotFound        = errors.New("todo item task not found")
-	ErrTodoItemNotFound            = errors.New("todo item not found")
-	ErrTodoItemPositionConflict    = errors.New("todo item position already exists")
+	ErrActionItemTaskNotFound      = errors.New("action item task not found")
+	ErrActionItemNotFound          = errors.New("action item not found")
+	ErrActionItemPositionConflict  = errors.New("action item position already exists")
 	ErrOccurrenceDateRequired      = errors.New("occurrence date is required for recurring series")
 	ErrOccurrenceNotFound          = errors.New("recurrence occurrence not found")
 	ErrOccurrenceInactive          = errors.New("recurrence occurrence is inactive")
@@ -105,24 +105,24 @@ type TaskStatusRepository interface {
 	List(ctx context.Context) ([]dao.TaskStatus, error)
 }
 
-type TodoItemRepository interface {
-	Get(ctx context.Context, id domain.TodoItemID) (dao.TodoItem, error)
-	GetForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.TodoItemID) (dao.TodoItem, error)
-	ListByTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID) ([]dao.TodoItem, error)
-	ListActiveSeriesByUserID(ctx context.Context, userID domain.UserID) ([]dao.TodoItem, error)
-	Create(ctx context.Context, item domain.TodoItem) (dao.TodoItem, error)
-	CreateForOwnedTask(ctx context.Context, userID domain.UserID, item domain.TodoItem, appendToTail bool) (dao.TodoItem, error)
-	CreateOccurrenceForOwnedTask(ctx context.Context, userID domain.UserID, item domain.TodoItem) (dao.TodoItem, error)
-	Update(ctx context.Context, item domain.TodoItem) (dao.TodoItem, error)
-	UpdateForOwnedTask(ctx context.Context, userID domain.UserID, item domain.TodoItem) (dao.TodoItem, error)
-	SetPositionForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.TodoItemID, position int) error
-	ReorderForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.TodoItemID, newPosition int) (dao.TodoItem, error)
-	CheckForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.TodoItemID) error
-	UncheckForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.TodoItemID) error
-	Delete(ctx context.Context, id domain.TodoItemID) error
-	DeleteForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.TodoItemID) error
-	TombstoneForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.TodoItemID) error
-	DeleteUneditedFutureBySeries(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.TodoItemID, fromDate time.Time) (int64, error)
+type ActionItemRepository interface {
+	Get(ctx context.Context, id domain.ActionItemID) (dao.ActionItem, error)
+	GetForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) (dao.ActionItem, error)
+	ListByTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID) ([]dao.ActionItem, error)
+	ListActiveSeriesByUserID(ctx context.Context, userID domain.UserID) ([]dao.ActionItem, error)
+	Create(ctx context.Context, item domain.ActionItem) (dao.ActionItem, error)
+	CreateForOwnedTask(ctx context.Context, userID domain.UserID, item domain.ActionItem, appendToTail bool) (dao.ActionItem, error)
+	CreateOccurrenceForOwnedTask(ctx context.Context, userID domain.UserID, item domain.ActionItem) (dao.ActionItem, error)
+	Update(ctx context.Context, item domain.ActionItem) (dao.ActionItem, error)
+	UpdateForOwnedTask(ctx context.Context, userID domain.UserID, item domain.ActionItem) (dao.ActionItem, error)
+	SetPositionForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID, position int) error
+	ReorderForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID, newPosition int) (dao.ActionItem, error)
+	CheckForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) error
+	UncheckForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) error
+	Delete(ctx context.Context, id domain.ActionItemID) error
+	DeleteForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) error
+	TombstoneForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) error
+	DeleteUneditedFutureBySeries(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.ActionItemID, fromDate time.Time) (int64, error)
 	DeleteUneditedFutureByTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, now time.Time) (int64, error)
 }
 

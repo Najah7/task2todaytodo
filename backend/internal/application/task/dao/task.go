@@ -22,8 +22,8 @@ type Task struct {
 }
 
 type TaskDetails struct {
-	Task      Task
-	TodoItems []TodoItem
+	Task        Task
+	ActionItems []ActionItem
 }
 
 type TaskProgressCounts struct {
@@ -46,9 +46,9 @@ type ProgressRecurrence struct {
 }
 
 type TaskProgressSources struct {
-	Counts        map[string]TaskProgressCounts
-	Statuses      map[string]TaskStatus
-	TodoItemRoots []ProgressRecurrence
+	Counts          map[string]TaskProgressCounts
+	Statuses        map[string]TaskStatus
+	ActionItemRoots []ProgressRecurrence
 }
 
 type TaskFrequency struct {

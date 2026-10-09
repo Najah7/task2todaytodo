@@ -27,9 +27,9 @@ func projectCrossContextTestPool(t *testing.T) *pgxpool.Pool {
 	return testdb.Open(t)
 }
 
-type projectTodoItemID struct{}
+type projectActionItemID struct{}
 
-func (projectTodoItemID) Generate() string { return ulid.Make().String() }
+func (projectActionItemID) Generate() string { return ulid.Make().String() }
 
 type projectCrossContextTimezoneReader struct{}
 
@@ -47,11 +47,11 @@ func readProjectState(t *testing.T, pool *pgxpool.Pool, projectID string) (strin
 	return status, revision
 }
 
-func TestDoneProjectHidesTodoVirtualsButKeepsSavedOccurrenceEditable(t *testing.T) {
+func TestDoneProjectHidesActionItemVirtualsButKeepsSavedOccurrenceEditable(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
-	ownerID, projectID, taskID, todoID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Done',$2,'unused','UTC')`, ownerID, ownerID+"@project-done-todo.test"); err != nil {
+	ownerID, projectID, taskID, actionItemID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
+	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Done',$2,'unused','UTC')`, ownerID, ownerID+"@project-done-actionItem.test"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','Done Project','low',$2)`, projectID, ownerID); err != nil {
@@ -61,8 +61,8 @@ func TestDoneProjectHidesTodoVirtualsButKeepsSavedOccurrenceEditable(t *testing.
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM todo_item_frequencies WHERE todo_item_id IN (SELECT id FROM todo_items WHERE task_id=$1)`, taskID)
-		_, _ = pool.Exec(context.Background(), `DELETE FROM todo_items WHERE task_id=$1`, taskID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM action_item_frequencies WHERE action_item_id IN (SELECT id FROM action_items WHERE task_id=$1)`, taskID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM action_items WHERE task_id=$1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM task_revisions WHERE id=$1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM tasks WHERE id=$1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_revisions WHERE id=$1`, projectID)
@@ -75,21 +75,21 @@ func TestDoneProjectHidesTodoVirtualsButKeepsSavedOccurrenceEditable(t *testing.
 		t.Fatal(err)
 	}
 	rootDate := time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC)
-	root, err := taskdomain.NewTodoItemWithDetails(taskdomain.TodoItemID(todoID), taskdomain.TaskID(taskID), "Weekly work", "", rootDate, false, 0, 1, taskdomain.TaskFrequencies{monday})
+	root, err := taskdomain.NewActionItemWithDetails(taskdomain.ActionItemID(actionItemID), taskdomain.TaskID(taskID), "Weekly work", "", rootDate, false, 0, 1, taskdomain.TaskFrequencies{monday})
 	if err != nil {
 		t.Fatal(err)
 	}
-	root, err = root.WithRecurrence(taskdomain.RecurrenceMetadata{SeriesID: todoID, OccurrenceDate: rootDate, Timezone: "UTC"})
+	root, err = root.WithRecurrence(taskdomain.RecurrenceMetadata{SeriesID: actionItemID, OccurrenceDate: rootDate, Timezone: "UTC"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	store := application.NewStore(pool)
 	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project)
-	if _, err := taskrepo.NewTodoItemRepository(pool).CreateForOwnedTask(ctx, taskdomain.UserID(ownerID), root, false); err != nil {
+	if _, err := taskrepo.NewActionItemRepository(pool).CreateForOwnedTask(ctx, taskdomain.UserID(ownerID), root, false); err != nil {
 		t.Fatalf("create recurring root: %v", err)
 	}
-	complete := taskusecase.NewCompleteTodoItemUseCase(taskUOW, nil, projectTodoItemID{})
-	if err := complete.ExecuteOccurrence(ctx, taskdomain.UserID(ownerID), taskdomain.TaskID(taskID), taskdomain.TodoItemID(todoID), "2026-10-12"); err != nil {
+	complete := taskusecase.NewCompleteActionItemUseCase(taskUOW, nil, projectActionItemID{})
+	if err := complete.ExecuteOccurrence(ctx, taskdomain.UserID(ownerID), taskdomain.TaskID(taskID), taskdomain.ActionItemID(actionItemID), "2026-10-12"); err != nil {
 		t.Fatalf("save a future occurrence before completing Project: %v", err)
 	}
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
@@ -97,24 +97,24 @@ func TestDoneProjectHidesTodoVirtualsButKeepsSavedOccurrenceEditable(t *testing.
 		t.Fatalf("mark Project done: %v", err)
 	}
 
-	list := taskusecase.NewListTodoItemsUseCase(taskUOW, nil, func() time.Time { return time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC) })
+	list := taskusecase.NewListActionItemsUseCase(taskUOW, nil, func() time.Time { return time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC) })
 	page, err := list.ExecutePage(ctx, taskdomain.UserID(ownerID), taskdomain.TaskID(taskID), taskusecase.CursorPageRequest{Size: 10, FromDate: "2026-10-07"})
 	if err != nil {
-		t.Fatalf("list TodoItems for done Project: %v", err)
+		t.Fatalf("list ActionItems for done Project: %v", err)
 	}
 	if len(page.Items) != 1 || page.Items[0].ID == taskusecase.VirtualOccurrenceID || page.Items[0].OccurrenceDate != "2026-10-12" || !page.Items[0].Completed {
-		t.Fatalf("done Project TodoItem page = %+v; want only the saved completed occurrence", page.Items)
+		t.Fatalf("done Project ActionItem page = %+v; want only the saved completed occurrence", page.Items)
 	}
 
 	title := "Saved work edited after Project completion"
-	updated, err := taskusecase.NewUpdateTodoItemUseCase(taskUOW, nil, projectTodoItemID{}).ExecuteOccurrence(
-		ctx, taskdomain.UserID(ownerID), taskdomain.TaskID(taskID), taskdomain.TodoItemID(todoID), "2026-10-12", "current",
+	updated, err := taskusecase.NewUpdateActionItemUseCase(taskUOW, nil, projectActionItemID{}).ExecuteOccurrence(
+		ctx, taskdomain.UserID(ownerID), taskdomain.TaskID(taskID), taskdomain.ActionItemID(actionItemID), "2026-10-12", "current",
 		taskusecase.PatchField[string]{Present: true, Value: &title}, taskusecase.PatchField[string]{}, taskusecase.PatchField[time.Time]{},
 	)
 	if err != nil || updated.Title != title {
 		t.Fatalf("edit saved occurrence under done Project = %+v, error=%v", updated, err)
 	}
-	if err := complete.ExecuteOccurrence(ctx, taskdomain.UserID(ownerID), taskdomain.TaskID(taskID), taskdomain.TodoItemID(todoID), "2026-10-19"); !errors.Is(err, taskusecase.ErrOccurrenceInactive) {
+	if err := complete.ExecuteOccurrence(ctx, taskdomain.UserID(ownerID), taskdomain.TaskID(taskID), taskdomain.ActionItemID(actionItemID), "2026-10-19"); !errors.Is(err, taskusecase.ErrOccurrenceInactive) {
 		t.Fatalf("complete unsaved virtual occurrence under done Project = %v, want occurrence inactive", err)
 	}
 }
@@ -268,10 +268,10 @@ func TestProjectLifecycleTransitionsAcrossTaskAndScheduleMutations(t *testing.T)
 	}
 }
 
-func TestOpenTaskAtFullTodoProgressDoesNotCompleteProject(t *testing.T) {
+func TestOpenTaskAtFullActionItemProgressDoesNotCompleteProject(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
-	ownerID, projectID, taskID, todoID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
+	ownerID, projectID, taskID, actionItemID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Open task',$2,'unused','UTC')`, ownerID, ownerID+"@project-open-task.test"); err != nil {
 		t.Fatal(err)
 	}
@@ -281,13 +281,13 @@ func TestOpenTaskAtFullTodoProgressDoesNotCompleteProject(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,status,changed_by) VALUES($1,$2,$3,$2,'Open Task','open',$2)`, taskID, ownerID, projectID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO todo_items(id,task_id,title,position,series_id,occurrence_date,timezone,completed) VALUES($1,$2,'Already finished',0,$1,$3::date,'UTC',true)`, todoID, taskID, time.Now().UTC().Format("2006-01-02")); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,series_id,occurrence_date,timezone,completed) VALUES($1,$2,'Already finished',0,$1,$3::date,'UTC',true)`, actionItemID, taskID, time.Now().UTC().Format("2006-01-02")); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
 		cleanup := context.Background()
-		_, _ = pool.Exec(cleanup, `DELETE FROM todo_item_frequencies WHERE todo_item_id=$1`, todoID)
-		_, _ = pool.Exec(cleanup, `DELETE FROM todo_items WHERE id=$1`, todoID)
+		_, _ = pool.Exec(cleanup, `DELETE FROM action_item_frequencies WHERE action_item_id=$1`, actionItemID)
+		_, _ = pool.Exec(cleanup, `DELETE FROM action_items WHERE id=$1`, actionItemID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM task_revisions WHERE id=$1`, taskID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM tasks WHERE id=$1`, taskID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM project_revisions WHERE id=$1`, projectID)
@@ -300,30 +300,30 @@ func TestOpenTaskAtFullTodoProgressDoesNotCompleteProject(t *testing.T) {
 		t.Fatalf("open Task Project = status %q progress %d error=%v; want open at 100%%", project.Status, project.Progress, err)
 	}
 	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project)
-	title := "Count-neutral Todo edit"
-	if _, err := taskusecase.NewUpdateTodoItemUseCase(taskUOW, nil).Execute(ctx, taskdomain.UserID(ownerID), taskdomain.TaskID(taskID), taskdomain.TodoItemID(todoID), "current", taskusecase.PatchField[string]{Present: true, Value: &title}, taskusecase.PatchField[string]{}, taskusecase.PatchField[time.Time]{}); err != nil {
-		t.Fatalf("edit completed TodoItem under open Task: %v", err)
+	title := "Count-neutral ActionItem edit"
+	if _, err := taskusecase.NewUpdateActionItemUseCase(taskUOW, nil).Execute(ctx, taskdomain.UserID(ownerID), taskdomain.TaskID(taskID), taskdomain.ActionItemID(actionItemID), "current", taskusecase.PatchField[string]{Present: true, Value: &title}, taskusecase.PatchField[string]{}, taskusecase.PatchField[time.Time]{}); err != nil {
+		t.Fatalf("edit completed ActionItem under open Task: %v", err)
 	}
 	status, _ := readProjectState(t, pool, projectID)
 	if status != "open" {
-		t.Fatalf("100%% Todo progress auto-completed an open Task's Project: status=%q", status)
+		t.Fatalf("100%% ActionItem progress auto-completed an open Task's Project: status=%q", status)
 	}
 }
 
-func TestTodoCompletionAndReopenTransitionTaskAndProject(t *testing.T) {
+func TestActionItemCompletionAndReopenTransitionTaskAndProject(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
-	ownerID, projectID, taskID, todoID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Todo','Lifecycle',$2,'unused','UTC')`, ownerID, ownerID+"@todo-lifecycle.test"); err != nil {
+	ownerID, projectID, taskID, actionItemID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
+	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'ActionItem','Lifecycle',$2,'unused','UTC')`, ownerID, ownerID+"@actionItem-lifecycle.test"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','Todo Lifecycle','low',$2)`, projectID, ownerID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','ActionItem Lifecycle','low',$2)`, projectID, ownerID); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
 		cleanup := context.Background()
-		_, _ = pool.Exec(cleanup, `DELETE FROM todo_item_frequencies WHERE todo_item_id=$1`, todoID)
-		_, _ = pool.Exec(cleanup, `DELETE FROM todo_items WHERE id=$1`, todoID)
+		_, _ = pool.Exec(cleanup, `DELETE FROM action_item_frequencies WHERE action_item_id=$1`, actionItemID)
+		_, _ = pool.Exec(cleanup, `DELETE FROM action_items WHERE id=$1`, actionItemID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM task_revisions WHERE id=$1`, taskID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM tasks WHERE id=$1`, taskID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM project_revisions WHERE id=$1`, projectID)
@@ -333,19 +333,19 @@ func TestTodoCompletionAndReopenTransitionTaskAndProject(t *testing.T) {
 	store := application.NewStore(pool)
 	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project)
 	_, err := taskusecase.NewCreateTaskInProjectUseCase(taskUOW, nil).Execute(ctx, taskusecase.CreateTaskInProjectInput{
-		ID: taskdomain.TaskID(taskID), UserID: taskdomain.UserID(ownerID), ProjectID: taskdomain.ProjectID(projectID), Title: "Todo-backed Task",
+		ID: taskdomain.TaskID(taskID), UserID: taskdomain.UserID(ownerID), ProjectID: taskdomain.ProjectID(projectID), Title: "ActionItem-backed Task",
 	})
 	if err != nil {
 		t.Fatalf("create linked Task: %v", err)
 	}
-	_, err = taskusecase.NewCreateTodoItemUseCase(taskUOW, projectCrossContextTimezoneReader{}, nil).Execute(ctx, taskusecase.CreateTodoItemInput{
-		ID: taskdomain.TodoItemID(todoID), UserID: taskdomain.UserID(ownerID), TaskID: taskdomain.TaskID(taskID), Title: "Complete me",
+	_, err = taskusecase.NewCreateActionItemUseCase(taskUOW, projectCrossContextTimezoneReader{}, nil).Execute(ctx, taskusecase.CreateActionItemInput{
+		ID: taskdomain.ActionItemID(actionItemID), UserID: taskdomain.UserID(ownerID), TaskID: taskdomain.TaskID(taskID), Title: "Complete me",
 	})
 	if err != nil {
-		t.Fatalf("create TodoItem: %v", err)
+		t.Fatalf("create ActionItem: %v", err)
 	}
-	if err := taskusecase.NewCompleteTodoItemUseCase(taskUOW, nil).Execute(ctx, taskdomain.UserID(ownerID), taskdomain.TaskID(taskID), taskdomain.TodoItemID(todoID)); err != nil {
-		t.Fatalf("complete final TodoItem: %v", err)
+	if err := taskusecase.NewCompleteActionItemUseCase(taskUOW, nil).Execute(ctx, taskdomain.UserID(ownerID), taskdomain.TaskID(taskID), taskdomain.ActionItemID(actionItemID)); err != nil {
+		t.Fatalf("complete final ActionItem: %v", err)
 	}
 	status, _ := readProjectState(t, pool, projectID)
 	var taskStatus string
@@ -353,17 +353,17 @@ func TestTodoCompletionAndReopenTransitionTaskAndProject(t *testing.T) {
 		t.Fatal(err)
 	}
 	if taskStatus != "done" || status != "done" {
-		t.Fatalf("after final TodoItem completion Task=%q Project=%q; want both done", taskStatus, status)
+		t.Fatalf("after final ActionItem completion Task=%q Project=%q; want both done", taskStatus, status)
 	}
-	if err := taskusecase.NewReopenTodoItemUseCase(taskUOW, nil).Execute(ctx, taskdomain.UserID(ownerID), taskdomain.TaskID(taskID), taskdomain.TodoItemID(todoID)); err != nil {
-		t.Fatalf("reopen completed TodoItem: %v", err)
+	if err := taskusecase.NewReopenActionItemUseCase(taskUOW, nil).Execute(ctx, taskdomain.UserID(ownerID), taskdomain.TaskID(taskID), taskdomain.ActionItemID(actionItemID)); err != nil {
+		t.Fatalf("reopen completed ActionItem: %v", err)
 	}
 	status, _ = readProjectState(t, pool, projectID)
 	if err := pool.QueryRow(ctx, `SELECT status FROM tasks WHERE id=$1`, taskID).Scan(&taskStatus); err != nil {
 		t.Fatal(err)
 	}
 	if taskStatus != "open" || status != "open" {
-		t.Fatalf("after TodoItem reopen Task=%q Project=%q; want both open", taskStatus, status)
+		t.Fatalf("after ActionItem reopen Task=%q Project=%q; want both open", taskStatus, status)
 	}
 }
 
@@ -465,7 +465,7 @@ func TestDoneProjectScheduleVirtualSuppressionAndSkipRestoreReopen(t *testing.T)
 	if err != nil {
 		t.Fatalf("create recurring Project Schedule: %v", err)
 	}
-	complete := scheduleusecase.NewCompleteScheduleUseCase(scheduleUOW, nil, projectTodoItemID{})
+	complete := scheduleusecase.NewCompleteScheduleUseCase(scheduleUOW, nil, projectActionItemID{})
 	if err := complete.ExecuteOccurrence(ctx, scheduledomain.UserID(ownerID), scheduledomain.ScheduleID(scheduleID), futureDate.Format("2006-01-02")); err != nil {
 		t.Fatalf("save completed future occurrence: %v", err)
 	}

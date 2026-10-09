@@ -2,16 +2,16 @@
 
 ## Goal
 
-Promote TaskSchedule to Schedule, independent of Task. Tasks contain TodoItems; Schedules own fixed-time work. Both can belong to Projects and feed daily execution plans.
+Promote TaskSchedule to Schedule, independent of Task. Tasks contain ActionItems; Schedules own fixed-time work. Both can belong to Projects and feed daily execution plans.
 
-Separate Project and the shared Tag catalog from the Task application context. Project owns grouping, sharing, history, and combined progress; Task owns Task/TodoItem behavior.
+Separate Project and the shared Tag catalog from the Task application context. Project owns grouping, sharing, history, and combined progress; Task owns Task/ActionItem behavior.
 
 ## Confirmed decisions
 
 - Development schema may be rewritten; no legacy data migration or API compatibility layer is required.
 - Schedule has its own owner and optional Project, following existing Task ownership and Project permission rules.
 - Schedule has one assignee. Personal lists select schedules assigned to the actor; Project lists expose schedules readable within that Project.
-- Task progress and automatic completion depend only on TodoItems.
+- Task progress and automatic completion depend only on ActionItems.
 - Project progress includes each Task's progress and each eligible Schedule occurrence's completion with equal weight:
   `floor((sum(task_progress) + 100 * completed_schedule_occurrences) / (task_count + schedule_occurrence_count))`.
 - Empty Projects have progress zero. Preserve existing occurrence eligibility: nondeleted, nonskipped saved occurrences plus otherwise-unsaved occurrences due today in their recurrence timezone. Future virtual occurrences do not contribute.
@@ -45,7 +45,7 @@ Separate Project and the shared Tag catalog from the Task application context. P
 
 ## Database and ER
 
-- Split migrations by responsibility: `000002_project.up/down.sql`, `000003_task.up/down.sql`, `000004_schedule.up/down.sql`, and `000005_todolist.up/down.sql`. Keep user/auth prerequisites in `000001`.
+- Split migrations by responsibility: `000002_project.up/down.sql`, `000003_task.up/down.sql`, `000004_schedule.up/down.sql`, and `000005_actionItemlist.up/down.sql`. Keep user/auth prerequisites in `000001`.
 - Replace `task_schedules` with `schedules`, adding `user_id`, nullable `project_id`, and `assignee_id`; remove `task_id`.
 - Enforce Project/owner consistency and recurrence series ownership. Use the existing Task rules for Project attachment and eligible assignees.
 - Rename frequencies and TodoList links to `schedule_frequencies` and `todo_list_schedules`.
@@ -54,7 +54,7 @@ Separate Project and the shared Tag catalog from the Task application context. P
 - Keep shared frequency data and the common `tags` catalog in the Task prerequisite migration; Project prerequisites precede Task/Schedule and TodoList joins follow both. Ensure reverse migration order succeeds.
 - Add `schedule_revisions` with atomic snapshots of scalar and recurrence settings. Initial history must contain complete weekdays; preserve actor attribution and immutable committed history.
 - Rename the shared tag catalog to `tags`, retain `task_tag_assignments`, and add `schedule_tag_assignments` with matching target-owner validation and update permissions.
-- Update seed data and split ER diagrams into `db/er/project.mmd`, `task.mmd`, `schedule.mmd`, and `todolist.mmd`, using reference-only entities for external tables.
+- Update seed data and split ER diagrams into `db/er/project.mmd`, `task.mmd`, `schedule.mmd`, and `actionItemlist.mmd`, using reference-only entities for external tables.
 - Regenerate sqlc from SQL source; never edit generated Go manually.
 
 ## API and documentation
@@ -101,6 +101,6 @@ Dependency gates:
 
 - Five-step migration apply/rollback/reapply and seed smoke passed on a disposable PostgreSQL database. sqlc regeneration is stable.
 - Full backend test suite and build passed with the disposable DB configured; JSON output confirmed no individual tests were skipped. `git diff --check` passed.
-- Project deletion rollback/actor-history, shared-tag REST flow, and Project deletion/member-removal concurrency regressions passed. The TodoItem insertion/deletion snapshot race is covered by a deterministic regression.
+- Project deletion rollback/actor-history, shared-tag REST flow, and Project deletion/member-removal concurrency regressions passed. The ActionItem insertion/deletion snapshot race is covered by a deterministic regression.
 - Swagger and Orval were regenerated. Frontend authentication unit tests (12), production build, and isolated login/signup E2E tests (5) passed.
 - Series-wide Schedule tag behavior is confirmed: root and live saved occurrence IDs share one assignment set; Schedule GET/List responses expose it for root, saved override, and virtual occurrences. A live override remains readable after root deletion.

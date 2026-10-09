@@ -193,23 +193,25 @@ func (repo *taskHandlerTagRepository) ListByTaskAndUserID(context.Context, domai
 	return repo.tags, repo.err
 }
 
-type taskHandlerTodoRepository struct{ taskusecase.TodoItemRepository }
+type taskHandlerActionItemRepository struct {
+	taskusecase.ActionItemRepository
+}
 
-func (taskHandlerTodoRepository) DeleteUneditedFutureByTask(context.Context, domain.UserID, domain.TaskID, time.Time) (int64, error) {
+func (taskHandlerActionItemRepository) DeleteUneditedFutureByTask(context.Context, domain.UserID, domain.TaskID, time.Time) (int64, error) {
 	return 0, nil
 }
 
 type taskHandlerRepositories struct {
 	taskusecase.Repositories
-	tasks     taskusecase.TaskRepository
-	tags      taskusecase.TaskTagRepository
-	todoItems taskusecase.TodoItemRepository
+	tasks       taskusecase.TaskRepository
+	tags        taskusecase.TaskTagRepository
+	actionItems taskusecase.ActionItemRepository
 }
 
 func (repos taskHandlerRepositories) Tasks() taskusecase.TaskRepository       { return repos.tasks }
 func (repos taskHandlerRepositories) TaskTags() taskusecase.TaskTagRepository { return repos.tags }
-func (repos taskHandlerRepositories) TodoItems() taskusecase.TodoItemRepository {
-	return repos.todoItems
+func (repos taskHandlerRepositories) ActionItems() taskusecase.ActionItemRepository {
+	return repos.actionItems
 }
 
 type taskHandlerUOW struct {
@@ -232,7 +234,7 @@ func newTaskHandlerFixture() (*TaskHandler, *taskHandlerTaskRepository, *taskHan
 	}}
 	tagRepo := &taskHandlerTagRepository{tags: []dao.TaskTag{{ID: "tag-1", UserID: "user-1", Name: "work"}}}
 	repos := taskHandlerRepositories{
-		tasks: taskRepo, tags: tagRepo, todoItems: taskHandlerTodoRepository{},
+		tasks: taskRepo, tags: tagRepo, actionItems: taskHandlerActionItemRepository{},
 	}
 	uow := &taskHandlerUOW{repos: repos}
 	tasks := taskusecase.TaskUseCases{

@@ -97,6 +97,33 @@ func (ns NullEffect) Value() (driver.Value, error) {
 	return string(ns.Effect), nil
 }
 
+type ActionItem struct {
+	ID                  string
+	TaskID              string
+	Title               string
+	Description         pgtype.Text
+	DueDate             pgtype.Date
+	Completed           bool
+	Position            int32
+	SeriesID            string
+	OccurrenceDate      pgtype.Date
+	Timezone            string
+	IsException         bool
+	RepeatState         pgtype.Text
+	FrequencyAnchorDate pgtype.Date
+	IntervalWeeks       int32
+	DeletedAt           pgtype.Timestamptz
+	SkippedAt           pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+}
+
+type ActionItemFrequency struct {
+	ActionItemID string
+	Frequency    string
+	CreatedAt    pgtype.Timestamptz
+}
+
 type FrequencyMaster struct {
 	Frequency string
 	Label     string
@@ -330,33 +357,6 @@ type TaskTagAssignment struct {
 	CreatedAt pgtype.Timestamptz
 }
 
-type TodoItem struct {
-	ID                  string
-	TaskID              string
-	Title               string
-	Description         pgtype.Text
-	DueDate             pgtype.Date
-	Completed           bool
-	Position            int32
-	SeriesID            string
-	OccurrenceDate      pgtype.Date
-	Timezone            string
-	IsException         bool
-	RepeatState         pgtype.Text
-	FrequencyAnchorDate pgtype.Date
-	IntervalWeeks       int32
-	DeletedAt           pgtype.Timestamptz
-	SkippedAt           pgtype.Timestamptz
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
-}
-
-type TodoItemFrequency struct {
-	TodoItemID string
-	Frequency  string
-	CreatedAt  pgtype.Timestamptz
-}
-
 type TodoList struct {
 	ID        string
 	UserID    string
@@ -366,10 +366,10 @@ type TodoList struct {
 }
 
 type TodoListItem struct {
-	TodoListID string
-	TodoItemID string
-	Position   int32
-	CreatedAt  pgtype.Timestamptz
+	TodoListID   string
+	ActionItemID string
+	Position     int32
+	CreatedAt    pgtype.Timestamptz
 }
 
 type TodoListSchedule struct {

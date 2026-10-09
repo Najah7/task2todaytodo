@@ -10,9 +10,9 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 )
 
-func TestTodoItemResponseUsesStableVirtualIDAndRepeatMetadata(t *testing.T) {
+func TestActionItemResponseUsesStableVirtualIDAndRepeatMetadata(t *testing.T) {
 	anchorDate := time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC)
-	response := todoItemResponse(dao.TodoItem{
+	response := actionItemResponse(dao.ActionItem{
 		ID: "generated-1", TaskID: "task-1", SeriesID: "root-1", OccurrenceDate: "2026-10-12",
 		RepeatState: "active", FrequencyAnchorDate: anchorDate.Unix(), IntervalWeeks: 2,
 	})

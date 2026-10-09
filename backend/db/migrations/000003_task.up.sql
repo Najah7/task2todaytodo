@@ -127,7 +127,7 @@ CREATE TABLE task_tag_assignments (
     PRIMARY KEY (task_id, tag_id)
 );
 
-CREATE TABLE todo_items (
+CREATE TABLE action_items (
     id text PRIMARY KEY CHECK (id ~ '^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$'),
     task_id text NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
     title text NOT NULL CHECK (btrim(title) <> ''),
@@ -146,9 +146,9 @@ CREATE TABLE todo_items (
     skipped_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT todo_items_id_task_id_key UNIQUE (id, task_id),
-    CONSTRAINT todo_items_series_task_fk
-        FOREIGN KEY (series_id, task_id) REFERENCES todo_items(id, task_id) ON DELETE CASCADE,
+    CONSTRAINT action_items_id_task_id_key UNIQUE (id, task_id),
+    CONSTRAINT action_items_series_task_fk
+        FOREIGN KEY (series_id, task_id) REFERENCES action_items(id, task_id) ON DELETE CASCADE,
     CHECK (repeat_state IS NULL OR repeat_state IN ('one_off', 'active', 'stopped')),
     CHECK (
         (id = series_id AND (
@@ -159,14 +159,14 @@ CREATE TABLE todo_items (
         (id <> series_id AND repeat_state IS NULL AND frequency_anchor_date IS NULL AND interval_weeks = 0)
     )
 );
-CREATE UNIQUE INDEX idx_todo_items_series_occurrence_child_key
-    ON todo_items(series_id, occurrence_date) WHERE id <> series_id;
+CREATE UNIQUE INDEX idx_action_items_series_occurrence_child_key
+    ON action_items(series_id, occurrence_date) WHERE id <> series_id;
 
-CREATE TABLE todo_item_frequencies (
-    todo_item_id text NOT NULL REFERENCES todo_items(id) ON DELETE CASCADE,
+CREATE TABLE action_item_frequencies (
+    action_item_id text NOT NULL REFERENCES action_items(id) ON DELETE CASCADE,
     frequency text NOT NULL REFERENCES frequency_master(frequency) ON DELETE RESTRICT,
     created_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (todo_item_id, frequency)
+    PRIMARY KEY (action_item_id, frequency)
 );
 
 CREATE FUNCTION recurrence_wall_time_exists(local_time timestamp without time zone, timezone_name text)
@@ -210,8 +210,8 @@ CREATE INDEX idx_tasks_project_user_created_id ON tasks(project_id, user_id, cre
 
 CREATE INDEX idx_tags_user_name_id ON tags(user_id, name, id);
 
-CREATE INDEX idx_todo_items_task_position_occurrence_id_live
-    ON todo_items(task_id, position, occurrence_date, id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_action_items_task_position_occurrence_id_live
+    ON action_items(task_id, position, occurrence_date, id) WHERE deleted_at IS NULL;
 
 CREATE INDEX idx_task_revisions_changed_at ON task_revisions(id, changed_at DESC, revision DESC);
 

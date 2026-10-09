@@ -9,15 +9,15 @@ CREATE TABLE todo_lists (
 
 CREATE TABLE todo_list_items (
     todo_list_id text NOT NULL REFERENCES todo_lists(id) ON DELETE CASCADE,
-    todo_item_id text NOT NULL REFERENCES todo_items(id) ON DELETE CASCADE,
+    action_item_id text NOT NULL REFERENCES action_items(id) ON DELETE CASCADE,
     position integer NOT NULL CHECK (position >= 0),
     created_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (todo_list_id, todo_item_id),
+    PRIMARY KEY (todo_list_id, action_item_id),
     CONSTRAINT todo_list_items_todo_list_id_position_key
         UNIQUE (todo_list_id, position) DEFERRABLE INITIALLY IMMEDIATE
 );
 
-CREATE INDEX idx_todo_list_items_item_id_list_id ON todo_list_items(todo_item_id, todo_list_id);
+CREATE INDEX idx_todo_list_items_action_item_id_list_id ON todo_list_items(action_item_id, todo_list_id);
 
 CREATE TABLE todo_list_schedules (
     todo_list_id text NOT NULL REFERENCES todo_lists(id) ON DELETE CASCADE,

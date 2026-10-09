@@ -48,8 +48,8 @@ WHERE t.deleted_at IS NULL
 AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL))
 AND EXISTS (
     SELECT 1
-    FROM todo_items AS ti
-    JOIN todo_item_frequencies AS tif ON tif.todo_item_id = ti.series_id
+    FROM action_items AS ti
+    JOIN action_item_frequencies AS tif ON tif.action_item_id = ti.series_id
     WHERE ti.task_id = t.id
       AND tif.frequency = $1::text
 )
@@ -343,6 +343,83 @@ func (q *Queries) GetTaskByUserIDForPermission(ctx context.Context, arg GetTaskB
 	return i, err
 }
 
+const listActionItemsByTaskForUser = `-- name: ListActionItemsByTaskForUser :many
+SELECT
+    ti.id,
+    ti.task_id,
+    ti.title,
+    ti.description,
+    ti.due_date,
+    ti.completed,
+    ti.position,
+    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
+    ARRAY(
+        SELECT tif.frequency
+        FROM action_item_frequencies AS tif
+        WHERE tif.action_item_id = ti.series_id
+        ORDER BY tif.frequency
+    )::text[] AS frequencies,
+    ti.created_at,
+    ti.updated_at
+FROM action_items AS ti
+JOIN tasks AS t ON t.id = ti.task_id
+WHERE ti.task_id = $1
+  AND t.user_id = $2
+	AND ti.deleted_at IS NULL
+ORDER BY ti.position ASC
+`
+
+type ListActionItemsByTaskForUserParams struct {
+	TaskID string
+	UserID string
+}
+
+type ListActionItemsByTaskForUserRow struct {
+	ID            string
+	TaskID        string
+	Title         string
+	Description   pgtype.Text
+	DueDate       pgtype.Date
+	Completed     bool
+	Position      int32
+	IntervalWeeks int32
+	Frequencies   []string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
+func (q *Queries) ListActionItemsByTaskForUser(ctx context.Context, arg ListActionItemsByTaskForUserParams) ([]ListActionItemsByTaskForUserRow, error) {
+	rows, err := q.db.Query(ctx, listActionItemsByTaskForUser, arg.TaskID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActionItemsByTaskForUserRow
+	for rows.Next() {
+		var i ListActionItemsByTaskForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.Title,
+			&i.Description,
+			&i.DueDate,
+			&i.Completed,
+			&i.Position,
+			&i.IntervalWeeks,
+			&i.Frequencies,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProjectTasksByUserIDCursorPage = `-- name: ListProjectTasksByUserIDCursorPage :many
 SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
 FROM tasks AS t
@@ -529,83 +606,6 @@ func (q *Queries) ListTasksByUserIDCursorPage(ctx context.Context, arg ListTasks
 	return items, nil
 }
 
-const listTodoItemsByTaskForUser = `-- name: ListTodoItemsByTaskForUser :many
-SELECT
-    ti.id,
-    ti.task_id,
-    ti.title,
-    ti.description,
-    ti.due_date,
-    ti.completed,
-    ti.position,
-    COALESCE((SELECT r.interval_weeks FROM todo_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
-    ARRAY(
-        SELECT tif.frequency
-        FROM todo_item_frequencies AS tif
-        WHERE tif.todo_item_id = ti.series_id
-        ORDER BY tif.frequency
-    )::text[] AS frequencies,
-    ti.created_at,
-    ti.updated_at
-FROM todo_items AS ti
-JOIN tasks AS t ON t.id = ti.task_id
-WHERE ti.task_id = $1
-  AND t.user_id = $2
-	AND ti.deleted_at IS NULL
-ORDER BY ti.position ASC
-`
-
-type ListTodoItemsByTaskForUserParams struct {
-	TaskID string
-	UserID string
-}
-
-type ListTodoItemsByTaskForUserRow struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	DueDate       pgtype.Date
-	Completed     bool
-	Position      int32
-	IntervalWeeks int32
-	Frequencies   []string
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-}
-
-func (q *Queries) ListTodoItemsByTaskForUser(ctx context.Context, arg ListTodoItemsByTaskForUserParams) ([]ListTodoItemsByTaskForUserRow, error) {
-	rows, err := q.db.Query(ctx, listTodoItemsByTaskForUser, arg.TaskID, arg.UserID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListTodoItemsByTaskForUserRow
-	for rows.Next() {
-		var i ListTodoItemsByTaskForUserRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.TaskID,
-			&i.Title,
-			&i.Description,
-			&i.DueDate,
-			&i.Completed,
-			&i.Position,
-			&i.IntervalWeeks,
-			&i.Frequencies,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listUsersWithActiveRecurrences = `-- name: ListUsersWithActiveRecurrences :many
 SELECT DISTINCT t.user_id
 FROM tasks AS t
@@ -613,7 +613,7 @@ WHERE t.status <> 'done'
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL AND p.status <> 'done'))
   AND EXISTS (
-      SELECT 1 FROM todo_items AS ti
+      SELECT 1 FROM action_items AS ti
       WHERE ti.task_id = t.id AND ti.id = ti.series_id
         AND ti.repeat_state = 'active' AND ti.deleted_at IS NULL
   )

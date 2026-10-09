@@ -53,7 +53,7 @@ INSERT INTO roles (role_id, name) VALUES
 INSERT INTO managed_resources (resource_id, name) VALUES
     ('project', 'Project'),
     ('task', 'Task'),
-    ('todo_item', 'Todo item'),
+    ('action_item', 'Action item'),
     ('schedule', 'Schedule'),
     ('task_assignment', 'Task assignment'),
     ('schedule_assignment', 'Schedule assignment'),
@@ -70,7 +70,7 @@ CROSS JOIN LATERAL unnest(ARRAY['allow', 'deny']) AS effects(effect)
 WHERE (resource_id, action::text) IN (
     ('project', 'read'), ('project', 'update'), ('project', 'delete'),
     ('task', 'read'), ('task', 'create'), ('task', 'update'), ('task', 'delete'),
-    ('todo_item', 'read'), ('todo_item', 'create'), ('todo_item', 'update'), ('todo_item', 'delete'),
+    ('action_item', 'read'), ('action_item', 'create'), ('action_item', 'update'), ('action_item', 'delete'),
     ('schedule', 'read'), ('schedule', 'create'), ('schedule', 'update'), ('schedule', 'delete'),
     ('task_assignment', 'update'), ('schedule_assignment', 'update'), ('occurrence', 'update'),
     ('project_member', 'read'), ('project_member', 'create'), ('project_member', 'update'), ('project_member', 'delete'),
@@ -81,7 +81,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT 'viewer', permission_id
 FROM permissions
 WHERE effect = 'allow' AND (resource_id, action) IN (
-    ('project', 'read'), ('task', 'read'), ('todo_item', 'read'), ('schedule', 'read')
+    ('project', 'read'), ('task', 'read'), ('action_item', 'read'), ('schedule', 'read')
 );
 
 INSERT INTO role_permissions (role_id, permission_id)
@@ -90,7 +90,7 @@ FROM permissions
 WHERE effect = 'allow' AND (resource_id, action) IN (
     ('project', 'read'), ('project', 'update'),
     ('task', 'read'), ('task', 'create'), ('task', 'update'),
-    ('todo_item', 'read'), ('todo_item', 'create'), ('todo_item', 'update'),
+    ('action_item', 'read'), ('action_item', 'create'), ('action_item', 'update'),
     ('schedule', 'read'), ('schedule', 'create'), ('schedule', 'update'),
     ('task_assignment', 'update'), ('schedule_assignment', 'update'), ('occurrence', 'update')
 );

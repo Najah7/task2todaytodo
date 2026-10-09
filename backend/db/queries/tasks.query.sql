@@ -32,7 +32,7 @@ WHERE t.status <> 'done'
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL AND p.status <> 'done'))
   AND EXISTS (
-      SELECT 1 FROM todo_items AS ti
+      SELECT 1 FROM action_items AS ti
       WHERE ti.task_id = t.id AND ti.id = ti.series_id
         AND ti.repeat_state = 'active' AND ti.deleted_at IS NULL
   )
@@ -58,7 +58,7 @@ WHERE t.project_id = $1
   AND p.user_id = $2
 ORDER BY t.created_at ASC;
 
--- name: ListTodoItemsByTaskForUser :many
+-- name: ListActionItemsByTaskForUser :many
 SELECT
     ti.id,
     ti.task_id,
@@ -67,16 +67,16 @@ SELECT
     ti.due_date,
     ti.completed,
     ti.position,
-    COALESCE((SELECT r.interval_weeks FROM todo_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
+    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
     ARRAY(
         SELECT tif.frequency
-        FROM todo_item_frequencies AS tif
-        WHERE tif.todo_item_id = ti.series_id
+        FROM action_item_frequencies AS tif
+        WHERE tif.action_item_id = ti.series_id
         ORDER BY tif.frequency
     )::text[] AS frequencies,
     ti.created_at,
     ti.updated_at
-FROM todo_items AS ti
+FROM action_items AS ti
 JOIN tasks AS t ON t.id = ti.task_id
 WHERE ti.task_id = $1
   AND t.user_id = $2
@@ -110,8 +110,8 @@ WHERE t.deleted_at IS NULL
 AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL))
 AND EXISTS (
     SELECT 1
-    FROM todo_items AS ti
-    JOIN todo_item_frequencies AS tif ON tif.todo_item_id = ti.series_id
+    FROM action_items AS ti
+    JOIN action_item_frequencies AS tif ON tif.action_item_id = ti.series_id
     WHERE ti.task_id = t.id
       AND tif.frequency = sqlc.arg(frequency)::text
 );

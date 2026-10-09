@@ -11,9 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const deleteSkippedTodoItemOccurrenceByTaskAndUserID = `-- name: DeleteSkippedTodoItemOccurrenceByTaskAndUserID :exec
-DELETE FROM todo_items child
-USING todo_items root, tasks t
+const deleteSkippedActionItemOccurrenceByTaskAndUserID = `-- name: DeleteSkippedActionItemOccurrenceByTaskAndUserID :exec
+DELETE FROM action_items child
+USING action_items root, tasks t
 WHERE child.series_id = root.id
   AND root.task_id = t.id
   AND child.series_id = $1::text
@@ -29,15 +29,15 @@ WHERE child.series_id = root.id
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
 `
 
-type DeleteSkippedTodoItemOccurrenceByTaskAndUserIDParams struct {
+type DeleteSkippedActionItemOccurrenceByTaskAndUserIDParams struct {
 	SeriesID       string
 	OccurrenceDate pgtype.Date
 	TaskID         string
 	UserID         string
 }
 
-func (q *Queries) DeleteSkippedTodoItemOccurrenceByTaskAndUserID(ctx context.Context, arg DeleteSkippedTodoItemOccurrenceByTaskAndUserIDParams) error {
-	_, err := q.db.Exec(ctx, deleteSkippedTodoItemOccurrenceByTaskAndUserID,
+func (q *Queries) DeleteSkippedActionItemOccurrenceByTaskAndUserID(ctx context.Context, arg DeleteSkippedActionItemOccurrenceByTaskAndUserIDParams) error {
+	_, err := q.db.Exec(ctx, deleteSkippedActionItemOccurrenceByTaskAndUserID,
 		arg.SeriesID,
 		arg.OccurrenceDate,
 		arg.TaskID,
@@ -46,10 +46,10 @@ func (q *Queries) DeleteSkippedTodoItemOccurrenceByTaskAndUserID(ctx context.Con
 	return err
 }
 
-const restoreEditedTodoItemOccurrenceByTaskAndUserID = `-- name: RestoreEditedTodoItemOccurrenceByTaskAndUserID :exec
-UPDATE todo_items child
+const restoreEditedActionItemOccurrenceByTaskAndUserID = `-- name: RestoreEditedActionItemOccurrenceByTaskAndUserID :exec
+UPDATE action_items child
 SET skipped_at = NULL, updated_at = now()
-FROM todo_items root, tasks t
+FROM action_items root, tasks t
 WHERE child.series_id = root.id
   AND root.task_id = t.id
   AND child.series_id = $1::text
@@ -65,15 +65,15 @@ WHERE child.series_id = root.id
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
 `
 
-type RestoreEditedTodoItemOccurrenceByTaskAndUserIDParams struct {
+type RestoreEditedActionItemOccurrenceByTaskAndUserIDParams struct {
 	SeriesID       string
 	OccurrenceDate pgtype.Date
 	TaskID         string
 	UserID         string
 }
 
-func (q *Queries) RestoreEditedTodoItemOccurrenceByTaskAndUserID(ctx context.Context, arg RestoreEditedTodoItemOccurrenceByTaskAndUserIDParams) error {
-	_, err := q.db.Exec(ctx, restoreEditedTodoItemOccurrenceByTaskAndUserID,
+func (q *Queries) RestoreEditedActionItemOccurrenceByTaskAndUserID(ctx context.Context, arg RestoreEditedActionItemOccurrenceByTaskAndUserIDParams) error {
+	_, err := q.db.Exec(ctx, restoreEditedActionItemOccurrenceByTaskAndUserID,
 		arg.SeriesID,
 		arg.OccurrenceDate,
 		arg.TaskID,
@@ -82,8 +82,8 @@ func (q *Queries) RestoreEditedTodoItemOccurrenceByTaskAndUserID(ctx context.Con
 	return err
 }
 
-const skipTodoItemOccurrenceByTaskAndUserID = `-- name: SkipTodoItemOccurrenceByTaskAndUserID :one
-INSERT INTO todo_items (
+const skipActionItemOccurrenceByTaskAndUserID = `-- name: SkipActionItemOccurrenceByTaskAndUserID :one
+INSERT INTO action_items (
     id, task_id, title, description, due_date, completed, position,
     series_id, occurrence_date, timezone, is_exception, repeat_state,
     frequency_anchor_date, interval_weeks, deleted_at, skipped_at
@@ -91,7 +91,7 @@ INSERT INTO todo_items (
 SELECT $1::text, root.task_id, root.title, root.description, root.due_date,
        false, root.position, root.id, $2::date, root.timezone,
        false, NULL, NULL, 0, NULL, now()
-FROM todo_items root
+FROM action_items root
 JOIN tasks t ON t.id = root.task_id
 WHERE root.id = $3::text
   AND root.task_id = $4::text
@@ -101,12 +101,12 @@ WHERE root.id = $3::text
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
 ON CONFLICT (series_id, occurrence_date) WHERE id <> series_id
-DO UPDATE SET skipped_at = COALESCE(todo_items.skipped_at, now()), updated_at = now()
-WHERE todo_items.deleted_at IS NULL
+DO UPDATE SET skipped_at = COALESCE(action_items.skipped_at, now()), updated_at = now()
+WHERE action_items.deleted_at IS NULL
 RETURNING id
 `
 
-type SkipTodoItemOccurrenceByTaskAndUserIDParams struct {
+type SkipActionItemOccurrenceByTaskAndUserIDParams struct {
 	ID             string
 	OccurrenceDate pgtype.Date
 	SeriesID       string
@@ -114,8 +114,8 @@ type SkipTodoItemOccurrenceByTaskAndUserIDParams struct {
 	UserID         string
 }
 
-func (q *Queries) SkipTodoItemOccurrenceByTaskAndUserID(ctx context.Context, arg SkipTodoItemOccurrenceByTaskAndUserIDParams) (string, error) {
-	row := q.db.QueryRow(ctx, skipTodoItemOccurrenceByTaskAndUserID,
+func (q *Queries) SkipActionItemOccurrenceByTaskAndUserID(ctx context.Context, arg SkipActionItemOccurrenceByTaskAndUserIDParams) (string, error) {
+	row := q.db.QueryRow(ctx, skipActionItemOccurrenceByTaskAndUserID,
 		arg.ID,
 		arg.OccurrenceDate,
 		arg.SeriesID,
@@ -127,8 +127,8 @@ func (q *Queries) SkipTodoItemOccurrenceByTaskAndUserID(ctx context.Context, arg
 	return id, err
 }
 
-const upsertTodoItemOverrideByTaskAndUserID = `-- name: UpsertTodoItemOverrideByTaskAndUserID :one
-INSERT INTO todo_items (
+const upsertActionItemOverrideByTaskAndUserID = `-- name: UpsertActionItemOverrideByTaskAndUserID :one
+INSERT INTO action_items (
     id, task_id, title, description, due_date, completed, position,
     series_id, occurrence_date, timezone, is_exception, repeat_state,
     frequency_anchor_date, interval_weeks, deleted_at, skipped_at
@@ -138,9 +138,9 @@ SELECT $1::text, t.id, $2::text, $3::text,
        root.id, $7::date, $8::text, true, NULL, NULL, 0,
        CASE WHEN $9::boolean THEN now() ELSE NULL END, NULL
 FROM tasks t
-JOIN todo_items root ON root.id = $10::text AND root.task_id = t.id
+JOIN action_items root ON root.id = $10::text AND root.task_id = t.id
 WHERE t.id = $11::text
-  AND task_has_permission(t.id, $12::text, 'todo_item', 'update')
+  AND task_has_permission(t.id, $12::text, 'action_item', 'update')
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
   AND root.deleted_at IS NULL
@@ -154,11 +154,11 @@ ON CONFLICT (series_id, occurrence_date) WHERE id <> series_id DO UPDATE SET
     is_exception = true,
     deleted_at = EXCLUDED.deleted_at,
     updated_at = now()
-WHERE todo_items.deleted_at IS NULL
+WHERE action_items.deleted_at IS NULL
 RETURNING id
 `
 
-type UpsertTodoItemOverrideByTaskAndUserIDParams struct {
+type UpsertActionItemOverrideByTaskAndUserIDParams struct {
 	ID             string
 	Title          string
 	Description    pgtype.Text
@@ -173,8 +173,8 @@ type UpsertTodoItemOverrideByTaskAndUserIDParams struct {
 	UserID         string
 }
 
-func (q *Queries) UpsertTodoItemOverrideByTaskAndUserID(ctx context.Context, arg UpsertTodoItemOverrideByTaskAndUserIDParams) (string, error) {
-	row := q.db.QueryRow(ctx, upsertTodoItemOverrideByTaskAndUserID,
+func (q *Queries) UpsertActionItemOverrideByTaskAndUserID(ctx context.Context, arg UpsertActionItemOverrideByTaskAndUserIDParams) (string, error) {
+	row := q.db.QueryRow(ctx, upsertActionItemOverrideByTaskAndUserID,
 		arg.ID,
 		arg.Title,
 		arg.Description,

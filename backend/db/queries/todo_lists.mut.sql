@@ -8,21 +8,21 @@ DELETE FROM todo_lists
 WHERE id = $1;
 
 -- name: AddTodoListItem :one
-INSERT INTO todo_list_items (todo_list_id, todo_item_id, position)
+INSERT INTO todo_list_items (todo_list_id, action_item_id, position)
 VALUES ($1, $2, $3)
-RETURNING todo_list_id, todo_item_id, position, created_at;
+RETURNING todo_list_id, action_item_id, position, created_at;
 
 -- name: UpdateTodoListItemPosition :one
 UPDATE todo_list_items
 SET position = $3
 WHERE todo_list_id = $1
-  AND todo_item_id = $2
-RETURNING todo_list_id, todo_item_id, position, created_at;
+  AND action_item_id = $2
+RETURNING todo_list_id, action_item_id, position, created_at;
 
 -- name: RemoveTodoListItem :exec
 DELETE FROM todo_list_items
 WHERE todo_list_id = $1
-  AND todo_item_id = $2;
+  AND action_item_id = $2;
 
 -- name: AddTodoListSchedule :one
 INSERT INTO todo_list_schedules (todo_list_id, schedule_id)

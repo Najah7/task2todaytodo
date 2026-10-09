@@ -11,35 +11,35 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const clearTodoItemFrequenciesByTaskAndUserID = `-- name: ClearTodoItemFrequenciesByTaskAndUserID :exec
-DELETE FROM todo_item_frequencies f
-USING todo_items root, tasks t
-WHERE f.todo_item_id = $1::text
-  AND root.id = f.todo_item_id
+const clearActionItemFrequenciesByTaskAndUserID = `-- name: ClearActionItemFrequenciesByTaskAndUserID :exec
+DELETE FROM action_item_frequencies f
+USING action_items root, tasks t
+WHERE f.action_item_id = $1::text
+  AND root.id = f.action_item_id
   AND root.id = root.series_id
   AND root.task_id = $2::text
   AND root.deleted_at IS NULL
   AND t.id = root.task_id
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, $3::text, 'todo_item', 'update')
+  AND task_has_permission(t.id, $3::text, 'action_item', 'update')
 `
 
-type ClearTodoItemFrequenciesByTaskAndUserIDParams struct {
+type ClearActionItemFrequenciesByTaskAndUserIDParams struct {
 	SeriesID string
 	TaskID   string
 	UserID   string
 }
 
-func (q *Queries) ClearTodoItemFrequenciesByTaskAndUserID(ctx context.Context, arg ClearTodoItemFrequenciesByTaskAndUserIDParams) error {
-	_, err := q.db.Exec(ctx, clearTodoItemFrequenciesByTaskAndUserID, arg.SeriesID, arg.TaskID, arg.UserID)
+func (q *Queries) ClearActionItemFrequenciesByTaskAndUserID(ctx context.Context, arg ClearActionItemFrequenciesByTaskAndUserIDParams) error {
+	_, err := q.db.Exec(ctx, clearActionItemFrequenciesByTaskAndUserID, arg.SeriesID, arg.TaskID, arg.UserID)
 	return err
 }
 
-const createTodoItemFrequenciesByTaskAndUserID = `-- name: CreateTodoItemFrequenciesByTaskAndUserID :exec
-INSERT INTO todo_item_frequencies (todo_item_id, frequency)
+const createActionItemFrequenciesByTaskAndUserID = `-- name: CreateActionItemFrequenciesByTaskAndUserID :exec
+INSERT INTO action_item_frequencies (action_item_id, frequency)
 SELECT root.id, f.frequency
-FROM todo_items root
+FROM action_items root
 JOIN tasks t ON t.id = root.task_id
 CROSS JOIN unnest($1::text[]) AS f(frequency)
 WHERE root.id = $2::text
@@ -48,20 +48,20 @@ WHERE root.id = $2::text
   AND root.deleted_at IS NULL
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, $4::text, 'todo_item', 'update')
+  AND task_has_permission(t.id, $4::text, 'action_item', 'update')
   AND root.repeat_state = 'active'
 ON CONFLICT DO NOTHING
 `
 
-type CreateTodoItemFrequenciesByTaskAndUserIDParams struct {
+type CreateActionItemFrequenciesByTaskAndUserIDParams struct {
 	Frequencies []string
 	SeriesID    string
 	TaskID      string
 	UserID      string
 }
 
-func (q *Queries) CreateTodoItemFrequenciesByTaskAndUserID(ctx context.Context, arg CreateTodoItemFrequenciesByTaskAndUserIDParams) error {
-	_, err := q.db.Exec(ctx, createTodoItemFrequenciesByTaskAndUserID,
+func (q *Queries) CreateActionItemFrequenciesByTaskAndUserID(ctx context.Context, arg CreateActionItemFrequenciesByTaskAndUserIDParams) error {
+	_, err := q.db.Exec(ctx, createActionItemFrequenciesByTaskAndUserID,
 		arg.Frequencies,
 		arg.SeriesID,
 		arg.TaskID,
@@ -70,33 +70,33 @@ func (q *Queries) CreateTodoItemFrequenciesByTaskAndUserID(ctx context.Context, 
 	return err
 }
 
-const replaceTodoItemFrequenciesByTaskAndUserID = `-- name: ReplaceTodoItemFrequenciesByTaskAndUserID :exec
-DELETE FROM todo_item_frequencies f
-USING todo_items root, tasks t
-WHERE f.todo_item_id = $1::text
-  AND root.id = f.todo_item_id
+const replaceActionItemFrequenciesByTaskAndUserID = `-- name: ReplaceActionItemFrequenciesByTaskAndUserID :exec
+DELETE FROM action_item_frequencies f
+USING action_items root, tasks t
+WHERE f.action_item_id = $1::text
+  AND root.id = f.action_item_id
   AND root.id = root.series_id
   AND root.task_id = $2::text
   AND root.deleted_at IS NULL
   AND t.id = root.task_id
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, $3::text, 'todo_item', 'update')
+  AND task_has_permission(t.id, $3::text, 'action_item', 'update')
 `
 
-type ReplaceTodoItemFrequenciesByTaskAndUserIDParams struct {
+type ReplaceActionItemFrequenciesByTaskAndUserIDParams struct {
 	SeriesID string
 	TaskID   string
 	UserID   string
 }
 
-func (q *Queries) ReplaceTodoItemFrequenciesByTaskAndUserID(ctx context.Context, arg ReplaceTodoItemFrequenciesByTaskAndUserIDParams) error {
-	_, err := q.db.Exec(ctx, replaceTodoItemFrequenciesByTaskAndUserID, arg.SeriesID, arg.TaskID, arg.UserID)
+func (q *Queries) ReplaceActionItemFrequenciesByTaskAndUserID(ctx context.Context, arg ReplaceActionItemFrequenciesByTaskAndUserIDParams) error {
+	_, err := q.db.Exec(ctx, replaceActionItemFrequenciesByTaskAndUserID, arg.SeriesID, arg.TaskID, arg.UserID)
 	return err
 }
 
-const setTodoItemRecurrenceByTaskAndUserID = `-- name: SetTodoItemRecurrenceByTaskAndUserID :execrows
-UPDATE todo_items AS root
+const setActionItemRecurrenceByTaskAndUserID = `-- name: SetActionItemRecurrenceByTaskAndUserID :execrows
+UPDATE action_items AS root
 SET repeat_state = 'active',
     frequency_anchor_date = $1::date,
     interval_weeks = $2::integer,
@@ -109,11 +109,11 @@ WHERE root.id = $3::text
   AND t.id = root.task_id
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, $5::text, 'todo_item', 'update')
+  AND task_has_permission(t.id, $5::text, 'action_item', 'update')
   AND $2::integer > 0
 `
 
-type SetTodoItemRecurrenceByTaskAndUserIDParams struct {
+type SetActionItemRecurrenceByTaskAndUserIDParams struct {
 	FrequencyAnchorDate pgtype.Date
 	IntervalWeeks       int32
 	SeriesID            string
@@ -121,8 +121,8 @@ type SetTodoItemRecurrenceByTaskAndUserIDParams struct {
 	UserID              string
 }
 
-func (q *Queries) SetTodoItemRecurrenceByTaskAndUserID(ctx context.Context, arg SetTodoItemRecurrenceByTaskAndUserIDParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setTodoItemRecurrenceByTaskAndUserID,
+func (q *Queries) SetActionItemRecurrenceByTaskAndUserID(ctx context.Context, arg SetActionItemRecurrenceByTaskAndUserIDParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setActionItemRecurrenceByTaskAndUserID,
 		arg.FrequencyAnchorDate,
 		arg.IntervalWeeks,
 		arg.SeriesID,
@@ -135,8 +135,8 @@ func (q *Queries) SetTodoItemRecurrenceByTaskAndUserID(ctx context.Context, arg 
 	return result.RowsAffected(), nil
 }
 
-const stopTodoItemRecurrenceByTaskAndUserID = `-- name: StopTodoItemRecurrenceByTaskAndUserID :execrows
-UPDATE todo_items AS root
+const stopActionItemRecurrenceByTaskAndUserID = `-- name: StopActionItemRecurrenceByTaskAndUserID :execrows
+UPDATE action_items AS root
 SET repeat_state = 'stopped', interval_weeks = 0, updated_at = now()
 FROM tasks AS t
 WHERE root.id = $1::text
@@ -146,18 +146,18 @@ WHERE root.id = $1::text
   AND t.id = root.task_id
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, $3::text, 'todo_item', 'update')
+  AND task_has_permission(t.id, $3::text, 'action_item', 'update')
   AND root.repeat_state IN ('active', 'stopped')
 `
 
-type StopTodoItemRecurrenceByTaskAndUserIDParams struct {
+type StopActionItemRecurrenceByTaskAndUserIDParams struct {
 	SeriesID string
 	TaskID   string
 	UserID   string
 }
 
-func (q *Queries) StopTodoItemRecurrenceByTaskAndUserID(ctx context.Context, arg StopTodoItemRecurrenceByTaskAndUserIDParams) (int64, error) {
-	result, err := q.db.Exec(ctx, stopTodoItemRecurrenceByTaskAndUserID, arg.SeriesID, arg.TaskID, arg.UserID)
+func (q *Queries) StopActionItemRecurrenceByTaskAndUserID(ctx context.Context, arg StopActionItemRecurrenceByTaskAndUserIDParams) (int64, error) {
+	result, err := q.db.Exec(ctx, stopActionItemRecurrenceByTaskAndUserID, arg.SeriesID, arg.TaskID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}

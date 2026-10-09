@@ -56,7 +56,7 @@ func (q *Queries) GetTodoListByUserIDAndDate(ctx context.Context, arg GetTodoLis
 }
 
 const listTodoListItems = `-- name: ListTodoListItems :many
-SELECT todo_list_id, todo_item_id, position, created_at
+SELECT todo_list_id, action_item_id, position, created_at
 FROM todo_list_items
 WHERE todo_list_id = $1
 ORDER BY position ASC
@@ -73,7 +73,7 @@ func (q *Queries) ListTodoListItems(ctx context.Context, todoListID string) ([]T
 		var i TodoListItem
 		if err := rows.Scan(
 			&i.TodoListID,
-			&i.TodoItemID,
+			&i.ActionItemID,
 			&i.Position,
 			&i.CreatedAt,
 		); err != nil {

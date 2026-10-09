@@ -14,7 +14,7 @@ type Capability struct {
 const (
 	ResourceProject            ResourceKind = "project"
 	ResourceTask               ResourceKind = "task"
-	ResourceTodoItem           ResourceKind = "todo_item"
+	ResourceActionItem         ResourceKind = "action_item"
 	ResourceSchedule           ResourceKind = "schedule"
 	ResourceTaskAssignment     ResourceKind = "task_assignment"
 	ResourceScheduleAssignment ResourceKind = "schedule_assignment"
@@ -49,11 +49,11 @@ func ProjectMemberDelete() Capability { return Capability{ResourceProjectMember,
 func DeletedHistoryRead() Capability {
 	return Capability{ResourceDeletedHistory, ActionRead}
 }
-func TodoItemCreate() Capability { return Capability{ResourceTodoItem, ActionCreate} }
-func TodoItemRead() Capability   { return Capability{ResourceTodoItem, ActionRead} }
-func TodoItemUpdate() Capability { return Capability{ResourceTodoItem, ActionUpdate} }
-func TodoItemDelete() Capability { return Capability{ResourceTodoItem, ActionDelete} }
-func ScheduleCreate() Capability { return Capability{ResourceSchedule, ActionCreate} }
-func ScheduleRead() Capability   { return Capability{ResourceSchedule, ActionRead} }
-func ScheduleUpdate() Capability { return Capability{ResourceSchedule, ActionUpdate} }
-func ScheduleDelete() Capability { return Capability{ResourceSchedule, ActionDelete} }
+func ActionItemCreate() Capability { return Capability{ResourceActionItem, ActionCreate} }
+func ActionItemRead() Capability   { return Capability{ResourceActionItem, ActionRead} }
+func ActionItemUpdate() Capability { return Capability{ResourceActionItem, ActionUpdate} }
+func ActionItemDelete() Capability { return Capability{ResourceActionItem, ActionDelete} }
+func ScheduleCreate() Capability   { return Capability{ResourceSchedule, ActionCreate} }
+func ScheduleRead() Capability     { return Capability{ResourceSchedule, ActionRead} }
+func ScheduleUpdate() Capability   { return Capability{ResourceSchedule, ActionUpdate} }
+func ScheduleDelete() Capability   { return Capability{ResourceSchedule, ActionDelete} }

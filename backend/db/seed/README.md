@@ -7,7 +7,7 @@ Run it only against the local development database.
 The seed is repeatable and uses dates relative to the database's current date
 in `Asia/Tokyo`. It creates two users so authenticated list endpoints can be
 checked for user scoping. The full seed contains 20 projects, 45 tasks, 20 tags,
-35 TodoItems, 25 schedules, and 15 TodoLists.
+35 ActionItems, 25 schedules, and 15 TodoLists.
 
 ## Swagger walkthrough
 
@@ -33,9 +33,9 @@ Open `http://localhost:8080/swagger/index.html`.
 | `GET /api/projects/00000000000000000000000101/tasks?page_size=2` | Tasks scoped to the product improvement project |
 | `GET /api/tasks?page_size=2` | Project and inbox tasks with different statuses and priorities |
 | `GET /api/tasks/00000000000000000000000201` | Task details and assigned tags |
-| `GET /api/tasks/00000000000000000000000201/todo-items?page_size=2` | Ordered completed and incomplete TodoItems |
-| `GET /api/tasks/00000000000000000000000204/todo-items` | Weekly recurring TodoItem occurrences and frequencies |
-| `GET /api/tasks/00000000000000000000000220/todo-items` | TodoItem for generated task; use `page_size=1` to inspect pagination |
+| `GET /api/tasks/00000000000000000000000201/action-items?page_size=2` | Ordered completed and incomplete ActionItems |
+| `GET /api/tasks/00000000000000000000000204/action-items` | Weekly recurring ActionItem occurrences and frequencies |
+| `GET /api/tasks/00000000000000000000000220/action-items` | ActionItem for generated task; use `page_size=1` to inspect pagination |
 | `GET /api/schedules?page_size=2` | Weekly schedule series, changed occurrence, and timezone |
 | `GET /api/projects/00000000000000000000000101/schedules` | Project-scoped schedules, including recurring and one-off work |
 | `GET /api/schedules` | Personal schedules, filtered by assignee |

@@ -7,20 +7,20 @@ WITH requested AS (
     WHERE t.project_id = ANY(sqlc.arg(project_ids)::text[])
       AND t.deleted_at IS NULL
 ),
-todo_occurrences AS (
+action_item_occurrences AS (
     SELECT DISTINCT ON (ti.task_id, ti.series_id, ti.occurrence_date)
         ti.task_id, ti.completed, ti.deleted_at, ti.skipped_at
-    FROM todo_items AS ti
+    FROM action_items AS ti
     JOIN requested AS r ON r.task_id = ti.task_id
     ORDER BY ti.task_id, ti.series_id, ti.occurrence_date, (ti.id <> ti.series_id) DESC
 ),
-todo_counts AS (
+action_item_counts AS (
     SELECT task_id,
            COUNT(*) FILTER (WHERE deleted_at IS NULL AND skipped_at IS NULL)::bigint AS total,
            COUNT(*) FILTER (WHERE deleted_at IS NULL AND skipped_at IS NULL AND completed)::bigint AS completed
-    FROM todo_occurrences GROUP BY task_id
+    FROM action_item_occurrences GROUP BY task_id
 ),
-todo_roots AS (
+action_item_roots AS (
     SELECT root.task_id,
            json_agg(json_build_object(
                'series_id', root.id,
@@ -29,30 +29,30 @@ todo_roots AS (
                'interval_weeks', root.interval_weeks,
                'frequency_anchor_date', root.frequency_anchor_date,
                'frequencies', ARRAY(
-                   SELECT f.frequency FROM todo_item_frequencies AS f
-                   WHERE f.todo_item_id = root.id ORDER BY f.frequency
+                   SELECT f.frequency FROM action_item_frequencies AS f
+                   WHERE f.action_item_id = root.id ORDER BY f.frequency
                ),
                'occurrence_saved_today',
                    root.occurrence_date = (sqlc.arg(as_of)::timestamptz AT TIME ZONE root.timezone)::date
                    OR EXISTS (
-                       SELECT 1 FROM todo_items child
+                       SELECT 1 FROM action_items child
                        WHERE child.series_id = root.id AND child.id <> root.id
                          AND child.occurrence_date = (sqlc.arg(as_of)::timestamptz AT TIME ZONE root.timezone)::date
                    )
            )) AS roots
-    FROM todo_items root
+    FROM action_items root
     JOIN requested r ON r.task_id = root.task_id
     WHERE root.id = root.series_id AND root.deleted_at IS NULL AND root.repeat_state = 'active'
     GROUP BY root.task_id
 )
 SELECT t.id AS task_id, t.project_id, t.status,
-       COALESCE(tc.total, 0)::bigint AS todo_total,
-       COALESCE(tc.completed, 0)::bigint AS todo_completed,
-       COALESCE(tr.roots, '[]'::json)::json AS todo_item_roots
+       COALESCE(tc.total, 0)::bigint AS action_item_total,
+       COALESCE(tc.completed, 0)::bigint AS action_item_completed,
+       COALESCE(tr.roots, '[]'::json)::json AS action_item_roots
 FROM requested r
 JOIN tasks t ON t.id = r.task_id
-LEFT JOIN todo_counts tc ON tc.task_id = t.id
-LEFT JOIN todo_roots tr ON tr.task_id = t.id
+LEFT JOIN action_item_counts tc ON tc.task_id = t.id
+LEFT JOIN action_item_roots tr ON tr.task_id = t.id
 WHERE t.deleted_at IS NULL;
 
 -- name: ReadProjectScheduleProgressCounts :many

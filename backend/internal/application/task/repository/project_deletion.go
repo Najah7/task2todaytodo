@@ -14,8 +14,8 @@ func (r TaskRepository) DeleteProjectTasksByActor(ctx context.Context, actorID, 
 	if err != nil {
 		return err
 	}
-	// Use a new statement snapshot after any task-row lock waits so TodoItems
+	// Use a new statement snapshot after any task-row lock waits so ActionItems
 	// committed by an in-flight create are included in Project deletion.
-	_, err = r.queries.DeleteProjectTodoItemsByActor(ctx, projectID)
+	_, err = r.queries.DeleteProjectActionItemsByActor(ctx, projectID)
 	return err
 }

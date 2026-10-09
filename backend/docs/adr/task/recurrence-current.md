@@ -5,7 +5,7 @@ recurrence details in older planning documents where they differ.
 
 ## Source and generation
 
-- TodoItem recurrence is rooted in `todo_items`; Schedule recurrence is rooted
+- ActionItem recurrence is rooted in `action_items`; Schedule recurrence is rooted
   in `schedules`. Each context owns its own occurrences and revisions. A Task
   does not own or import Schedules.
 - `repeat_state` is `one_off`, `active`, or `stopped`. Active weekday recurrence
@@ -27,11 +27,11 @@ recurrence details in older planning documents where they differ.
   Setting `interval_weeks` to `0` stops future generation. Use the resource's
   frequency endpoint to change weekdays.
 - `PATCH` with `scope=future` updates the root template immediately and does
-  not need `occurrence_date`. For TodoItems, `due_date` is rejected for future
+  not need `occurrence_date`. For ActionItems, `due_date` is rejected for future
   scope, including explicit `null`; use the frequency endpoint to change the
   recurring weekday. Current-scope edits can change an occurrence's due date.
 - `occurrence_date` is the stable date identifying a series occurrence. An
-  individual TodoItem edit to `due_date` or Schedule edit to `start_at` may
+  individual ActionItem edit to `due_date` or Schedule edit to `start_at` may
   cause actual date/time to differ from that identity date.
 - Schedule rescheduling still identifies the target occurrence with
   `occurrence_date` and validates the requested start date against that

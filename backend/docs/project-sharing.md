@@ -20,11 +20,11 @@ Seeded grants:
 
 | Role | Grants |
 | --- | --- |
-| `viewer` | Read projects, tasks, todo items, and schedules |
-| `editor` | Viewer grants; update projects; create and update tasks, todo items, and schedules; update Task and Schedule assignment and recurrence occurrences |
+| `viewer` | Read projects, tasks, action items, and schedules |
+| `editor` | Viewer grants; update projects; create and update tasks, action items, and schedules; update Task and Schedule assignment and recurrence occurrences |
 | `admin` | All seeded resource actions, including delete and project-member management; read deleted-resource history |
 
-The resource catalog includes `project`, `task`, `todo_item`, `schedule`,
+The resource catalog includes `project`, `task`, `action_item`, `schedule`,
 `task_assignment`, `schedule_assignment`, `occurrence`, `project_member`, and
 `deleted_history`. Applications pass resource/action pairs to database policy
 checks, so changing role grants changes authorization without role-name
@@ -72,7 +72,7 @@ respective contexts, and neither context imports the other.
 
 ## Project progress
 
-Task progress is calculated from TodoItems only. Schedule occurrences do not
+Task progress is calculated from ActionItems only. Schedule occurrences do not
 affect Task progress. Project progress is
 `floor((sum of Task percentages + 100 * completed eligible Schedule occurrences) /
 (Task count + eligible Schedule occurrence count))`; an empty Project has
@@ -90,7 +90,7 @@ History routes are `GET /api/projects/{id}/revisions`,
 `GET /api/tasks/{id}/revisions`, and `GET /api/schedules/{id}/revisions`. They
 use `page_size` and `page_token` and return `next_page_token`, ordered by
 revision descending. History includes `created_at`, latest entity fields,
-`changed_by`, and `changed_at`. TodoItem graphs are not copied into Task
+`changed_by`, and `changed_at`. ActionItem graphs are not copied into Task
 history; Schedule history is owned by the Schedule context.
 
 Single-resource reads for Projects and Tasks include a quoted revision `ETag`,
@@ -99,18 +99,18 @@ Task status or assignee, or move a Task into or out of a Project require that
 ETag in `If-Match`. The server compares the supplied revision atomically with
 the database write. A missing header returns `428`; malformed or non-positive
 values return `400`; a stale revision returns `409`. Successful updates return
-the new ETag; deletes return `204`. TodoItem mutations lock and recheck the live
+the new ETag; deletes return `204`. ActionItem mutations lock and recheck the live
 Task and current permission in their transaction. Schedule mutations are
 Schedule-owned and do not depend on Task revisions.
 
 ## Deletion and recurrence skips
 
-Deleting a Project soft-deletes only the Project row. Its Tasks, TodoItems,
+Deleting a Project soft-deletes only the Project row. Its Tasks, ActionItems,
 and Schedules retain their records and revisions. A trashed Project and its
 children are hidden from ordinary Project and child reads and writes until the
 Project is restored; restore changes only the parent. Project trash listing
 requires `project/delete`. Revision history is retained and keeps the existing
-`deleted_history/read` policy. Deleting a Task soft-deletes its TodoItems only;
+`deleted_history/read` policy. Deleting a Task soft-deletes its ActionItems only;
 Schedules are independent resources.
 
 Skipping a recurrence occurrence sets `skipped_at`; it does not set

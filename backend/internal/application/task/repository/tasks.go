@@ -175,19 +175,19 @@ func (r TaskRepository) ReadTaskProgressSources(ctx context.Context, taskIDs []s
 	for _, row := range rows {
 		sources.Statuses[row.TaskID] = dao.TaskStatus{Value: row.Status}
 		sources.Counts[row.TaskID] = dao.TaskProgressCounts{
-			Total:     int(row.TodoTotal),
-			Completed: int(row.TodoCompleted),
+			Total:     int(row.ActionItemTotal),
+			Completed: int(row.ActionItemCompleted),
 		}
-		var todoRoots []progressRootRecord
-		if err := json.Unmarshal(row.TodoItemRoots, &todoRoots); err != nil {
+		var actionItemRoots []progressRootRecord
+		if err := json.Unmarshal(row.ActionItemRoots, &actionItemRoots); err != nil {
 			return dao.TaskProgressSources{}, err
 		}
-		for _, root := range todoRoots {
+		for _, root := range actionItemRoots {
 			value, err := root.toDAO(row.TaskID)
 			if err != nil {
 				return dao.TaskProgressSources{}, err
 			}
-			sources.TodoItemRoots = append(sources.TodoItemRoots, value)
+			sources.ActionItemRoots = append(sources.ActionItemRoots, value)
 		}
 	}
 	return sources, nil
@@ -297,18 +297,18 @@ func (r TaskRepository) GetDetailsByUserID(ctx context.Context, userID domain.Us
 		return dao.TaskDetails{}, err
 	}
 
-	itemRecords, err := r.queries.ListTodoItemsByTaskForUser(ctx, sqlc.ListTodoItemsByTaskForUserParams{
+	itemRecords, err := r.queries.ListActionItemsByTaskForUser(ctx, sqlc.ListActionItemsByTaskForUserParams{
 		TaskID: string(id),
 		UserID: string(userID),
 	})
 	if err != nil {
 		return dao.TaskDetails{}, err
 	}
-	items := recordsToTodoItemsForTaskRows(itemRecords)
+	items := recordsToActionItemsForTaskRows(itemRecords)
 
 	return dao.TaskDetails{
-		Task:      task,
-		TodoItems: items,
+		Task:        task,
+		ActionItems: items,
 	}, nil
 }
 

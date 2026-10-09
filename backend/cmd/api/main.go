@@ -113,7 +113,7 @@ func run() (runErr error) {
 	personalAccessTokenHandler := rest.NewPersonalAccessTokenHandler(app.UseCase.PersonalAccessToken)
 	projectHandler := rest.NewProjectHandler(app.UseCase.Project, app.UseCase.Task, ulid, pageTokens)
 	taskHandler := rest.NewTaskHandler(app.UseCase.Task, ulid, pageTokens)
-	todoItemHandler := rest.NewTodoItemHandler(app.UseCase.TodoItem, ulid, pageTokens)
+	actionItemHandler := rest.NewActionItemHandler(app.UseCase.ActionItem, ulid, pageTokens)
 	scheduleHandler := rest.NewScheduleHandler(app.UseCase.Schedule, ulid, pageTokens)
 	tagHandler := rest.NewTagHandler(app.UseCase.Tag, ulid, pageTokens)
 	taskTagHandler := rest.NewTaskTagHandler(app.UseCase.TaskTag)
@@ -189,17 +189,17 @@ func run() (runErr error) {
 		auth.Patch("/tasks/{id}/assignees", taskHandler.Assign)
 		auth.Delete("/tasks/{id}", taskHandler.Delete)
 
-		// Todo Items
-		auth.Get("/tasks/{taskId}/todo-items", todoItemHandler.List)
-		auth.Post("/tasks/{taskId}/todo-items", todoItemHandler.Create)
-		auth.Post("/tasks/{taskId}/todo-items/{id}:complete", todoItemHandler.Complete)
-		auth.Post("/tasks/{taskId}/todo-items/{id}:reopen", todoItemHandler.Reopen)
-		auth.Post("/tasks/{taskId}/todo-items/{id}:skip", todoItemHandler.Skip)
-		auth.Post("/tasks/{taskId}/todo-items/{id}:restore", todoItemHandler.Restore)
-		auth.Post("/tasks/{taskId}/todo-items/{id}:reorder", todoItemHandler.Reorder)
-		auth.Patch("/tasks/{taskId}/todo-items/{id}", todoItemHandler.Update)
-		auth.Put("/tasks/{taskId}/todo-items/{id}/frequency", todoItemHandler.UpdateFrequency)
-		auth.Delete("/tasks/{taskId}/todo-items/{id}", todoItemHandler.Delete)
+		// Action Items
+		auth.Get("/tasks/{taskId}/action-items", actionItemHandler.List)
+		auth.Post("/tasks/{taskId}/action-items", actionItemHandler.Create)
+		auth.Post("/tasks/{taskId}/action-items/{id}:complete", actionItemHandler.Complete)
+		auth.Post("/tasks/{taskId}/action-items/{id}:reopen", actionItemHandler.Reopen)
+		auth.Post("/tasks/{taskId}/action-items/{id}:skip", actionItemHandler.Skip)
+		auth.Post("/tasks/{taskId}/action-items/{id}:restore", actionItemHandler.Restore)
+		auth.Post("/tasks/{taskId}/action-items/{id}:reorder", actionItemHandler.Reorder)
+		auth.Patch("/tasks/{taskId}/action-items/{id}", actionItemHandler.Update)
+		auth.Put("/tasks/{taskId}/action-items/{id}/frequency", actionItemHandler.UpdateFrequency)
+		auth.Delete("/tasks/{taskId}/action-items/{id}", actionItemHandler.Delete)
 
 		// Schedules
 		auth.Get("/schedules", scheduleHandler.List)

@@ -16,38 +16,38 @@ const (
 	repeatStateStopped = "stopped"
 )
 
-type todoItemRecurrenceWriter interface {
-	SetTodoItemRecurrence(context.Context, domain.UserID, domain.TaskID, domain.TodoItemID, time.Time, int, []dao.TaskFrequency) error
-	StopTodoItemRecurrence(context.Context, domain.UserID, domain.TaskID, domain.TodoItemID) error
+type actionItemRecurrenceWriter interface {
+	SetActionItemRecurrence(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID, time.Time, int, []dao.TaskFrequency) error
+	StopActionItemRecurrence(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID) error
 }
 
-type todoSkippedOccurrenceStore interface {
-	ListTodoItemSkippedOccurrences(context.Context, domain.UserID, domain.TaskID, domain.TodoItemID) ([]int64, error)
-	SetTodoItemSkippedOccurrence(context.Context, domain.UserID, domain.TaskID, domain.TodoItemID, time.Time, bool) error
+type actionItemSkippedOccurrenceStore interface {
+	ListActionItemSkippedOccurrences(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID) ([]int64, error)
+	SetActionItemSkippedOccurrence(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID, time.Time, bool) error
 }
 
-type todoOccurrenceProjectionReader interface {
-	ListByTaskForOccurrenceProjection(context.Context, domain.UserID, domain.TaskID) ([]dao.TodoItem, error)
+type actionItemOccurrenceProjectionReader interface {
+	ListByTaskForOccurrenceProjection(context.Context, domain.UserID, domain.TaskID) ([]dao.ActionItem, error)
 }
 
-type todoOccurrenceCommandReader interface {
-	ListByTaskForOccurrenceCommand(context.Context, domain.UserID, domain.TaskID, shared.Capability) ([]dao.TodoItem, error)
-	GetForCommand(context.Context, domain.UserID, domain.TaskID, domain.TodoItemID, shared.Capability) (dao.TodoItem, error)
+type actionItemOccurrenceCommandReader interface {
+	ListByTaskForOccurrenceCommand(context.Context, domain.UserID, domain.TaskID, shared.Capability) ([]dao.ActionItem, error)
+	GetForCommand(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID, shared.Capability) (dao.ActionItem, error)
 }
 
-type todoSkippedOccurrenceCommandStore interface {
-	ListTodoItemSkippedOccurrencesForCapability(context.Context, domain.UserID, domain.TaskID, domain.TodoItemID, shared.Capability) ([]int64, error)
+type actionItemSkippedOccurrenceCommandStore interface {
+	ListActionItemSkippedOccurrencesForCapability(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID, shared.Capability) ([]int64, error)
 }
 
-type todoSeriesTemplateWriter interface {
-	UpdateTodoItemSeriesTemplate(context.Context, domain.UserID, domain.TaskID, domain.TodoItemID, domain.TodoItemID, domain.TodoItem) (dao.TodoItem, error)
+type actionItemSeriesTemplateWriter interface {
+	UpdateActionItemSeriesTemplate(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID, domain.ActionItemID, domain.ActionItem) (dao.ActionItem, error)
 }
 
 func localToday(now time.Time, location *time.Location) time.Time {
 	return calendar.CalendarDate(now, location)
 }
 
-func todoItemIsRecurring(root dao.TodoItem) bool {
+func actionItemIsRecurring(root dao.ActionItem) bool {
 	if root.RepeatState != "" {
 		return root.RepeatState != repeatStateOneOff
 	}

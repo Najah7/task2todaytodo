@@ -37,20 +37,20 @@ func listStartDate(request CursorPageRequest, asOf time.Time, timezone string) (
 	return time.Time{}, nil
 }
 
-func expandTodoItemRows(rows []dao.TodoItem, request CursorPageRequest, asOf time.Time, taskDone bool) ([]dao.TodoItem, error) {
-	return expandTodoItemRowsWithSkipped(rows, request, asOf, taskDone, nil)
+func expandActionItemRows(rows []dao.ActionItem, request CursorPageRequest, asOf time.Time, taskDone bool) ([]dao.ActionItem, error) {
+	return expandActionItemRowsWithSkipped(rows, request, asOf, taskDone, nil)
 }
 
-func expandTodoItemRowsWithSkipped(rows []dao.TodoItem, request CursorPageRequest, asOf time.Time, taskDone bool, skipped map[string]map[string]bool) ([]dao.TodoItem, error) {
-	return expandTodoItemRowsWithProjectState(rows, request, asOf, taskDone, false, skipped)
+func expandActionItemRowsWithSkipped(rows []dao.ActionItem, request CursorPageRequest, asOf time.Time, taskDone bool, skipped map[string]map[string]bool) ([]dao.ActionItem, error) {
+	return expandActionItemRowsWithProjectState(rows, request, asOf, taskDone, false, skipped)
 }
 
-func expandTodoItemRowsWithProjectState(rows []dao.TodoItem, request CursorPageRequest, asOf time.Time, taskDone, projectDone bool, skipped map[string]map[string]bool) ([]dao.TodoItem, error) {
+func expandActionItemRowsWithProjectState(rows []dao.ActionItem, request CursorPageRequest, asOf time.Time, taskDone, projectDone bool, skipped map[string]map[string]bool) ([]dao.ActionItem, error) {
 	if skipped == nil {
 		skipped = map[string]map[string]bool{}
 	}
-	byOccurrence := make(map[string]dao.TodoItem, len(rows))
-	roots := make([]dao.TodoItem, 0)
+	byOccurrence := make(map[string]dao.ActionItem, len(rows))
+	roots := make([]dao.ActionItem, 0)
 	for _, row := range rows {
 		key := row.SeriesID + "/" + row.OccurrenceDate
 		if existing, ok := byOccurrence[key]; !ok || row.ID != row.SeriesID || existing.ID == existing.SeriesID {
@@ -60,7 +60,7 @@ func expandTodoItemRowsWithProjectState(rows []dao.TodoItem, request CursorPageR
 			roots = append(roots, row)
 		}
 	}
-	out := make([]dao.TodoItem, 0, len(rows))
+	out := make([]dao.ActionItem, 0, len(rows))
 	for _, root := range roots {
 		requestedStart, err := listStartDate(request, asOf, root.Timezone)
 		if err != nil {
@@ -74,7 +74,7 @@ func expandTodoItemRowsWithProjectState(rows []dao.TodoItem, request CursorPageR
 		if requestedStart.After(startDate) {
 			startDate = requestedStart
 		}
-		if anchorDate := todoItemAnchorDate(request.Anchor); anchorDate != "" {
+		if anchorDate := actionItemAnchorDate(request.Anchor); anchorDate != "" {
 			anchor, err := parseOccurrenceDate(anchorDate)
 			if err != nil {
 				return nil, ErrInvalidTaskPage
@@ -85,7 +85,7 @@ func expandTodoItemRowsWithProjectState(rows []dao.TodoItem, request CursorPageR
 		}
 		firstDate, err := parseOccurrenceDate(root.OccurrenceDate)
 		if err != nil {
-			return nil, fmt.Errorf("parse todo item %s occurrence date: %w", root.ID, err)
+			return nil, fmt.Errorf("parse action item %s occurrence date: %w", root.ID, err)
 		}
 		state := root.RepeatState
 		if state == "" {
@@ -98,7 +98,7 @@ func expandTodoItemRowsWithProjectState(rows []dao.TodoItem, request CursorPageR
 			visible := request.FromDate == "" || !firstDate.Before(requestedStart)
 			if saved, ok := byOccurrence[root.ID+"/"+root.OccurrenceDate]; ok && saved.ID != root.ID {
 				if !saved.Deleted && !skipped[root.ID][root.OccurrenceDate] && visible {
-					out = append(out, todoWithRootRecurrence(saved, root))
+					out = append(out, actionItemWithRootRecurrence(saved, root))
 				}
 			} else if !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && visible {
 				out = append(out, root)
@@ -136,7 +136,7 @@ func expandTodoItemRowsWithProjectState(rows []dao.TodoItem, request CursorPageR
 				}
 				if saved, ok := byOccurrence[root.ID+"/"+keyDate]; ok && saved.ID != root.ID && (saved.IsException || saved.Completed || saved.Deleted) {
 					if !saved.Deleted && !skipped[root.ID][keyDate] && requestedDateIncludes(request, requestedStart, date) {
-						out = append(out, todoWithRootRecurrence(saved, root))
+						out = append(out, actionItemWithRootRecurrence(saved, root))
 					}
 					continue
 				}
@@ -157,13 +157,13 @@ func expandTodoItemRowsWithProjectState(rows []dao.TodoItem, request CursorPageR
 				out = append(out, item)
 			}
 		}
-		if state == repeatStateActive && !taskDone && !firstDate.Before(localToday(asOf, location)) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasTodoItem(out, root.ID, root.OccurrenceDate) {
+		if state == repeatStateActive && !taskDone && !firstDate.Before(localToday(asOf, location)) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasActionItem(out, root.ID, root.OccurrenceDate) {
 			out = append(out, root)
 		}
-		if state == repeatStateActive && projectDone && !firstDate.Before(localToday(asOf, location)) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasTodoItem(out, root.ID, root.OccurrenceDate) {
+		if state == repeatStateActive && projectDone && !firstDate.Before(localToday(asOf, location)) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasActionItem(out, root.ID, root.OccurrenceDate) {
 			out = append(out, root)
 		}
-		if request.FromDate != "" && firstDate.Before(localToday(asOf, location)) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasTodoItem(out, root.ID, root.OccurrenceDate) {
+		if request.FromDate != "" && firstDate.Before(localToday(asOf, location)) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasActionItem(out, root.ID, root.OccurrenceDate) {
 			out = append(out, root)
 		}
 		// Keep saved history addressable even when current rule no longer contains its date.
@@ -171,8 +171,8 @@ func expandTodoItemRowsWithProjectState(rows []dao.TodoItem, request CursorPageR
 			if saved.SeriesID != root.ID || saved.ID == root.ID || saved.Deleted || skipped[root.ID][saved.OccurrenceDate] || (!saved.IsException && !saved.Completed) || !requestedDateIncludes(request, requestedStart, mustParseDate(saved.OccurrenceDate)) {
 				continue
 			}
-			if !hasTodoItem(out, root.ID, saved.OccurrenceDate) {
-				out = append(out, todoWithRootRecurrence(saved, root))
+			if !hasActionItem(out, root.ID, saved.OccurrenceDate) {
+				out = append(out, actionItemWithRootRecurrence(saved, root))
 			}
 		}
 	}
@@ -196,13 +196,13 @@ func listVisibleTarget(request CursorPageRequest) int {
 	return target
 }
 
-func todoWithRootRecurrence(row, root dao.TodoItem) dao.TodoItem {
+func actionItemWithRootRecurrence(row, root dao.ActionItem) dao.ActionItem {
 	row.IntervalWeeks, row.Frequencies = root.IntervalWeeks, root.Frequencies
 	row.RepeatState, row.FrequencyAnchorDate = root.RepeatState, root.FrequencyAnchorDate
 	return row
 }
 
-func generateTodoListDates(anchor, from time.Time, interval int, frequencies domain.TaskFrequencies, root dao.TodoItem, request CursorPageRequest, overrides map[string]dao.TodoItem, skipped map[string]bool) ([]recurrence.RecurrenceDate, error) {
+func generateTodoListDates(anchor, from time.Time, interval int, frequencies domain.TaskFrequencies, root dao.ActionItem, request CursorPageRequest, overrides map[string]dao.ActionItem, skipped map[string]bool) ([]recurrence.RecurrenceDate, error) {
 	limit := listVisibleTarget(request)
 	for {
 		dates, err := recurrence.GenerateRecurrenceDatesFromAnchorLimit(anchor, from, interval, frequencies, root.Timezone, limit)
@@ -249,7 +249,7 @@ func requestedDateIncludes(request CursorPageRequest, requestedStart, date time.
 	return request.FromDate == "" || !date.Before(requestedStart)
 }
 
-func todoItemAnchorDate(anchor *CursorAnchor) string {
+func actionItemAnchorDate(anchor *CursorAnchor) string {
 	if anchor == nil {
 		return ""
 	}
@@ -259,7 +259,7 @@ func todoItemAnchorDate(anchor *CursorAnchor) string {
 	return anchor.Date
 }
 
-func hasTodoItem(rows []dao.TodoItem, seriesID, occurrenceDate string) bool {
+func hasActionItem(rows []dao.ActionItem, seriesID, occurrenceDate string) bool {
 	for _, row := range rows {
 		if row.SeriesID == seriesID && row.OccurrenceDate == occurrenceDate {
 			return true
@@ -268,11 +268,11 @@ func hasTodoItem(rows []dao.TodoItem, seriesID, occurrenceDate string) bool {
 	return false
 }
 
-func afterTodoItemAnchor(row dao.TodoItem, anchor *CursorAnchor) bool {
+func afterActionItemAnchor(row dao.ActionItem, anchor *CursorAnchor) bool {
 	if anchor == nil {
 		return true
 	}
-	date := todoItemAnchorDate(anchor)
+	date := actionItemAnchorDate(anchor)
 	if row.OccurrenceDate != date {
 		return row.OccurrenceDate > date
 	}

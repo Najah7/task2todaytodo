@@ -2,7 +2,7 @@ package domain
 
 import "github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
 
-// Task frequency names remain as aliases for TodoItem domain callers. The
+// Task frequency names remain as aliases for ActionItem domain callers. The
 // frequency policy itself belongs to the shared recurrence package.
 type TaskFrequency = recurrence.Frequency
 type TaskFrequencies = recurrence.Frequencies

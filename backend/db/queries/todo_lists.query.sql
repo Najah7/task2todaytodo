@@ -16,7 +16,7 @@ WHERE user_id = $1
 ORDER BY list_date DESC;
 
 -- name: ListTodoListItems :many
-SELECT todo_list_id, todo_item_id, position, created_at
+SELECT todo_list_id, action_item_id, position, created_at
 FROM todo_list_items
 WHERE todo_list_id = $1
 ORDER BY position ASC;

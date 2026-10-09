@@ -199,6 +199,24 @@ func (q *Queries) CreateTaskInProject(ctx context.Context, arg CreateTaskInProje
 	return i, err
 }
 
+const deleteProjectActionItemsByActor = `-- name: DeleteProjectActionItemsByActor :execrows
+UPDATE action_items AS i
+SET deleted_at = now(), updated_at = now()
+WHERE i.task_id IN (
+    SELECT t.id FROM tasks AS t
+    WHERE t.project_id = $1::text
+)
+  AND i.deleted_at IS NULL
+`
+
+func (q *Queries) DeleteProjectActionItemsByActor(ctx context.Context, projectID string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteProjectActionItemsByActor, projectID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteProjectTasksByActor = `-- name: DeleteProjectTasksByActor :execrows
 UPDATE tasks AS t
 SET deleted_at = now(), changed_by = $1::text
@@ -213,24 +231,6 @@ type DeleteProjectTasksByActorParams struct {
 
 func (q *Queries) DeleteProjectTasksByActor(ctx context.Context, arg DeleteProjectTasksByActorParams) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteProjectTasksByActor, arg.ActorID, arg.ProjectID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const deleteProjectTodoItemsByActor = `-- name: DeleteProjectTodoItemsByActor :execrows
-UPDATE todo_items AS i
-SET deleted_at = now(), updated_at = now()
-WHERE i.task_id IN (
-    SELECT t.id FROM tasks AS t
-    WHERE t.project_id = $1::text
-)
-  AND i.deleted_at IS NULL
-`
-
-func (q *Queries) DeleteProjectTodoItemsByActor(ctx context.Context, projectID string) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteProjectTodoItemsByActor, projectID)
 	if err != nil {
 		return 0, err
 	}
@@ -258,7 +258,7 @@ WITH deleted_task AS (
       AND task_has_permission(id, $1, 'task', 'delete')
     RETURNING id
 ), deleted_items AS (
-    UPDATE todo_items SET deleted_at = now(), updated_at = now()
+    UPDATE action_items SET deleted_at = now(), updated_at = now()
     WHERE task_id IN (SELECT id FROM deleted_task) AND deleted_at IS NULL
     RETURNING id
 )

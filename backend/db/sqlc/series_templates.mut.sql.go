@@ -11,8 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const snapshotTodoItemRootOccurrenceByTaskAndUserID = `-- name: SnapshotTodoItemRootOccurrenceByTaskAndUserID :exec
-INSERT INTO todo_items (
+const snapshotActionItemRootOccurrenceByTaskAndUserID = `-- name: SnapshotActionItemRootOccurrenceByTaskAndUserID :exec
+INSERT INTO action_items (
     id, task_id, title, description, due_date, completed, position,
     series_id, occurrence_date, timezone, is_exception, repeat_state,
     frequency_anchor_date, interval_weeks, deleted_at
@@ -20,7 +20,7 @@ INSERT INTO todo_items (
 SELECT $1::text, root.task_id, root.title, root.description, root.due_date,
        root.completed, root.position, root.id, root.occurrence_date, root.timezone,
        true, NULL, NULL, 0, root.deleted_at
-FROM todo_items root
+FROM action_items root
 JOIN tasks t ON t.id = root.task_id
 WHERE root.id = $2::text
   AND root.series_id = root.id
@@ -28,19 +28,19 @@ WHERE root.id = $2::text
   AND root.deleted_at IS NULL
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, $4::text, 'todo_item', 'update')
+  AND task_has_permission(t.id, $4::text, 'action_item', 'update')
 ON CONFLICT (series_id, occurrence_date) WHERE id <> series_id DO NOTHING
 `
 
-type SnapshotTodoItemRootOccurrenceByTaskAndUserIDParams struct {
+type SnapshotActionItemRootOccurrenceByTaskAndUserIDParams struct {
 	ID       string
 	SeriesID string
 	TaskID   string
 	UserID   string
 }
 
-func (q *Queries) SnapshotTodoItemRootOccurrenceByTaskAndUserID(ctx context.Context, arg SnapshotTodoItemRootOccurrenceByTaskAndUserIDParams) error {
-	_, err := q.db.Exec(ctx, snapshotTodoItemRootOccurrenceByTaskAndUserID,
+func (q *Queries) SnapshotActionItemRootOccurrenceByTaskAndUserID(ctx context.Context, arg SnapshotActionItemRootOccurrenceByTaskAndUserIDParams) error {
+	_, err := q.db.Exec(ctx, snapshotActionItemRootOccurrenceByTaskAndUserID,
 		arg.ID,
 		arg.SeriesID,
 		arg.TaskID,
@@ -49,8 +49,8 @@ func (q *Queries) SnapshotTodoItemRootOccurrenceByTaskAndUserID(ctx context.Cont
 	return err
 }
 
-const updateTodoItemSeriesTemplateByTaskAndUserID = `-- name: UpdateTodoItemSeriesTemplateByTaskAndUserID :execrows
-UPDATE todo_items root
+const updateActionItemSeriesTemplateByTaskAndUserID = `-- name: UpdateActionItemSeriesTemplateByTaskAndUserID :execrows
+UPDATE action_items root
 SET title = $1::text,
     description = $2::text,
     due_date = $3::date,
@@ -64,10 +64,10 @@ WHERE root.id = $5::text
   AND t.id = root.task_id
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, $7::text, 'todo_item', 'update')
+  AND task_has_permission(t.id, $7::text, 'action_item', 'update')
 `
 
-type UpdateTodoItemSeriesTemplateByTaskAndUserIDParams struct {
+type UpdateActionItemSeriesTemplateByTaskAndUserIDParams struct {
 	Title       string
 	Description pgtype.Text
 	DueDate     pgtype.Date
@@ -77,8 +77,8 @@ type UpdateTodoItemSeriesTemplateByTaskAndUserIDParams struct {
 	UserID      string
 }
 
-func (q *Queries) UpdateTodoItemSeriesTemplateByTaskAndUserID(ctx context.Context, arg UpdateTodoItemSeriesTemplateByTaskAndUserIDParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateTodoItemSeriesTemplateByTaskAndUserID,
+func (q *Queries) UpdateActionItemSeriesTemplateByTaskAndUserID(ctx context.Context, arg UpdateActionItemSeriesTemplateByTaskAndUserIDParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateActionItemSeriesTemplateByTaskAndUserID,
 		arg.Title,
 		arg.Description,
 		arg.DueDate,

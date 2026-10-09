@@ -58,18 +58,18 @@ func NewScheduleUseCases(scheduleStore ScheduleStore, scheduleUOW scheduleusecas
 	}
 }
 
-func NewTodoItemUseCases(taskUOW usecase.UOW, authStore AuthStore, ID shared.ID, logger logging.Logger) usecase.TodoItemUseCases {
-	return usecase.TodoItemUseCases{
-		Create:          usecase.NewCreateTodoItemUseCase(taskUOW, authStore.Users, logger),
-		List:            usecase.NewListTodoItemsUseCase(taskUOW, logger),
-		Update:          usecase.NewUpdateTodoItemUseCase(taskUOW, logger, ID),
-		Delete:          usecase.NewDeleteTodoItemUseCase(taskUOW, logger),
-		Complete:        usecase.NewCompleteTodoItemUseCase(taskUOW, logger, ID),
-		Reopen:          usecase.NewReopenTodoItemUseCase(taskUOW, logger),
-		Skip:            usecase.NewSkipTodoItemUseCase(taskUOW, logger),
-		Restore:         usecase.NewRestoreTodoItemUseCase(taskUOW, logger),
-		Reorder:         usecase.NewReorderTodoItemUseCase(taskUOW, logger, ID),
-		UpdateFrequency: usecase.NewUpdateTodoItemFrequencyUseCase(taskUOW, logger),
+func NewActionItemUseCases(taskUOW usecase.UOW, authStore AuthStore, ID shared.ID, logger logging.Logger) usecase.ActionItemUseCases {
+	return usecase.ActionItemUseCases{
+		Create:          usecase.NewCreateActionItemUseCase(taskUOW, authStore.Users, logger),
+		List:            usecase.NewListActionItemsUseCase(taskUOW, logger),
+		Update:          usecase.NewUpdateActionItemUseCase(taskUOW, logger, ID),
+		Delete:          usecase.NewDeleteActionItemUseCase(taskUOW, logger),
+		Complete:        usecase.NewCompleteActionItemUseCase(taskUOW, logger, ID),
+		Reopen:          usecase.NewReopenActionItemUseCase(taskUOW, logger),
+		Skip:            usecase.NewSkipActionItemUseCase(taskUOW, logger),
+		Restore:         usecase.NewRestoreActionItemUseCase(taskUOW, logger),
+		Reorder:         usecase.NewReorderActionItemUseCase(taskUOW, logger, ID),
+		UpdateFrequency: usecase.NewUpdateActionItemFrequencyUseCase(taskUOW, logger),
 	}
 }
 

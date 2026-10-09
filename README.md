@@ -4,15 +4,15 @@
 
 ***Don’t live for tomorrow. Give today everything you’ve got.***
 
-task2todaytodo manages Projects, Tasks, TodoItems, and independent Schedules, then turns them into a daily execution plan.
+task2todaytodo manages Projects, Tasks, ActionItems, and independent Schedules, then turns them into a daily execution plan.
 
-The core problem is that planning work across a week or month is easy to start but hard to maintain. Interruptions create drift, and manually repairing a long-term calendar quickly becomes too much work. task2todaytodo avoids that burden by letting users manage Projects, Tasks, TodoItems, and Schedules together in a structured source of truth, then generating only today's TodoList when it is needed.
+The core problem is that planning work across a week or month is easy to start but hard to maintain. Interruptions create drift, and manually repairing a long-term calendar quickly becomes too much work. task2todaytodo avoids that burden by letting users manage Projects, Tasks, ActionItems, and Schedules together in a structured source of truth, then generating only today's TodoList when it is needed.
 
 By separating long-lived task and schedule management from day-by-day execution, the product can create dynamic, flexible TodoLists for the day without forcing users to maintain a perfect long-term schedule.
 
 # Values
 
-- Task Management: manage Tasks and their TodoItems, including repeatable and one-off work.
+- Task Management: manage Tasks and their ActionItems, including repeatable and one-off work.
 - Schedule Management: manage fixed-time Schedules independently or within Projects, including repeatable and one-off work. Future integrations can synchronize them with calendar systems such as Google Calendar.
 - Generate Today's TodoList: generate a TodoList as the execution plan for the day, based on managed tasks and schedules.
 
