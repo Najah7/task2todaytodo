@@ -15,6 +15,14 @@ CREATE TABLE project_type_master (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE status_master (
+    status text PRIMARY KEY CHECK (status ~ '^[a-z][a-z0-9_]*$'),
+    label text NOT NULL CHECK (btrim(label) <> ''),
+    label_jp text NOT NULL CHECK (btrim(label_jp) <> ''),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE projects (
     id text PRIMARY KEY CHECK (id ~ '^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$'),
     user_id text NOT NULL REFERENCES users(id),
@@ -23,6 +31,7 @@ CREATE TABLE projects (
     goal text,
     description text,
     priority text NOT NULL DEFAULT 'low' REFERENCES priority_master(priority) ON DELETE RESTRICT,
+    status text NOT NULL DEFAULT 'open' REFERENCES status_master(status) ON DELETE RESTRICT,
     start_date date,
     end_date date,
     revision integer NOT NULL DEFAULT 1 CHECK (revision > 0),
@@ -53,6 +62,7 @@ CREATE TABLE project_revisions (
     goal text,
     description text,
     priority text NOT NULL,
+    status text NOT NULL,
     start_date date,
     end_date date,
     deleted_at timestamptz,
@@ -79,12 +89,12 @@ $$;
 CREATE FUNCTION snapshot_project_revision() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
     INSERT INTO project_revisions (
-        id, revision, user_id, type, title, goal, description, priority,
+        id, revision, user_id, type, title, goal, description, priority, status,
         start_date, end_date, deleted_at, created_at, updated_at,
         changed_by, changed_at
     ) VALUES (
         NEW.id, NEW.revision, NEW.user_id, NEW.type, NEW.title, NEW.goal,
-        NEW.description, NEW.priority, NEW.start_date, NEW.end_date,
+        NEW.description, NEW.priority, NEW.status, NEW.start_date, NEW.end_date,
         NEW.deleted_at, NEW.created_at, NEW.updated_at, NEW.changed_by, NEW.updated_at
     );
     RETURN NEW;
@@ -144,6 +154,13 @@ INSERT INTO priority_master (priority, label, label_jp, weight) VALUES
     ('low', 'Low', '低', 10),
     ('someday', 'Someday', 'いつか', 0);
 
+INSERT INTO status_master (status, label, label_jp) VALUES
+    ('open', 'Open', 'オープン'),
+    ('pending', 'Pending', '保留'),
+    ('waiting_on_others', 'Waiting on others', '他者待ち'),
+    ('in_progress', 'In progress', '進行中'),
+    ('done', 'Done', '完了');
+
 CREATE INDEX idx_projects_user_id ON projects(user_id);
 
 CREATE INDEX idx_projects_user_id_type ON projects(user_id, type);
@@ -151,6 +168,8 @@ CREATE INDEX idx_projects_user_id_type ON projects(user_id, type);
 CREATE INDEX idx_projects_user_id_priority ON projects(user_id, priority);
 
 CREATE INDEX idx_projects_user_created_id ON projects(user_id, created_at DESC, id DESC);
+
+CREATE INDEX idx_projects_status_end_date ON projects(status, end_date, id) WHERE deleted_at IS NULL;
 
 CREATE INDEX idx_project_members_user_project ON project_members(user_id, project_id);
 

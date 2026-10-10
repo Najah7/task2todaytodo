@@ -1,11 +1,3 @@
-CREATE TABLE task_status_master (
-    status text PRIMARY KEY CHECK (status ~ '^[a-z][a-z0-9_]*$'),
-    label text NOT NULL CHECK (btrim(label) <> ''),
-    label_jp text NOT NULL CHECK (btrim(label_jp) <> ''),
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
-);
-
 CREATE TABLE frequency_master (
     frequency text PRIMARY KEY CHECK (frequency ~ '^[a-z][a-z0-9_]*$'),
     label text NOT NULL CHECK (btrim(label) <> ''),
@@ -25,7 +17,7 @@ CREATE TABLE tasks (
     estimated_minutes integer CHECK (estimated_minutes IS NULL OR estimated_minutes >= 0),
     actual_minutes integer CHECK (actual_minutes IS NULL OR actual_minutes >= 0),
     priority text NOT NULL DEFAULT 'low' REFERENCES priority_master(priority) ON DELETE RESTRICT,
-    status text NOT NULL DEFAULT 'open' REFERENCES task_status_master(status) ON DELETE RESTRICT,
+    status text NOT NULL DEFAULT 'open' REFERENCES status_master(status) ON DELETE RESTRICT,
     revision integer NOT NULL DEFAULT 1 CHECK (revision > 0),
     deleted_at timestamptz,
     changed_by text NOT NULL REFERENCES users(id),
@@ -177,13 +169,6 @@ STRICT
 AS $$
     SELECT ((local_time AT TIME ZONE timezone_name) AT TIME ZONE timezone_name) = local_time
 $$;
-
-INSERT INTO task_status_master (status, label, label_jp) VALUES
-    ('open', 'Open', 'オープン'),
-    ('pending', 'Pending', '保留'),
-    ('waiting_on_others', 'Waiting on others', '他者待ち'),
-    ('in_progress', 'In progress', '進行中'),
-    ('done', 'Done', '完了');
 
 INSERT INTO frequency_master (frequency, label, label_jp) VALUES
     ('mon', 'Monday', '月曜日'),
