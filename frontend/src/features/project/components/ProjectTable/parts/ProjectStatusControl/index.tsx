@@ -1,9 +1,10 @@
+import { useContext } from "react"
 import type { GetProjectsStatus as ProjectStatus, RestProjectResponse, RestProjectTaskStatusResponse } from "~/api/generated/projects"
 import { useI18n, useLanguage } from "~/features/i18n/hooks"
-import { useProjectListActions } from "~/features/project/providers/ProjectList/action"
-import { useProjectListData } from "~/features/project/providers/ProjectList/data"
-import { useProjectListNavigation } from "~/features/project/providers/ProjectList/navigation"
-import { projectTabLabels } from "~/features/project/constants"
+import { ProjectAPIDataContext } from "~/features/project/providers/ProjectAPIDataProvider/context"
+import { ProjectActionContext } from "~/features/project/providers/ProjectActionProvider/context"
+import { ProjectNavigationContext } from "~/features/project/providers/ProjectNavigationProvider/context"
+import { projectTabLabels } from "~/features/project/components/ProjectStatusTab/constants"
 import SeachSelect from "~/features/shared/components/SeachSelect"
 import styles from "./index.module.css"
 
@@ -14,9 +15,10 @@ type Props = {
 export default function ProjectStatusControl({ project }: Props) {
   const i18n = useI18n()
   const { language } = useLanguage()
-  const { statusOptions } = useProjectListData()
-  const { state } = useProjectListNavigation()
-  const { busy, changeStatus } = useProjectListActions()
+  const { optionsQuery } = useContext(ProjectAPIDataContext)!
+  const { state } = useContext(ProjectNavigationContext)!
+  const { busy, changeStatus } = useContext(ProjectActionContext)!
+  const statusOptions = optionsQuery?.data?.statuses ?? []
   if (state.tab === "trash") {
     return projectRowLabel(statusOptions.find((status) => status.value === project.status), language, i18n(projectTabLabels[project.status]))
   }

@@ -1,14 +1,16 @@
+import { useContext } from "react"
 import { useI18n, useLanguage } from "~/features/i18n/hooks"
-import { useProjectListData } from "~/features/project/providers/ProjectList/data"
-import { useProjectListNavigation } from "~/features/project/providers/ProjectList/navigation"
-import { projectTabLabels } from "~/features/project/constants"
+import { ProjectAPIDataContext } from "~/features/project/providers/ProjectAPIDataProvider/context"
+import { ProjectNavigationContext } from "~/features/project/providers/ProjectNavigationProvider/context"
+import { projectTabLabels } from "~/features/project/components/ProjectStatusTab/constants"
 import styles from "./index.module.css"
 
 export default function ProjectStats() {
   const i18n = useI18n()
   const { language } = useLanguage()
-  const { summary } = useProjectListData()
-  const { state } = useProjectListNavigation()
+  const { projectsQuery } = useContext(ProjectAPIDataContext)!
+  const { state } = useContext(ProjectNavigationContext)!
+  const summary = projectsQuery.data?.summary
   const values = [
     { label: i18n(projectTabLabels[state.tab]), value: summary?.total_count },
     { label: i18n("projects.summary.dueSoon"), value: summary?.due_soon_count },

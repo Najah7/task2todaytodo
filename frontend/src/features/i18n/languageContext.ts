@@ -1,5 +1,5 @@
 import { createContext } from "react"
-import type { Language } from "./types"
+import type { Language } from "./messages/types"
 
 type LanguageContextValue = {
   language: Language

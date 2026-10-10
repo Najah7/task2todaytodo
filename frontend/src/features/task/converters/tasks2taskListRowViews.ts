@@ -1,5 +1,5 @@
 import type { RestActionItemResponse, RestTaskResponse } from "~/api/generated/tasks"
-import type { TaskListRowView } from "~/features/task/types"
+import type { TaskListRowView } from "~/features/task/components/TaskListTable/types"
 
 type Input = {
   task: RestTaskResponse

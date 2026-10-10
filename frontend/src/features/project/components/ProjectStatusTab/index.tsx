@@ -1,9 +1,10 @@
+import { useContext } from "react"
 import { useI18n } from "~/features/i18n/hooks"
 import { GetProjectsStatus } from "~/api/generated/projects"
-import { useProjectListData } from "~/features/project/providers/ProjectList/data"
-import { useProjectListNavigation } from "~/features/project/providers/ProjectList/navigation"
-import { projectTabLabels } from "~/features/project/constants"
-import type { ProjectTab } from "~/features/project/types"
+import { ProjectAPIDataContext } from "~/features/project/providers/ProjectAPIDataProvider/context"
+import { ProjectNavigationContext } from "~/features/project/providers/ProjectNavigationProvider/context"
+import { projectTabLabels } from "./constants"
+import type { ProjectTab } from "~/features/project/providers/ProjectNavigationProvider/context"
 import styles from "./index.module.css"
 
 const projectTabs: ProjectTab[] = [
@@ -17,8 +18,9 @@ const projectTabs: ProjectTab[] = [
 
 export default function ProjectStatusTab() {
   const i18n = useI18n()
-  const { summary } = useProjectListData()
-  const { state, selectTab } = useProjectListNavigation()
+  const { projectsQuery } = useContext(ProjectAPIDataContext)!
+  const { state, selectTab } = useContext(ProjectNavigationContext)!
+  const summary = projectsQuery.data?.summary
   return (
     <nav className={styles.tabs} aria-label={i18n("projects.status.select", { title: i18n("page.projects.title") })}>
       {projectTabs.map((tab) => {

@@ -1,9 +1,9 @@
 import { useCallback, useContext } from "react"
 import { LanguageProviderContext } from "./languageContext"
 import { messages } from "./messages"
-import type { MessageKey } from "./types"
+import type { MessageKey } from "./messages/types"
 
-export type { Language, MessageKey } from "./types"
+export type { Language, MessageKey } from "./messages/types"
 
 type MessageParams = Record<string, string | number>
 

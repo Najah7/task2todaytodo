@@ -1,5 +1,5 @@
 import type { RestProjectPriorityResponse, RestProjectTypeResponse } from "~/api/generated/projects"
-import type { Language } from "~/features/i18n/types"
+import type { Language } from "~/features/i18n/messages/types"
 
 type ProjectOption = RestProjectTypeResponse | RestProjectPriorityResponse
 

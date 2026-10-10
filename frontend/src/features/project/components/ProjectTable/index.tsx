@@ -1,3 +1,4 @@
+import { useContext, useEffect } from "react"
 import {
   createColumnHelper,
   rowSortingFeature,
@@ -5,15 +6,15 @@ import {
   useTable,
 } from "@tanstack/react-table"
 import type { SortingState } from "@tanstack/react-table"
-import type {
-  RestProjectResponse,
-} from "~/api/generated/projects"
+import type { RestProjectResponse } from "~/api/generated/projects"
 import { useI18n, useLanguage } from "~/features/i18n/hooks"
 import type { MessageKey } from "~/features/i18n/hooks"
-import { useProjectListActions } from "~/features/project/providers/ProjectList/action"
-import { useProjectListData } from "~/features/project/providers/ProjectList/data"
-import { useProjectListNavigation } from "~/features/project/providers/ProjectList/navigation"
-import type { ProjectSortColumn } from "~/features/project/types"
+import { getProjectErrorMessageKey } from "~/features/project/errors"
+import { ProjectAPIDataContext } from "~/features/project/providers/ProjectAPIDataProvider/context"
+import { ProjectActionContext } from "~/features/project/providers/ProjectActionProvider/context"
+import { ProjectNavigationContext } from "~/features/project/providers/ProjectNavigationProvider/context"
+import { notify } from "~/features/shared/notification"
+import type { ProjectSortColumn } from "~/features/project/providers/ProjectNavigationProvider/context"
 import ProjectStatusControl from "./parts/ProjectStatusControl"
 import ProjectRowActions from "./parts/ProjectRowActions"
 import controls from "~/styles/controls.module.css"
@@ -35,26 +36,44 @@ const emptyProjects: RestProjectResponse[] = []
 export default function ProjectTable() {
   const i18n = useI18n()
   const { language } = useLanguage()
-  const { projects } = useProjectListData()
-  const { state, changeSort: onSortChange } = useProjectListNavigation()
-  const { rowClick: onRowClick } = useProjectListActions()
+  const { projectsQuery, optionsQuery } = useContext(ProjectAPIDataContext)!
+  const { state, changeSort } = useContext(ProjectNavigationContext)!
+  const { retry } = useContext(ProjectActionContext)!
+
+  const listErrorKey = projectsQuery.error ? getProjectErrorMessageKey(projectsQuery.error) : undefined
+  const optionsErrorKey = projectsQuery.isSuccess && optionsQuery.error
+    ? getProjectErrorMessageKey(optionsQuery.error)
+    : undefined
+  useEffect(() => {
+    if (listErrorKey) notify.error(i18n(listErrorKey))
+  }, [i18n, listErrorKey])
+  useEffect(() => {
+    if (optionsErrorKey) notify.error(i18n(optionsErrorKey))
+  }, [i18n, optionsErrorKey])
+
+  const listError = projectsQuery.isError && !projectsQuery.data
+  const listEmpty = !projectsQuery.isLoading && !listError && !projectsQuery.data?.items.length
   const sorting: SortingState = [{ id: state.sortColumn, desc: state.sortOrder === "desc" }]
   const table = useTable({
     features: projectTableFeatures,
     columns: projectColumns,
-    data: projects ?? emptyProjects,
+    data: projectsQuery.data?.items ?? emptyProjects,
     getRowId: (project) => project.id,
     state: { sorting },
     onSortingChange: (updater) => {
       const next = typeof updater === "function" ? updater(sorting) : updater
       const selected = next[0]
       if (!selected || !isProjectSortColumn(selected.id)) return
-      onSortChange(selected.id, selected.desc ? "desc" : "asc")
+      changeSort(selected.id, selected.desc ? "desc" : "asc")
     },
     manualSorting: true,
     enableMultiSort: false,
     enableSortingRemoval: false,
   })
+
+  if (projectsQuery.isLoading) return <Loading />
+  if (listError) return <Alert onRetry={() => void retry()} />
+  if (listEmpty) return <Empty />
 
   function renderCell(columnId: string, project: RestProjectResponse) {
     if (columnId === "title") {
@@ -120,7 +139,7 @@ export default function ProjectTable() {
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} onClick={state.tab === "trash" ? undefined : () => onRowClick(row.original)}>
+            <tr key={row.id}>
               {row.getAllCells().map((cell) => (
                 <td key={cell.id} className={cell.column.id === "progress" || cell.column.id === "remaining_days" || cell.column.id === "todayTasks" ? styles.numeric : undefined}>
                   {renderCell(cell.column.id, row.original)}
@@ -132,6 +151,26 @@ export default function ProjectTable() {
       </table>
     </div>
   )
+}
+
+function Loading() {
+  const i18n = useI18n()
+  return <p className={`${styles.message} text-body`} role="status">{i18n("projects.loading")}</p>
+}
+
+function Alert({ onRetry }: { onRetry: () => void }) {
+  const i18n = useI18n()
+  return (
+    <div className={styles.message} role="alert">
+      <p className="text-body">{i18n("projects.loadError")}</p>
+      <button className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} text-button-small`} type="button" onClick={onRetry}>{i18n("projects.retry")}</button>
+    </div>
+  )
+}
+
+function Empty() {
+  const i18n = useI18n()
+  return <p className={`${styles.message} text-body`}>{i18n("projects.empty")}</p>
 }
 
 function isProjectSortColumn(value: string): value is ProjectSortColumn {

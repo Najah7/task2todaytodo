@@ -1,5 +1,5 @@
 import type { GetProjectsSortOrder } from "~/api/generated/projects"
-import type { ProjectSortColumn } from "~/features/project/types"
+import type { ProjectSortColumn } from "~/features/project/providers/ProjectNavigationProvider/context"
 
 type ProjectSortChange = {
   searchParams: URLSearchParams

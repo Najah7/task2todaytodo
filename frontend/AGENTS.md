@@ -6,30 +6,14 @@
 - Preserve a single source of truth across the system: business rules, data, state, API contracts, and design values.
 - The frontend owns presentation and interaction. Client validation provides early feedback; the backend remains responsible for data validity.
 
-## Components
+## Feature guidance
 
-- Colocate a component's implementation, CSS Module, schema, helpers, and unit tests. Keep private parts nearby.
-- Use `<Component>/index.tsx` as the entry point. For complex components, compose simple parts from `parts/<Part>/index.tsx`, like small extracted functions. Keep decomposition to two levels: the component and its parts. Do not add another `parts/` level inside a part.
-- Parts belong exclusively to their parent. Use ordinary exports and imports; only the parent, tests, and stories may import them. When concrete reuse is needed, consider moving the part to `src/features/shared/components/` as an independent component.
-- Within each feature, component imports must follow the parent-to-child direction; no child-to-parent or sibling-part imports. Independent components in `src/features/shared/` may be imported from any component. These restrictions apply only to component imports, not hooks, helpers, schemas, or i18n utilities.
-- Colocate Storybook stories as `Component.stories.tsx`. Keep shared Storybook decorators, mocks, and helpers under `.storybook/`; feature-specific helpers belong in `.storybook/<feature>/` and use the `~storybook/` alias. Use stories to inspect meaningful UI states with the application's existing styles and tokens.
-- Build for a concrete purpose first. Extract abstractions when multiple concrete uses exist; abstract upfront only with a clear, stable requirement.
-- Share within a feature first. Use `src/features/shared/` only for code used by multiple features; shared code must not depend on those features.
-- Components own Props, State, rendering, and Event Handlers. Simple display decisions may stay inline; extract substantial presentation transformations into nearby pure functions.
-- Put interaction-driven side effects in Event Handlers. Avoid Effects except for necessary synchronization with external systems, including subscription cleanup. Do not use Effects to copy derived values into State.
-- Put model and value conversions in the feature's `converters/` directory. Name each converter `<source>2<target>` and give it an array-to-array interface.
-
-## Feature files
-
-- Put types shared by multiple files in the feature's `types.ts`; define single-use types privately in their owning file.
-- Put runtime constants shared by multiple files in the feature's `constants.ts`; keep single-use constants private in their owning file. Keep type definitions and runtime constants separate.
+Before working in `src/features/`, composing feature Pages in `src/pages/`, or editing their tests and stories, read [src/features/AGENTS.md](src/features/AGENTS.md). It defines component structure, file ownership, Context/Provider responsibilities, and List/New/Edit conventions.
 
 ## State
 
 - The backend is the source of truth for server data; TanStack Query owns its client cache. Do not maintain a second server-data cache in Jotai or local State. Editing drafts and temporary UI state are local.
 - Use React Router's URL state for routes and shareable navigation state. Use Jotai only for frontend-specific state that genuinely needs global access.
-- Use purpose-specific React Context for state or operations shared across components on a screen, such as list data, URL-derived view conditions, pagination, and shared update actions. Pass component-specific data and configuration through Props, such as a row's project, title, description, or local display settings. Keep generic reusable components screen-agnostic and Props-driven (for example, `PageHeading` and `ConfirmationDialog`).
-- Define Contexts and typed hooks used by feature components in the feature layer, not in `src/pages/`, to avoid feature-to-page dependencies. Context may expose values derived from TanStack Query or React Router and operations that use them, but must not duplicate the Query cache or URL state. Keep Contexts focused; avoid catch-all or overly granular Contexts without a concrete need.
 
 ## API
 

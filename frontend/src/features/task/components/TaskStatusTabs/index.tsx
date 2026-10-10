@@ -1,12 +1,15 @@
+import { useContext } from "react"
 import { useI18n } from "~/features/i18n/hooks"
-import { useTaskListData } from "~/features/task/providers/TaskList/data"
-import { useTaskListNavigation } from "~/features/task/providers/TaskList/navigation"
+import { TaskAPIDataContext } from "~/features/task/providers/TaskAPIDataProvider/context"
+import { TaskNavigationContext } from "~/features/task/providers/TaskNavigationProvider/context"
+import { taskListResponses2statusTabs } from "~/features/task/converters/taskListResponses2summaryViews"
 import styles from "./index.module.css"
 
 export default function TaskStatusTabs() {
   const i18n = useI18n()
-  const { tabs } = useTaskListData()
-  const { selectStatus } = useTaskListNavigation()
+  const { tasksQuery } = useContext(TaskAPIDataContext)!
+  const { state, selectStatus } = useContext(TaskNavigationContext)!
+  const tabs = taskListResponses2statusTabs([tasksQuery.data], [state.status])[0]!
   return (
     <nav className={styles.tabs} aria-label={i18n("tasks.status.select")}>
       {tabs.map((tab) => (

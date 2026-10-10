@@ -3,7 +3,7 @@ import {
   GetProjectsView,
   type GetProjectsParams,
 } from "~/api/generated/projects"
-import type { ProjectListState } from "~/features/project/types"
+import type { ProjectListState } from "~/features/project/providers/ProjectNavigationProvider/context"
 
 export function projectListStates2apiParams(states: ProjectListState[]): GetProjectsParams[] {
   return states.map((state) => ({

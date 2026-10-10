@@ -1,6 +1,6 @@
 import { expect, test } from "vitest"
 import { GetProjectsStatus } from "~/api/generated/projects"
-import type { ProjectListState } from "~/features/project/types"
+import type { ProjectListState } from "~/features/project/providers/ProjectNavigationProvider/context"
 import { projectListStates2apiParams } from "./projectListStates2apiParams"
 
 test("converts a collection of project list states to API parameters", () => {

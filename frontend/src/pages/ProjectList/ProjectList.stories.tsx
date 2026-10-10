@@ -106,7 +106,6 @@ function ProjectListPreview({ path = "/projects?status=in_progress" }: { path?: 
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }))
   const [router] = useState(() => createMemoryRouter([
     { path: "/projects", element: <App><ProjectList /></App> },
-    { path: "*", element: <App><ProjectList /></App> },
   ], { initialEntries: [path] }))
   return <QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>
 }

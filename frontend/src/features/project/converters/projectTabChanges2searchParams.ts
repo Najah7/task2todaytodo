@@ -1,5 +1,5 @@
 import { GetProjectsView } from "~/api/generated/projects"
-import type { ProjectTab } from "~/features/project/types"
+import type { ProjectTab } from "~/features/project/providers/ProjectNavigationProvider/context"
 
 type ProjectTabChange = { searchParams: URLSearchParams; tab: ProjectTab }
 

@@ -123,6 +123,9 @@
 .detailsMessage p { margin: 0; }
 .detailsMessage button { border: 0; background: transparent; color: var(--color-primary); text-decoration: underline; cursor: pointer; }
 
+.listMessage { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--space-md); min-height: 9rem; margin: 0; padding: var(--space-xl); color: var(--color-text-muted); text-align: center; }
+.listMessage p { margin: 0; }
+
 .actionItem {
   display: grid;
   grid-template-columns: 2rem minmax(10rem, 1fr) 5rem minmax(11rem, auto);

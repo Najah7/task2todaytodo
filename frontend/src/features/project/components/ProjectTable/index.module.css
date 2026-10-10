@@ -4,6 +4,23 @@
   overflow: auto;
 }
 
+.message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  min-height: 9rem;
+  margin: 0;
+  padding: var(--space-xl);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.message p {
+  margin: 0;
+}
+
 .tableScroll:focus-visible {
   outline: var(--focus-width) solid var(--color-primary);
   outline-offset: calc(-1 * var(--focus-width));

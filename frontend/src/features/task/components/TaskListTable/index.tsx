@@ -1,14 +1,21 @@
 import { useI18n } from "~/features/i18n/hooks"
-import type { TaskActionItemRowView, TaskActionItemsQueryState, TaskListActions, TaskListRowView } from "~/features/task/types"
-import { useTaskListData } from "~/features/task/providers/TaskList/data"
-import { useTaskListActions } from "~/features/task/providers/TaskList/action"
+import controls from "~/styles/controls.module.css"
 import styles from "./index.module.css"
+import type { TaskActionItemRowView, TaskActionItemsQueryState, TaskListRowView } from "./types"
+import { useTaskListTable } from "./useTaskListTable"
 
 export default function TaskListTable() {
   const i18n = useI18n()
-  const { rows, summary, expandedIds, busyActionItemKey, actionItemsQueryStates } = useTaskListData()
-  const { toggleExpanded, toggleActionItem, retryActionItems, edit } = useTaskListActions()
+  const { rows, summary, expandedIds, busyActionItemKey, actionItemsQueryStates, loading, error, toggleExpanded, toggleActionItem, retryActionItems, retry, edit } = useTaskListTable()
   const expanded = new Set(expandedIds)
+  if (loading) return <p className={`${styles.listMessage} text-body`} role="status">{i18n("tasks.loading")}</p>
+  if (error) return (
+    <div className={styles.listMessage} role="alert">
+      <p className="text-body">{i18n("tasks.loadError")}</p>
+      <button className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} text-button-small`} type="button" onClick={retry}>{i18n("tasks.retry")}</button>
+    </div>
+  )
+  if (rows.length === 0) return <p className={`${styles.listMessage} text-body`}>{i18n("tasks.empty")}</p>
   return (
     <div className={styles.scroll} role="region" aria-label={i18n("page.tasks.title")} tabIndex={0}>
       <table className={styles.table}>
@@ -68,10 +75,10 @@ function TaskRows({ task, expanded, busyActionItemKey, actionItemsQueryState, on
   expanded: boolean
   busyActionItemKey?: string
   actionItemsQueryState?: TaskActionItemsQueryState
-  onToggleExpanded: TaskListActions["toggleExpanded"]
-  onToggleActionItem: TaskListActions["toggleActionItem"]
-  onRetryActionItems: TaskListActions["retryActionItems"]
-  onEdit: TaskListActions["edit"]
+  onToggleExpanded: (taskId: string) => void
+  onToggleActionItem: (item: TaskActionItemRowView) => void
+  onRetryActionItems: (taskId: string) => void
+  onEdit: (taskId: string) => void
 }) {
   const i18n = useI18n()
   return (
@@ -123,7 +130,7 @@ function TaskRows({ task, expanded, busyActionItemKey, actionItemsQueryState, on
   )
 }
 
-function ActionItemRow({ item, busy, onToggle }: { item: TaskActionItemRowView; busy: boolean; onToggle: TaskListActions["toggleActionItem"] }) {
+function ActionItemRow({ item, busy, onToggle }: { item: TaskActionItemRowView; busy: boolean; onToggle: (item: TaskActionItemRowView) => void }) {
   const i18n = useI18n()
   return (
     <div className={`${styles.actionItem} ${item.completed ? styles.completedActionItem : ""}`}>

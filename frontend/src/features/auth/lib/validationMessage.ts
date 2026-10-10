@@ -1,4 +1,4 @@
-import type { MessageKey } from "~/features/i18n/types"
+import type { MessageKey } from "~/features/i18n/messages/types"
 
 export function getValidationMessageKey(message: string): MessageKey {
   switch (message) {

@@ -1,4 +1,4 @@
-import type { MessageKey } from "~/features/i18n/types"
+import type { MessageKey } from "~/features/i18n/messages/types"
 import type { RestErrResponse } from "~/api/generated/auth"
 import { ApiError } from "~/api/http"
 

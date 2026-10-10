@@ -1,0 +1,8 @@
+.pageState {
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  gap: var(--space-md);
+}
+
+.pageState > p { margin: 0; }

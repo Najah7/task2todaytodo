@@ -1,142 +1,36 @@
-import { useState } from "react"
-import { useFieldArray, useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
+import { FormProvider, useFieldArray, useWatch } from "react-hook-form"
 import { Link } from "react-router"
 import { useI18n, type MessageKey } from "~/features/i18n/hooks"
 import { useLanguage } from "~/features/i18n/hooks"
 import { messages } from "~/features/i18n/messages"
-import type { TaskSelectOption } from "~/features/task/types"
-import type { ActionItemFormValue, TaskFormDirtyFields } from "~/features/task/converters/taskFormValues2updateRequest"
+import { actionItemKey } from "~/features/task/converters/taskFormValues2updateRequest"
+import ConfirmationDialog from "~/features/shared/components/ConfirmationDialog"
 import PageHeading from "~/features/shared/components/PageHeading"
-import { notify } from "~/features/shared/notification"
 import controls from "~/styles/controls.module.css"
-import { durationTextToMinutes, emptyTaskFormValues, minutesToDurationText, taskCreateSchema, type TaskFormValues } from "./schema"
+import { durationTextToMinutes, minutesToDurationText } from "./schema"
 import styles from "./index.module.css"
+import type { TaskFormProps } from "./types"
 
-type Props = {
-  mode: "create" | "edit"
-  initialValues?: TaskFormValues
-  estimateSource?: "manual" | "action_items"
-  projectOptions: TaskSelectOption[]
-  priorityOptions: TaskSelectOption[]
-  returnTo?: string
-  submitting?: boolean
-  hasConflict?: boolean
-  onCancel?: () => void
-  onSubmit: (values: TaskFormValues, dirtyFields: TaskFormDirtyFields) => Promise<TaskFormSaveResult | void>
-  onSaveComplete?: () => void
-  onReloadLatest?: () => void
-  onError?: (error: unknown) => void
-}
-
-export type TaskFormSaveResult = {
-  complete: boolean
-  taskSaved?: boolean
-  taskResetValues?: Partial<Pick<TaskFormValues, "title" | "description" | "dueDate" | "priority" | "projectId" | "manualEstimate">>
-  actionItems?: {
-    index: number
-    key: string
-    error?: MessageKey
-    fieldErrors?: Partial<Record<"title" | "estimatedMinutes" | "priority", MessageKey>>
-    deletionSucceeded?: boolean
-    identity?: { seriesId: string; occurrenceDate: string }
-    savedFields?: Partial<Pick<ActionItemFormValue, "title" | "estimatedMinutes" | "priority">>
-  }[]
-  revisionRefreshError?: boolean
-}
-
-export default function TaskForm({
-  mode,
-  initialValues = emptyTaskFormValues,
-  estimateSource,
-  projectOptions,
-  priorityOptions,
-  returnTo = "/tasks",
-  submitting = false,
-  hasConflict = false,
-  onCancel,
-  onSubmit,
-  onSaveComplete,
-  onReloadLatest,
-  onError,
-}: Props) {
+export default function TaskForm({ form, ...viewProps }: TaskFormProps) {
   const i18n = useI18n()
   const { language } = useLanguage()
-  const edit = mode === "edit"
-  const heading = edit ? "tasks.form.editTitle" : "tasks.form.createTitle"
-  const { register, control, watch, handleSubmit, setError, setValue, resetField, formState: { errors, isSubmitting, dirtyFields } } = useForm<TaskFormValues>({
-    resolver: zodResolver(taskCreateSchema),
-    defaultValues: initialValues,
-  })
+  const { heading, submitLabel, options, estimateSource, showTaskPriorityInheritance, showActionItemPriorityInheritance, showEstimateWillRecalculate, partialSaveMessage, actionItemErrors, serverError, onClearActionItemError, onSubmit, onCancel, discardConfirmation, conflict } = viewProps
+  const { register, control, setValue, formState: { errors, isSubmitting } } = form
   const { fields, append } = useFieldArray({ control, name: "actionItems" })
-  const [actionItemErrors, setActionItemErrors] = useState<Record<string, MessageKey>>({})
-  const [partialSave, setPartialSave] = useState(false)
-  const [taskWasSaved, setTaskWasSaved] = useState(false)
-  const [partialMessage, setPartialMessage] = useState<MessageKey>("tasks.form.partialSave")
-  const busy = submitting || isSubmitting
-  const watchedItems = watch("actionItems")
+  const busy = isSubmitting || Boolean(conflict?.reloading)
+  const watchedItems = useWatch({ control, name: "actionItems" }) ?? []
   const activeItems = watchedItems.filter((item) => !item.pendingDelete && !item.deletionSucceeded)
   const totalMinutes = activeItems.reduce((total, item) => total + (durationTextToMinutes(item.estimatedMinutes) ?? 0), 0)
   const hasEstimate = activeItems.some((item) => durationTextToMinutes(item.estimatedMinutes) !== undefined)
-  const derivedEstimate = activeItems.length > 0 || (edit && estimateSource === "action_items")
-  const taskPriority = watch("priority")
-
-  async function submit(values: TaskFormValues) {
-    try {
-      const result = await onSubmit(values, dirtyFields as TaskFormDirtyFields) ?? { complete: true }
-      for (const [name, value] of Object.entries(result.taskResetValues ?? {})) {
-        resetField(name as "title" | "description" | "dueDate" | "priority" | "projectId" | "manualEstimate", { defaultValue: value as never })
-      }
-      for (const item of result.actionItems ?? []) {
-        setActionItemErrors((current) => {
-          const next = { ...current }
-          if (item.error && !Object.keys(item.fieldErrors ?? {}).length) next[item.key] = item.error
-          else delete next[item.key]
-          return next
-        })
-        for (const [field, message] of Object.entries(item.fieldErrors ?? {})) {
-          setError(`actionItems.${item.index}.${field}` as `actionItems.${number}.title`, { type: "server", message })
-        }
-        if (item.identity) {
-          setValue(`actionItems.${item.index}.seriesId`, item.identity.seriesId, { shouldDirty: false })
-          setValue(`actionItems.${item.index}.occurrenceDate`, item.identity.occurrenceDate, { shouldDirty: false })
-        }
-        if (item.savedFields) {
-          for (const [field, value] of Object.entries(item.savedFields)) {
-            resetField(`actionItems.${item.index}.${field}` as `actionItems.${number}.${"title" | "estimatedMinutes" | "priority"}`, { defaultValue: value as never })
-          }
-        }
-        if (item.deletionSucceeded) {
-          setValue(`actionItems.${item.index}.deletionSucceeded`, true, { shouldDirty: false })
-        }
-      }
-      setPartialSave(!result.complete)
-      if (result.taskSaved) setTaskWasSaved(true)
-      setPartialMessage(result.revisionRefreshError ? "tasks.form.revisionRefreshError" : "tasks.form.partialSave")
-      if (result.complete) onSaveComplete?.()
-    } catch (cause) {
-      if (cause && typeof cause === "object" && "fieldErrors" in cause) {
-        const fieldErrors = (cause as { fieldErrors: Record<string, unknown> }).fieldErrors
-        let unknownField = false
-        for (const path of Object.keys(fieldErrors)) {
-          const formPath = serverFieldPath(path)
-          if (formPath) setError(formPath, { type: "server", message: "tasks.form.invalidField" })
-          else unknownField = true
-        }
-        if (unknownField) notify.error(i18n("tasks.form.genericError"))
-        return
-      }
-      onError?.(cause)
-      if (!onError) notify.error(i18n("tasks.form.networkError"))
-    }
-  }
+  const derivedEstimate = activeItems.length > 0 || estimateSource === "action_items"
+  const taskPriority = useWatch({ control, name: "priority" })
 
   function errorText(key?: string) {
     if (!key) return undefined
     return key in messages.ja ? i18n(key as MessageKey) : i18n("tasks.form.invalidField")
   }
 
-  return (
+  return <FormProvider {...form}>
     <section className={styles.page} aria-labelledby="task-form-heading">
       <nav className={styles.breadcrumb} aria-label={i18n("common.breadcrumb")}>
         <Link to="/tasks" className="text-body">{i18n("page.tasks.title")}</Link>
@@ -144,11 +38,12 @@ export default function TaskForm({
         <span className="text-body" aria-current="page">{i18n(heading)}</span>
       </nav>
       <header className={styles.pageHeader}><PageHeading id="task-form-heading" messageKey={heading} /></header>
-      <form className={`${controls.card} ${styles.form}`} onSubmit={handleSubmit(submit)} noValidate aria-label={i18n(heading)} aria-busy={busy}>
-        {hasConflict && (
+      <form className={`${controls.card} ${styles.form}`} onSubmit={onSubmit} noValidate aria-label={i18n(heading)} aria-busy={busy}>
+        {serverError && <p className={styles.error} role="alert">{i18n("tasks.form.genericError")}</p>}
+        {conflict && (
           <div className={styles.conflict} role="alert">
             <p className="text-body">{i18n("tasks.form.conflict")}</p>
-            {onReloadLatest && <button className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} text-button-small`} type="button" onClick={onReloadLatest} disabled={busy}>{i18n("tasks.form.reloadLatest")}</button>}
+            <button className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} text-button-small`} type="button" onClick={conflict.onRequestReload} disabled={busy}>{i18n("tasks.form.reloadLatest")}</button>
           </div>
         )}
         <fieldset className={styles.fields} disabled={busy}>
@@ -162,7 +57,7 @@ export default function TaskForm({
               <label className="text-field-label" htmlFor="task-form-project">{i18n("tasks.form.project")}</label>
               <select {...register("projectId")} className={`${controls.select} ${styles.control}`} id="task-form-project" aria-invalid={Boolean(errors.projectId?.message)} aria-describedby={errors.projectId?.message ? "task-form-project-error" : undefined}>
                 <option value="">{i18n("tasks.form.noProject")}</option>
-                {projectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                {options.projects.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
               {errors.projectId?.message && <p className={styles.error} id="task-form-project-error">{errorText(errors.projectId.message)}</p>}
             </div>
@@ -174,8 +69,8 @@ export default function TaskForm({
             <div className={styles.field}>
               <label className="text-field-label" htmlFor="task-form-priority">{i18n("tasks.form.priority")}</label>
               <select {...register("priority")} className={`${controls.select} ${styles.control}`} id="task-form-priority" aria-invalid={Boolean(errors.priority?.message)} aria-describedby={errors.priority?.message ? "task-form-priority-error" : undefined}>
-                {!edit && !taskWasSaved && <option value="">{i18n("tasks.form.inheritProjectPriority")}</option>}
-                {priorityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                {showTaskPriorityInheritance && <option value="">{i18n("tasks.form.inheritProjectPriority")}</option>}
+                {options.priorities.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
               {errors.priority?.message && <p className={styles.error} id="task-form-priority-error">{errorText(errors.priority.message)}</p>}
             </div>
@@ -188,7 +83,7 @@ export default function TaskForm({
               )}
               <p className="text-caption" id="task-form-estimate-help">{i18n(derivedEstimate ? "tasks.form.actionItemsEstimate" : "tasks.form.manualEstimate")}</p>
               {!derivedEstimate && <p className="text-caption">{i18n("tasks.form.estimateHint")}</p>}
-              {edit && estimateSource === "action_items" && <p className="text-caption">{i18n("tasks.form.estimateWillRecalculate")}</p>}
+              {showEstimateWillRecalculate && <p className="text-caption">{i18n("tasks.form.estimateWillRecalculate")}</p>}
               {errorText(errors.manualEstimate?.message) && <p className={styles.error} id="task-form-estimate-error">{errorText(errors.manualEstimate?.message)}</p>}
             </div>
           </div>
@@ -213,7 +108,7 @@ export default function TaskForm({
                 const titleError = errorText(errors.actionItems?.[index]?.title?.message)
                 const estimateError = errorText(errors.actionItems?.[index]?.estimatedMinutes?.message)
                 const priorityError = errorText(errors.actionItems?.[index]?.priority?.message)
-                const itemKey = item.clientKey ?? (item.seriesId && item.occurrenceDate ? `persisted:${item.seriesId}:${item.occurrenceDate}` : `new:${index}`)
+                const itemKey = actionItemKey(item, index)
                 const saveError = actionItemErrors[itemKey]
                 if (item.deletionSucceeded) return null
                 if (item.pendingDelete) return (
@@ -221,7 +116,7 @@ export default function TaskForm({
                     <p className="text-body">{item.title}</p>
                     <p className={saveError ? styles.error : "text-caption"} role={saveError ? "alert" : undefined}>{saveError ? `${item.title}: ${i18n(saveError)}` : i18n("tasks.form.actionItemPendingDelete")}</p>
                     <span />
-                    <button className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} text-button-small`} type="button" onClick={() => { setValue(`actionItems.${index}.pendingDelete`, false, { shouldDirty: true }); setActionItemErrors((current) => { const next = { ...current }; delete next[itemKey]; return next }) }}>{i18n("tasks.form.cancelDelete")}</button>
+                    <button className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} text-button-small`} type="button" onClick={() => { setValue(`actionItems.${index}.pendingDelete`, false, { shouldDirty: true }); onClearActionItemError(itemKey) }}>{i18n("tasks.form.cancelDelete")}</button>
                   </div>
                 )
                 return (
@@ -239,8 +134,8 @@ export default function TaskForm({
                     </div>
                     <div className={styles.priorityField}>
                       <select {...register(`actionItems.${index}.priority`)} className={`${controls.select} ${styles.control}`} aria-label={`${i18n("tasks.form.priority")} ${index + 1}`} aria-invalid={Boolean(priorityError)} aria-describedby={priorityError ? `task-action-item-${index}-priority-error` : undefined}>
-                        {!item.seriesId && <option value="">{i18n("tasks.form.inheritTaskPriority")}{taskPriority ? ` (${priorityOptions.find((option) => option.value === taskPriority)?.label ?? ""})` : ""}</option>}
-                        {priorityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        {showActionItemPriorityInheritance && !item.seriesId && <option value="">{i18n("tasks.form.inheritTaskPriority")}{taskPriority ? ` (${options.priorities.find((option) => option.value === taskPriority)?.label ?? ""})` : ""}</option>}
+                        {options.priorities.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                       </select>
                       {priorityError && <p className={styles.error} id={`task-action-item-${index}-priority-error`}>{priorityError}</p>}
                     </div>
@@ -249,7 +144,7 @@ export default function TaskForm({
                 )
               })}
             </div>
-            {partialSave && <p className={styles.error} role="alert">{i18n(!edit && taskWasSaved && partialMessage === "tasks.form.partialSave" ? "tasks.form.taskSavedActionItemsPending" : partialMessage)}</p>}
+            {partialSaveMessage && <p className={styles.error} role="alert">{i18n(partialSaveMessage)}</p>}
             <button className={`${controls.button} ${controls.neutralButton} ${controls.focusRing} ${styles.addActionItem} text-button-small`} type="button" onClick={() => append({ clientKey: createClientKey(), title: "", estimatedMinutes: "", priority: "" })}>
               {i18n("tasks.form.addActionItem")}
             </button>
@@ -257,29 +152,36 @@ export default function TaskForm({
           </section>
         </fieldset>
         <footer className={styles.actions}>
-          <Link className={`${controls.button} ${controls.neutralButton} ${controls.focusRing} text-body`} to={returnTo} onClick={(event) => { if (busy) event.preventDefault(); else onCancel?.() }}>{i18n("tasks.form.cancel")}</Link>
-          <button className={`${controls.button} ${controls.primaryButton} ${controls.focusRing} text-button`} type="submit" disabled={busy}>{busy ? i18n(edit ? "tasks.form.saving" : "tasks.form.submitting") : i18n(edit ? "tasks.form.save" : "tasks.form.submit")}</button>
+          <button className={`${controls.button} ${controls.neutralButton} ${controls.focusRing} text-body`} type="button" disabled={busy} onClick={onCancel}>{i18n("tasks.form.cancel")}</button>
+          <button className={`${controls.button} ${controls.primaryButton} ${controls.focusRing} text-button`} type="submit" disabled={busy}>{i18n(submitLabel)}</button>
         </footer>
       </form>
+      <ConfirmationDialog
+        open={discardConfirmation.open}
+        title={i18n("tasks.form.discardTitle")}
+        description={i18n("tasks.form.discardDescription")}
+        confirmLabel={i18n("tasks.form.leave")}
+        cancelLabel={i18n("tasks.form.keepEditing")}
+        busy={busy}
+        onConfirm={discardConfirmation.onConfirm}
+        onCancel={discardConfirmation.onCancel}
+      />
+      {conflict && <ConfirmationDialog
+        open={conflict.confirmation.open}
+        title={i18n("tasks.form.conflictTitle")}
+        description={i18n("tasks.form.conflictDescription")}
+        confirmLabel={i18n("tasks.form.reloadLatest")}
+        cancelLabel={i18n("tasks.form.keepEditing")}
+        busy={conflict.reloading}
+        onConfirm={conflict.confirmation.onConfirm}
+        onCancel={conflict.confirmation.onCancel}
+      />}
     </section>
-  )
+  </FormProvider>
 }
 
 function createClientKey(): string {
   return globalThis.crypto?.randomUUID?.() ?? `new-${Date.now()}-${Math.random()}`
-}
-
-function serverFieldPath(path: string): "title" | "projectId" | "dueDate" | "description" | "priority" | "manualEstimate" | undefined {
-  const fields = {
-    title: "title",
-    project_id: "projectId",
-    due_date: "dueDate",
-    description: "description",
-    priority: "priority",
-    manual_estimated_minutes: "manualEstimate",
-  } as const
-  if (path in fields) return fields[path as keyof typeof fields]
-  return undefined
 }
 
 function formatDate(value: string, language: string): string {

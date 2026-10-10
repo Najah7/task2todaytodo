@@ -1,5 +1,5 @@
 import { NavLink } from "react-router"
-import type { MessageKey } from "~/features/i18n/types"
+import type { MessageKey } from "~/features/i18n/messages/types"
 import { useI18n } from "~/features/i18n/hooks"
 import type { Tab } from "~/store/tab"
 import MenuIcon from "../MenuIcon"

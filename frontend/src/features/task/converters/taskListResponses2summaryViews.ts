@@ -1,6 +1,16 @@
 import { GetTasksStatus, type RestTaskListResponse } from "~/api/generated/tasks"
-import type { TaskListSummaryView, TaskStatusTabView } from "~/features/task/types"
-import type { MessageKey } from "~/features/i18n/types"
+import type { MessageKey } from "~/features/i18n/messages/types"
+
+type TaskListSummaryView = {
+  totalLabel: string
+  completedActionItemsLabel: string
+  totalActionItemsLabel: string
+  completedActionItems: number
+  totalActionItems: number
+  estimateTotalLabel: string
+}
+
+type TaskStatusTabView = { value: string; label: MessageKey; count: number; selected: boolean }
 
 const statuses = [GetTasksStatus.open, GetTasksStatus.in_progress, GetTasksStatus.pending, GetTasksStatus.waiting_on_others, GetTasksStatus.done] as const
 const statusLabels: Record<typeof statuses[number], MessageKey> = {

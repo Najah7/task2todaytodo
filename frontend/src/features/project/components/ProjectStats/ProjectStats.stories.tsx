@@ -1,16 +1,19 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { withProjectListStoryContext } from "~storybook/project/ProjectListStoryProvider"
+import { ProjectListStoryFrame, projectListStoryHandlers } from "~storybook/project/ProjectListStoryFrame"
 import ProjectStats from "."
 
 const meta = {
   title: "Projects/ProjectStats",
   component: ProjectStats,
-  decorators: [withProjectListStoryContext()],
+  parameters: { msw: { handlers: projectListStoryHandlers } },
 } satisfies Meta<typeof ProjectStats>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const InProgress: Story = {}
+export const InProgress: Story = { render: () => <ProjectListStoryFrame><ProjectStats /></ProjectListStoryFrame> }
 
-export const Trash: Story = { decorators: [withProjectListStoryContext({ navigation: { state: { tab: "trash" } } })], globals: { locale: "en" } }
+export const Trash: Story = {
+  render: () => <ProjectListStoryFrame path="/projects?view=trash"><ProjectStats /></ProjectListStoryFrame>,
+  globals: { locale: "en" },
+}

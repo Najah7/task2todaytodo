@@ -1,0 +1,52 @@
+# Feature guide
+
+This guide defines feature implementation and its integration into Pages, tests, and stories. Frontend-wide rules remain in [frontend/AGENTS.md](../../AGENTS.md).
+
+## Components
+
+- Colocate a component's implementation, CSS Module, schema, helpers, and unit tests. Keep private parts nearby.
+- Use `<Component>/index.tsx` as the entry point. For complex components, compose simple parts from `parts/<Part>/index.tsx`, like small extracted functions. Keep decomposition to two levels: the component and its parts. Do not add another `parts/` level inside a part.
+- Parts belong exclusively to their parent. Use ordinary exports and imports; only the parent, tests, and stories may import them. When concrete reuse is needed, consider moving the part to `src/features/shared/components/` as an independent component.
+- Within each feature, component imports must follow the parent-to-child direction; no child-to-parent or sibling-part imports. Independent components in `src/features/shared/` may be imported from any component. These restrictions apply only to component imports, not hooks, helpers, schemas, or i18n utilities.
+- Colocate Storybook stories as `Component.stories.tsx`. Keep shared Storybook decorators, mocks, and helpers under `.storybook/`; feature-specific helpers belong in `.storybook/<feature>/` and use the `~storybook/` alias. Use stories to inspect meaningful UI states with the application's existing styles and tokens.
+- Build for a concrete purpose first. Extract abstractions when multiple concrete uses exist; abstract upfront only with a clear, stable requirement.
+- Share within a feature first. Use `src/features/shared/` only for code used by multiple features; shared code must not depend on those features.
+- Components own Props, State, rendering, and Event Handlers. Simple display decisions may stay inline; extract substantial presentation transformations into nearby pure functions.
+- Put interaction-driven side effects in Event Handlers. Avoid Effects except for necessary synchronization with external systems, including subscription cleanup. Do not use Effects to copy derived values into State.
+- Put model and value conversions in the feature's `converters/` directory. Name each converter `<source>2<target>` and give it an array-to-array interface.
+
+## Feature files
+
+- Keep `features/<feature>/` directory-only by default; do not create implementation files directly under the feature root. Place files under the purpose that owns them. A helper used only by one Provider, hook, or component belongs beside that consumer (for example, `providers/TaskActionProvider/saveActionItems.ts`). For multiple consumers, choose an existing shared purpose rather than promoting the file to the feature root; keep any necessary exception narrow and explain its ownership.
+- Do not create `features/<feature>/types.ts`. Colocate shared types with their owning purpose under `features/<feature>/<purpose>/types.ts` or a more specific existing directory (for example, `components/ProjectForm/types.ts`). Choose the owner from the importing code and the responsibility the types describe; do not collect unrelated types in a generic types directory. Define single-use types privately in their owning file. Provider contract types stay beside their Provider in `providers/<Provider>/context.ts`, even when multiple consumers use them.
+- Apply the same ownership rule to runtime constants: do not create `features/<feature>/constants.ts`; put shared constants in the owning purpose's `constants.ts`, and keep single-use constants private in their owning file. Do not collect unrelated constants in a generic constants directory. Keep type definitions and runtime constants separate.
+
+## Context
+
+- Use purpose-specific React Context for state or operations shared across components on a screen, such as list data, URL-derived view conditions, pagination, and shared update actions. Pass component-specific data and configuration through Props, such as a row's project, title, description, or local display settings. Keep generic reusable components screen-agnostic and Props-driven (for example, `PageHeading` and `ConfirmationDialog`).
+- Define feature Contexts and their Providers in the feature layer, not in `src/pages/`, to avoid feature-to-page dependencies. Context may expose values derived from TanStack Query or React Router and operations that use them, but must not duplicate the Query cache or URL state. Keep Contexts focused; avoid catch-all or overly granular Contexts without a concrete need.
+
+### Providers and Pages
+
+- Apply this structure to List, New, and Edit screens across features. Use the same naming, placement, dependency direction, and common operation names when their responsibilities match; retain explicit domain-specific data and behavior rather than forcing identical contracts.
+- Split shared responsibilities into `<Domain>APIDataProvider`, `<Domain>ActionProvider`, and `<Domain>NavigationProvider`. Reuse these across the domain's List, New, and Edit screens, enabling only the queries each screen needs. Do not add page-specific List/New/Edit provider wrappers.
+- Keep each Provider, Context, and contract together under `features/<domain>/providers/<Provider>/`: `index.tsx` owns the Provider; `context.ts` defines the Context and its exposed types. Consumers import only the Contexts they need and read them directly with `useContext`; do not add hooks that only wrap Context access. Add another Context only when distinct state genuinely needs sharing across consumers.
+- APIData owns shared API queries, raw results, and load state derived from those results. Action owns API updates, request conversion, Query cache coordination, retry/reload, server revision tracking, conflict detection, operation notifications, and shared mutation busy state. Navigation owns URL-derived view conditions and route changes, including create/edit/cancel/post-save and list navigation. Keep translations and form/view conversions at their consuming hook or component, using feature converters for substantial transformations.
+- Pages own screen composition and install the required domain Providers. Place dependent Providers below their dependencies. Keep screen-specific provider composition out of routes/layouts and input components; application-wide Providers may remain at the application root. Key an Edit provider subtree by entity ID so drafts and revision baselines reset together when the entity changes.
+- Keep single-consumer UI state local. Do not create a Context for a local conflict flag, confirmation dialog, or form controller passed to one Form.
+
+### Lists
+
+- Shared list/options query results belong in APIData; URL-derived filters, sorting, tabs, and page tokens belong in Navigation. Derive simple display decisions such as pagination disabled state where they are used rather than forwarding extra fields from the Page.
+- Table-specific expansion state, expanded-row queries, and table view preparation belong in a colocated table hook. API updates, including completion/reopening of an expanded action item, belong in Action; the table hook may call those actions and keep local interaction state. Keep row-specific confirmation state local to the row.
+- Keep query error notifications in one owning component or Provider to avoid duplicate toasts. Preserve usable cached data during background refetches. Handle empty-page token recovery in the pagination component; automatic URL corrections use history replacement, while explicit user navigation keeps its intended history behavior.
+
+### New/Edit forms
+
+- Put `<Domain>FormBoundary` inside the Page's domain Providers. It is the single UI gate for loading, error/retry, forbidden, and ready states. Derive its state from the required API queries and edit permissions; mount its children only when required data is ready. Use ordinary Query state and early returns for this pattern; introducing Suspense requires an explicit design decision covering errors and retry.
+- Inside the Boundary, use a small private Page child to call `use<Domain>CreateForm` or `use<Domain>EditForm` and connect its result to the shared `<Domain>Form`. The hook must run in the mounted child, not in the Page before the Boundary. Do not duplicate the Boundary with a separate state display, Page ready checks, or a controller readiness flag.
+- Keep form hooks under the feature's `hooks/`. Both expose the same outer contract, `{ form, viewProps }`. They own `useForm`, client validation, draft guards, save-result handling, server field errors, local conflict/dialog state, and explicit reload resets. Prepare initial values and display configuration from loaded API results with existing converters. Extract common hook logic only from demonstrated shared behavior.
+- The shared Form receives `form` and `viewProps` through Props, installs RHF `FormProvider` internally, and renders one shared set of input markup. It may use `useWatch` and `useFieldArray` for input display and row interactions. Keep create/edit decisions in their hooks: pass headings, button labels, and concrete display conditions through `viewProps` rather than branching on a broad mode inside the Form. Preserve legitimate domain-specific UI differences.
+- Initialize RHF `defaultValues` from data available when the Boundary mounts the form. Do not add an initial-data reset Effect or readiness State. Capture the update revision from the same ready data as the initial draft; background refetches must neither reset a draft nor silently advance its baseline revision. After confirmed reload, validate the latest entity's editability before committing its cache, baseline, and draft.
+- Guard dirty drafts on cancel/breadcrumb navigation, browser unload, and conflict reload. Ask before discarding a draft; successful save may mark it clean before navigation. Keep guard/dialog state in the form hook, and share proven guard logic and generic confirmation UI in `features/shared/`. A failed reload keeps the draft, conflict state, and confirmation available.
+- Keep submit result contracts specific to their Action Provider. Preserve Project revision handling and Task's individual Task/ActionItem requests, RHF dirty-field updates, row-level errors, partial-save results, and retry of unsaved operations. Retain the created Task identity after a partial create so retry does not create another Task. These differences do not justify a universal form workflow or a second server-data cache.

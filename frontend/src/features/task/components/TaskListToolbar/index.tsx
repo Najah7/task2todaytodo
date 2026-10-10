@@ -1,14 +1,36 @@
+import { useContext } from "react"
 import { useI18n } from "~/features/i18n/hooks"
-import type { TaskFilterView } from "~/features/task/types"
-import { useTaskListData } from "~/features/task/providers/TaskList/data"
-import { useTaskListNavigation } from "~/features/task/providers/TaskList/navigation"
+import { TaskAPIDataContext } from "~/features/task/providers/TaskAPIDataProvider/context"
+import { TaskNavigationContext, type TaskFilterView } from "~/features/task/providers/TaskNavigationProvider/context"
+import { GetTasksDueFilter } from "~/api/generated/tasks"
 import controls from "~/styles/controls.module.css"
 import styles from "./index.module.css"
 
 export default function TaskListToolbar() {
   const i18n = useI18n()
-  const { filters, sort, sortOptions } = useTaskListData()
-  const { changeFilter, changeSort } = useTaskListNavigation()
+  const { projectsQuery } = useContext(TaskAPIDataContext)!
+  const { state, changeFilter, changeSort } = useContext(TaskNavigationContext)!
+  const filters = {
+    projectOptions: [
+      { value: "", label: i18n("tasks.filter.allProjects") },
+      ...(projectsQuery.data ?? []).map((project) => ({ value: project.id, label: project.title })),
+    ],
+    dueOptions: [
+      { value: GetTasksDueFilter.all, label: i18n("tasks.filter.due.all") },
+      { value: GetTasksDueFilter.overdue, label: i18n("tasks.filter.due.overdue") },
+      { value: GetTasksDueFilter.today, label: i18n("tasks.filter.due.today") },
+      { value: GetTasksDueFilter.due_soon, label: i18n("tasks.filter.due.dueSoon") },
+      { value: GetTasksDueFilter.no_due, label: i18n("tasks.filter.due.noDue") },
+    ],
+    values: { projectId: state.projectId ?? "", dueFilter: state.dueFilter ?? GetTasksDueFilter.all, title: state.title },
+  }
+  const sort = `${state.sortBy}:${state.sortOrder}`
+  const sortOptions = [
+    { value: "due_date:asc", label: i18n("tasks.sort.dueAsc") },
+    { value: "due_date:desc", label: i18n("tasks.sort.dueDesc") },
+    { value: "title:asc", label: i18n("tasks.sort.titleAsc") },
+    { value: "created_at:desc", label: i18n("tasks.sort.createdDesc") },
+  ]
   function updateFilter<K extends keyof TaskFilterView>(key: K, value: TaskFilterView[K]) {
     changeFilter({ ...filters.values, [key]: value })
   }
