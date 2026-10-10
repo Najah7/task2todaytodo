@@ -11,3 +11,11 @@ export function getPersonalAccessToken(): string | null {
 export function savePersonalAccessToken(personalAccessToken: string): void {
   localStorage.setItem(PERSONAL_ACCESS_TOKEN_KEY, personalAccessToken)
 }
+
+export function clearPersonalAccessToken(): void {
+  try {
+    localStorage.removeItem(PERSONAL_ACCESS_TOKEN_KEY)
+  } catch {
+    // An unavailable localStorage should not prevent the session redirect.
+  }
+}

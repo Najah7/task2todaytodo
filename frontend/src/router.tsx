@@ -37,3 +37,9 @@ export const router = createBrowserRouter([
     ],
   },
 ])
+
+if (typeof window !== "undefined") {
+  window.addEventListener("auth:unauthorized", () => {
+    void router.navigate("/login", { replace: true })
+  })
+}

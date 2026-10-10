@@ -1,4 +1,4 @@
-import { getPersonalAccessToken } from "~/features/auth/lib/localStorage"
+import { clearPersonalAccessToken, getPersonalAccessToken } from "~/features/auth/lib/localStorage"
 
 export class ApiError<T = unknown> extends Error {
   readonly status: number
@@ -22,6 +22,10 @@ export async function apiFetch<T>(url: string, options: RequestInit): Promise<T>
 
   const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "")
   const response = await fetch(`${baseUrl}${url}`, { ...options, headers })
+  if (response.status === 401 && token && !url.startsWith("/api/login")) {
+    clearPersonalAccessToken()
+    window.dispatchEvent(new Event("auth:unauthorized"))
+  }
   const text = await response.text()
   let data: unknown
   try {
