@@ -34,11 +34,6 @@
   transform: translateY(0);
 }
 
-.pageTitle {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
 @media (max-width: 37.5em) {
   .layout {
     padding-top: var(--size-topbar-height);

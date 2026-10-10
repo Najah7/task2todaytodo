@@ -5,17 +5,17 @@ import {
   useTable,
 } from "@tanstack/react-table"
 import type { SortingState } from "@tanstack/react-table"
-import { useNavigate } from "react-router"
 import type {
-  GetProjectsSortOrder,
-  GetProjectsStatus as ProjectStatus,
   RestProjectResponse,
-  RestProjectTaskStatusResponse,
 } from "~/api/generated/projects"
 import { useI18n, useLanguage } from "~/features/i18n/hooks"
 import type { MessageKey } from "~/features/i18n/hooks"
-import { projectTabLabels, type ProjectSortColumn, type ProjectTab } from "~/features/project/listState"
-import SeachSelect from "~/features/shared/components/SeachSelect"
+import { useProjectListActions } from "~/features/project/providers/ProjectList/action"
+import { useProjectListData } from "~/features/project/providers/ProjectList/data"
+import { useProjectListNavigation } from "~/features/project/providers/ProjectList/navigation"
+import type { ProjectSortColumn } from "~/features/project/types"
+import ProjectStatusControl from "./parts/ProjectStatusControl"
+import ProjectRowActions from "./parts/ProjectRowActions"
 import controls from "~/styles/controls.module.css"
 import styles from "./index.module.css"
 
@@ -32,37 +32,13 @@ const projectColumns = projectColumn.columns([
 ])
 const emptyProjects: RestProjectResponse[] = []
 
-type Props = {
-  projects: RestProjectResponse[]
-  tab: ProjectTab
-  sortColumn: ProjectSortColumn
-  sortOrder: GetProjectsSortOrder
-  statusOptions: RestProjectTaskStatusResponse[]
-  busy: boolean
-  onSortChange: (column: ProjectSortColumn, order: GetProjectsSortOrder) => void
-  onStatusChange: (project: RestProjectResponse, value: string) => void
-  onMoveToTrash: (project: RestProjectResponse) => void
-  onRestore: (project: RestProjectResponse) => void
-  onRowClick: (project: RestProjectResponse) => void
-}
-
-export default function ProjectTable({
-  projects,
-  tab,
-  sortColumn,
-  sortOrder,
-  statusOptions,
-  busy,
-  onSortChange,
-  onStatusChange,
-  onMoveToTrash,
-  onRestore,
-  onRowClick,
-}: Props) {
+export default function ProjectTable() {
   const i18n = useI18n()
   const { language } = useLanguage()
-  const navigate = useNavigate()
-  const sorting: SortingState = [{ id: sortColumn, desc: sortOrder === "desc" }]
+  const { projects } = useProjectListData()
+  const { state, changeSort: onSortChange } = useProjectListNavigation()
+  const { rowClick: onRowClick } = useProjectListActions()
+  const sorting: SortingState = [{ id: state.sortColumn, desc: state.sortOrder === "desc" }]
   const table = useTable({
     features: projectTableFeatures,
     columns: projectColumns,
@@ -109,66 +85,8 @@ export default function ProjectTable({
       return i18n("projects.remaining.days", { days: project.remaining_days })
     }
     if (columnId === "todayTasks") return i18n("projects.table.placeholder")
-    if (columnId === "status") {
-      if (tab === "trash") return projectRowLabel(statusOptions.find((status) => status.value === project.status), language, i18n(projectTabLabels[project.status]))
-      return (
-        <SeachSelect
-          ariaLabel={i18n("projects.status.select", { title: project.title })}
-          className={styles.statusSelect}
-          disabled={!project.can_update || busy || statusOptions.length === 0}
-          value={project.status}
-          options={statusOptions.flatMap((option) => option.value ? [{
-            value: option.value,
-            label: projectRowLabel(option, language, i18n(projectTabLabels[option.value as ProjectStatus] ?? "projects.status.open")),
-          }] : [])}
-          onChange={(value) => onStatusChange(project, value)}
-        />
-      )
-    }
-    if (columnId === "actions") {
-      return (
-        <div className={styles.actions} onClick={(event) => event.stopPropagation()}>
-          {tab === "trash" ? (
-            project.can_delete && (
-              <button
-                className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} text-button-small`}
-                type="button"
-                disabled={busy}
-                onClick={() => onRestore(project)}
-              >
-                {i18n("projects.restore")}
-              </button>
-            )
-          ) : (
-            <>
-              {project.can_update && (
-                <button
-                  className={`${controls.button} ${controls.neutralButton} ${controls.focusRing} text-button-small`}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => navigate(`/projects/${encodeURIComponent(project.id)}/edit`)}
-                >
-                  {i18n("projects.edit")}
-                </button>
-              )}
-              {project.can_delete && (
-                <button
-                  className={`${styles.iconButton} ${controls.focusRing}`}
-                  type="button"
-                  aria-label={i18n("projects.moveToTrash", { title: project.title })}
-                  disabled={busy}
-                  onClick={() => onMoveToTrash(project)}
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m4 4v5m4-5v5" />
-                  </svg>
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      )
-    }
+    if (columnId === "status") return <ProjectStatusControl project={project} />
+    if (columnId === "actions") return <ProjectRowActions project={project} />
     return null
   }
 
@@ -202,7 +120,7 @@ export default function ProjectTable({
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} onClick={tab === "trash" ? undefined : () => onRowClick(row.original)}>
+            <tr key={row.id} onClick={state.tab === "trash" ? undefined : () => onRowClick(row.original)}>
               {row.getAllCells().map((cell) => (
                 <td key={cell.id} className={cell.column.id === "progress" || cell.column.id === "remaining_days" || cell.column.id === "todayTasks" ? styles.numeric : undefined}>
                   {renderCell(cell.column.id, row.original)}
@@ -218,11 +136,6 @@ export default function ProjectTable({
 
 function isProjectSortColumn(value: string): value is ProjectSortColumn {
   return value === "title" || value === "progress" || value === "end_date" || value === "remaining_days"
-}
-
-function projectRowLabel(option: RestProjectTaskStatusResponse | undefined, language: string, fallback: string) {
-  if (!option) return fallback
-  return language === "ja" ? option.label_jp || option.label || fallback : option.label || option.label_jp || fallback
 }
 
 function displayDate(date: string | null, language: string, format: (key: MessageKey) => string) {

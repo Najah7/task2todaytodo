@@ -4,7 +4,8 @@ import { createMemoryRouter, RouterProvider } from "react-router"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, userEvent, within } from "storybook/test"
 import App from "~/App"
-import ProjectForm, { type ProjectFormOption } from "."
+import ProjectForm from "."
+import type { ProjectFormOption } from "~/features/project/types"
 import { emptyProjectFormValues } from "./schema"
 
 const types: ProjectFormOption[] = [

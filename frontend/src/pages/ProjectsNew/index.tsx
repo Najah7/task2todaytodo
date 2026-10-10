@@ -3,11 +3,12 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router"
 import { getGetProjectsIdQueryKey, getGetProjectsQueryKey, postProjects, useGetProjectsOptions } from "~/api/generated/projects"
 import { useI18n, useLanguage } from "~/features/i18n/hooks"
-import { messages } from "~/features/i18n/messages"
-import type { ProjectFormOption, ProjectSubmitResult } from "~/features/project/components/ProjectForm"
+import type { ProjectSubmitResult } from "~/features/project/types"
 import ProjectForm from "~/features/project/components/ProjectForm"
+import { projectFormValues2projectCreateRequests } from "~/features/project/converters/projectFormValues2projectCreateRequests"
+import { projectOptions2projectFormOptions } from "~/features/project/converters/projectOptions2projectFormOptions"
 import { getProjectErrorMessageKey, getProjectFormFieldErrors } from "~/features/project/errors"
-import { projectOptionLabel, toProjectCreateRequest } from "~/features/project/formData"
+import type { ProjectFormValues } from "~/features/project/components/ProjectForm/schema"
 import { notify } from "~/features/shared/notification"
 import controls from "~/styles/controls.module.css"
 import styles from "./index.module.css"
@@ -21,12 +22,13 @@ export default function ProjectsNewPage() {
   const errorKey = optionsQuery.error ? getProjectErrorMessageKey(optionsQuery.error) : undefined
 
   useEffect(() => {
-    if (errorKey) notify.error(messages[language][errorKey])
-  }, [errorKey, language])
+    if (errorKey) notify.error(i18n(errorKey))
+  }, [errorKey, i18n])
 
-  async function submit(values: Parameters<typeof toProjectCreateRequest>[0]): Promise<ProjectSubmitResult> {
+  async function submit(values: ProjectFormValues): Promise<ProjectSubmitResult> {
     try {
-      const project = await postProjects(toProjectCreateRequest(values))
+      const [request] = projectFormValues2projectCreateRequests([values])
+      const project = await postProjects(request!)
       queryClient.setQueryData(getGetProjectsIdQueryKey(project.id), project)
       return { saved: true, revision: project.revision }
     } catch (error) {
@@ -54,8 +56,8 @@ export default function ProjectsNewPage() {
     )
   }
 
-  const types: ProjectFormOption[] = optionsQuery.data.types.map((item) => ({ value: item.value, label: projectOptionLabel(item, language) }))
-  const priorities: ProjectFormOption[] = optionsQuery.data.priorities.map((item) => ({ value: item.value, label: projectOptionLabel(item, language) }))
+  const types = projectOptions2projectFormOptions(optionsQuery.data.types, language)
+  const priorities = projectOptions2projectFormOptions(optionsQuery.data.priorities, language)
 
   return (
     <ProjectForm

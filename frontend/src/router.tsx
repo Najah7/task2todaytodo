@@ -7,7 +7,7 @@ import LoginPage from "./pages/Login"
 import SignupPage from "./pages/Signup"
 import ProjectsNewPage from "./pages/ProjectsNew"
 import ProjectsEditPage from "./pages/ProjectsEdit"
-import ProjectList from "~/features/project/components/ProjectList"
+import ProjectList from "~/pages/ProjectList"
 
 function requireAuthentication() {
   if (!getPersonalAccessToken()?.trim()) return replace("/login")

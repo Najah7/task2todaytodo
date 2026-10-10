@@ -3,7 +3,8 @@ import type { ComponentProps } from "react"
 import { afterEach, expect, test, vi } from "vitest"
 import { createMemoryRouter, RouterProvider } from "react-router"
 import { LanguageProviderContext } from "~/features/i18n/languageContext"
-import ProjectForm, { type ProjectFormOption } from "."
+import ProjectForm from "."
+import type { ProjectFormOption } from "~/features/project/types"
 import { emptyProjectFormValues, type ProjectFormValues } from "./schema"
 
 const types: ProjectFormOption[] = [{ value: "other", label: "Other" }]

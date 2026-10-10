@@ -1,0 +1,13 @@
+.pageHeading h1,
+.pageHeading p {
+  margin: 0;
+}
+
+.pageHeading {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.pageHeading h1 {
+  overflow-wrap: anywhere;
+}

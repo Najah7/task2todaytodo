@@ -1,4 +1,4 @@
-export const PERSONAL_ACCESS_TOKEN_KEY = "personal_access_token"
+const PERSONAL_ACCESS_TOKEN_KEY = "personal_access_token"
 
 export function getPersonalAccessToken(): string | null {
   try {

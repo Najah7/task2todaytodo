@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useState, type ReactNode } from "react"
 import { LanguageProviderContext } from "./languageContext"
-import type { Language } from "./messages"
+import type { Language } from "./types"
 
 const LANGUAGE_STORAGE_KEY = "language"
 

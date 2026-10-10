@@ -94,7 +94,7 @@ const handlers = [
 ]
 
 const meta = {
-  title: "Projects/ProjectList",
+  title: "Pages/ProjectList",
   component: ProjectList,
   parameters: { layout: "fullscreen", msw: { handlers } },
 } satisfies Meta<typeof ProjectList>

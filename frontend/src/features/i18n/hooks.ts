@@ -1,8 +1,11 @@
-import { useContext } from "react"
+import { useCallback, useContext } from "react"
 import { LanguageProviderContext } from "./languageContext"
-import { messages, type MessageKey, type MessageParams } from "./messages"
+import { messages } from "./messages"
+import type { MessageKey } from "./types"
 
-export type { Language, MessageKey, MessageParams } from "./messages"
+export type { Language, MessageKey } from "./types"
+
+type MessageParams = Record<string, string | number>
 
 export function useLanguage() {
   const value = useContext(LanguageProviderContext)
@@ -12,8 +15,8 @@ export function useLanguage() {
 
 export function useI18n() {
   const { language } = useLanguage()
-  return (key: MessageKey, params?: MessageParams) => {
+  return useCallback((key: MessageKey, params?: MessageParams) => {
     const template: string = messages[language][key]
     return template.replace(/\{(\w+)\}/g, (match, name: string) => String(params?.[name] ?? match))
-  }
+  }, [language])
 }

@@ -1,7 +1,7 @@
 import { createContext } from "react"
-import type { Language } from "./messages"
+import type { Language } from "./types"
 
-export type LanguageContextValue = {
+type LanguageContextValue = {
   language: Language
   setLanguage: (language: Language) => void
 }

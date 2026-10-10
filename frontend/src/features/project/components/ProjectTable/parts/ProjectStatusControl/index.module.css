@@ -1,0 +1,5 @@
+.statusSelect {
+  max-width: 11rem;
+  min-height: var(--size-inline-editor-height);
+  padding-inline: var(--space-sm);
+}

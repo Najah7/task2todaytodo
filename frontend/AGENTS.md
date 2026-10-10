@@ -17,11 +17,22 @@
 - Share within a feature first. Use `src/features/shared/` only for code used by multiple features; shared code must not depend on those features.
 - Components own Props, State, rendering, and Event Handlers. Simple display decisions may stay inline; extract substantial presentation transformations into nearby pure functions.
 - Put interaction-driven side effects in Event Handlers. Avoid Effects except for necessary synchronization with external systems, including subscription cleanup. Do not use Effects to copy derived values into State.
+- Put model and value conversions in the feature's `converters/` directory. Name each converter `<source>2<target>` and give it an array-to-array interface.
 
-## State and API
+## Feature files
 
-- The backend is the source of truth for server data; TanStack Query owns its client cache. Do not maintain a second server-data cache in Jotai or local State. Editing drafts are local UI state.
-- Use React Router's URL state for routes and shareable navigation state. Keep temporary UI state local. Use Jotai only for frontend-specific state that genuinely needs global access.
+- Put types shared by multiple files in the feature's `types.ts`; define single-use types privately in their owning file.
+- Put runtime constants shared by multiple files in the feature's `constants.ts`; keep single-use constants private in their owning file. Keep type definitions and runtime constants separate.
+
+## State
+
+- The backend is the source of truth for server data; TanStack Query owns its client cache. Do not maintain a second server-data cache in Jotai or local State. Editing drafts and temporary UI state are local.
+- Use React Router's URL state for routes and shareable navigation state. Use Jotai only for frontend-specific state that genuinely needs global access.
+- Use purpose-specific React Context for state or operations shared across components on a screen, such as list data, URL-derived view conditions, pagination, and shared update actions. Pass component-specific data and configuration through Props, such as a row's project, title, description, or local display settings. Keep generic reusable components screen-agnostic and Props-driven (for example, `PageHeading` and `ConfirmationDialog`).
+- Define Contexts and typed hooks used by feature components in the feature layer, not in `src/pages/`, to avoid feature-to-page dependencies. Context may expose values derived from TanStack Query or React Router and operations that use them, but must not duplicate the Query cache or URL state. Keep Contexts focused; avoid catch-all or overly granular Contexts without a concrete need.
+
+## API
+
 - Generate API types, clients, and Query hooks with Orval from the backend OpenAPI specification. Never hand-edit generated code or duplicate API contracts.
 - Handwrite only necessary integration, such as shared HTTP behavior and actions after a successful request. Do not add wrappers that merely repeat the generated API.
 - Use React Hook Form and Zod for forms; colocate `schema.ts` with the form.

@@ -13,12 +13,13 @@ import {
 import { ApiError } from "~/api/http"
 import type { RestErrResponse, RestProjectResponse } from "~/api/generated/projects"
 import { useI18n, useLanguage } from "~/features/i18n/hooks"
-import { messages } from "~/features/i18n/messages"
 import ProjectForm from "~/features/project/components/ProjectForm"
-import type { ProjectFormOption, ProjectFormReloadSnapshot, ProjectSubmitResult } from "~/features/project/components/ProjectForm"
+import type { ProjectFormOption, ProjectFormReloadSnapshot, ProjectSubmitResult } from "~/features/project/types"
 import type { ProjectFormValues } from "~/features/project/components/ProjectForm/schema"
+import { projectFormValues2projectUpdateRequests } from "~/features/project/converters/projectFormValues2projectUpdateRequests"
+import { projectOptions2projectFormOptions } from "~/features/project/converters/projectOptions2projectFormOptions"
+import { projects2projectFormValues } from "~/features/project/converters/projects2projectFormValues"
 import { getProjectErrorMessageKey, getProjectFormFieldErrors } from "~/features/project/errors"
-import { projectOptionLabel, toProjectFormValues, toProjectUpdateRequest } from "~/features/project/formData"
 import { notify } from "~/features/shared/notification"
 import controls from "~/styles/controls.module.css"
 import styles from "./index.module.css"
@@ -33,9 +34,9 @@ export default function ProjectsEditPage() {
   const optionsErrorKey = optionsQuery.error && !query.error ? getProjectErrorMessageKey(optionsQuery.error) : undefined
 
   useEffect(() => {
-    if (errorKey) notify.error(messages[language][errorKey])
-    else if (optionsErrorKey) notify.error(messages[language][optionsErrorKey])
-  }, [errorKey, optionsErrorKey, language])
+    if (errorKey) notify.error(i18n(errorKey))
+    else if (optionsErrorKey) notify.error(i18n(optionsErrorKey))
+  }, [errorKey, i18n, optionsErrorKey])
 
   if (query.isLoading) {
     return <PageState title={i18n("projects.form.editTitle")} message={i18n("projects.loading")} status />
@@ -65,8 +66,8 @@ export default function ProjectsEditPage() {
     return <PageState title={i18n("projects.form.editTitle")} message={i18n("projects.error.forbidden")} />
   }
 
-  const types: ProjectFormOption[] = optionsQuery.data.types.map((item) => ({ value: item.value, label: projectOptionLabel(item, language) }))
-  const priorities: ProjectFormOption[] = optionsQuery.data.priorities.map((item) => ({ value: item.value, label: projectOptionLabel(item, language) }))
+  const types = projectOptions2projectFormOptions(optionsQuery.data.types, language)
+  const priorities = projectOptions2projectFormOptions(optionsQuery.data.priorities, language)
 
   return <LoadedProjectEdit key={id} project={query.data} types={types} priorities={priorities} />
 }
@@ -77,12 +78,13 @@ function LoadedProjectEdit({ project, types, priorities }: { project: RestProjec
   const queryClient = useQueryClient()
   const [baselineRevision, setBaselineRevision] = useState(project.revision)
   const [hasConflict, setHasConflict] = useState(false)
+  const initialValues = projects2projectFormValues([project])[0]!
 
   async function submit(values: ProjectFormValues): Promise<ProjectSubmitResult> {
     try {
       const updated = await patchProjectsId(
         project.id,
-        toProjectUpdateRequest(values),
+        projectFormValues2projectUpdateRequests([values])[0]!,
         { headers: { "If-Match": `"${baselineRevision}"` } },
       )
       queryClient.setQueryData(getGetProjectsIdQueryKey(project.id), updated)
@@ -101,14 +103,14 @@ function LoadedProjectEdit({ project, types, priorities }: { project: RestProjec
   async function loadLatest(): Promise<ProjectFormReloadSnapshot> {
     const latest = await queryClient.fetchQuery(getGetProjectsIdQueryOptions(project.id))
     if (!latest.can_update || latest.deleted_at !== null) throw new Error("Project is no longer editable")
-    return { values: toProjectFormValues(latest), revision: latest.revision }
+    return { values: projects2projectFormValues([latest])[0]!, revision: latest.revision }
   }
 
   return (
     <ProjectForm
       mode="edit"
       heading="projects.form.editTitle"
-      initialValues={toProjectFormValues(project)}
+      initialValues={initialValues}
       types={types}
       priorities={priorities}
       hasConflict={hasConflict}

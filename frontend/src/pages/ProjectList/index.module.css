@@ -1,0 +1,40 @@
+.page {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.listCard {
+  overflow: hidden;
+}
+
+.message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  min-height: 9rem;
+  margin: 0;
+  padding: var(--space-xl);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.message p {
+  margin: 0;
+}
+
+@media (max-width: 38em) {
+  .header > button {
+    width: 100%;
+  }
+
+}

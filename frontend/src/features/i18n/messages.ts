@@ -305,7 +305,3 @@ const en = {
 } satisfies Record<keyof typeof ja, string>
 
 export const messages = { ja, en } as const
-
-export type Language = keyof typeof messages
-export type MessageKey = keyof (typeof messages)["ja"]
-export type MessageParams = Record<string, string | number>

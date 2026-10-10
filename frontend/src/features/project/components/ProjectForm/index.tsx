@@ -4,19 +4,13 @@ import { Controller, useForm } from "react-hook-form"
 import { Link, useNavigate } from "react-router"
 import { useI18n, type MessageKey } from "~/features/i18n/hooks"
 import ConfirmationDialog from "~/features/project/components/ConfirmationDialog"
-import { useProjectDraftGuard } from "~/features/project/hooks/useProjectDraftGuard"
+import type { ProjectFormOption, ProjectFormReloadSnapshot, ProjectSubmitResult } from "~/features/project/types"
+import { useProjectDraftGuard } from "./useProjectDraftGuard"
 import { notify } from "~/features/shared/notification"
 import SeachSelect from "~/features/shared/components/SeachSelect"
 import controls from "~/styles/controls.module.css"
 import { emptyProjectFormValues, projectFormSchema, type ProjectFormValues } from "./schema"
 import styles from "./index.module.css"
-
-export type ProjectFormOption = { value: string; label: string }
-export type ProjectSubmitResult =
-  | { saved: true; revision: number }
-  | { saved: false; fieldErrors?: Partial<Record<keyof ProjectFormValues, MessageKey>> }
-
-export type ProjectFormReloadSnapshot = { values: ProjectFormValues; revision: number }
 
 type Props = {
   mode: "create" | "edit"
