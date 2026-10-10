@@ -1,0 +1,30 @@
+.page { display: grid; gap: var(--space-lg); }
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.card { overflow: hidden; }
+
+.message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  min-height: 9rem;
+  margin: 0;
+  padding: var(--space-xl);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.message p { margin: 0; }
+
+@media (max-width: 38em) {
+  .header > button { width: 100%; }
+}

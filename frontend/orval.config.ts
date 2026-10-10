@@ -4,6 +4,7 @@ import { defineConfig } from "orval"
 
 const clientPath = fileURLToPath(new URL("./src/api/generated/auth.ts", import.meta.url))
 const projectsClientPath = fileURLToPath(new URL("./src/api/generated/projects.ts", import.meta.url))
+const tasksClientPath = fileURLToPath(new URL("./src/api/generated/tasks.ts", import.meta.url))
 
 async function replaceSharedHttpImport(path: string) {
   const client = await readFile(path, "utf8")
@@ -62,6 +63,33 @@ export default defineConfig({
     hooks: {
       afterAllFilesWrite: async () => {
         await replaceSharedHttpImport(projectsClientPath)
+      },
+    },
+  },
+  tasks: {
+    input: {
+      target: "../backend/docs/swagger.json",
+      filters: { tags: ["Tasks", "ActionItems"] },
+    },
+    output: {
+      baseUrl: "/api",
+      target: tasksClientPath,
+      tsconfig: "./tsconfig.app.json",
+      client: "react-query",
+      httpClient: "fetch",
+      override: {
+        mutator: {
+          path: "./src/api/http.ts",
+          name: "apiFetch",
+          alias: { "~": fileURLToPath(new URL("./src", import.meta.url)) },
+        },
+        fetch: { includeHttpResponseReturnType: false, forceSuccessResponse: true },
+        query: { version: 5 },
+      },
+    },
+    hooks: {
+      afterAllFilesWrite: async () => {
+        await replaceSharedHttpImport(tasksClientPath)
       },
     },
   },

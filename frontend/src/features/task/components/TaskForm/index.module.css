@@ -1,0 +1,182 @@
+.page {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.pageState { display: grid; justify-items: start; align-content: start; gap: var(--space-md); }
+.pageState > p { margin: 0; }
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--color-text-muted);
+}
+
+.breadcrumb a { color: var(--color-primary-strong); text-decoration: underline; text-underline-offset: 0.15em; }
+.pageHeader h1 { margin: 0; }
+.form { overflow: hidden; }
+
+.remove {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.remove:hover { background: var(--color-raised); }
+
+.fields {
+  display: grid;
+  gap: var(--space-lg);
+  min-inline-size: 0;
+  margin: 0;
+  padding: var(--space-xl);
+  border: 0;
+}
+
+.wideField,
+.field {
+  display: grid;
+  align-content: start;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.field > p { margin: 0; }
+
+.control { min-width: 0; width: 100%; }
+
+.control[aria-invalid="true"] { border-color: var(--color-danger); }
+
+.memo { min-height: 5rem; resize: vertical; }
+
+.readOnly {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-input-height);
+  padding: var(--padding-input);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-raised);
+}
+
+.required {
+  padding: var(--space-xs);
+  border-radius: var(--radius-xs);
+  background: var(--color-attention-background);
+  color: var(--color-attention-foreground);
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+.error { margin: 0; color: var(--color-danger-text); }
+
+.actionItems { display: grid; gap: var(--space-sm); }
+
+.actionItemsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.actionItemsHeader h3 { margin: 0; }
+
+.addActionItem { justify-self: start; }
+
+.actionItemTable {
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+}
+
+.actionItemHeader,
+.actionItemRow {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(6rem, 0.3fr) minmax(7rem, 0.35fr) 2.5rem;
+  align-items: start;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.actionItemHeader { background: var(--color-raised); }
+.actionItemHeader { align-items: center; }
+
+.actionItemRow { border-top: var(--border-width) solid var(--color-border); }
+
+.actionItemRow > div { min-width: 0; }
+.actionItemRow > .remove { align-self: start; margin-top: var(--space-sm); }
+
+.priorityField { min-width: 0; }
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-xl);
+  border-top: var(--border-width) solid var(--color-border);
+  background: var(--color-raised);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-xl);
+  border-top: var(--border-width) solid var(--color-border);
+  background: var(--color-raised);
+}
+
+.actions a { text-decoration: none; }
+
+.conflict {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-xl);
+  border-bottom: var(--border-width) solid var(--color-border);
+  background: var(--color-attention-background);
+}
+
+.conflict p { margin: 0; color: var(--color-attention-foreground); }
+
+.srOnly {
+  position: absolute;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  width: 1px;
+  height: 1px;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+@media (max-width: 48em) {
+  .fields { padding: var(--space-md); }
+  .fieldGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .actionItemHeader { display: none; }
+  .actionItemRow { grid-template-columns: minmax(0, 1fr) minmax(5rem, 0.4fr) 2.5rem; }
+  .actionItemRow > div:first-child { grid-column: 1 / -1; }
+  .actionItemRow > .priorityField { grid-column: 1 / 2; }
+  .actions { padding: var(--space-md); }
+  .conflict { padding: var(--space-md); }
+}
+
+@media (max-width: 30em) {
+  .fieldGrid { grid-template-columns: minmax(0, 1fr); }
+  .actions > button { flex: 1; }
+}

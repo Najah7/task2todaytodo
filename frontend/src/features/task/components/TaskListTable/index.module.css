@@ -1,0 +1,187 @@
+.scroll { width: 100%; overflow-x: auto; }
+
+.table {
+  width: 100%;
+  min-width: 64rem;
+  border-collapse: collapse;
+  color: var(--color-text-body);
+}
+
+.table th,
+.table td {
+  height: var(--size-table-row-height);
+  padding: var(--padding-table-cell);
+  border-bottom: var(--border-width) solid var(--color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table thead th {
+  height: var(--size-table-header-height);
+  background: var(--color-raised);
+  color: var(--color-text-body);
+  white-space: nowrap;
+}
+
+.table tfoot th,
+.table tfoot td {
+  background: var(--color-raised);
+  font-weight: var(--font-weight-bold);
+}
+
+.table tfoot tr:last-child > * { border-bottom: 0; }
+
+.taskCell { display: flex; align-items: center; gap: var(--space-sm); min-width: 15rem; }
+
+.taskCell strong { min-width: 0; }
+
+.expandButton,
+.expandSpacer {
+  display: grid;
+  flex: 0 0 var(--size-control-icon);
+  place-items: center;
+  width: var(--size-control-icon);
+  height: var(--size-control-icon);
+}
+
+.expandButton {
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-body);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.expandButton:hover { background: var(--color-raised); }
+.expandButton svg { stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+.editButton {
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  color: var(--color-text-body);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.editButton:hover { background: var(--color-raised); }
+
+.totalHeading { display: inline-flex; align-items: center; gap: var(--space-sm); }
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  white-space: nowrap;
+}
+
+.statusMark {
+  color: var(--color-text-muted);
+  font-size: 0.8em;
+}
+
+.status_active .statusMark { color: var(--color-primary); }
+.status_done .statusMark { color: var(--color-success-foreground); }
+.status_waiting { color: var(--color-attention-foreground); }
+.status_done { color: var(--color-text-muted); }
+
+.numeric { text-align: right !important; white-space: nowrap; }
+
+.progressCell { display: flex; align-items: center; gap: var(--space-sm); min-width: 7rem; }
+
+.progressTrack {
+  width: min(5rem, 100%);
+  height: var(--size-progress-height);
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+}
+
+.progressFill { display: block; height: 100%; border-radius: inherit; background: var(--color-primary); }
+
+.due_today,
+.due_overdue {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-xs);
+  background: var(--color-attention-background);
+  color: var(--color-attention-foreground);
+  white-space: nowrap;
+}
+
+.due_none { color: var(--color-text-muted); }
+
+.doneTask > td { background: var(--color-raised); color: var(--color-text-muted); }
+.doneTask .taskCell strong { text-decoration: line-through; }
+
+.expandedRow > td { height: auto; padding: 0 var(--space-md) var(--space-md); background: var(--color-raised); }
+
+.actionItems { display: grid; gap: 0; padding-left: var(--space-lg); border-left: var(--border-width) solid var(--color-border); }
+
+.detailsMessage { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-md); margin: 0; padding: var(--space-md); color: var(--color-text-muted); }
+.detailsMessage p { margin: 0; }
+.detailsMessage button { border: 0; background: transparent; color: var(--color-primary); text-decoration: underline; cursor: pointer; }
+
+.actionItem {
+  display: grid;
+  grid-template-columns: 2rem minmax(10rem, 1fr) 5rem minmax(11rem, auto);
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--size-table-row-height);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.actionItem:last-child { border-bottom: 0; }
+
+.checkButton {
+  display: grid;
+  place-items: center;
+  width: var(--size-checkbox);
+  height: var(--size-checkbox);
+  border: var(--border-width-emphasis) solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-action-text);
+  cursor: pointer;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.checkButton span { display: block; line-height: 1; }
+
+.checkButton[aria-pressed="true"] { border-color: var(--color-action-background); background: var(--color-action-background); }
+.checkButton:disabled { cursor: wait; opacity: 0.6; }
+.completedActionItem > span { color: var(--color-text-muted); text-decoration: line-through; }
+.itemEstimate { text-align: right; }
+.itemTitle { display: grid; gap: var(--space-xs); min-width: 0; }
+.occurrenceDate { color: var(--color-text-muted); }
+
+.registerButton {
+  justify-self: start;
+  min-height: var(--size-button-small-height);
+  padding: 0 var(--space-sm);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.registeredTime { display: inline-flex; align-items: center; gap: var(--space-xs); color: var(--color-text-muted); }
+
+.srOnly {
+  position: absolute;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  width: 1px;
+  height: 1px;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+@media (max-width: 45em) {
+  .actionItem { grid-template-columns: 2rem minmax(0, 1fr) 4rem; padding: var(--space-sm) 0; }
+  .registeredTime,
+  .registerButton { grid-column: 2 / -1; }
+}
