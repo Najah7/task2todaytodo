@@ -62,7 +62,7 @@ owns business state and behavior.
 - `NewExistingXXX` restores all persisted fields, including timestamps.
 - `NewZeroXXX` represents an explicit absent or invalid return value.
 
-## DAO (read model)
+## DAO (Data Access Object / Read Model)
 
 - Define read DAOs in the context's `dao/` package. Use primitives or
   read-only types composed mainly of primitives. You may nest simple read
