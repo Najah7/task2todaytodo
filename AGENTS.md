@@ -18,6 +18,7 @@ Reduce the burden of maintaining long-term plans so users can focus on today's w
 
 - Centralize business rules in the backend. Clients own presentation and interaction.
 - Preserve a single source of truth across the system for business rules, data, API contracts, and design values.
+- Give each file one clear responsibility. Keep related functions and types together when they serve that responsibility; split files that handle distinct concerns.
 - Build concrete solutions first. Extract abstractions from demonstrated needs; abstract upfront only with a clear, stable requirement.
 
 ## Future direction
