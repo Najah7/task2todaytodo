@@ -1,7 +1,7 @@
 
 -- name: CreateTask :one
 INSERT INTO tasks (
-    id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes,
+    id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes,
     priority, status, changed_by
 )
 VALUES ($1, $2, $3, $2, $4, $5, $6, $7, $8, $9, $10, $2)
@@ -9,7 +9,7 @@ RETURNING *;
 
 -- name: CreateTaskInProject :one
 INSERT INTO tasks (
-    id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes,
+    id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes,
     priority, status, changed_by
 )
 SELECT
@@ -20,7 +20,7 @@ SELECT
     sqlc.arg(title),
     sqlc.arg(description),
     sqlc.arg(due_date),
-    sqlc.arg(estimated_minutes),
+    sqlc.arg(manual_estimated_minutes),
     sqlc.arg(actual_minutes),
     sqlc.arg(priority),
     sqlc.arg(status),
@@ -39,7 +39,7 @@ SET user_id = $2,
     title = $4,
     description = $5,
     due_date = $6,
-    estimated_minutes = $7,
+    manual_estimated_minutes = $7,
     actual_minutes = $8,
     priority = $9,
     status = $10,
@@ -52,8 +52,11 @@ UPDATE tasks
 SET title = sqlc.arg(title),
     description = sqlc.arg(description),
     due_date = sqlc.arg(due_date),
-    estimated_minutes = sqlc.arg(estimated_minutes),
+    manual_estimated_minutes = sqlc.arg(manual_estimated_minutes),
     actual_minutes = sqlc.arg(actual_minutes),
+    priority = sqlc.arg(priority),
+    project_id = sqlc.narg(project_id),
+    assignee_id = sqlc.arg(assignee_id)::text,
     changed_by = sqlc.arg(user_id)::text
 WHERE id = sqlc.arg(id)
   AND deleted_at IS NULL
@@ -87,6 +90,15 @@ WHERE id = sqlc.arg(id)
   AND revision = sqlc.arg(expected_revision)::integer
   AND task_has_permission(id, sqlc.arg(user_id), sqlc.arg(resource_id)::text, sqlc.arg(action)::action)
 RETURNING *;
+
+-- name: BumpTaskRevisionByUserID :one
+UPDATE tasks
+SET changed_by = sqlc.arg(user_id)::text
+WHERE id = sqlc.arg(id)::text
+  AND deleted_at IS NULL
+  AND revision = sqlc.arg(expected_revision)::integer
+  AND task_has_permission(id, sqlc.arg(user_id)::text, sqlc.arg(resource_id)::text, sqlc.arg(action)::action)
+RETURNING revision;
 
 -- name: UpdateTaskStatusDerivedByUserID :execrows
 UPDATE tasks

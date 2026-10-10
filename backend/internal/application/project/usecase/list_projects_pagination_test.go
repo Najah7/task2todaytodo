@@ -75,7 +75,7 @@ func TestExecuteFilteredPageProgressPagingNextAndPrevious(t *testing.T) {
 				id := projectIDForRank(rank)
 				candidates = append(candidates, dao.Project{ID: id, UserID: "actor", Status: "open", Title: id})
 				progressSources.Tasks = append(progressSources.Tasks, dao.ProjectTaskProgress{
-					ProjectID: id, TaskID: "task-" + id, Total: 100, Completed: rank,
+					ProjectID: id, TaskID: "task-" + id, Progress: rank,
 				})
 			}
 			summary := dao.ProjectListSummary{
@@ -173,10 +173,10 @@ func TestExecuteFilteredPageProgressTiesMissingAnchorAndBounds(t *testing.T) {
 		{ID: "b-high", Priority: dao.Priority{Weight: 10}},
 	}
 	progress := &listPageProgressReaderFake{sources: dao.ProjectProgressSources{Tasks: []dao.ProjectTaskProgress{
-		{ProjectID: "z-high", TaskID: "z-task", Total: 2, Completed: 1},
-		{ProjectID: "a-low", TaskID: "a-task", Total: 2, Completed: 1},
-		{ProjectID: "m-mid", TaskID: "m-task", Total: 2, Completed: 1},
-		{ProjectID: "b-high", TaskID: "b-task", Total: 2, Completed: 1},
+		{ProjectID: "z-high", TaskID: "z-task", Progress: 50},
+		{ProjectID: "a-low", TaskID: "a-task", Progress: 50},
+		{ProjectID: "m-mid", TaskID: "m-task", Progress: 50},
+		{ProjectID: "b-high", TaskID: "b-task", Progress: 50},
 	}}}
 	repo := &filteredProjectListRepositoryFake{candidates: candidates, summary: dao.ProjectListSummary{Today: "2026-10-08"}}
 	useCase := NewListProjectsUseCase(repo, progress, nil)
@@ -232,9 +232,9 @@ func TestExecuteFilteredPageDelegatesOrdinarySortAndAppliesProgressOnlyToPage(t 
 				summary: dao.ProjectListSummary{TotalCount: 3, OpenCount: 3, Today: "2026-10-08", Timezone: "Asia/Tokyo"},
 			}
 			progress := &listPageProgressReaderFake{sources: dao.ProjectProgressSources{Tasks: []dao.ProjectTaskProgress{
-				{ProjectID: "first", TaskID: "first-task", Done: true},
-				{ProjectID: "second", TaskID: "second-task", Total: 2, Completed: 1},
-				{ProjectID: "extra", TaskID: "extra-task", Done: true},
+				{ProjectID: "first", TaskID: "first-task", Done: true, Progress: 100},
+				{ProjectID: "second", TaskID: "second-task", Progress: 50},
+				{ProjectID: "extra", TaskID: "extra-task", Done: true, Progress: 100},
 			}}}
 			asOf := time.Date(2026, 10, 8, 0, 0, 0, 0, time.UTC)
 			request := ProjectListRequest{Size: 2, Status: "open", SortBy: test.sortBy, SortOrder: test.order, AsOf: asOf}

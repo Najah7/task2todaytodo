@@ -30,9 +30,10 @@ func (u *TaskUOW) Do(
 ) error {
 	return RunInTx(ctx, u.pool, func(tx pgx.Tx) error {
 		projects := u.projects.WithTx(tx).Projects
+		store := u.store.WithTx(tx)
 		return fn(ctx, taskRepositories{
-			store:     u.store.WithTx(tx),
-			lifecycle: projectusecase.NewProjectLifecycleUseCase(projects, projects),
+			store:     store,
+			lifecycle: projectusecase.NewProjectLifecycleUseCase(projects, newTaskProjectProgressReader(projects, store.ActionItems)),
 		})
 	})
 }

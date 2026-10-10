@@ -54,6 +54,16 @@ type createActionItemRepositoryFake struct {
 	appendTail    []bool
 }
 
+func (*createActionItemRepositoryFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		items[id] = nil
+		skipped[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+}
+
 func (repo *createActionItemRepositoryFake) CreateForOwnedTask(_ context.Context, _ domain.UserID, item domain.ActionItem, appendToTail bool) (dao.ActionItem, error) {
 	repo.created = append(repo.created, item)
 	repo.appendTail = append(repo.appendTail, appendToTail)

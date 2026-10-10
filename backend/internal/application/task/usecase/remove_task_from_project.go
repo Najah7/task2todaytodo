@@ -68,7 +68,7 @@ func (uc *RemoveTaskFromProjectUseCase) Execute(ctx context.Context, userID doma
 				return err
 			}
 		}
-		rows, err := applyTaskProgress(ctx, tasks, []dao.Task{result}, asOf)
+		rows, err := EnrichTasksInRepositories(ctx, repos, userID, []dao.Task{result}, asOf)
 		if err != nil {
 			return err
 		}

@@ -115,11 +115,11 @@ type ProjectCreateRequest struct {
 }
 
 type ProjectTaskCreateRequest struct {
-	Title            string  `json:"title"`
-	Description      string  `json:"description"`
-	DueDate          *string `json:"due_date"`
-	EstimatedMinutes *int    `json:"estimated_minutes"`
-	Priority         string  `json:"priority"`
+	Title                  string  `json:"title"`
+	Description            string  `json:"description"`
+	DueDate                *string `json:"due_date"`
+	ManualEstimatedMinutes *int    `json:"manual_estimated_minutes"`
+	Priority               string  `json:"priority"`
 }
 
 type ProjectTaskAssignmentRequest struct {
@@ -127,21 +127,25 @@ type ProjectTaskAssignmentRequest struct {
 }
 
 type ProjectTaskResponse struct {
-	ID               string                    `json:"id"`
-	UserID           string                    `json:"user_id"`
-	AssigneeID       string                    `json:"assignee_id"`
-	Revision         int32                     `json:"revision"`
-	ProjectID        string                    `json:"project_id,omitempty"`
-	Title            string                    `json:"title"`
-	Description      string                    `json:"description"`
-	DueDate          *string                   `json:"due_date"`
-	EstimatedMinutes *int                      `json:"estimated_minutes"`
-	ActualMinutes    *int                      `json:"actual_minutes"`
-	Progress         int                       `json:"progress"`
-	Priority         ProjectPriorityResponse   `json:"priority"`
-	Status           ProjectTaskStatusResponse `json:"status"`
-	CreatedAt        int64                     `json:"created_at"`
-	UpdatedAt        int64                     `json:"updated_at"`
+	ID                       string                    `json:"id"`
+	UserID                   string                    `json:"user_id"`
+	AssigneeID               string                    `json:"assignee_id"`
+	Revision                 int32                     `json:"revision"`
+	ProjectID                string                    `json:"project_id,omitempty"`
+	Title                    string                    `json:"title"`
+	Description              string                    `json:"description"`
+	DueDate                  *string                   `json:"due_date"`
+	ManualEstimatedMinutes   *int                      `json:"manual_estimated_minutes"`
+	EstimatedMinutes         *int                      `json:"estimated_minutes"`
+	EstimateSource           string                    `json:"estimate_source"`
+	ActionItemCount          int                       `json:"action_item_count"`
+	ActionItemCompletedCount int                       `json:"action_item_completed_count"`
+	ActualMinutes            *int                      `json:"actual_minutes"`
+	Progress                 int                       `json:"progress"`
+	Priority                 ProjectPriorityResponse   `json:"priority"`
+	Status                   ProjectTaskStatusResponse `json:"status"`
+	CreatedAt                int64                     `json:"created_at"`
+	UpdatedAt                int64                     `json:"updated_at"`
 }
 
 type ProjectTaskStatusResponse struct {
@@ -669,7 +673,7 @@ func (h *ProjectHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	task, err := h.tasks.CreateInProject.Execute(r.Context(), taskusecase.CreateTaskInProjectInput{
 		ID: taskdomain.TaskID(h.ID.Generate()), UserID: taskdomain.UserID(userID), ProjectID: taskdomain.ProjectID(projectID),
 		Title: request.Title, Description: request.Description, DueDate: dueDate,
-		EstimatedMinutes: request.EstimatedMinutes, Priority: request.Priority,
+		EstimatedMinutes: cloneInt(request.ManualEstimatedMinutes), Priority: request.Priority,
 	})
 	if err != nil {
 		writeProjectUseCaseError(w, projectCreateTaskFailure, err)
@@ -901,7 +905,8 @@ func projectTaskResponse(task taskdao.Task) ProjectTaskResponse {
 	return ProjectTaskResponse{
 		ID: task.ID, UserID: task.UserID, AssigneeID: task.AssigneeID, Revision: task.Revision,
 		ProjectID: task.ProjectID, Title: task.Title, Description: task.Description,
-		DueDate: projectUnixDate(task.DueDate), EstimatedMinutes: task.EstimatedMinutes, ActualMinutes: task.ActualMinutes,
+		DueDate: projectUnixDate(task.DueDate), ManualEstimatedMinutes: cloneInt(task.ManualEstimatedMinutes), EstimatedMinutes: cloneInt(task.EstimatedMinutes), EstimateSource: task.EstimateSource,
+		ActionItemCount: task.ActionItemCount, ActionItemCompletedCount: task.ActionItemCompletedCount, ActualMinutes: task.ActualMinutes,
 		Progress:  task.Progress,
 		Priority:  ProjectPriorityResponse{Value: task.Priority.Value, Label: task.Priority.Label, LabelJp: task.Priority.LabelJp, Weight: task.Priority.Weight},
 		Status:    ProjectTaskStatusResponse{Value: task.Status.Value, Label: task.Status.Label, LabelJp: task.Status.LabelJp},
@@ -945,7 +950,7 @@ func projectUseCaseError(err error) (int, ErrDetail) {
 	case errors.Is(err, projectdomain.ErrProjectIDEmpty):
 		return http.StatusBadRequest, projectInvalidBody("id", "required", "Project ID is required")
 	case errors.Is(err, taskdomain.ErrTaskEstimatedMinutesInvalid):
-		return http.StatusBadRequest, projectInvalidBody("estimated_minutes", "invalid_estimated_minutes", "Estimated minutes must be non-negative")
+		return http.StatusBadRequest, projectInvalidBody("manual_estimated_minutes", "invalid_estimated_minutes", "Estimated minutes must be non-negative")
 	case errors.Is(err, projectdomain.ErrProjectTitleEmpty), errors.Is(err, taskdomain.ErrTaskTitleEmpty):
 		return http.StatusBadRequest, projectInvalidBody("title", "required", "Title is required")
 	case errors.Is(err, projectdomain.ErrProjectTypeEmpty), errors.Is(err, projectdomain.ErrProjectTypeInvalid):

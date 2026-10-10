@@ -69,7 +69,7 @@ func (r ActionItemRepository) GetForCommand(ctx context.Context, userID domain.U
 		item.RepeatState = record.RepeatState.String
 	}
 	item.FrequencyAnchorDate = pgDateUnix(record.FrequencyAnchorDate)
-	return item, nil
+	return applyActionItemPlanning(item, record.EstimatedMinutes, record.Priority), nil
 }
 
 func (r ActionItemRepository) ListByTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID) ([]dao.ActionItem, error) {
@@ -99,9 +99,45 @@ func (r ActionItemRepository) ListByTaskForOccurrenceProjection(ctx context.Cont
 			item.RepeatState = row.RepeatState.String
 		}
 		item.FrequencyAnchorDate = pgDateUnix(row.FrequencyAnchorDate)
-		items = append(items, item)
+		items = append(items, applyActionItemPlanning(item, row.EstimatedMinutes, row.Priority))
 	}
 	return items, nil
+}
+
+func (r ActionItemRepository) ReadTaskListProjection(ctx context.Context, userID domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	sources := dao.TaskListProjectionSources{ActionItemsByTask: make(map[string][]dao.ActionItem, len(taskIDs)), SkippedByTask: make(map[string]map[string]map[string]bool, len(taskIDs))}
+	if len(taskIDs) == 0 {
+		return sources, nil
+	}
+	rows, err := r.queries.ListActionItemsForOccurrenceProjectionByTaskIDsAndUserID(ctx, sqlc.ListActionItemsForOccurrenceProjectionByTaskIDsAndUserIDParams{TaskIds: taskIDs, UserID: string(userID)})
+	if err != nil {
+		return dao.TaskListProjectionSources{}, err
+	}
+	for _, row := range rows {
+		item := actionItemDAO(row.ID, row.TaskID, row.Title, row.Description, row.DueDate, row.Completed, row.Position, row.IntervalWeeks, row.Frequencies, row.SeriesID, row.OccurrenceDate, row.Timezone, row.IsException, sqlcBoolean(row.Deleted), row.CreatedAt, row.UpdatedAt)
+		if row.RepeatState.Valid {
+			item.RepeatState = row.RepeatState.String
+		}
+		item.FrequencyAnchorDate = pgDateUnix(row.FrequencyAnchorDate)
+		item = applyActionItemPlanning(item, row.EstimatedMinutes, row.Priority)
+		sources.ActionItemsByTask[item.TaskID] = append(sources.ActionItemsByTask[item.TaskID], item)
+	}
+	skippedRows, err := r.queries.ListActionItemSkippedOccurrencesByTaskIDsAndUserID(ctx, sqlc.ListActionItemSkippedOccurrencesByTaskIDsAndUserIDParams{TaskIds: taskIDs, UserID: string(userID)})
+	if err != nil {
+		return dao.TaskListProjectionSources{}, err
+	}
+	for _, row := range skippedRows {
+		if sources.SkippedByTask[row.TaskID] == nil {
+			sources.SkippedByTask[row.TaskID] = make(map[string]map[string]bool)
+		}
+		if sources.SkippedByTask[row.TaskID][row.SeriesID] == nil {
+			sources.SkippedByTask[row.TaskID][row.SeriesID] = make(map[string]bool)
+		}
+		if date := pgDateString(row.OccurrenceDate); date != nil {
+			sources.SkippedByTask[row.TaskID][row.SeriesID][*date] = true
+		}
+	}
+	return sources, nil
 }
 
 func (r ActionItemRepository) ListByTaskForOccurrenceCommand(ctx context.Context, userID domain.UserID, taskID domain.TaskID, capability shared.Capability) ([]dao.ActionItem, error) {
@@ -121,7 +157,7 @@ func (r ActionItemRepository) ListByTaskForOccurrenceCommand(ctx context.Context
 			item.RepeatState = row.RepeatState.String
 		}
 		item.FrequencyAnchorDate = pgDateUnix(row.FrequencyAnchorDate)
-		items = append(items, item)
+		items = append(items, applyActionItemPlanning(item, row.EstimatedMinutes, row.Priority))
 	}
 	return items, nil
 }
@@ -148,7 +184,7 @@ func (r ActionItemRepository) ListByTaskCursor(ctx context.Context, userID domai
 			item.RepeatState = row.RepeatState.String
 		}
 		item.FrequencyAnchorDate = pgDateUnix(row.FrequencyAnchorDate)
-		items = append(items, item)
+		items = append(items, applyActionItemPlanning(item, row.EstimatedMinutes, row.Priority))
 	}
 	return items, nil
 }
@@ -168,7 +204,7 @@ func (r ActionItemRepository) ListActiveSeriesByUserID(ctx context.Context, user
 			item.RepeatState = record.RepeatState.String
 		}
 		item.FrequencyAnchorDate = pgDateUnix(record.FrequencyAnchorDate)
-		items = append(items, item)
+		items = append(items, applyActionItemPlanning(item, record.EstimatedMinutes, record.Priority))
 	}
 	return items, nil
 }
@@ -179,18 +215,20 @@ func (r ActionItemRepository) Create(ctx context.Context, item domain.ActionItem
 		return dao.ActionItem{}, err
 	}
 	record, err := r.queries.CreateActionItem(ctx, sqlc.CreateActionItemParams{
-		ID:             string(item.ID),
-		TaskID:         string(item.TaskID),
-		Title:          item.Title,
-		Description:    stringToPgText(item.Description),
-		Completed:      item.Completed,
-		Position:       int32(item.Position),
-		IntervalWeeks:  int32(item.IntervalWeeks),
-		DueDate:        timeToPgDate(item.DueDate),
-		SeriesID:       recurrence.seriesID,
-		OccurrenceDate: recurrence.occurrenceDate,
-		Timezone:       recurrence.timezone,
-		IsException:    item.IsException,
+		ID:               string(item.ID),
+		TaskID:           string(item.TaskID),
+		Title:            item.Title,
+		Description:      stringToPgText(item.Description),
+		Completed:        item.Completed,
+		Position:         int32(item.Position),
+		IntervalWeeks:    int32(item.IntervalWeeks),
+		DueDate:          timeToPgDate(item.DueDate),
+		EstimatedMinutes: intPointerToPgInt(item.EstimatedMinutes),
+		Priority:         taskPriorityString(item.Priority),
+		SeriesID:         recurrence.seriesID,
+		OccurrenceDate:   recurrence.occurrenceDate,
+		Timezone:         recurrence.timezone,
+		IsException:      item.IsException,
 	})
 	if err != nil {
 		return dao.ActionItem{}, err
@@ -209,19 +247,21 @@ func (r ActionItemRepository) CreateForOwnedTask(ctx context.Context, userID dom
 		position = pgtype.Int4{Int32: int32(item.Position), Valid: true}
 	}
 	record, err := r.queries.CreateActionItemByTaskAndUserID(ctx, sqlc.CreateActionItemByTaskAndUserIDParams{
-		TaskID:         string(item.TaskID),
-		UserID:         string(userID),
-		Position:       position,
-		ID:             string(item.ID),
-		Title:          item.Title,
-		Description:    stringToPgText(item.Description),
-		IntervalWeeks:  int32(item.IntervalWeeks),
-		DueDate:        timeToPgDate(item.DueDate),
-		Frequencies:    taskFrequencyStrings(item.Frequencies),
-		SeriesID:       recurrence.seriesID,
-		OccurrenceDate: recurrence.occurrenceDate,
-		Timezone:       recurrence.timezone,
-		IsException:    item.IsException,
+		TaskID:           string(item.TaskID),
+		UserID:           string(userID),
+		Position:         position,
+		ID:               string(item.ID),
+		Title:            item.Title,
+		Description:      stringToPgText(item.Description),
+		IntervalWeeks:    int32(item.IntervalWeeks),
+		DueDate:          timeToPgDate(item.DueDate),
+		EstimatedMinutes: intPointerToPgInt(item.EstimatedMinutes),
+		Priority:         taskPriorityString(item.Priority),
+		Frequencies:      taskFrequencyStrings(item.Frequencies),
+		SeriesID:         recurrence.seriesID,
+		OccurrenceDate:   recurrence.occurrenceDate,
+		Timezone:         recurrence.timezone,
+		IsException:      item.IsException,
 	})
 	if err != nil {
 		return dao.ActionItem{}, actionItemTaskNotFoundError(err)
@@ -236,17 +276,19 @@ func (r ActionItemRepository) Update(ctx context.Context, item domain.ActionItem
 		return dao.ActionItem{}, err
 	}
 	record, err := r.queries.UpdateActionItem(ctx, sqlc.UpdateActionItemParams{
-		ID:             string(item.ID),
-		TaskID:         string(item.TaskID),
-		Title:          item.Title,
-		Description:    stringToPgText(item.Description),
-		Completed:      item.Completed,
-		Position:       int32(item.Position),
-		DueDate:        timeToPgDate(item.DueDate),
-		SeriesID:       recurrence.seriesID,
-		OccurrenceDate: recurrence.occurrenceDate,
-		Timezone:       recurrence.timezone,
-		IsException:    item.IsException,
+		ID:               string(item.ID),
+		TaskID:           string(item.TaskID),
+		Title:            item.Title,
+		Description:      stringToPgText(item.Description),
+		Completed:        item.Completed,
+		Position:         int32(item.Position),
+		DueDate:          timeToPgDate(item.DueDate),
+		EstimatedMinutes: intPointerToPgInt(item.EstimatedMinutes),
+		Priority:         taskPriorityString(item.Priority),
+		SeriesID:         recurrence.seriesID,
+		OccurrenceDate:   recurrence.occurrenceDate,
+		Timezone:         recurrence.timezone,
+		IsException:      item.IsException,
 	})
 	if err != nil {
 		return dao.ActionItem{}, err
@@ -282,13 +324,15 @@ func (r ActionItemRepository) CreateOccurrenceForOwnedTask(ctx context.Context, 
 // UpdateForOwnedTask updates one saved occurrence while keeping series rules separate.
 func (r ActionItemRepository) UpdateForOwnedTask(ctx context.Context, userID domain.UserID, item domain.ActionItem) (dao.ActionItem, error) {
 	record, err := r.queries.UpdateActionItemByTaskAndUserID(ctx, sqlc.UpdateActionItemByTaskAndUserIDParams{
-		ID:          string(item.ID),
-		TaskID:      string(item.TaskID),
-		UserID:      string(userID),
-		Title:       item.Title,
-		Description: stringToPgText(item.Description),
-		DueDate:     timeToPgDate(item.DueDate),
-		Position:    int32(item.Position),
+		ID:               string(item.ID),
+		TaskID:           string(item.TaskID),
+		UserID:           string(userID),
+		Title:            item.Title,
+		Description:      stringToPgText(item.Description),
+		DueDate:          timeToPgDate(item.DueDate),
+		Position:         int32(item.Position),
+		EstimatedMinutes: intPointerToPgInt(item.EstimatedMinutes),
+		Priority:         taskPriorityString(item.Priority),
 	})
 	if err != nil {
 		return dao.ActionItem{}, actionItemRepositoryError(err)

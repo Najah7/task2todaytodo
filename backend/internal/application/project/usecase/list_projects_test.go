@@ -32,8 +32,8 @@ func TestListProjectsUseCaseExecute(t *testing.T) {
 	want[0].Progress = 75
 	progress := &projectProgressSourceFake{sources: dao.ProjectProgressSources{
 		Tasks: []dao.ProjectTaskProgress{
-			{ProjectID: "project-1", TaskID: "task-1", Total: 2, Completed: 1},
-			{ProjectID: "project-1", TaskID: "task-2", Done: true},
+			{ProjectID: "project-1", TaskID: "task-1", Progress: 50},
+			{ProjectID: "project-1", TaskID: "task-2", Done: true, Progress: 100},
 		},
 	}}
 	repo := &listProjectsRepository{projectsByUserID: map[domain.UserID][]dao.Project{
@@ -60,8 +60,8 @@ func TestListProjectsUseCaseCombinesTaskAndScheduleProgressIncludingEmptyTaskSet
 	projects := []dao.Project{{ID: "mixed"}, {ID: "schedule-only"}, {ID: "empty"}, {ID: "task-only"}}
 	progress := &projectProgressSourceFake{sources: dao.ProjectProgressSources{
 		Tasks: []dao.ProjectTaskProgress{
-			{ProjectID: "mixed", TaskID: "task-1", Total: 2, Completed: 1},
-			{ProjectID: "task-only", TaskID: "task-2", Total: 4, Completed: 1},
+			{ProjectID: "mixed", TaskID: "task-1", Progress: 50},
+			{ProjectID: "task-only", TaskID: "task-2", Progress: 25},
 		},
 		Schedules: []dao.ProjectScheduleProgress{
 			{ProjectID: "mixed", Total: 2, Completed: 1},

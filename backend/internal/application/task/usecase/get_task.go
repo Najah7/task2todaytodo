@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	"github.com/Najah7/task2todaytodo/internal/logging"
@@ -39,7 +40,11 @@ func (uc *GetTaskUseCase) Execute(ctx context.Context, userID domain.UserID, tas
 		if err != nil {
 			return err
 		}
-		tasks, err := applyTaskProgress(ctx, taskRepo, []dao.Task{task}, time.Now())
+		task.CanUpdate, err = taskRepo.HasPermission(ctx, userID, taskID, shared.TaskUpdate())
+		if err != nil {
+			return err
+		}
+		tasks, err := EnrichTasksInRepositories(ctx, repos, userID, []dao.Task{task}, time.Now())
 		if err != nil {
 			return err
 		}

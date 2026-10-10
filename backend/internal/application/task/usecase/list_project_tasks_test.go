@@ -65,22 +65,22 @@ func TestListProjectTasksChecksOwnerAndReturnsCursorPage(t *testing.T) {
 			"next": {Total: 4, Completed: 1},
 		},
 	}}}
-	page, err := NewListProjectTasksUseCase(projectRepo, taskRepo, nil).Execute(context.Background(), userID, projectID, CursorPageRequest{Size: 2})
+	page, err := NewListProjectTasksUseCase(projectRepo, taskRepo, nil, taskProgressTestActionItems{}).Execute(context.Background(), userID, projectID, CursorPageRequest{Size: 2})
 	if err != nil || len(page.Items) != 2 || page.Next == nil || page.Next.ID != "next" {
 		t.Fatalf("page=%+v err=%v", page, err)
 	}
 	if projectRepo.calls != 1 || taskRepo.calls != 1 || taskRepo.userID != userID || taskRepo.projectID != projectID || taskRepo.limit != 3 {
 		t.Fatalf("repos project calls=%d task=%+v", projectRepo.calls, taskRepo)
 	}
-	if page.Items[0].Progress != 50 || page.Items[1].Progress != 25 || taskRepo.taskProgressSourceFake.calls != 1 {
-		t.Fatalf("progress=%d,%d source calls=%d, want 50,25 and one read", page.Items[0].Progress, page.Items[1].Progress, taskRepo.taskProgressSourceFake.calls)
+	if page.Items[0].Progress != 0 || page.Items[1].Progress != 0 {
+		t.Fatalf("progress=%d,%d; want 0,0 for empty projected ActionItem lists", page.Items[0].Progress, page.Items[1].Progress)
 	}
 }
 
 func TestListProjectTasksDoesNotQueryChildrenForForeignProject(t *testing.T) {
 	projectRepo := &listProjectTasksProjectRepositoryFake{project: TaskProject{OwnerID: "other-user"}}
 	taskRepo := &listProjectTasksTaskRepositoryFake{}
-	_, err := NewListProjectTasksUseCase(projectRepo, taskRepo, nil).Execute(context.Background(), "user-1", "project-1", CursorPageRequest{Size: 10})
+	_, err := NewListProjectTasksUseCase(projectRepo, taskRepo, nil, taskProgressTestActionItems{}).Execute(context.Background(), "user-1", "project-1", CursorPageRequest{Size: 10})
 	if !errors.Is(err, ErrTaskProjectNotFound) || taskRepo.calls != 0 {
 		t.Fatalf("error=%v child queries=%d", err, taskRepo.calls)
 	}

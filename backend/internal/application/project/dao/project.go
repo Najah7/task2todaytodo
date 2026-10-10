@@ -6,12 +6,15 @@ type ProjectProgressSources struct {
 }
 
 type ProjectTaskProgress struct {
-	ProjectID string
-	TaskID    string
-	Done      bool
-	Total     int
-	Completed int
-	Roots     []ProjectProgressRecurrence
+	ProjectID     string
+	TaskID        string
+	UserID        string
+	ProjectStatus string
+	Done          bool
+	Progress      int
+	Total         int
+	Completed     int
+	Roots         []ProjectProgressRecurrence
 }
 
 type ProjectScheduleProgress struct {

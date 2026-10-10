@@ -88,7 +88,7 @@ func (r TaskRepository) LockProjectByUserIDWithPermission(ctx context.Context, a
 }
 
 func taskProjectRecord(project sqlc.Project) usecase.TaskProject {
-	return usecase.TaskProject{ID: project.ID, OwnerID: project.UserID, DefaultPriority: project.Priority}
+	return usecase.TaskProject{ID: project.ID, OwnerID: project.UserID, Title: project.Title, DefaultPriority: project.Priority}
 }
 
 func (r TaskRepository) GetByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.TaskID, capability shared.Capability) (dao.Task, error) {
@@ -150,6 +150,18 @@ func (r TaskRepository) SetStatusByUserID(ctx context.Context, userID domain.Use
 func (r TaskRepository) SetStatusByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.TaskID, status domain.TaskStatus, expectedRevision int32, capability shared.Capability) error {
 	_, err := r.queries.UpdateTaskStatusByUserID(ctx, sqlc.UpdateTaskStatusByUserIDParams{
 		ID: string(id), UserID: string(userID), Status: taskStatusString(status), ExpectedRevision: expectedRevision,
+		ResourceID: string(capability.Resource), Action: sqlc.Action(capability.Action),
+	})
+	if err != nil {
+		return r.taskWriteError(ctx, userID, id, capability, err)
+	}
+	return nil
+}
+
+// BumpRevisionByUserID records an ActionItem mutation in the Task aggregate ETag.
+func (r TaskRepository) BumpRevisionByUserID(ctx context.Context, userID domain.UserID, id domain.TaskID, expectedRevision int32, capability shared.Capability) error {
+	_, err := r.queries.BumpTaskRevisionByUserID(ctx, sqlc.BumpTaskRevisionByUserIDParams{
+		ID: string(id), UserID: string(userID), ExpectedRevision: expectedRevision,
 		ResourceID: string(capability.Resource), Action: sqlc.Action(capability.Action),
 	})
 	if err != nil {
@@ -262,7 +274,19 @@ func (r TaskRepository) ListByProjectAndUserIDCursor(ctx context.Context, userID
 	if err != nil {
 		return nil, err
 	}
-	return recordsToTasks(records), nil
+	tasks := make([]dao.Task, 0, len(records))
+	for _, record := range records {
+		task := recordToTask(sqlc.Task{
+			ID: record.ID, UserID: record.UserID, ProjectID: record.ProjectID, AssigneeID: record.AssigneeID,
+			Title: record.Title, Description: record.Description, DueDate: record.DueDate,
+			ManualEstimatedMinutes: record.ManualEstimatedMinutes, ActualMinutes: record.ActualMinutes,
+			Priority: record.Priority, Status: record.Status, Revision: record.Revision, DeletedAt: record.DeletedAt,
+			ChangedBy: record.ChangedBy, CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt,
+		})
+		task.ProjectStatus = record.ProjectStatus
+		tasks = append(tasks, task)
+	}
+	return tasks, nil
 }
 
 func (r TaskRepository) AssignToProjectByUserID(ctx context.Context, userID domain.UserID, taskID domain.TaskID, projectID domain.ProjectID, expectedRevision int32) (dao.Task, error) {
@@ -354,16 +378,16 @@ func (r TaskRepository) GetByTag(ctx context.Context, tagID string) ([]dao.Task,
 
 func (r TaskRepository) Create(ctx context.Context, task domain.Task) (dao.Task, error) {
 	record, err := r.queries.CreateTask(ctx, sqlc.CreateTaskParams{
-		ID:               string(task.ID),
-		UserID:           string(task.UserID),
-		ProjectID:        stringToPgText(string(task.ProjectID)),
-		Title:            task.Title,
-		Description:      stringToPgText(task.Description),
-		EstimatedMinutes: intPointerToPgInt(task.EstimatedMinutes),
-		ActualMinutes:    intPointerToPgInt(task.ActualMinutes),
-		DueDate:          timeToPgDate(task.DueDate),
-		Priority:         taskPriorityString(task.Priority),
-		Status:           taskStatusString(task.Status),
+		ID:                     string(task.ID),
+		UserID:                 string(task.UserID),
+		ProjectID:              stringToPgText(string(task.ProjectID)),
+		Title:                  task.Title,
+		Description:            stringToPgText(task.Description),
+		ManualEstimatedMinutes: intPointerToPgInt(task.ManualEstimatedMinutes),
+		ActualMinutes:          intPointerToPgInt(task.ActualMinutes),
+		DueDate:                timeToPgDate(task.DueDate),
+		Priority:               taskPriorityString(task.Priority),
+		Status:                 taskStatusString(task.Status),
 	})
 	if err != nil {
 		return dao.Task{}, err
@@ -373,17 +397,17 @@ func (r TaskRepository) Create(ctx context.Context, task domain.Task) (dao.Task,
 
 func (r TaskRepository) CreateInProject(ctx context.Context, actorID domain.UserID, task domain.Task) (dao.Task, error) {
 	record, err := r.queries.CreateTaskInProject(ctx, sqlc.CreateTaskInProjectParams{
-		ID:               string(task.ID),
-		UserID:           string(task.UserID),
-		ProjectID:        string(task.ProjectID),
-		Title:            task.Title,
-		Description:      stringToPgText(task.Description),
-		EstimatedMinutes: intPointerToPgInt(task.EstimatedMinutes),
-		ActualMinutes:    intPointerToPgInt(task.ActualMinutes),
-		DueDate:          timeToPgDate(task.DueDate),
-		Priority:         taskPriorityString(task.Priority),
-		Status:           taskStatusString(task.Status),
-		ActorID:          string(actorID),
+		ID:                     string(task.ID),
+		UserID:                 string(task.UserID),
+		ProjectID:              string(task.ProjectID),
+		Title:                  task.Title,
+		Description:            stringToPgText(task.Description),
+		ManualEstimatedMinutes: intPointerToPgInt(task.ManualEstimatedMinutes),
+		ActualMinutes:          intPointerToPgInt(task.ActualMinutes),
+		DueDate:                timeToPgDate(task.DueDate),
+		Priority:               taskPriorityString(task.Priority),
+		Status:                 taskStatusString(task.Status),
+		ActorID:                string(actorID),
 	})
 	if err != nil {
 		return dao.Task{}, taskProjectRepositoryError(err)
@@ -393,16 +417,16 @@ func (r TaskRepository) CreateInProject(ctx context.Context, actorID domain.User
 
 func (r TaskRepository) Update(ctx context.Context, task domain.Task) (dao.Task, error) {
 	record, err := r.queries.UpdateTask(ctx, sqlc.UpdateTaskParams{
-		ID:               string(task.ID),
-		UserID:           string(task.UserID),
-		ProjectID:        stringToPgText(string(task.ProjectID)),
-		Title:            task.Title,
-		Description:      stringToPgText(task.Description),
-		EstimatedMinutes: intPointerToPgInt(task.EstimatedMinutes),
-		ActualMinutes:    intPointerToPgInt(task.ActualMinutes),
-		DueDate:          timeToPgDate(task.DueDate),
-		Priority:         taskPriorityString(task.Priority),
-		Status:           taskStatusString(task.Status),
+		ID:                     string(task.ID),
+		UserID:                 string(task.UserID),
+		ProjectID:              stringToPgText(string(task.ProjectID)),
+		Title:                  task.Title,
+		Description:            stringToPgText(task.Description),
+		ManualEstimatedMinutes: intPointerToPgInt(task.ManualEstimatedMinutes),
+		ActualMinutes:          intPointerToPgInt(task.ActualMinutes),
+		DueDate:                timeToPgDate(task.DueDate),
+		Priority:               taskPriorityString(task.Priority),
+		Status:                 taskStatusString(task.Status),
 	})
 	if err != nil {
 		return dao.Task{}, err
@@ -412,14 +436,17 @@ func (r TaskRepository) Update(ctx context.Context, task domain.Task) (dao.Task,
 
 func (r TaskRepository) UpdateByUserID(ctx context.Context, userID domain.UserID, task domain.Task, expectedRevision int32) (dao.Task, error) {
 	record, err := r.queries.UpdateTaskByUserID(ctx, sqlc.UpdateTaskByUserIDParams{
-		ID:               string(task.ID),
-		ExpectedRevision: expectedRevision,
-		UserID:           string(userID),
-		Title:            task.Title,
-		Description:      stringToPgText(task.Description),
-		DueDate:          timeToPgDate(task.DueDate),
-		EstimatedMinutes: intPointerToPgInt(task.EstimatedMinutes),
-		ActualMinutes:    intPointerToPgInt(task.ActualMinutes),
+		ID:                     string(task.ID),
+		ExpectedRevision:       expectedRevision,
+		UserID:                 string(userID),
+		Title:                  task.Title,
+		Description:            stringToPgText(task.Description),
+		DueDate:                timeToPgDate(task.DueDate),
+		ManualEstimatedMinutes: intPointerToPgInt(task.ManualEstimatedMinutes),
+		ActualMinutes:          intPointerToPgInt(task.ActualMinutes),
+		Priority:               taskPriorityString(task.Priority),
+		ProjectID:              stringToPgText(string(task.ProjectID)),
+		AssigneeID:             string(task.AssigneeID),
 	})
 	if err != nil {
 		return dao.Task{}, r.taskWriteError(ctx, userID, task.ID, shared.TaskUpdate(), err)

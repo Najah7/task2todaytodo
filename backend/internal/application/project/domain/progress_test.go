@@ -15,8 +15,8 @@ func TestCalculateProjectProgressWeightsTaskPercentAndScheduleOccurrences(t *tes
 	}
 	got, err := CalculateProjectProgress(
 		[]TaskProgressFacts{
-			{Done: false, Total: 2, Completed: 1}, // 50% after flooring.
-			{Done: true, Total: 0, Completed: 0},  // Done Task remains a 100% item.
+			{Progress: 50},
+			{Progress: 100}, // Done Task remains a 100% item.
 		},
 		[]ScheduleProgressFacts{
 			{Total: 1, Completed: 1, Roots: []sharedprogress.RecurrenceRule{virtual}},
@@ -31,20 +31,16 @@ func TestCalculateProjectProgressWeightsTaskPercentAndScheduleOccurrences(t *tes
 	}
 }
 
+func TestCalculateProjectProgressReturnsScheduleRecurrenceErrors(t *testing.T) {
+	malformed := sharedprogress.RecurrenceRule{OccurrenceDate: "bad-date", Timezone: "Asia/Tokyo", IntervalWeeks: 1}
+	if _, err := CalculateProjectProgress(nil, []ScheduleProgressFacts{{Roots: []sharedprogress.RecurrenceRule{malformed}}}, time.Now()); err == nil {
+		t.Fatal("Schedule malformed root returned nil error")
+	}
+}
+
 func TestCalculateProjectProgressReturnsZeroForNoTasksOrEligibleSchedules(t *testing.T) {
 	got, err := CalculateProjectProgress(nil, []ScheduleProgressFacts{{Total: 0}}, time.Now())
 	if err != nil || got != 0 {
 		t.Fatalf("empty project progress = %d, error %v; want 0, nil", got, err)
-	}
-}
-
-func TestCalculateProjectProgressIgnoresMalformedTaskRootsButReturnsScheduleErrors(t *testing.T) {
-	malformed := sharedprogress.RecurrenceRule{OccurrenceDate: "bad-date", Timezone: "Asia/Tokyo", IntervalWeeks: 1}
-	got, err := CalculateProjectProgress([]TaskProgressFacts{{Done: false, Roots: []sharedprogress.RecurrenceRule{malformed}}}, nil, time.Now())
-	if err != nil || got != 0 {
-		t.Fatalf("Task malformed root progress = %d, error %v; want 0, nil", got, err)
-	}
-	if _, err := CalculateProjectProgress(nil, []ScheduleProgressFacts{{Roots: []sharedprogress.RecurrenceRule{malformed}}}, time.Now()); err == nil {
-		t.Fatal("Schedule malformed root returned nil error")
 	}
 }

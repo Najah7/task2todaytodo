@@ -31,6 +31,13 @@ type projectActionItemID struct{}
 
 func (projectActionItemID) Generate() string { return ulid.Make().String() }
 
+// newProjectUseCases builds the same cross-context progress reader as production.
+func newProjectUseCases(pool *pgxpool.Pool, store application.Store) *projectusecase.UseCases {
+	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
+	return application.NewUseCase(store.Auth, store.Project, store.Task, store.Schedule, store.Tag,
+		uow.Project, uow.Task, uow.Schedule, projectActionItemID{}, nil).Project
+}
+
 type projectCrossContextTimezoneReader struct{}
 
 func (projectCrossContextTimezoneReader) GetTimezone(context.Context, string) (string, error) {
@@ -163,7 +170,7 @@ func TestProjectLifecycleTransitionsAcrossTaskAndScheduleMutations(t *testing.T)
 	var canUpdateProject, canUpdateTask, canUpdateSchedule bool
 	store := application.NewStore(pool)
 	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task)
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
 	task, err := taskusecase.NewCreateTaskInProjectUseCase(taskUOW, nil).Execute(ctx, taskusecase.CreateTaskInProjectInput{
 		ID: taskdomain.TaskID(firstTaskID), UserID: taskdomain.UserID(ownerID), ProjectID: taskdomain.ProjectID(projectID), Title: "Initial Task",
@@ -198,12 +205,13 @@ func TestProjectLifecycleTransitionsAcrossTaskAndScheduleMutations(t *testing.T)
 	if status != "done" {
 		t.Fatalf("Project status after all direct work completed = %q; want done", status)
 	}
-	projectRead := projectusecase.NewGetProjectUseCase(store.Project.Projects, store.Project.Projects, nil)
+	projectCases := newProjectUseCases(pool, store)
+	projectRead := projectCases.Get
 	project, err := projectRead.Execute(ctx, projectdomain.UserID(ownerID), projectdomain.ProjectID(projectID))
 	if err != nil || project.Progress != 100 {
 		t.Fatalf("completed Project progress = %d, error=%v; want 100", project.Progress, err)
 	}
-	projectStatus := projectusecase.NewChangeProjectStatusUseCase(projectUOW, store.Project.Projects, nil)
+	projectStatus := projectCases.ChangeStatus
 	reopened, err := projectStatus.Execute(ctx, projectdomain.UserID(ownerID), projectdomain.ProjectID(projectID), revision, "open")
 	if err != nil || reopened.Status != "open" || reopened.Progress != 100 {
 		t.Fatalf("manual reopen = status %q progress %d error=%v; want open at 100%%", reopened.Status, reopened.Progress, err)
@@ -295,7 +303,7 @@ func TestOpenTaskAtFullActionItemProgressDoesNotCompleteProject(t *testing.T) {
 		_, _ = pool.Exec(cleanup, `DELETE FROM users WHERE id=$1`, ownerID)
 	})
 	store := application.NewStore(pool)
-	project, err := projectusecase.NewGetProjectUseCase(store.Project.Projects, store.Project.Projects, nil).Execute(ctx, projectdomain.UserID(ownerID), projectdomain.ProjectID(projectID))
+	project, err := newProjectUseCases(pool, store).Get.Execute(ctx, projectdomain.UserID(ownerID), projectdomain.ProjectID(projectID))
 	if err != nil || project.Progress != 100 || project.Status != "open" {
 		t.Fatalf("open Task Project = status %q progress %d error=%v; want open at 100%%", project.Status, project.Progress, err)
 	}
@@ -457,7 +465,7 @@ func TestDoneProjectScheduleVirtualSuppressionAndSkipRestoreReopen(t *testing.T)
 	rootDate := today.AddDate(0, 0, -14)
 	futureDate := today.AddDate(0, 0, 7)
 	store := application.NewStore(pool)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task)
 	created, err := scheduleusecase.NewCreateScheduleUseCase(scheduleUOW, projectCrossContextTimezoneReader{}, nil).Execute(ctx, scheduleusecase.CreateScheduleInput{
 		ID: scheduledomain.ScheduleID(scheduleID), UserID: scheduledomain.UserID(ownerID), ProjectID: scheduledomain.ProjectID(projectID),
 		Title: "Weekly schedule", StartAt: rootDate.Add(9 * time.Hour), EndAt: rootDate.Add(10 * time.Hour), IntervalWeeks: 1, Frequencies: []string{weekday},

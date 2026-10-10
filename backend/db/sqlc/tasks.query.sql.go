@@ -12,7 +12,7 @@ import (
 )
 
 const getTask = `-- name: GetTask :one
-SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
 FROM tasks
 WHERE id = $1
 `
@@ -28,7 +28,7 @@ func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
-		&i.EstimatedMinutes,
+		&i.ManualEstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Priority,
 		&i.Status,
@@ -42,7 +42,7 @@ func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
 }
 
 const getTaskByFrequency = `-- name: GetTaskByFrequency :many
-SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
 FROM tasks AS t
 WHERE t.deleted_at IS NULL
 AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL))
@@ -72,7 +72,7 @@ func (q *Queries) GetTaskByFrequency(ctx context.Context, frequency string) ([]T
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
-			&i.EstimatedMinutes,
+			&i.ManualEstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Priority,
 			&i.Status,
@@ -93,7 +93,7 @@ func (q *Queries) GetTaskByFrequency(ctx context.Context, frequency string) ([]T
 }
 
 const getTaskByPriority = `-- name: GetTaskByPriority :many
-SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks WHERE tasks.priority = $1 AND deleted_at IS NULL
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks WHERE tasks.priority = $1 AND deleted_at IS NULL
   AND (project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=tasks.project_id AND p.deleted_at IS NULL))
 `
 
@@ -114,7 +114,7 @@ func (q *Queries) GetTaskByPriority(ctx context.Context, priority string) ([]Tas
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
-			&i.EstimatedMinutes,
+			&i.ManualEstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Priority,
 			&i.Status,
@@ -135,7 +135,7 @@ func (q *Queries) GetTaskByPriority(ctx context.Context, priority string) ([]Tas
 }
 
 const getTaskByProject = `-- name: GetTaskByProject :many
-SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks WHERE project_id = $1::text AND deleted_at IS NULL
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks WHERE project_id = $1::text AND deleted_at IS NULL
   AND EXISTS (SELECT 1 FROM projects p WHERE p.id=tasks.project_id AND p.deleted_at IS NULL)
 `
 
@@ -156,7 +156,7 @@ func (q *Queries) GetTaskByProject(ctx context.Context, projectID string) ([]Tas
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
-			&i.EstimatedMinutes,
+			&i.ManualEstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Priority,
 			&i.Status,
@@ -177,7 +177,7 @@ func (q *Queries) GetTaskByProject(ctx context.Context, projectID string) ([]Tas
 }
 
 const getTaskByStatus = `-- name: GetTaskByStatus :many
-SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks WHERE tasks.status = $1 AND deleted_at IS NULL
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks WHERE tasks.status = $1 AND deleted_at IS NULL
   AND (project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=tasks.project_id AND p.deleted_at IS NULL))
 `
 
@@ -198,7 +198,7 @@ func (q *Queries) GetTaskByStatus(ctx context.Context, status string) ([]Task, e
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
-			&i.EstimatedMinutes,
+			&i.ManualEstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Priority,
 			&i.Status,
@@ -219,7 +219,7 @@ func (q *Queries) GetTaskByStatus(ctx context.Context, status string) ([]Task, e
 }
 
 const getTaskByTag = `-- name: GetTaskByTag :many
-SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
 FROM tasks AS t
 JOIN task_tag_assignments AS tta ON tta.task_id = t.id
 WHERE tta.tag_id = $1
@@ -244,7 +244,7 @@ func (q *Queries) GetTaskByTag(ctx context.Context, tagID string) ([]Task, error
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
-			&i.EstimatedMinutes,
+			&i.ManualEstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Priority,
 			&i.Status,
@@ -265,7 +265,7 @@ func (q *Queries) GetTaskByTag(ctx context.Context, tagID string) ([]Task, error
 }
 
 const getTaskByUserID = `-- name: GetTaskByUserID :one
-SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
 FROM tasks AS t
 WHERE t.id = $1
   AND task_has_permission(t.id, $2, 'task', 'read')
@@ -287,7 +287,7 @@ func (q *Queries) GetTaskByUserID(ctx context.Context, arg GetTaskByUserIDParams
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
-		&i.EstimatedMinutes,
+		&i.ManualEstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Priority,
 		&i.Status,
@@ -301,7 +301,7 @@ func (q *Queries) GetTaskByUserID(ctx context.Context, arg GetTaskByUserIDParams
 }
 
 const getTaskByUserIDForPermission = `-- name: GetTaskByUserIDForPermission :one
-SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
 FROM tasks AS t
 WHERE t.id = $1::text
   AND task_has_permission(t.id, $2::text, $3::text, $4::action)
@@ -330,7 +330,7 @@ func (q *Queries) GetTaskByUserIDForPermission(ctx context.Context, arg GetTaskB
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
-		&i.EstimatedMinutes,
+		&i.ManualEstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Priority,
 		&i.Status,
@@ -350,6 +350,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
@@ -375,17 +377,19 @@ type ListActionItemsByTaskForUserParams struct {
 }
 
 type ListActionItemsByTaskForUserRow struct {
-	ID            string
-	TaskID        string
-	Title         string
-	Description   pgtype.Text
-	DueDate       pgtype.Date
-	Completed     bool
-	Position      int32
-	IntervalWeeks int32
-	Frequencies   []string
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	ID               string
+	TaskID           string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	Completed        bool
+	Position         int32
+	IntervalWeeks    int32
+	Frequencies      []string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 func (q *Queries) ListActionItemsByTaskForUser(ctx context.Context, arg ListActionItemsByTaskForUserParams) ([]ListActionItemsByTaskForUserRow, error) {
@@ -403,6 +407,8 @@ func (q *Queries) ListActionItemsByTaskForUser(ctx context.Context, arg ListActi
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
+			&i.EstimatedMinutes,
+			&i.Priority,
 			&i.Completed,
 			&i.Position,
 			&i.IntervalWeeks,
@@ -421,7 +427,7 @@ func (q *Queries) ListActionItemsByTaskForUser(ctx context.Context, arg ListActi
 }
 
 const listProjectTasksByUserIDCursorPage = `-- name: ListProjectTasksByUserIDCursorPage :many
-SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at, p.status AS project_status
 FROM tasks AS t
 JOIN projects AS p ON p.id = t.project_id AND p.user_id = t.user_id AND p.deleted_at IS NULL
 WHERE t.project_id = $1
@@ -440,7 +446,27 @@ type ListProjectTasksByUserIDCursorPageParams struct {
 	PageLimit int32
 }
 
-func (q *Queries) ListProjectTasksByUserIDCursorPage(ctx context.Context, arg ListProjectTasksByUserIDCursorPageParams) ([]Task, error) {
+type ListProjectTasksByUserIDCursorPageRow struct {
+	ID                     string
+	UserID                 string
+	ProjectID              pgtype.Text
+	AssigneeID             string
+	Title                  string
+	Description            pgtype.Text
+	DueDate                pgtype.Date
+	ManualEstimatedMinutes pgtype.Int4
+	ActualMinutes          pgtype.Int4
+	Priority               string
+	Status                 string
+	Revision               int32
+	DeletedAt              pgtype.Timestamptz
+	ChangedBy              string
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
+	ProjectStatus          string
+}
+
+func (q *Queries) ListProjectTasksByUserIDCursorPage(ctx context.Context, arg ListProjectTasksByUserIDCursorPageParams) ([]ListProjectTasksByUserIDCursorPageRow, error) {
 	rows, err := q.db.Query(ctx, listProjectTasksByUserIDCursorPage,
 		arg.ProjectID,
 		arg.UserID,
@@ -452,9 +478,9 @@ func (q *Queries) ListProjectTasksByUserIDCursorPage(ctx context.Context, arg Li
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Task
+	var items []ListProjectTasksByUserIDCursorPageRow
 	for rows.Next() {
-		var i Task
+		var i ListProjectTasksByUserIDCursorPageRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -463,7 +489,7 @@ func (q *Queries) ListProjectTasksByUserIDCursorPage(ctx context.Context, arg Li
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
-			&i.EstimatedMinutes,
+			&i.ManualEstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Priority,
 			&i.Status,
@@ -472,6 +498,298 @@ func (q *Queries) ListProjectTasksByUserIDCursorPage(ctx context.Context, arg Li
 			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ProjectStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTaskListCandidates = `-- name: ListTaskListCandidates :many
+WITH user_calendar AS (
+    SELECT ($5::timestamptz AT TIME ZONE u.timezone)::date AS today
+    FROM users u WHERE u.id = $1::text
+)
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at, COALESCE(p.title, '')::text AS project_name, COALESCE(p.status, '')::text AS project_status,
+       task_has_permission(t.id, $1::text, 'task', 'update') AS can_update,
+       CASE WHEN t.due_date IS NULL THEN 0::integer ELSE (t.due_date - c.today)::integer END AS remaining_days
+FROM tasks t
+LEFT JOIN projects p ON p.id = t.project_id
+CROSS JOIN user_calendar c
+WHERE t.assignee_id = $1::text
+  AND t.deleted_at IS NULL
+  AND task_has_permission(t.id, $1::text, 'task', 'read')
+  AND ($2::text IS NULL OR t.project_id = $2::text)
+  AND ($3::text IS NULL OR POSITION(LOWER($3::text) IN LOWER(t.title)) > 0)
+  AND (
+    $4::text = 'all'
+    OR ($4::text = 'overdue' AND t.due_date < c.today)
+    OR ($4::text = 'today' AND t.due_date = c.today)
+    OR ($4::text = 'due_soon' AND t.due_date BETWEEN c.today AND c.today + 14)
+    OR ($4::text = 'no_due' AND t.due_date IS NULL)
+  )
+`
+
+type ListTaskListCandidatesParams struct {
+	UserID    string
+	ProjectID pgtype.Text
+	Title     pgtype.Text
+	DueFilter string
+	AsOf      pgtype.Timestamptz
+}
+
+type ListTaskListCandidatesRow struct {
+	ID                     string
+	UserID                 string
+	ProjectID              pgtype.Text
+	AssigneeID             string
+	Title                  string
+	Description            pgtype.Text
+	DueDate                pgtype.Date
+	ManualEstimatedMinutes pgtype.Int4
+	ActualMinutes          pgtype.Int4
+	Priority               string
+	Status                 string
+	Revision               int32
+	DeletedAt              pgtype.Timestamptz
+	ChangedBy              string
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
+	ProjectName            string
+	ProjectStatus          string
+	CanUpdate              bool
+	RemainingDays          int32
+}
+
+func (q *Queries) ListTaskListCandidates(ctx context.Context, arg ListTaskListCandidatesParams) ([]ListTaskListCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listTaskListCandidates,
+		arg.UserID,
+		arg.ProjectID,
+		arg.Title,
+		arg.DueFilter,
+		arg.AsOf,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTaskListCandidatesRow
+	for rows.Next() {
+		var i ListTaskListCandidatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ProjectID,
+			&i.AssigneeID,
+			&i.Title,
+			&i.Description,
+			&i.DueDate,
+			&i.ManualEstimatedMinutes,
+			&i.ActualMinutes,
+			&i.Priority,
+			&i.Status,
+			&i.Revision,
+			&i.DeletedAt,
+			&i.ChangedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProjectName,
+			&i.ProjectStatus,
+			&i.CanUpdate,
+			&i.RemainingDays,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTaskListPage = `-- name: ListTaskListPage :many
+WITH user_calendar AS (
+    SELECT ($14::timestamptz AT TIME ZONE u.timezone)::date AS today
+    FROM users u WHERE u.id = $1::text
+)
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at, COALESCE(p.title, '')::text AS project_name, COALESCE(p.status, '')::text AS project_status,
+       task_has_permission(t.id, $1::text, 'task', 'update') AS can_update,
+       CASE WHEN t.due_date IS NULL THEN 0::integer ELSE (t.due_date - c.today)::integer END AS remaining_days
+FROM tasks t
+LEFT JOIN projects p ON p.id = t.project_id
+CROSS JOIN user_calendar c
+WHERE t.assignee_id = $1::text
+  AND t.deleted_at IS NULL
+  AND task_has_permission(t.id, $1::text, 'task', 'read')
+  AND ($2::text IS NULL OR t.status = $2::text)
+  AND ($3::text IS NULL OR t.project_id = $3::text)
+  AND ($4::text IS NULL OR POSITION(LOWER($4::text) IN LOWER(t.title)) > 0)
+  AND (
+    $5::text = 'all'
+    OR ($5::text = 'overdue' AND t.due_date < c.today)
+    OR ($5::text = 'today' AND t.due_date = c.today)
+    OR ($5::text = 'due_soon' AND t.due_date BETWEEN c.today AND c.today + 14)
+    OR ($5::text = 'no_due' AND t.due_date IS NULL)
+  )
+  AND (
+    $6::text IS NULL
+    OR (
+      $7::text = 'created_at'
+      AND (
+        (($8::text = 'desc' AND $9::text = 'forward') OR ($8::text = 'asc' AND $9::text = 'backward'))
+          AND (t.created_at, t.id) < ($10::timestamptz, $6::text)
+        OR (($8::text = 'asc' AND $9::text = 'forward') OR ($8::text = 'desc' AND $9::text = 'backward'))
+          AND (t.created_at, t.id) > ($10::timestamptz, $6::text)
+      )
+    )
+    OR (
+      $7::text = 'title'
+      AND (
+        (($8::text = 'asc' AND $9::text = 'forward') OR ($8::text = 'desc' AND $9::text = 'backward'))
+          AND LOWER(t.title) > $11::text
+        OR (($8::text = 'desc' AND $9::text = 'forward') OR ($8::text = 'asc' AND $9::text = 'backward'))
+          AND LOWER(t.title) < $11::text
+        OR (LOWER(t.title) = $11::text AND (
+          ($9::text = 'forward' AND (t.created_at, t.id) < ($10::timestamptz, $6::text))
+          OR ($9::text = 'backward' AND (t.created_at, t.id) > ($10::timestamptz, $6::text))
+        ))
+      )
+    )
+    OR (
+      $7::text = 'due_date'
+      AND (
+        ($12::date IS NULL AND (
+          ($9::text = 'forward' AND t.due_date IS NULL AND (t.created_at, t.id) < ($10::timestamptz, $6::text))
+          OR ($9::text = 'backward' AND (t.due_date IS NOT NULL OR (t.due_date IS NULL AND (t.created_at, t.id) > ($10::timestamptz, $6::text))))
+        ))
+        OR (
+          $12::date IS NOT NULL
+          AND (
+            ($9::text = 'forward' AND (
+              t.due_date IS NULL
+              OR ($8::text = 'asc' AND t.due_date > $12::date)
+              OR ($8::text = 'desc' AND t.due_date < $12::date)
+              OR (t.due_date = $12::date AND (t.created_at, t.id) < ($10::timestamptz, $6::text))
+            ))
+            OR ($9::text = 'backward' AND t.due_date IS NOT NULL AND (
+              ($8::text = 'asc' AND t.due_date < $12::date)
+              OR ($8::text = 'desc' AND t.due_date > $12::date)
+              OR (t.due_date = $12::date AND (t.created_at, t.id) > ($10::timestamptz, $6::text))
+            ))
+          )
+        )
+      )
+    )
+  )
+ORDER BY
+  CASE WHEN $7::text = 'created_at' AND (($8::text = 'asc' AND $9::text = 'forward') OR ($8::text = 'desc' AND $9::text = 'backward')) THEN t.created_at END ASC,
+  CASE WHEN $7::text = 'created_at' AND (($8::text = 'desc' AND $9::text = 'forward') OR ($8::text = 'asc' AND $9::text = 'backward')) THEN t.created_at END DESC,
+  CASE WHEN $7::text = 'title' AND (($8::text = 'asc' AND $9::text = 'forward') OR ($8::text = 'desc' AND $9::text = 'backward')) THEN LOWER(t.title) END ASC,
+  CASE WHEN $7::text = 'title' AND (($8::text = 'desc' AND $9::text = 'forward') OR ($8::text = 'asc' AND $9::text = 'backward')) THEN LOWER(t.title) END DESC,
+  CASE WHEN $7::text = 'due_date' AND $9::text = 'forward' THEN (t.due_date IS NULL)::integer END ASC,
+  CASE WHEN $7::text = 'due_date' AND $9::text = 'backward' THEN (t.due_date IS NULL)::integer END DESC,
+  CASE WHEN $7::text = 'due_date' AND (($8::text = 'asc' AND $9::text = 'forward') OR ($8::text = 'desc' AND $9::text = 'backward')) THEN t.due_date END ASC,
+  CASE WHEN $7::text = 'due_date' AND (($8::text = 'desc' AND $9::text = 'forward') OR ($8::text = 'asc' AND $9::text = 'backward')) THEN t.due_date END DESC,
+  CASE WHEN $7::text <> 'created_at' AND $9::text = 'forward' THEN t.created_at END DESC,
+  CASE WHEN $7::text <> 'created_at' AND $9::text = 'backward' THEN t.created_at END ASC,
+  CASE WHEN $7::text <> 'created_at' AND $9::text = 'forward' THEN t.id END DESC,
+  CASE WHEN $7::text <> 'created_at' AND $9::text = 'backward' THEN t.id END ASC,
+  CASE WHEN $7::text = 'created_at' AND (($8::text = 'asc' AND $9::text = 'forward') OR ($8::text = 'desc' AND $9::text = 'backward')) THEN t.id END ASC,
+  CASE WHEN $7::text = 'created_at' AND (($8::text = 'desc' AND $9::text = 'forward') OR ($8::text = 'asc' AND $9::text = 'backward')) THEN t.id END DESC
+LIMIT $13::integer
+`
+
+type ListTaskListPageParams struct {
+	UserID        string
+	Status        pgtype.Text
+	ProjectID     pgtype.Text
+	Title         pgtype.Text
+	DueFilter     string
+	AnchorID      pgtype.Text
+	SortBy        string
+	SortOrder     string
+	Direction     string
+	AnchorAt      pgtype.Timestamptz
+	AnchorTitle   pgtype.Text
+	AnchorDueDate pgtype.Date
+	PageLimit     int32
+	AsOf          pgtype.Timestamptz
+}
+
+type ListTaskListPageRow struct {
+	ID                     string
+	UserID                 string
+	ProjectID              pgtype.Text
+	AssigneeID             string
+	Title                  string
+	Description            pgtype.Text
+	DueDate                pgtype.Date
+	ManualEstimatedMinutes pgtype.Int4
+	ActualMinutes          pgtype.Int4
+	Priority               string
+	Status                 string
+	Revision               int32
+	DeletedAt              pgtype.Timestamptz
+	ChangedBy              string
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
+	ProjectName            string
+	ProjectStatus          string
+	CanUpdate              bool
+	RemainingDays          int32
+}
+
+func (q *Queries) ListTaskListPage(ctx context.Context, arg ListTaskListPageParams) ([]ListTaskListPageRow, error) {
+	rows, err := q.db.Query(ctx, listTaskListPage,
+		arg.UserID,
+		arg.Status,
+		arg.ProjectID,
+		arg.Title,
+		arg.DueFilter,
+		arg.AnchorID,
+		arg.SortBy,
+		arg.SortOrder,
+		arg.Direction,
+		arg.AnchorAt,
+		arg.AnchorTitle,
+		arg.AnchorDueDate,
+		arg.PageLimit,
+		arg.AsOf,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTaskListPageRow
+	for rows.Next() {
+		var i ListTaskListPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ProjectID,
+			&i.AssigneeID,
+			&i.Title,
+			&i.Description,
+			&i.DueDate,
+			&i.ManualEstimatedMinutes,
+			&i.ActualMinutes,
+			&i.Priority,
+			&i.Status,
+			&i.Revision,
+			&i.DeletedAt,
+			&i.ChangedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProjectName,
+			&i.ProjectStatus,
+			&i.CanUpdate,
+			&i.RemainingDays,
 		); err != nil {
 			return nil, err
 		}
@@ -484,7 +802,7 @@ func (q *Queries) ListProjectTasksByUserIDCursorPage(ctx context.Context, arg Li
 }
 
 const listTasksByProjectAndUserID = `-- name: ListTasksByProjectAndUserID :many
-SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes,
+SELECT t.id, t.user_id, t.project_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes,
        t.priority, t.status, t.created_at, t.updated_at
 FROM tasks AS t
 JOIN projects AS p ON p.id = t.project_id
@@ -499,18 +817,18 @@ type ListTasksByProjectAndUserIDParams struct {
 }
 
 type ListTasksByProjectAndUserIDRow struct {
-	ID               string
-	UserID           string
-	ProjectID        pgtype.Text
-	Title            string
-	Description      pgtype.Text
-	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
-	ActualMinutes    pgtype.Int4
-	Priority         string
-	Status           string
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	ID                     string
+	UserID                 string
+	ProjectID              pgtype.Text
+	Title                  string
+	Description            pgtype.Text
+	DueDate                pgtype.Date
+	ManualEstimatedMinutes pgtype.Int4
+	ActualMinutes          pgtype.Int4
+	Priority               string
+	Status                 string
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
 }
 
 func (q *Queries) ListTasksByProjectAndUserID(ctx context.Context, arg ListTasksByProjectAndUserIDParams) ([]ListTasksByProjectAndUserIDRow, error) {
@@ -529,7 +847,7 @@ func (q *Queries) ListTasksByProjectAndUserID(ctx context.Context, arg ListTasks
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
-			&i.EstimatedMinutes,
+			&i.ManualEstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Priority,
 			&i.Status,
@@ -547,7 +865,7 @@ func (q *Queries) ListTasksByProjectAndUserID(ctx context.Context, arg ListTasks
 }
 
 const listTasksByUserIDCursorPage = `-- name: ListTasksByUserIDCursorPage :many
-SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
 FROM tasks AS t
 WHERE t.assignee_id = $1
   AND t.deleted_at IS NULL
@@ -586,7 +904,7 @@ func (q *Queries) ListTasksByUserIDCursorPage(ctx context.Context, arg ListTasks
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
-			&i.EstimatedMinutes,
+			&i.ManualEstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Priority,
 			&i.Status,

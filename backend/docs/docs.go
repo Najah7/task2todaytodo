@@ -2858,7 +2858,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns a page of tasks assigned to the authenticated user, including tasks in projects.",
+                "description": "Returns a filtered page of tasks with counts and estimates for the full matching result set.",
                 "produces": [
                     "application/json"
                 ],
@@ -2868,6 +2868,66 @@ const docTemplate = `{
                 "summary": "List tasks",
                 "parameters": [
                     {
+                        "enum": [
+                            "all",
+                            "open",
+                            "in_progress",
+                            "pending",
+                            "waiting_on_others",
+                            "done"
+                        ],
+                        "type": "string",
+                        "description": "Task status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "project_id",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "all",
+                            "overdue",
+                            "today",
+                            "due_soon",
+                            "no_due"
+                        ],
+                        "type": "string",
+                        "description": "Due date filter",
+                        "name": "due_filter",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Title substring",
+                        "name": "title",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "due_date",
+                            "title",
+                            "created_at"
+                        ],
+                        "type": "string",
+                        "description": "Sort field",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "description": "Sort direction",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Items per page (default 50, maximum 100)",
                         "name": "page_size",
@@ -2875,7 +2935,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Opaque next page token",
+                        "description": "Opaque cursor for the next page",
                         "name": "page_token",
                         "in": "query"
                     },
@@ -2894,7 +2954,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid pagination",
+                        "description": "Invalid filter or pagination",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -3095,7 +3155,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Partially updates basic task fields. Project membership, status, and progress cannot be changed here.",
+                "description": "Atomically updates Task fields. ActionItems are managed through their own endpoints. If-Match uses the Task aggregate revision.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4838,6 +4898,10 @@ const docTemplate = `{
                 "due_date": {
                     "type": "string"
                 },
+                "estimated_minutes": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
                 "frequencies": {
                     "type": "array",
                     "items": {
@@ -4846,6 +4910,9 @@ const docTemplate = `{
                 },
                 "interval_weeks": {
                     "type": "integer"
+                },
+                "priority": {
+                    "type": "string"
                 },
                 "title": {
                     "type": "string"
@@ -4905,6 +4972,9 @@ const docTemplate = `{
         },
         "rest.ActionItemResponse": {
             "type": "object",
+            "required": [
+                "estimated_minutes"
+            ],
             "properties": {
                 "completed": {
                     "type": "boolean"
@@ -4917,6 +4987,10 @@ const docTemplate = `{
                 },
                 "due_date": {
                     "type": "string"
+                },
+                "estimated_minutes": {
+                    "type": "integer",
+                    "x-nullable": true
                 },
                 "frequencies": {
                     "type": "array",
@@ -4941,6 +5015,9 @@ const docTemplate = `{
                 },
                 "position": {
                     "type": "integer"
+                },
+                "priority": {
+                    "type": "string"
                 },
                 "repeat_state": {
                     "type": "string"
@@ -4974,7 +5051,14 @@ const docTemplate = `{
                 "due_date": {
                     "type": "string"
                 },
+                "estimated_minutes": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
                 "occurrence_date": {
+                    "type": "string"
+                },
+                "priority": {
                     "type": "string"
                 },
                 "scope": {
@@ -5519,7 +5603,7 @@ const docTemplate = `{
                 "due_date": {
                     "type": "string"
                 },
-                "estimated_minutes": {
+                "manual_estimated_minutes": {
                     "type": "integer"
                 },
                 "priority": {
@@ -5547,6 +5631,12 @@ const docTemplate = `{
         "rest.ProjectTaskResponse": {
             "type": "object",
             "properties": {
+                "action_item_completed_count": {
+                    "type": "integer"
+                },
+                "action_item_count": {
+                    "type": "integer"
+                },
                 "actual_minutes": {
                     "type": "integer"
                 },
@@ -5562,11 +5652,17 @@ const docTemplate = `{
                 "due_date": {
                     "type": "string"
                 },
+                "estimate_source": {
+                    "type": "string"
+                },
                 "estimated_minutes": {
                     "type": "integer"
                 },
                 "id": {
                     "type": "string"
+                },
+                "manual_estimated_minutes": {
+                    "type": "integer"
                 },
                 "priority": {
                     "$ref": "#/definitions/rest.ProjectPriorityResponse"
@@ -6161,8 +6257,9 @@ const docTemplate = `{
                 "due_date": {
                     "type": "string"
                 },
-                "estimated_minutes": {
-                    "type": "integer"
+                "manual_estimated_minutes": {
+                    "type": "integer",
+                    "x-nullable": true
                 },
                 "priority": {
                     "type": "string"
@@ -6188,7 +6285,27 @@ const docTemplate = `{
         },
         "rest.TaskListResponse": {
             "type": "object",
+            "required": [
+                "action_item_completed_count",
+                "action_item_total_count",
+                "estimated_minutes_total",
+                "items",
+                "next_page_token",
+                "previous_page_token",
+                "status_counts",
+                "total_count"
+            ],
             "properties": {
+                "action_item_completed_count": {
+                    "type": "integer"
+                },
+                "action_item_total_count": {
+                    "type": "integer"
+                },
+                "estimated_minutes_total": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
                 "items": {
                     "type": "array",
                     "items": {
@@ -6197,17 +6314,63 @@ const docTemplate = `{
                 },
                 "next_page_token": {
                     "type": "string"
+                },
+                "previous_page_token": {
+                    "type": "string"
+                },
+                "status_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "total_count": {
+                    "type": "integer"
                 }
             }
         },
         "rest.TaskResponse": {
             "type": "object",
+            "required": [
+                "action_item_completed_count",
+                "action_item_count",
+                "actual_minutes",
+                "assignee_id",
+                "can_update",
+                "created_at",
+                "description",
+                "due_date",
+                "estimate_source",
+                "estimated_minutes",
+                "id",
+                "manual_estimated_minutes",
+                "priority",
+                "progress",
+                "project_id",
+                "project_name",
+                "remaining_days",
+                "revision",
+                "status",
+                "title",
+                "updated_at",
+                "user_id"
+            ],
             "properties": {
-                "actual_minutes": {
+                "action_item_completed_count": {
                     "type": "integer"
+                },
+                "action_item_count": {
+                    "type": "integer"
+                },
+                "actual_minutes": {
+                    "type": "integer",
+                    "x-nullable": true
                 },
                 "assignee_id": {
                     "type": "string"
+                },
+                "can_update": {
+                    "type": "boolean"
                 },
                 "created_at": {
                     "type": "string"
@@ -6216,13 +6379,22 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "due_date": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "estimate_source": {
                     "type": "string"
                 },
                 "estimated_minutes": {
-                    "type": "integer"
+                    "type": "integer",
+                    "x-nullable": true
                 },
                 "id": {
                     "type": "string"
+                },
+                "manual_estimated_minutes": {
+                    "type": "integer",
+                    "x-nullable": true
                 },
                 "priority": {
                     "type": "string"
@@ -6231,7 +6403,16 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "project_id": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "project_name": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "remaining_days": {
+                    "type": "integer",
+                    "x-nullable": true
                 },
                 "revision": {
                     "type": "integer"
@@ -6291,11 +6472,11 @@ const docTemplate = `{
                 "due_date": {
                     "type": "string"
                 },
-                "estimated_minutes": {
-                    "type": "integer"
-                },
                 "id": {
                     "type": "string"
+                },
+                "manual_estimated_minutes": {
+                    "type": "integer"
                 },
                 "priority": {
                     "type": "string"
@@ -6332,19 +6513,30 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "actual_minutes": {
-                    "$ref": "#/definitions/rest.optionalJSON-int"
+                    "type": "integer",
+                    "x-nullable": true
                 },
                 "description": {
-                    "$ref": "#/definitions/rest.optionalJSON-string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "due_date": {
-                    "$ref": "#/definitions/rest.optionalJSON-string"
+                    "type": "string",
+                    "x-nullable": true
                 },
-                "estimated_minutes": {
-                    "$ref": "#/definitions/rest.optionalJSON-int"
+                "manual_estimated_minutes": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "title": {
-                    "$ref": "#/definitions/rest.optionalJSON-string"
+                    "type": "string"
                 }
             }
         },
@@ -6388,28 +6580,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "timezone": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.optionalJSON-int": {
-            "type": "object",
-            "properties": {
-                "present": {
-                    "type": "boolean"
-                },
-                "value": {
-                    "type": "integer"
-                }
-            }
-        },
-        "rest.optionalJSON-string": {
-            "type": "object",
-            "properties": {
-                "present": {
-                    "type": "boolean"
-                },
-                "value": {
                     "type": "string"
                 }
             }

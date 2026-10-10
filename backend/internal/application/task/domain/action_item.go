@@ -9,25 +9,28 @@ import (
 )
 
 var (
-	ErrActionItemIDEmpty           = errors.New("action item ID cannot be empty")
-	ErrActionItemTaskIDEmpty       = errors.New("action item task ID cannot be empty")
-	ErrActionItemTitleEmpty        = errors.New("action item title cannot be empty")
-	ErrActionItemPositionLess      = errors.New("action item position must be greater than or equal to 0")
-	ErrActionItemIntervalWeeksLess = errors.New("action item interval weeks must be greater than or equal to 0")
+	ErrActionItemIDEmpty                 = errors.New("action item ID cannot be empty")
+	ErrActionItemTaskIDEmpty             = errors.New("action item task ID cannot be empty")
+	ErrActionItemTitleEmpty              = errors.New("action item title cannot be empty")
+	ErrActionItemPositionLess            = errors.New("action item position must be greater than or equal to 0")
+	ErrActionItemIntervalWeeksLess       = errors.New("action item interval weeks must be greater than or equal to 0")
+	ErrActionItemEstimatedMinutesInvalid = errors.New("action item estimated minutes must be greater than or equal to 0")
 )
 
 type ActionItemID string
 
 type ActionItem struct {
-	ID            ActionItemID
-	TaskID        TaskID
-	Title         string
-	Description   string
-	DueDate       time.Time
-	Completed     bool
-	Position      int
-	IntervalWeeks int
-	Frequencies   TaskFrequencies
+	ID               ActionItemID
+	TaskID           TaskID
+	Title            string
+	Description      string
+	DueDate          time.Time
+	EstimatedMinutes *int
+	Priority         TaskPriority
+	Completed        bool
+	Position         int
+	IntervalWeeks    int
+	Frequencies      TaskFrequencies
 	// SeriesID points to the original row. The original row is its own series root.
 	SeriesID       ActionItemID
 	OccurrenceDate time.Time
@@ -62,6 +65,7 @@ func NewActionItemWithDetails(
 	position int,
 	intervalWeeks int,
 	frequencies TaskFrequencies,
+	planning ...ActionItemPlanning,
 ) (ActionItem, error) {
 	item := ActionItem{
 		ID:            id,
@@ -74,7 +78,24 @@ func NewActionItemWithDetails(
 		IntervalWeeks: intervalWeeks,
 		Frequencies:   frequencies,
 	}
+	if len(planning) > 0 {
+		item.EstimatedMinutes = copyActionItemMinutes(planning[0].EstimatedMinutes)
+		item.Priority = planning[0].Priority
+	}
 	return item, item.Validate()
+}
+
+type ActionItemPlanning struct {
+	EstimatedMinutes *int
+	Priority         TaskPriority
+}
+
+func copyActionItemMinutes(value *int) *int {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
 }
 
 func NewExistingActionItem(
@@ -91,6 +112,24 @@ func NewExistingActionItem(
 	updatedAt time.Time,
 	recurrence ...RecurrenceMetadata,
 ) (ActionItem, error) {
+	return NewExistingActionItemWithPlanning(id, taskID, title, description, dueDate, completed, position, intervalWeeks, frequencies, createdAt, updatedAt, ActionItemPlanning{}, recurrence...)
+}
+
+func NewExistingActionItemWithPlanning(
+	id ActionItemID,
+	taskID TaskID,
+	title string,
+	description string,
+	dueDate time.Time,
+	completed bool,
+	position int,
+	intervalWeeks int,
+	frequencies TaskFrequencies,
+	createdAt time.Time,
+	updatedAt time.Time,
+	planning ActionItemPlanning,
+	recurrence ...RecurrenceMetadata,
+) (ActionItem, error) {
 	item := ActionItem{
 		ID:            id,
 		TaskID:        taskID,
@@ -104,6 +143,8 @@ func NewExistingActionItem(
 		CreatedAt:     createdAt,
 		UpdatedAt:     updatedAt,
 	}
+	item.EstimatedMinutes = copyActionItemMinutes(planning.EstimatedMinutes)
+	item.Priority = planning.Priority
 	if len(recurrence) > 0 {
 		item.SeriesID = ActionItemID(recurrence[0].SeriesID)
 		item.OccurrenceDate = recurrence[0].OccurrenceDate
@@ -178,6 +219,14 @@ func (i ActionItem) Validate() error {
 	}
 	if i.IntervalWeeks < 0 {
 		return ErrActionItemIntervalWeeksLess
+	}
+	if i.EstimatedMinutes != nil && *i.EstimatedMinutes < 0 {
+		return ErrActionItemEstimatedMinutesInvalid
+	}
+	if i.Priority != (TaskPriority{}) {
+		if err := i.Priority.validate(); err != nil {
+			return err
+		}
 	}
 
 	return nil

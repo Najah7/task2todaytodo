@@ -22,6 +22,11 @@ const (
 	actionItemScopeFuture  = "future"
 )
 
+type ActionItemPlanningPatch struct {
+	EstimatedMinutes PatchField[int]
+	Priority         PatchField[string]
+}
+
 type UpdateActionItemUseCase struct {
 	uow    UOW
 	ID     shared.ID
@@ -38,10 +43,34 @@ func NewUpdateActionItemUseCase(uow UOW, logger logging.Logger, ids ...shared.ID
 }
 
 // ExecuteOccurrence edits one saved occurrence or updates series fields immediately for future scope.
-func (uc *UpdateActionItemUseCase) ExecuteOccurrence(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.ActionItemID, occurrenceDate, scope string, title PatchField[string], description PatchField[string], dueDate PatchField[time.Time]) (output dao.ActionItem, err error) {
+func (uc *UpdateActionItemUseCase) ExecuteOccurrence(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.ActionItemID, occurrenceDate, scope string, title PatchField[string], description PatchField[string], dueDate PatchField[time.Time], planning ...ActionItemPlanningPatch) (output dao.ActionItem, err error) {
 	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "UpdateActionItemUseCase.ExecuteOccurrence", err) }()
 
 	asOf := uc.now()
+	patch := ActionItemPlanningPatch{}
+	if len(planning) > 0 {
+		patch = planning[0]
+	}
+	applyPlanning := func(item *domain.ActionItem) error {
+		if patch.EstimatedMinutes.Present {
+			item.EstimatedMinutes = nil
+			if patch.EstimatedMinutes.Value != nil {
+				value := *patch.EstimatedMinutes.Value
+				item.EstimatedMinutes = &value
+			}
+		}
+		if patch.Priority.Present {
+			if patch.Priority.Value == nil {
+				return domain.ErrTaskPriorityEmpty
+			}
+			priority, err := domain.NewTaskPriority(*patch.Priority.Value)
+			if err != nil {
+				return err
+			}
+			item.Priority = priority
+		}
+		return nil
+	}
 	if scope == actionItemScopeFuture {
 		if dueDate.Present {
 			return dao.ActionItem{}, ErrActionItemFutureDueDateUnsupported
@@ -75,6 +104,9 @@ func (uc *UpdateActionItemUseCase) ExecuteOccurrence(ctx context.Context, userID
 					return err
 				}
 				item.Title, item.Description, item.Position = effective, descriptionValue, position
+				if err := applyPlanning(&item); err != nil {
+					return err
+				}
 				if dueValue == 0 {
 					item.DueDate = time.Time{}
 				} else {
@@ -151,6 +183,9 @@ func (uc *UpdateActionItemUseCase) ExecuteOccurrence(ctx context.Context, userID
 					item.DueDate = *dueDate.Value
 				}
 			}
+			if err := applyPlanning(&item); err != nil {
+				return err
+			}
 			validated, err := domain.NewActionItemWithRecurrence(item)
 			if err != nil {
 				return err
@@ -184,6 +219,7 @@ func (uc *UpdateActionItemUseCase) Execute(
 	title PatchField[string],
 	description PatchField[string],
 	dueDate PatchField[time.Time],
+	planning ...ActionItemPlanningPatch,
 ) (dao.ActionItem, error) {
 	var row dao.ActionItem
 	if err := uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
@@ -197,5 +233,5 @@ func (uc *UpdateActionItemUseCase) Execute(
 	if row.ID != string(actionItemID) || row.TaskID != string(taskID) {
 		return dao.ActionItem{}, ErrActionItemNotFound
 	}
-	return uc.ExecuteOccurrence(ctx, userID, taskID, domain.ActionItemID(row.SeriesID), row.OccurrenceDate, scope, title, description, dueDate)
+	return uc.ExecuteOccurrence(ctx, userID, taskID, domain.ActionItemID(row.SeriesID), row.OccurrenceDate, scope, title, description, dueDate, planning...)
 }

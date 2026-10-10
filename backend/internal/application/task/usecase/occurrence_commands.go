@@ -200,8 +200,9 @@ func actionItemDomainOccurrence(root dao.ActionItem, current *dao.ActionItem, da
 			dueDate = date
 		}
 	}
-	return domain.NewExistingActionItem(id, domain.TaskID(root.TaskID), source.Title, source.Description, dueDate, completed,
+	return domain.NewExistingActionItemWithPlanning(id, domain.TaskID(root.TaskID), source.Title, source.Description, dueDate, completed,
 		source.Position, root.IntervalWeeks, frequencies, time.Unix(source.CreatedAt, 0), asOf,
+		domain.ActionItemPlanning{EstimatedMinutes: source.EstimatedMinutes, Priority: domain.TaskPriority{Value: source.Priority.Value}},
 		domain.RecurrenceMetadata{SeriesID: root.ID, OccurrenceDate: date, Timezone: root.Timezone, IsException: true})
 }
 
@@ -210,7 +211,7 @@ func actionItemDAOFromOccurrence(root dao.ActionItem, item domain.ActionItem, id
 	if !item.DueDate.IsZero() {
 		due = item.DueDate.Unix()
 	}
-	return dao.ActionItem{ID: id, TaskID: string(item.TaskID), Title: item.Title, Description: item.Description, DueDate: due, Completed: item.Completed, Position: item.Position,
+	return dao.ActionItem{ID: id, TaskID: string(item.TaskID), Title: item.Title, Description: item.Description, DueDate: due, EstimatedMinutes: item.EstimatedMinutes, Priority: dao.Priority{Value: item.Priority.String()}, Completed: item.Completed, Position: item.Position,
 		IntervalWeeks: root.IntervalWeeks, Frequencies: root.Frequencies, RepeatState: root.RepeatState, FrequencyAnchorDate: root.FrequencyAnchorDate, SeriesID: root.ID, OccurrenceDate: item.OccurrenceDate.Format("2006-01-02"), Timezone: root.Timezone,
 		IsException: true, CreatedAt: item.CreatedAt.Unix(), UpdatedAt: item.UpdatedAt.Unix()}
 }

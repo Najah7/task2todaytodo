@@ -16,60 +16,29 @@ type taskProjectMutationSnapshot struct {
 	State shared.ProjectWorkState
 }
 
-func loadTaskProgress(ctx context.Context, source taskProgressSource, tasks []dao.Task, asOf time.Time) ([]dao.Task, map[string]dao.TaskProgressCounts, error) {
-	if len(tasks) == 0 {
-		return tasks, nil, nil
-	}
-	ids := make([]string, 0, len(tasks))
-	for _, task := range tasks {
-		ids = append(ids, task.ID)
-	}
-	sources, err := source.ReadTaskProgressSources(ctx, ids, asOf)
-	if err != nil {
-		return nil, nil, err
-	}
-	return applyTaskProgressSources(tasks, sources, asOf)
-}
-
-func applyTaskProgressSources(tasks []dao.Task, sources dao.TaskProgressSources, asOf time.Time) ([]dao.Task, map[string]dao.TaskProgressCounts, error) {
-	counts := make(map[string]dao.TaskProgressCounts, len(tasks))
-	for index, task := range tasks {
-		if status, ok := sources.Statuses[task.ID]; ok {
-			task.Status = status
+func taskProgressCounts(ctx context.Context, repos Repositories, userID domain.UserID, task dao.Task, asOf time.Time) (dao.Task, dao.TaskProgressCounts, error) {
+	var err error
+	if task.ProjectID != "" && repos.ProjectLifecycle() != nil {
+		task.ProjectStatus, err = repos.ProjectLifecycle().ReadStatus(ctx, task.ProjectID)
+		if err != nil {
+			return dao.Task{}, dao.TaskProgressCounts{}, err
 		}
-		value := sources.Counts[task.ID]
-		if task.Status.Value != "done" {
-			for _, root := range sources.ActionItemRoots {
-				if root.TaskID == task.ID && progressActionItemOccursToday(root, asOf) {
-					value.Total++
-				}
-			}
-		}
-		counts[task.ID] = value
-		task.Progress = taskProgressPercent(task.Status.Value, value)
-		tasks[index] = task
 	}
-	return tasks, counts, nil
-}
-
-func taskProgressCounts(ctx context.Context, tasks TaskRepository, task dao.Task, asOf time.Time) (dao.Task, dao.TaskProgressCounts, error) {
-	inputs, err := tasks.ReadTaskProgressSources(ctx, []string{task.ID}, asOf)
+	projection, err := repos.ActionItems().ReadTaskListProjection(ctx, userID, []string{task.ID})
 	if err != nil {
 		return dao.Task{}, dao.TaskProgressCounts{}, err
 	}
-	if status, ok := inputs.Statuses[task.ID]; ok {
-		task.Status = status
+	countTask := task
+	// Compare the actionable finite list as if a manually completed Task were
+	// reopened, while retaining Project-level suppression.
+	if countTask.Status.Value == "done" {
+		countTask.Status.Value = "open"
 	}
-	counts := inputs.Counts[task.ID]
-	// For mutation comparisons, project a done task's current virtual set as if
-	// it were reopened. This detects a restored skipped occurrence that becomes
-	// visible only after done-task recurrence suppression ends.
-	for _, root := range inputs.ActionItemRoots {
-		if progressActionItemOccursToday(root, asOf) {
-			counts.Total++
-		}
+	rows, err := ApplyTaskListProjection([]dao.Task{countTask}, projection, asOf)
+	if err != nil {
+		return dao.Task{}, dao.TaskProgressCounts{}, err
 	}
-	return task, counts, nil
+	return task, dao.TaskProgressCounts{Total: rows[0].ActionItemCount, Completed: rows[0].ActionItemCompletedCount}, nil
 }
 
 func taskMutationCounts(
@@ -84,7 +53,7 @@ func taskMutationCounts(
 	if err != nil {
 		return dao.Task{}, dao.TaskProgressCounts{}, taskProjectMutationSnapshot{}, err
 	}
-	lockedTask, counts, err := taskProgressCounts(ctx, repos.Tasks(), task, asOf)
+	lockedTask, counts, err := taskProgressCounts(ctx, repos, userID, task, asOf)
 	return lockedTask, counts, projectBefore, err
 }
 
@@ -194,13 +163,13 @@ func finishTaskProgressMutation(
 	if err != nil {
 		return err
 	}
-	afterTask, after, err := taskProgressCounts(ctx, tasks, afterTask, asOf)
+	afterTask, after, err := taskProgressCounts(ctx, repos, userID, afterTask, asOf)
 	if err != nil {
 		return err
 	}
 	if beforeTask.Status.Value == "done" || afterTask.Status.Value == "done" {
 		if after.Total-after.Completed <= before.Total-before.Completed {
-			return nil
+			return tasks.BumpRevisionByUserID(ctx, userID, taskID, afterTask.Revision, permission)
 		}
 		open, err := domain.NewTaskStatus("open")
 		if err != nil {
@@ -212,7 +181,7 @@ func finishTaskProgressMutation(
 		return nil
 	}
 	if !progressCountsChanged(before, after) || after.Total == 0 || after.Completed != after.Total {
-		return nil
+		return tasks.BumpRevisionByUserID(ctx, userID, taskID, afterTask.Revision, permission)
 	}
 	done, err := domain.NewTaskStatus("done")
 	if err != nil {
@@ -277,27 +246,6 @@ func setTaskStatusForPermission(ctx context.Context, tasks TaskRepository, userI
 
 func taskProgressPercent(status string, counts dao.TaskProgressCounts) int {
 	return sharedprogress.TaskPercent(status == "done", counts.Completed, counts.Total)
-}
-
-func applyTaskProgress(ctx context.Context, source taskProgressSource, tasks []dao.Task, asOf time.Time) ([]dao.Task, error) {
-	result, _, err := loadTaskProgress(ctx, source, tasks, asOf)
-	return result, err
-}
-
-func progressActionItemOccursToday(root dao.ProgressRecurrence, asOf time.Time) bool {
-	anchorDate := ""
-	if root.FrequencyAnchorDate != 0 {
-		anchorDate = time.Unix(root.FrequencyAnchorDate, 0).UTC().Format("2006-01-02")
-	}
-	frequencies := make([]string, 0, len(root.Frequencies))
-	for _, frequency := range root.Frequencies {
-		frequencies = append(frequencies, frequency.Value)
-	}
-	eligible, err := sharedprogress.VirtualOccurrenceOccursToday(sharedprogress.RecurrenceRule{
-		OccurrenceDate: root.OccurrenceDate, Timezone: root.Timezone, IntervalWeeks: root.IntervalWeeks,
-		FrequencyAnchorDate: anchorDate, Frequencies: frequencies, OccurrenceSavedToday: root.OccurrenceSavedToday,
-	}, asOf)
-	return err == nil && eligible
 }
 
 func progressCountsChanged(before, after dao.TaskProgressCounts) bool {

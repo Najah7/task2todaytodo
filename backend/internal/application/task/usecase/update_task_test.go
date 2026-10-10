@@ -69,23 +69,22 @@ func TestUpdateTaskUseCaseExecuteUpdatesSpecifiedFieldAndPreservesProtectedField
 	newTitle := "Updated title"
 	repo := &updateTaskRepositoryFake{task: updateTaskFixture()}
 
-	got, err := NewUpdateTaskUseCase(&updateTaskUOWFake{repo: repo}, updateTaskProgressSource(), nil).Execute(context.Background(), userID, taskID,
-		1, PatchField[string]{Present: true, Value: &newTitle}, PatchField[string]{},
-		PatchField[time.Time]{}, PatchField[int]{}, PatchField[int]{},
-	)
+	got, err := NewUpdateTaskUseCase(&updateTaskUOWFake{repo: repo}, nil).Execute(context.Background(), UpdateTaskInput{
+		UserID: userID, TaskID: taskID, ExpectedRevision: 1, Title: PatchField[string]{Present: true, Value: &newTitle},
+	})
 	if err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
 	}
 	if got.Title != newTitle {
 		t.Errorf("updated title = %q, want %q", got.Title, newTitle)
 	}
-	if got.Progress != 66 {
-		t.Errorf("updated progress = %d, want 66 from progress source", got.Progress)
+	if got.Progress != 0 {
+		t.Errorf("updated progress = %d, want 0 for no projected ActionItems", got.Progress)
 	}
 	if repo.updated.ProjectID != "project-1" || repo.updated.Status.String() != "in_progress" || repo.updated.Progress != 42 {
 		t.Errorf("protected fields changed: project=%q status=%q progress=%d", repo.updated.ProjectID, repo.updated.Status.String(), repo.updated.Progress)
 	}
-	if repo.updated.Description != "Original description" || repo.updated.DueDate.Unix() != 1_800_000_000 || repo.updated.EstimatedMinutes == nil || *repo.updated.EstimatedMinutes != 45 || repo.updated.ActualMinutes == nil || *repo.updated.ActualMinutes != 12 {
+	if repo.updated.Description != "Original description" || repo.updated.DueDate.Unix() != 1_800_000_000 || repo.updated.ManualEstimatedMinutes == nil || *repo.updated.ManualEstimatedMinutes != 45 || repo.updated.ActualMinutes == nil || *repo.updated.ActualMinutes != 12 {
 		t.Errorf("omitted fields not preserved: %#v", repo.updated)
 	}
 	if repo.getUserID != userID || repo.getTaskID != taskID || repo.updateUser != userID || repo.lockCalls != 1 || !reflect.DeepEqual(repo.callOrder, []string{"get", "lock-task", "get", "update"}) {
@@ -95,15 +94,16 @@ func TestUpdateTaskUseCaseExecuteUpdatesSpecifiedFieldAndPreservesProtectedField
 
 func TestUpdateTaskUseCaseExecuteClearsNullableFields(t *testing.T) {
 	repo := &updateTaskRepositoryFake{task: updateTaskFixture()}
-	_, err := NewUpdateTaskUseCase(&updateTaskUOWFake{repo: repo}, updateTaskProgressSource(), nil).Execute(context.Background(), "user-1", "task-1",
-		1, PatchField[string]{}, PatchField[string]{Present: true},
-		PatchField[time.Time]{Present: true}, PatchField[int]{Present: true}, PatchField[int]{Present: true},
-	)
+	_, err := NewUpdateTaskUseCase(&updateTaskUOWFake{repo: repo}, nil).Execute(context.Background(), UpdateTaskInput{
+		UserID: "user-1", TaskID: "task-1", ExpectedRevision: 1,
+		Description: PatchField[string]{Present: true}, DueDate: PatchField[time.Time]{Present: true},
+		ManualEstimatedMinutes: PatchField[int]{Present: true}, ActualMinutes: PatchField[int]{Present: true},
+	})
 	if err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
 	}
-	if repo.updated.Description != "" || !repo.updated.DueDate.IsZero() || repo.updated.EstimatedMinutes != nil || repo.updated.ActualMinutes != nil {
-		t.Errorf("nullable fields not cleared: description=%q due=%v estimate=%v actual=%v", repo.updated.Description, repo.updated.DueDate, repo.updated.EstimatedMinutes, repo.updated.ActualMinutes)
+	if repo.updated.Description != "" || !repo.updated.DueDate.IsZero() || repo.updated.ManualEstimatedMinutes != nil || repo.updated.ActualMinutes != nil {
+		t.Errorf("nullable fields not cleared: description=%q due=%v estimate=%v actual=%v", repo.updated.Description, repo.updated.DueDate, repo.updated.ManualEstimatedMinutes, repo.updated.ActualMinutes)
 	}
 }
 
@@ -194,7 +194,10 @@ func updateTask(
 	estimatedMinutes, actualMinutes PatchField[int],
 ) (dao.Task, error) {
 	uow := &updateTaskUOWFake{repo: repo}
-	return NewUpdateTaskUseCase(uow, updateTaskProgressSource(), nil).Execute(context.Background(), "user-1", "task-1", 1, title, description, dueDate, estimatedMinutes, actualMinutes)
+	return NewUpdateTaskUseCase(uow, nil).Execute(context.Background(), UpdateTaskInput{
+		UserID: "user-1", TaskID: "task-1", ExpectedRevision: 1, Title: title, Description: description,
+		DueDate: dueDate, ManualEstimatedMinutes: estimatedMinutes, ActualMinutes: actualMinutes,
+	})
 }
 
 type updateTaskUOWFake struct {
@@ -226,7 +229,7 @@ func updateTaskFixtureForUser(userID string) dao.Task {
 	return dao.Task{
 		ID: "task-1", UserID: userID, AssigneeID: userID, ProjectID: "project-1",
 		Title: "Original title", Description: "Original description", DueDate: 1_800_000_000,
-		EstimatedMinutes: updateTaskIntPointer(45), ActualMinutes: updateTaskIntPointer(12), Progress: 42,
+		ManualEstimatedMinutes: updateTaskIntPointer(45), ActualMinutes: updateTaskIntPointer(12), Progress: 42,
 		Priority: dao.Priority{Value: "high"}, Status: dao.TaskStatus{Value: "in_progress"},
 		CreatedAt: 100, UpdatedAt: 200, Revision: 1,
 	}

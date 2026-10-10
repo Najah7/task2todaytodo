@@ -94,6 +94,21 @@ func (repo *taskHandlerTaskRepository) SetStatusByUserIDWithPermission(ctx conte
 	return repo.SetStatusByUserID(ctx, userID, id, status)
 }
 
+func (repo *taskHandlerTaskRepository) HasPermission(_ context.Context, userID domain.UserID, id domain.TaskID, _ shared.Capability) (bool, error) {
+	return repo.task.ID == string(id) && repo.task.UserID == string(userID), nil
+}
+
+func (repo *taskHandlerTaskRepository) BumpRevisionByUserID(_ context.Context, userID domain.UserID, id domain.TaskID, expectedRevision int32, _ shared.Capability) error {
+	if repo.task.ID != string(id) || repo.task.UserID != string(userID) {
+		return taskusecase.ErrTaskNotFound
+	}
+	if repo.task.Revision != expectedRevision {
+		return taskusecase.ErrRevisionConflict
+	}
+	repo.task.Revision++
+	return nil
+}
+
 func (repo *taskHandlerTaskRepository) GetByUserID(_ context.Context, userID domain.UserID, id domain.TaskID) (dao.Task, error) {
 	repo.getCalls++
 	if repo.getErr != nil {
@@ -116,6 +131,23 @@ func (repo *taskHandlerTaskRepository) ListByUserIDCursor(_ context.Context, use
 		return nil, repo.pageErr
 	}
 	return repo.rows, nil
+}
+
+func (repo *taskHandlerTaskRepository) ReadTaskListCandidates(context.Context, domain.UserID, taskusecase.TaskListRequest) ([]dao.Task, error) {
+	return append([]dao.Task(nil), repo.rows...), nil
+}
+
+func (repo *taskHandlerTaskRepository) ListTaskPage(_ context.Context, userID domain.UserID, _ taskusecase.TaskListRequest, limit int) ([]dao.Task, error) {
+	repo.listCalls++
+	repo.pageUserID, repo.pageLimit, repo.pageOffset = userID, limit, 0
+	if repo.pageErr != nil {
+		return nil, repo.pageErr
+	}
+	rows := append([]dao.Task(nil), repo.rows...)
+	if len(rows) > limit {
+		rows = rows[:limit]
+	}
+	return rows, nil
 }
 
 func (repo *taskHandlerTaskRepository) Create(_ context.Context, task domain.Task) (dao.Task, error) {
@@ -165,21 +197,22 @@ func taskHandlerDAO(task domain.Task) dao.Task {
 		dueDate = task.DueDate.Unix()
 	}
 	return dao.Task{
-		ID:               string(task.ID),
-		UserID:           string(task.UserID),
-		AssigneeID:       string(task.AssigneeID),
-		ProjectID:        string(task.ProjectID),
-		Title:            task.Title,
-		Description:      task.Description,
-		DueDate:          dueDate,
-		EstimatedMinutes: cloneInt(task.EstimatedMinutes),
-		ActualMinutes:    cloneInt(task.ActualMinutes),
-		Progress:         task.Progress,
-		Priority:         dao.Priority{Value: task.Priority.String()},
-		Status:           dao.TaskStatus{Value: task.Status.String()},
-		CreatedAt:        task.CreatedAt.Unix(),
-		UpdatedAt:        task.UpdatedAt.Unix(),
-		Revision:         1,
+		ID:                     string(task.ID),
+		UserID:                 string(task.UserID),
+		AssigneeID:             string(task.AssigneeID),
+		ProjectID:              string(task.ProjectID),
+		Title:                  task.Title,
+		Description:            task.Description,
+		DueDate:                dueDate,
+		ManualEstimatedMinutes: cloneInt(task.ManualEstimatedMinutes),
+		EstimatedMinutes:       cloneInt(task.ManualEstimatedMinutes),
+		ActualMinutes:          cloneInt(task.ActualMinutes),
+		Progress:               task.Progress,
+		Priority:               dao.Priority{Value: task.Priority.String()},
+		Status:                 dao.TaskStatus{Value: task.Status.String()},
+		CreatedAt:              task.CreatedAt.Unix(),
+		UpdatedAt:              task.UpdatedAt.Unix(),
+		Revision:               1,
 	}
 }
 
@@ -199,6 +232,10 @@ type taskHandlerActionItemRepository struct {
 
 func (taskHandlerActionItemRepository) DeleteUneditedFutureByTask(context.Context, domain.UserID, domain.TaskID, time.Time) (int64, error) {
 	return 0, nil
+}
+
+func (taskHandlerActionItemRepository) ReadTaskListProjection(context.Context, domain.UserID, []string) (dao.TaskListProjectionSources, error) {
+	return dao.TaskListProjectionSources{ActionItemsByTask: map[string][]dao.ActionItem{}, SkippedByTask: map[string]map[string]map[string]bool{}}, nil
 }
 
 type taskHandlerRepositories struct {
@@ -238,10 +275,10 @@ func newTaskHandlerFixture() (*TaskHandler, *taskHandlerTaskRepository, *taskHan
 	}
 	uow := &taskHandlerUOW{repos: repos}
 	tasks := taskusecase.TaskUseCases{
-		Create:   taskusecase.NewCreateTaskUseCase(taskRepo, nil),
-		List:     taskusecase.NewListTasksUseCase(taskRepo, nil),
+		Create:   taskusecase.NewCreateTaskUseCase(uow, nil),
+		List:     taskusecase.NewListTasksUseCase(taskRepo, nil, taskHandlerActionItemRepository{}),
 		Get:      taskusecase.NewGetTaskUseCase(uow, nil),
-		Update:   taskusecase.NewUpdateTaskUseCase(uow, taskRepo, nil),
+		Update:   taskusecase.NewUpdateTaskUseCase(uow, nil),
 		Delete:   taskusecase.NewDeleteTaskUseCase(uow, nil),
 		Start:    taskusecase.NewStartTaskUseCase(uow, nil),
 		Hold:     taskusecase.NewHoldTaskUseCase(uow, nil),
@@ -361,7 +398,7 @@ func TestTaskHandlerCreateValidatesInputAndMapsConflictAndInternalErrors(t *test
 
 	handler, repo, _ := newTaskHandlerFixture()
 	recorder := httptest.NewRecorder()
-	handler.Create(recorder, taskRequest(http.MethodPost, "/tasks", `{"title":"New task","due_date":"2026-12-31","estimated_minutes":25}`, true))
+	handler.Create(recorder, taskRequest(http.MethodPost, "/tasks", `{"title":"New task","due_date":"2026-12-31","manual_estimated_minutes":25}`, true))
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("Create success status = %d, body %s", recorder.Code, recorder.Body.String())
 	}
@@ -409,8 +446,8 @@ func TestTaskHandlerGetHidesMissingOrUnownedTaskAndReturnsTags(t *testing.T) {
 	}
 }
 
-func TestTaskHandlerUpdateOnlyAcceptsBasicFieldsAndPreservesPatchSemantics(t *testing.T) {
-	for _, field := range []string{"project_id", "status", "progress"} {
+func TestTaskHandlerUpdateRejectsServerManagedFieldsAndNullTitle(t *testing.T) {
+	for _, field := range []string{"status", "progress"} {
 		t.Run("reject "+field, func(t *testing.T) {
 			handler, repo, _ := newTaskHandlerFixture()
 			recorder := httptest.NewRecorder()
@@ -421,19 +458,6 @@ func TestTaskHandlerUpdateOnlyAcceptsBasicFieldsAndPreservesPatchSemantics(t *te
 			}
 		})
 	}
-
-	t.Run("omitted fields remain unchanged and null clears nullable fields", func(t *testing.T) {
-		handler, repo, _ := newTaskHandlerFixture()
-		recorder := httptest.NewRecorder()
-		request := taskRequest(http.MethodPatch, "/tasks/task-1", `{"description":null,"due_date":null,"estimated_minutes":null,"actual_minutes":15}`, true)
-		handler.Update(recorder, request)
-		if recorder.Code != http.StatusOK {
-			t.Fatalf("Update status = %d, body %s", recorder.Code, recorder.Body.String())
-		}
-		if repo.updated.Title != "Plan release" || repo.updated.Description != "" || !repo.updated.DueDate.IsZero() || repo.updated.EstimatedMinutes != nil || repo.updated.ActualMinutes == nil || *repo.updated.ActualMinutes != 15 {
-			t.Errorf("updated task fields = %#v, want omitted title retained and explicit nulls cleared", repo.updated)
-		}
-	})
 
 	t.Run("null title rejected", func(t *testing.T) {
 		handler, repo, _ := newTaskHandlerFixture()

@@ -17,6 +17,21 @@ type taskProgressTestRepository struct{ TaskRepository }
 type taskProgressTestRepositories struct{ Repositories }
 
 func (taskProgressTestRepositories) Tasks() TaskRepository { return taskProgressTestRepository{} }
+func (taskProgressTestRepositories) ActionItems() ActionItemRepository {
+	return taskProgressTestActionItems{}
+}
+
+type taskProgressTestActionItems struct{ ActionItemRepository }
+
+func (taskProgressTestActionItems) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		items[id] = nil
+		skipped[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+}
 func (taskProgressTestRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle {
 	return inertProjectWorkLifecycle{}
 }
@@ -60,4 +75,12 @@ func (taskProgressTestRepository) SetStatusByUserID(context.Context, domain.User
 
 func (taskProgressTestRepository) SetStatusByUserIDWithPermission(context.Context, domain.UserID, domain.TaskID, domain.TaskStatus, int32, shared.Capability) error {
 	return nil
+}
+
+func (taskProgressTestRepository) BumpRevisionByUserID(context.Context, domain.UserID, domain.TaskID, int32, shared.Capability) error {
+	return nil
+}
+
+func (taskProgressTestRepository) HasPermission(context.Context, domain.UserID, domain.TaskID, shared.Capability) (bool, error) {
+	return true, nil
 }

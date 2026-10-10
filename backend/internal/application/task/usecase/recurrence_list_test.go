@@ -145,6 +145,60 @@ func TestActionItemListPositionRemainsStableAcrossPages(t *testing.T) {
 	t.Fatalf("page two missing expected occurrence: %#v", rows)
 }
 
+func TestActionItemListUsesLocalCalendarMonthWindowAndKeepsSavedPastOnly(t *testing.T) {
+	root := recurringActionItemRoot()
+	root.OccurrenceDate = "2026-10-01"
+	root.FrequencyAnchorDate = mustParseDate(root.OccurrenceDate).Unix()
+	root.Frequencies = []dao.TaskFrequency{{Value: "thu"}}
+	asOf := time.Date(2026, 10, 4, 16, 30, 0, 0, time.UTC) // Oct 5 in Tokyo.
+	root.Timezone = "Asia/Tokyo"
+	past := root
+	past.ID, past.OccurrenceDate, past.Completed, past.IsException = "past-completed", "2026-10-01", true, true
+	future := root
+	future.ID, future.OccurrenceDate, future.Completed, future.IsException = "future-completed", "2026-11-12", true, true
+	rows, err := expandActionItemRowsWithSkipped([]dao.ActionItem{root, past, future}, CursorPageRequest{}, asOf, false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seenEnd, seenNext, seenPast, seenOutside := false, false, false, false
+	for _, row := range rows {
+		switch row.OccurrenceDate {
+		case "2026-11-05":
+			seenEnd = true
+		case "2026-11-12":
+			seenNext = true
+		case "2026-10-01":
+			seenPast = row.ID == past.ID && row.Completed
+		}
+		if row.ID == future.ID {
+			seenOutside = true
+		}
+	}
+	if !seenEnd || seenNext || !seenPast || seenOutside {
+		t.Fatalf("month-window projection: end=%t next=%t past=%t future-saved=%t rows=%#v", seenEnd, seenNext, seenPast, seenOutside, rows)
+	}
+	all, err := ExpandActionItemListRows([]dao.ActionItem{root, past, future}, asOf, false, false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != len(rows) {
+		t.Fatalf("estimate projection count=%d, list projection count=%d", len(all), len(rows))
+	}
+}
+
+func TestActionItemOneOffHasNoListHorizon(t *testing.T) {
+	item := recurringActionItemRoot()
+	item.IntervalWeeks, item.Frequencies, item.RepeatState = 0, nil, repeatStateOneOff
+	item.OccurrenceDate = "2027-03-01"
+	rows, err := expandActionItemRows([]dao.ActionItem{item}, CursorPageRequest{}, time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].OccurrenceDate != item.OccurrenceDate {
+		t.Fatalf("one-off beyond recurring horizon omitted: %#v", rows)
+	}
+}
+
 func TestOneOffListsSavedCurrentOverrideInsteadOfRootSnapshot(t *testing.T) {
 	root := recurringActionItemRoot()
 	root.IntervalWeeks, root.Frequencies, root.RepeatState = 0, nil, repeatStateOneOff

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	"github.com/Najah7/task2todaytodo/internal/logging"
@@ -19,17 +20,13 @@ type CreateTaskInput struct {
 	Priority         string
 }
 
-type createTaskRepository interface {
-	Create(ctx context.Context, task domain.Task) (dao.Task, error)
-}
-
 type CreateTaskUseCase struct {
-	repo   createTaskRepository
+	uow    UOW
 	logger logging.Logger
 }
 
-func NewCreateTaskUseCase(repo createTaskRepository, logger logging.Logger) *CreateTaskUseCase {
-	return &CreateTaskUseCase{logger: logging.OrNop(logger), repo: repo}
+func NewCreateTaskUseCase(uow UOW, logger logging.Logger) *CreateTaskUseCase {
+	return &CreateTaskUseCase{logger: logging.OrNop(logger), uow: uow}
 }
 
 func (uc *CreateTaskUseCase) Execute(ctx context.Context, input CreateTaskInput) (output dao.Task, err error) {
@@ -72,6 +69,27 @@ func (uc *CreateTaskUseCase) Execute(ctx context.Context, input CreateTaskInput)
 		return dao.Task{}, err
 	}
 
-	return uc.repo.Create(ctx, task)
+	asOf := time.Now()
+	var created dao.Task
+	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
+		created, err = repos.Tasks().Create(ctx, task)
+		if err != nil {
+			return err
+		}
+		created.CanUpdate, err = repos.Tasks().HasPermission(ctx, input.UserID, input.ID, shared.TaskUpdate())
+		if err != nil {
+			return err
+		}
+		rows, err := EnrichTasksInRepositories(ctx, repos, input.UserID, []dao.Task{created}, asOf)
+		if err != nil {
+			return err
+		}
+		created = rows[0]
+		return nil
+	})
+	if err != nil {
+		return dao.Task{}, err
+	}
+	return created, nil
 
 }

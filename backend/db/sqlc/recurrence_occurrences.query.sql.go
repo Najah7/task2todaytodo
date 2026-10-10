@@ -54,6 +54,53 @@ func (q *Queries) ListActionItemSkippedOccurrencesByTaskAndUserID(ctx context.Co
 	return items, nil
 }
 
+const listActionItemSkippedOccurrencesByTaskIDsAndUserID = `-- name: ListActionItemSkippedOccurrencesByTaskIDsAndUserID :many
+SELECT root.task_id, child.series_id, child.occurrence_date
+FROM action_items child
+JOIN action_items root ON root.id = child.series_id AND root.series_id = root.id
+JOIN tasks t ON t.id = root.task_id
+WHERE root.task_id = ANY($1::text[])
+  AND child.id <> child.series_id
+  AND child.deleted_at IS NULL
+  AND child.skipped_at IS NOT NULL
+  AND root.deleted_at IS NULL
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $2::text, 'action_item', 'read')
+ORDER BY root.task_id, child.series_id, child.occurrence_date
+`
+
+type ListActionItemSkippedOccurrencesByTaskIDsAndUserIDParams struct {
+	TaskIds []string
+	UserID  string
+}
+
+type ListActionItemSkippedOccurrencesByTaskIDsAndUserIDRow struct {
+	TaskID         string
+	SeriesID       string
+	OccurrenceDate pgtype.Date
+}
+
+func (q *Queries) ListActionItemSkippedOccurrencesByTaskIDsAndUserID(ctx context.Context, arg ListActionItemSkippedOccurrencesByTaskIDsAndUserIDParams) ([]ListActionItemSkippedOccurrencesByTaskIDsAndUserIDRow, error) {
+	rows, err := q.db.Query(ctx, listActionItemSkippedOccurrencesByTaskIDsAndUserID, arg.TaskIds, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActionItemSkippedOccurrencesByTaskIDsAndUserIDRow
+	for rows.Next() {
+		var i ListActionItemSkippedOccurrencesByTaskIDsAndUserIDRow
+		if err := rows.Scan(&i.TaskID, &i.SeriesID, &i.OccurrenceDate); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listActionItemSkippedOccurrencesForCapabilityByTaskAndUserID = `-- name: ListActionItemSkippedOccurrencesForCapabilityByTaskAndUserID :many
 SELECT child.occurrence_date
 FROM action_items child

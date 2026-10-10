@@ -292,6 +292,10 @@ func (repo *projectHandlerTaskRepository) GetByUserIDWithPermission(ctx context.
 	return repo.GetByUserID(ctx, userID, id)
 }
 
+func (*projectHandlerTaskRepository) HasPermission(context.Context, taskdomain.UserID, taskdomain.TaskID, shared.Capability) (bool, error) {
+	return true, nil
+}
+
 func (repo *projectHandlerTaskRepository) AssignToProjectByUserID(_ context.Context, userID taskdomain.UserID, id taskdomain.TaskID, projectID taskdomain.ProjectID, expectedRevision int32) (taskdao.Task, error) {
 	repo.assignCalls++
 	if repo.assignErr != nil {
@@ -340,6 +344,23 @@ func (repos projectHandlerRepositories) TaskProjects() taskusecase.TaskProjectRe
 	return repos.projects
 }
 func (repos projectHandlerRepositories) Tasks() taskusecase.TaskRepository { return repos.tasks }
+func (projectHandlerRepositories) ActionItems() taskusecase.ActionItemRepository {
+	return projectHandlerActionItems{}
+}
+
+type projectHandlerActionItems struct {
+	taskusecase.ActionItemRepository
+}
+
+func (projectHandlerActionItems) ReadTaskListProjection(_ context.Context, _ taskdomain.UserID, taskIDs []string) (taskdao.TaskListProjectionSources, error) {
+	items := make(map[string][]taskdao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		items[id] = nil
+		skipped[id] = nil
+	}
+	return taskdao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+}
 func (projectHandlerRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle {
 	return projectHandlerLifecycle{}
 }
@@ -451,7 +472,7 @@ func newProjectHandlerHarness() projectHandlerHarness {
 	projectUOW := &projectHandlerProjectUOW{repo: projects}
 	projectUseCases := projectusecase.NewUseCases(projects, projectUOW, nil)
 	taskUseCases := taskusecase.TaskUseCases{
-		ListByProject:     taskusecase.NewListProjectTasksUseCase(repos.projects, tasks, nil),
+		ListByProject:     taskusecase.NewListProjectTasksUseCase(repos.projects, tasks, nil, projectHandlerActionItems{}),
 		CreateInProject:   taskusecase.NewCreateTaskInProjectUseCase(uow, nil),
 		AddToProject:      taskusecase.NewAddTaskToProjectUseCase(uow, tasks, nil),
 		RemoveFromProject: taskusecase.NewRemoveTaskFromProjectUseCase(uow, tasks, nil),
@@ -482,7 +503,7 @@ func projectHandlerString(value string) *string { return &value }
 func projectHandlerTaskDAO(task taskdomain.Task) taskdao.Task {
 	return taskdao.Task{
 		ID: string(task.ID), UserID: string(task.UserID), ProjectID: string(task.ProjectID), Title: task.Title,
-		Description: task.Description, DueDate: task.DueDate.Unix(), EstimatedMinutes: task.EstimatedMinutes,
+		Description: task.Description, DueDate: task.DueDate.Unix(), ManualEstimatedMinutes: task.ManualEstimatedMinutes, EstimatedMinutes: task.ManualEstimatedMinutes,
 		ActualMinutes: task.ActualMinutes, Progress: task.Progress,
 		Priority: taskdao.Priority{Value: task.Priority.Value, Label: task.Priority.Label, LabelJp: task.Priority.LabelJp, Weight: task.Priority.Weight},
 		Status:   taskdao.TaskStatus{Value: task.Status.Value, Label: task.Status.Label, LabelJp: task.Status.LabelJp}, Revision: 1,

@@ -12,6 +12,7 @@ import (
 
 var (
 	ErrTaskNotFound                = errors.New("task not found")
+	ErrTaskProjectionUnavailable   = errors.New("Task ActionItem projection reader is unavailable")
 	ErrTaskProjectNotFound         = errors.New("project not found")
 	ErrProjectLifecycleUnavailable = errors.New("project lifecycle service is unavailable")
 	ErrActionItemTaskNotFound      = errors.New("action item task not found")
@@ -37,6 +38,7 @@ type UserTimezoneReader interface {
 type TaskProject struct {
 	ID              string
 	OwnerID         string
+	Title           string
 	DefaultPriority string
 }
 
@@ -61,6 +63,7 @@ type TaskRepository interface {
 	LockByUserIDWithPermission(context.Context, domain.UserID, domain.TaskID, shared.Capability) (dao.Task, error)
 	HasPermission(context.Context, domain.UserID, domain.TaskID, shared.Capability) (bool, error)
 	SetStatusByUserIDWithPermission(context.Context, domain.UserID, domain.TaskID, domain.TaskStatus, int32, shared.Capability) error
+	BumpRevisionByUserID(context.Context, domain.UserID, domain.TaskID, int32, shared.Capability) error
 	Get(ctx context.Context, id domain.TaskID) (dao.Task, error)
 	GetByUserID(ctx context.Context, userID domain.UserID, id domain.TaskID) (dao.Task, error)
 	GetByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.TaskID, capability shared.Capability) (dao.Task, error)
@@ -106,6 +109,7 @@ type TaskStatusRepository interface {
 }
 
 type ActionItemRepository interface {
+	TaskListProjectionReader
 	Get(ctx context.Context, id domain.ActionItemID) (dao.ActionItem, error)
 	GetForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) (dao.ActionItem, error)
 	ListByTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID) ([]dao.ActionItem, error)

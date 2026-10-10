@@ -170,10 +170,10 @@ func TestOperationOnlyPermissionsDoNotRequireReadOrParentUpdateGrants(t *testing
 		t.Fatalf("task.read without allow = %v, want hidden task", err)
 	}
 	newTaskTitle := "Updated without task.read permission"
-	if _, err := usecase.NewUpdateTaskUseCase(sharingTestUOW{pool: pool}, taskRepo, nil).Execute(
-		ctx, actor, task, 1, usecase.PatchField[string]{Present: true, Value: &newTaskTitle}, usecase.PatchField[string]{},
-		usecase.PatchField[time.Time]{}, usecase.PatchField[int]{}, usecase.PatchField[int]{},
-	); err != nil {
+	if _, err := usecase.NewUpdateTaskUseCase(sharingTestUOW{pool: pool}, nil).Execute(ctx, usecase.UpdateTaskInput{
+		UserID: actor, TaskID: task, ExpectedRevision: 1,
+		Title: usecase.PatchField[string]{Present: true, Value: &newTaskTitle},
+	}); err != nil {
 		t.Fatalf("task.update with no task.read grant: %v", err)
 	}
 
@@ -201,8 +201,8 @@ func TestOperationOnlyPermissionsDoNotRequireReadOrParentUpdateGrants(t *testing
 	if err := pool.QueryRow(ctx, `SELECT title FROM action_items WHERE id = $1`, actionItemID).Scan(&actionTitle); err != nil {
 		t.Fatalf("read updated actionItem title: %v", err)
 	}
-	if taskTitle != newTaskTitle || actionTitle != newActionItemTitle || taskStatus != "open" || taskRevision != 2 {
-		t.Fatalf("operation-only persisted state task=%q actionItem=%q status=%q revision=%d; want updated titles, open/2", taskTitle, actionTitle, taskStatus, taskRevision)
+	if taskTitle != newTaskTitle || actionTitle != newActionItemTitle || taskStatus != "open" || taskRevision != 3 {
+		t.Fatalf("operation-only persisted state task=%q actionItem=%q status=%q revision=%d; want updated titles, open/3", taskTitle, actionTitle, taskStatus, taskRevision)
 	}
 }
 

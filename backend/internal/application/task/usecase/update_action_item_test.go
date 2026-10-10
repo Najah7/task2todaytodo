@@ -38,6 +38,20 @@ type updateActionItemRepositoryFake struct {
 	snapshotID                   domain.ActionItemID
 }
 
+func (r *updateActionItemRepositoryFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		rows := []dao.ActionItem{r.root}
+		if r.current != nil {
+			rows = append(rows, *r.current)
+		}
+		items[id] = rows
+		skipped[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+}
+
 func (r *updateActionItemRepositoryFake) GetForOwnedTask(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID) (dao.ActionItem, error) {
 	return r.root, nil
 }

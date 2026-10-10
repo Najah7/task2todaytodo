@@ -115,7 +115,7 @@ func (uc *AddTaskToProjectUseCase) Execute(ctx context.Context, userID domain.Us
 				return err
 			}
 		}
-		rows, err := applyTaskProgress(ctx, tasks, []dao.Task{result}, time.Now())
+		rows, err := EnrichTasksInRepositories(ctx, repos, userID, []dao.Task{result}, time.Now())
 		if err != nil {
 			return err
 		}

@@ -129,18 +129,19 @@ func (q *Queries) SkipActionItemOccurrenceByTaskAndUserID(ctx context.Context, a
 
 const upsertActionItemOverrideByTaskAndUserID = `-- name: UpsertActionItemOverrideByTaskAndUserID :one
 INSERT INTO action_items (
-    id, task_id, title, description, due_date, completed, position,
+    id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
     series_id, occurrence_date, timezone, is_exception, repeat_state,
     frequency_anchor_date, interval_weeks, deleted_at, skipped_at
 )
 SELECT $1::text, t.id, $2::text, $3::text,
-       $4::date, $5::boolean, $6::integer,
-       root.id, $7::date, $8::text, true, NULL, NULL, 0,
-       CASE WHEN $9::boolean THEN now() ELSE NULL END, NULL
+       $4::date, $5::integer, $6::text,
+       $7::boolean, $8::integer,
+       root.id, $9::date, $10::text, true, NULL, NULL, 0,
+       CASE WHEN $11::boolean THEN now() ELSE NULL END, NULL
 FROM tasks t
-JOIN action_items root ON root.id = $10::text AND root.task_id = t.id
-WHERE t.id = $11::text
-  AND task_has_permission(t.id, $12::text, 'action_item', 'update')
+JOIN action_items root ON root.id = $12::text AND root.task_id = t.id
+WHERE t.id = $13::text
+  AND task_has_permission(t.id, $14::text, 'action_item', 'update')
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
   AND root.deleted_at IS NULL
@@ -148,6 +149,8 @@ ON CONFLICT (series_id, occurrence_date) WHERE id <> series_id DO UPDATE SET
     title = EXCLUDED.title,
     description = EXCLUDED.description,
     due_date = EXCLUDED.due_date,
+    estimated_minutes = EXCLUDED.estimated_minutes,
+    priority = EXCLUDED.priority,
     completed = EXCLUDED.completed,
     position = EXCLUDED.position,
     timezone = EXCLUDED.timezone,
@@ -159,18 +162,20 @@ RETURNING id
 `
 
 type UpsertActionItemOverrideByTaskAndUserIDParams struct {
-	ID             string
-	Title          string
-	Description    pgtype.Text
-	DueDate        pgtype.Date
-	Completed      bool
-	Position       int32
-	OccurrenceDate pgtype.Date
-	Timezone       string
-	Deleted        bool
-	SeriesID       string
-	TaskID         string
-	UserID         string
+	ID               string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	Completed        bool
+	Position         int32
+	OccurrenceDate   pgtype.Date
+	Timezone         string
+	Deleted          bool
+	SeriesID         string
+	TaskID           string
+	UserID           string
 }
 
 func (q *Queries) UpsertActionItemOverrideByTaskAndUserID(ctx context.Context, arg UpsertActionItemOverrideByTaskAndUserIDParams) (string, error) {
@@ -179,6 +184,8 @@ func (q *Queries) UpsertActionItemOverrideByTaskAndUserID(ctx context.Context, a
 		arg.Title,
 		arg.Description,
 		arg.DueDate,
+		arg.EstimatedMinutes,
+		arg.Priority,
 		arg.Completed,
 		arg.Position,
 		arg.OccurrenceDate,

@@ -71,7 +71,7 @@ func TestProjectScheduleAndTaskCreateUseProjectOwnerAndRecordMemberActor(t *test
 	if err != nil {
 		t.Fatalf("create shared Task: %v", err)
 	}
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task)
 	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
 	schedule, err := scheduleusecase.NewCreateScheduleUseCase(scheduleUOW, projectAuditTimezoneReader{}, nil).Execute(ctx, scheduleusecase.CreateScheduleInput{
 		ID: scheduledomain.ScheduleID(scheduleID), UserID: scheduledomain.UserID(actorID), ProjectID: scheduledomain.ProjectID(projectID),
@@ -279,7 +279,7 @@ func TestProjectMemberRemovalRacesCannotLeaveRemovedAssignee(t *testing.T) {
 	})
 	store := application.NewStore(pool)
 	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task)
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
 	raceCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -442,7 +442,7 @@ func TestProjectProgressCombinesPerTaskFloorsAndScheduleOccurrencesFromDB(t *tes
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, ownerID)
 	})
 	store := application.NewStore(pool)
-	getProject := projectusecase.NewGetProjectUseCase(store.Project.Projects, store.Project.Projects, nil)
+	getProject := newProjectUseCases(pool, store).Get
 	got, err := getProject.Execute(ctx, projectdomain.UserID(ownerID), projectdomain.ProjectID(projectID))
 	if err != nil {
 		t.Fatalf("get Project with derived progress: %v", err)
@@ -534,7 +534,7 @@ func TestProjectTaskAndScheduleCreationRaceWithParentOnlyDeletion(t *testing.T) 
 	})
 	store := application.NewStore(pool)
 	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task)
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
 	taskIDValue, scheduleIDValue := taskdomain.TaskID(taskID), scheduledomain.ScheduleID(scheduleID)
 	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)

@@ -43,3 +43,42 @@ func TestNormalizeCalendarDatePreservesZeroAndDate(t *testing.T) {
 		t.Fatalf("NormalizeCalendarDate() = %s, want %s", got, want)
 	}
 }
+
+func TestAddCalendarMonthClamped(t *testing.T) {
+	tests := []struct {
+		name string
+		date time.Time
+		want time.Time
+	}{
+		{
+			name: "preserves day",
+			date: time.Date(2026, time.March, 10, 14, 0, 0, 0, time.UTC),
+			want: time.Date(2026, time.April, 10, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "clamps to non leap February",
+			date: time.Date(2026, time.January, 31, 14, 0, 0, 0, time.UTC),
+			want: time.Date(2026, time.February, 28, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "clamps to leap February",
+			date: time.Date(2024, time.January, 31, 14, 0, 0, 0, time.UTC),
+			want: time.Date(2024, time.February, 29, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "clamps to 30 day month",
+			date: time.Date(2026, time.March, 31, 14, 0, 0, 0, time.UTC),
+			want: time.Date(2026, time.April, 30, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := AddCalendarMonthClamped(test.date); !got.Equal(test.want) {
+				t.Fatalf("AddCalendarMonthClamped(%s) = %s, want %s", test.date, got, test.want)
+			}
+		})
+	}
+	if got := AddCalendarMonthClamped(time.Time{}); !got.IsZero() {
+		t.Fatalf("AddCalendarMonthClamped(zero) = %s, want zero", got)
+	}
+}

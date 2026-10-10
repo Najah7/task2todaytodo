@@ -34,7 +34,7 @@ func TestNewTaskWithDetails(t *testing.T) {
 		t.Fatalf("NewTaskWithDetails() error = %v", err)
 	}
 
-	if task.ProjectID != "project-1" || task.DueDate != dueDate || task.EstimatedMinutes == nil || *task.EstimatedMinutes != estimated || task.ActualMinutes == nil || *task.ActualMinutes != actual {
+	if task.ProjectID != "project-1" || task.DueDate != dueDate || task.ManualEstimatedMinutes == nil || *task.ManualEstimatedMinutes != estimated || task.ActualMinutes == nil || *task.ActualMinutes != actual {
 		t.Errorf("task = %+v, want details to be set", task)
 	}
 }

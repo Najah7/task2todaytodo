@@ -5,6 +5,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
@@ -34,6 +36,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
@@ -68,6 +72,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id), 0)::integer AS interval_weeks,
@@ -101,6 +107,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
@@ -135,6 +143,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
@@ -161,6 +171,25 @@ WHERE ti.task_id = sqlc.arg(task_id)::text
   AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'action_item', 'read')
 ORDER BY ti.position ASC, ti.occurrence_date ASC;
 
+-- name: ListActionItemsForOccurrenceProjectionByTaskIDsAndUserID :many
+SELECT
+    ti.id, ti.task_id, ti.title, ti.description, ti.due_date,
+    ti.estimated_minutes, ti.priority, ti.completed, ti.position,
+    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id), 0)::integer AS interval_weeks,
+    (SELECT r.repeat_state FROM action_items r WHERE r.id = ti.series_id) AS repeat_state,
+    (SELECT r.frequency_anchor_date FROM action_items r WHERE r.id = ti.series_id) AS frequency_anchor_date,
+    ti.series_id, ti.occurrence_date, ti.timezone, ti.is_exception,
+    (ti.deleted_at IS NOT NULL) AS deleted,
+    ARRAY(SELECT tif.frequency FROM action_item_frequencies tif WHERE tif.action_item_id = ti.series_id ORDER BY tif.frequency)::text[] AS frequencies,
+    ti.created_at, ti.updated_at
+FROM action_items ti
+JOIN tasks t ON t.id = ti.task_id
+WHERE ti.task_id = ANY(sqlc.arg(task_ids)::text[])
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'action_item', 'read')
+ORDER BY ti.task_id, ti.position, ti.occurrence_date;
+
 -- name: ListActionItemsForOccurrenceCommandByTaskAndUserID :many
 SELECT
     ti.id,
@@ -168,6 +197,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id), 0)::integer AS interval_weeks,
@@ -201,6 +232,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
@@ -237,6 +270,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,

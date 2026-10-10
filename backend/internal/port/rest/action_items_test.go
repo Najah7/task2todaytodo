@@ -56,6 +56,20 @@ func (repository *actionItemsHandlerTaskRepository) SetStatusByUserID(_ context.
 	return nil
 }
 
+func (repository *actionItemsHandlerTaskRepository) BumpRevisionByUserID(_ context.Context, userID domain.UserID, taskID domain.TaskID, expectedRevision int32, _ shared.Capability) error {
+	if repository.task.ID != string(taskID) || repository.task.UserID != string(userID) {
+		return taskusecase.ErrTaskNotFound
+	}
+	if repository.err != nil {
+		return repository.err
+	}
+	if repository.task.Revision != expectedRevision {
+		return taskusecase.ErrRevisionConflict
+	}
+	repository.task.Revision++
+	return nil
+}
+
 func (repository *actionItemsHandlerTaskRepository) SetStatusByUserIDWithPermission(ctx context.Context, userID domain.UserID, taskID domain.TaskID, status domain.TaskStatus, _ int32, _ shared.Capability) error {
 	return repository.SetStatusByUserID(ctx, userID, taskID, status)
 }
@@ -403,6 +417,16 @@ func (repositories actionItemsHandlerRepositories) Tasks() taskusecase.TaskRepos
 }
 func (repositories actionItemsHandlerRepositories) ActionItems() taskusecase.ActionItemRepository {
 	return repositories.items
+}
+
+func (repository *actionItemsHandlerActionItemRepository) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		items[id] = nil
+		skipped[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
 }
 
 type actionItemsHandlerUOW struct {

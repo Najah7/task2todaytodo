@@ -53,6 +53,18 @@ func (repo *createTaskInProjectTaskRepositoryFake) CreateInProject(_ context.Con
 	repo.task = task
 	return repo.result, repo.err
 }
+func (*createTaskInProjectTaskRepositoryFake) HasPermission(context.Context, domain.UserID, domain.TaskID, shared.Capability) (bool, error) {
+	return true, nil
+}
+func (*createTaskInProjectTaskRepositoryFake) ReadTaskProgressSources(_ context.Context, taskIDs []string, _ time.Time) (dao.TaskProgressSources, error) {
+	statuses := make(map[string]dao.TaskStatus, len(taskIDs))
+	counts := make(map[string]dao.TaskProgressCounts, len(taskIDs))
+	for _, id := range taskIDs {
+		statuses[id] = dao.TaskStatus{Value: "open"}
+		counts[id] = dao.TaskProgressCounts{}
+	}
+	return dao.TaskProgressSources{Statuses: statuses, Counts: counts}, nil
+}
 
 type createTaskInProjectRepositoriesFake struct {
 	taskProgressTestRepositories
@@ -108,8 +120,8 @@ func TestCreateTaskInProjectUseCaseExecuteCreatesOwnedProjectTaskAndInheritsPrio
 	if err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
 	}
-	if got != want {
-		t.Errorf("Execute() = %#v, want %#v", got, want)
+	if got.ID != want.ID || got.UserID != want.UserID || got.ProjectID != want.ProjectID || got.Title != want.Title || got.EstimateSource != "manual" || !got.CanUpdate {
+		t.Errorf("Execute() = %#v, want created project task with manual estimate source and update permission", got)
 	}
 	if uow.calls != 1 || projectRepo.calls != 1 || taskRepo.calls != 1 {
 		t.Fatalf("calls = UOW %d, project %d, task %d; want 1 each", uow.calls, projectRepo.calls, taskRepo.calls)
@@ -138,8 +150,8 @@ func TestCreateTaskInProjectUseCaseExecuteUsesExplicitPriorityAndOptionalFields(
 	if err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
 	}
-	if taskRepo.task.Priority.String() != "urgent" || taskRepo.task.Description != "Details" || !taskRepo.task.DueDate.Equal(input.DueDate) || taskRepo.task.EstimatedMinutes == nil || *taskRepo.task.EstimatedMinutes != estimated {
-		t.Errorf("created task optional values = priority %q, description %q, due %v, estimate %v; want urgent, Details, %v, %d", taskRepo.task.Priority.String(), taskRepo.task.Description, taskRepo.task.DueDate, taskRepo.task.EstimatedMinutes, input.DueDate, estimated)
+	if taskRepo.task.Priority.String() != "urgent" || taskRepo.task.Description != "Details" || !taskRepo.task.DueDate.Equal(input.DueDate) || taskRepo.task.ManualEstimatedMinutes == nil || *taskRepo.task.ManualEstimatedMinutes != estimated {
+		t.Errorf("created task optional values = priority %q, description %q, due %v, estimate %v; want urgent, Details, %v, %d", taskRepo.task.Priority.String(), taskRepo.task.Description, taskRepo.task.DueDate, taskRepo.task.ManualEstimatedMinutes, input.DueDate, estimated)
 	}
 }
 

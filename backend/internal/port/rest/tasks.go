@@ -45,21 +45,28 @@ func NewTaskHandler(tasks taskusecase.TaskUseCases, ID shared.ID, codecs ...*pag
 }
 
 type TaskResponse struct {
-	ID               string  `json:"id"`
-	UserID           string  `json:"user_id"`
-	AssigneeID       string  `json:"assignee_id"`
-	Revision         int32   `json:"revision"`
-	ProjectID        *string `json:"project_id"`
-	Title            string  `json:"title"`
-	Description      string  `json:"description"`
-	DueDate          *string `json:"due_date"`
-	EstimatedMinutes *int    `json:"estimated_minutes"`
-	ActualMinutes    *int    `json:"actual_minutes"`
-	Progress         int     `json:"progress"`
-	Priority         string  `json:"priority"`
-	Status           string  `json:"status"`
-	CreatedAt        string  `json:"created_at"`
-	UpdatedAt        string  `json:"updated_at"`
+	ID                       string  `json:"id" validate:"required"`
+	UserID                   string  `json:"user_id" validate:"required"`
+	AssigneeID               string  `json:"assignee_id" validate:"required"`
+	Revision                 int32   `json:"revision" validate:"required"`
+	ProjectID                *string `json:"project_id" validate:"required" extensions:"x-nullable"`
+	ProjectName              *string `json:"project_name" validate:"required" extensions:"x-nullable"`
+	Title                    string  `json:"title" validate:"required"`
+	Description              string  `json:"description" validate:"required"`
+	DueDate                  *string `json:"due_date" validate:"required" extensions:"x-nullable"`
+	RemainingDays            *int    `json:"remaining_days" validate:"required" extensions:"x-nullable"`
+	ManualEstimatedMinutes   *int    `json:"manual_estimated_minutes" validate:"required" extensions:"x-nullable"`
+	EstimatedMinutes         *int    `json:"estimated_minutes" validate:"required" extensions:"x-nullable"`
+	EstimateSource           string  `json:"estimate_source" validate:"required"`
+	ActualMinutes            *int    `json:"actual_minutes" validate:"required" extensions:"x-nullable"`
+	Progress                 int     `json:"progress" validate:"required"`
+	Priority                 string  `json:"priority" validate:"required"`
+	Status                   string  `json:"status" validate:"required"`
+	ActionItemCount          int     `json:"action_item_count" validate:"required"`
+	ActionItemCompletedCount int     `json:"action_item_completed_count" validate:"required"`
+	CanUpdate                bool    `json:"can_update" validate:"required"`
+	CreatedAt                string  `json:"created_at" validate:"required"`
+	UpdatedAt                string  `json:"updated_at" validate:"required"`
 }
 
 type TaskAssignedTagResponse struct {
@@ -73,24 +80,32 @@ type TaskDetailsResponse struct {
 }
 
 type TaskListResponse struct {
-	Items         []TaskResponse `json:"items"`
-	NextPageToken string         `json:"next_page_token"`
+	Items                    []TaskResponse `json:"items" validate:"required"`
+	NextPageToken            string         `json:"next_page_token" validate:"required"`
+	PreviousPageToken        string         `json:"previous_page_token" validate:"required"`
+	TotalCount               int            `json:"total_count" validate:"required"`
+	StatusCounts             map[string]int `json:"status_counts" validate:"required"`
+	ActionItemTotalCount     int            `json:"action_item_total_count" validate:"required"`
+	ActionItemCompletedCount int            `json:"action_item_completed_count" validate:"required"`
+	EstimatedMinutesTotal    *int           `json:"estimated_minutes_total" validate:"required" extensions:"x-nullable"`
 }
 
 type TaskCreateRequest struct {
-	Title            string `json:"title"`
-	Description      string `json:"description"`
-	DueDate          string `json:"due_date"`
-	EstimatedMinutes *int   `json:"estimated_minutes"`
-	Priority         string `json:"priority"`
+	Title                  string `json:"title"`
+	Description            string `json:"description"`
+	DueDate                string `json:"due_date"`
+	ManualEstimatedMinutes *int   `json:"manual_estimated_minutes" extensions:"x-nullable"`
+	Priority               string `json:"priority"`
 }
 
 type TaskUpdateRequest struct {
-	Title            optionalJSON[string] `json:"title"`
-	Description      optionalJSON[string] `json:"description"`
-	DueDate          optionalJSON[string] `json:"due_date"`
-	EstimatedMinutes optionalJSON[int]    `json:"estimated_minutes"`
-	ActualMinutes    optionalJSON[int]    `json:"actual_minutes"`
+	Title                  optionalJSON[string] `json:"title" swaggertype:"string"`
+	Description            optionalJSON[string] `json:"description" swaggertype:"string" extensions:"x-nullable"`
+	DueDate                optionalJSON[string] `json:"due_date" swaggertype:"string" extensions:"x-nullable"`
+	ManualEstimatedMinutes optionalJSON[int]    `json:"manual_estimated_minutes" swaggertype:"integer" extensions:"x-nullable"`
+	ActualMinutes          optionalJSON[int]    `json:"actual_minutes" swaggertype:"integer" extensions:"x-nullable"`
+	Priority               optionalJSON[string] `json:"priority" swaggertype:"string"`
+	ProjectID              optionalJSON[string] `json:"project_id" swaggertype:"string" extensions:"x-nullable"`
 }
 
 type optionalJSON[T any] struct {
@@ -126,19 +141,26 @@ func parseDate(value string) (time.Time, error) {
 
 func taskResponse(task dao.Task) TaskResponse {
 	response := TaskResponse{
-		ID:               task.ID,
-		UserID:           task.UserID,
-		AssigneeID:       task.AssigneeID,
-		Revision:         task.Revision,
-		Title:            task.Title,
-		Description:      task.Description,
-		EstimatedMinutes: cloneInt(task.EstimatedMinutes),
-		ActualMinutes:    cloneInt(task.ActualMinutes),
-		Progress:         task.Progress,
-		Priority:         task.Priority.Value,
-		Status:           task.Status.Value,
-		CreatedAt:        time.Unix(task.CreatedAt, 0).UTC().Format(time.RFC3339),
-		UpdatedAt:        time.Unix(task.UpdatedAt, 0).UTC().Format(time.RFC3339),
+		ID:                       task.ID,
+		UserID:                   task.UserID,
+		AssigneeID:               task.AssigneeID,
+		Revision:                 task.Revision,
+		ProjectName:              projectNamePtr(task.ProjectName),
+		Title:                    task.Title,
+		Description:              task.Description,
+		RemainingDays:            cloneInt(task.RemainingDays),
+		ManualEstimatedMinutes:   cloneInt(task.ManualEstimatedMinutes),
+		EstimatedMinutes:         cloneInt(task.EstimatedMinutes),
+		EstimateSource:           task.EstimateSource,
+		ActualMinutes:            cloneInt(task.ActualMinutes),
+		Progress:                 task.Progress,
+		Priority:                 task.Priority.Value,
+		CanUpdate:                task.CanUpdate,
+		Status:                   task.Status.Value,
+		ActionItemCount:          task.ActionItemCount,
+		ActionItemCompletedCount: task.ActionItemCompletedCount,
+		CreatedAt:                time.Unix(task.CreatedAt, 0).UTC().Format(time.RFC3339),
+		UpdatedAt:                time.Unix(task.UpdatedAt, 0).UTC().Format(time.RFC3339),
 	}
 	if task.ProjectID != "" {
 		projectID := task.ProjectID
@@ -149,6 +171,13 @@ func taskResponse(task dao.Task) TaskResponse {
 		response.DueDate = &dueDate
 	}
 	return response
+}
+
+func projectNamePtr(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }
 
 func cloneInt(value *int) *int {
@@ -214,7 +243,7 @@ func taskErrorResponse(err error) (int, ErrDetail) {
 	case errors.Is(err, domain.ErrTaskPriorityEmpty), errors.Is(err, domain.ErrTaskPriorityInvalid):
 		return http.StatusBadRequest, NewErrDetail("priority", "invalid_priority", "Priority is invalid")
 	case errors.Is(err, domain.ErrTaskEstimatedMinutesInvalid):
-		return http.StatusBadRequest, NewErrDetail("estimated_minutes", "invalid_minutes", "Estimated minutes must be zero or greater")
+		return http.StatusBadRequest, NewErrDetail("manual_estimated_minutes", "invalid_minutes", "Estimated minutes must be zero or greater")
 	case errors.Is(err, domain.ErrTaskActualMinutesInvalid):
 		return http.StatusBadRequest, NewErrDetail("actual_minutes", "invalid_minutes", "Actual minutes must be zero or greater")
 	case IsUniqueConstraint(err, "tasks_pkey"):
@@ -227,50 +256,6 @@ func taskErrorResponse(err error) (int, ErrDetail) {
 func writeTaskError(w http.ResponseWriter, spec ErrSpec, err error) {
 	status, detail := taskErrorResponse(err)
 	WriteError(w, status, spec, detail)
-}
-
-// List returns one page of tasks assigned to the authenticated user.
-//
-//	@Summary		List tasks
-//	@Description	Returns a page of tasks assigned to the authenticated user, including tasks in projects.
-//	@Tags			Tasks
-//	@Produce		json
-//	@Security		BearerAuth
-//	@Param			page_size	query		int		false	"Items per page (default 50, maximum 100)"
-//	@Param			page_token	query		string	false	"Opaque next page token"
-//	@Param			fields		query		string	false	"Response field mask"
-//	@Success		200			{object}	TaskListResponse
-//	@Failure		400			{object}	ErrResponse	"Invalid pagination"
-//	@Failure		401			{object}	ErrResponse	"Unauthorized"
-//	@Failure		500			{object}	ErrResponse	"Failed to list tasks"
-//	@Router			/tasks [get]
-func (h *TaskHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.userID(r)
-	if !ok {
-		writeUnauthorized(w, errSpecTasksListFailed)
-		return
-	}
-	request, err := parseListRequest(r, h.pageTokens, string(userID), "tasks", "", "created_at_desc_id_desc", listEnvelope[TaskResponse]{})
-	if err != nil {
-		writeListError(w, errSpecTasksListFailed, err)
-		return
-	}
-	var cursor *taskusecase.CursorAnchor
-	if request.Anchor != nil {
-		cursor = &taskusecase.CursorAnchor{At: request.Anchor.At, ID: request.Anchor.ID}
-	}
-	page, err := h.tasks.List.Execute(r.Context(), userID, taskusecase.CursorPageRequest{Size: request.Size, Anchor: cursor})
-	if err != nil {
-		writeTaskError(w, errSpecTasksListFailed, err)
-		return
-	}
-	items := make([]TaskResponse, 0, len(page.Items))
-	anchors := make([]listAnchor, 0, len(page.Items))
-	for _, item := range page.Items {
-		items = append(items, taskResponse(item))
-		anchors = append(anchors, listAnchor{At: item.CursorCreatedAt, ID: item.ID})
-	}
-	writeListResponse(w, items, anchors, page.Next != nil, request, h.pageTokens, errSpecTasksListFailed)
 }
 
 // Create creates a standalone task.
@@ -314,7 +299,7 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Title:            request.Title,
 		Description:      request.Description,
 		DueDate:          dueDate,
-		EstimatedMinutes: cloneInt(request.EstimatedMinutes),
+		EstimatedMinutes: cloneInt(request.ManualEstimatedMinutes),
 		Priority:         request.Priority,
 	})
 	if err != nil {
@@ -362,14 +347,14 @@ func (h *TaskHandler) Get(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, TaskDetailsResponse{Task: taskResponse(details.Task), Tags: tags})
 }
 
-// Update changes basic task fields. Project membership, status, and progress are not accepted.
+// Update atomically updates Task fields.
 //
 //	@Param			If-Match	header		string		true	"Current task ETag, for example \"3\""
 //	@Header			200			{string}	ETag		"Current task revision"
 //	@Failure		428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary		Update task
-//	@Description	Partially updates basic task fields. Project membership, status, and progress cannot be changed here.
+//	@Description	Atomically updates Task fields. ActionItems are managed through their own endpoints. If-Match uses the Task aggregate revision.
 //	@Tags			Tasks
 //	@Accept			json
 //	@Produce		json
@@ -410,12 +395,29 @@ func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 			dueDate.Value = &parsed
 		}
 	}
-	task, err := h.tasks.Update.Execute(
-		r.Context(), userID, domain.TaskID(taskIDFromRequest(r)), expected,
-		request.Title.patchField(), request.Description.patchField(), dueDate,
-		request.EstimatedMinutes.patchField(), request.ActualMinutes.patchField(),
-	)
+	task, err := h.tasks.Update.Execute(r.Context(), taskusecase.UpdateTaskInput{
+		UserID: userID, TaskID: domain.TaskID(taskIDFromRequest(r)), ExpectedRevision: expected,
+		Title: request.Title.patchField(), Description: request.Description.patchField(), DueDate: dueDate,
+		ManualEstimatedMinutes: request.ManualEstimatedMinutes.patchField(), ActualMinutes: request.ActualMinutes.patchField(),
+		Priority: request.Priority.patchField(), ProjectID: request.ProjectID.patchField(),
+	})
 	if err != nil {
+		var field taskusecase.TaskUpdateFieldError
+		if errors.As(err, &field) {
+			code, detail := "invalid_value", "Value is invalid"
+			switch field.Path {
+			case "title":
+				code, detail = "required", "Title is required"
+			case "priority":
+				code, detail = "invalid_priority", "Priority is invalid"
+			case "manual_estimated_minutes", "actual_minutes":
+				code, detail = "invalid_minutes", "Minutes must be zero or greater"
+			case "project_id":
+				code, detail = "project_not_found", "Project was not found"
+			}
+			WriteError(w, http.StatusBadRequest, errSpecTasksUpdateFailed, NewErrDetail(field.Path, code, detail))
+			return
+		}
 		writeTaskError(w, errSpecTasksUpdateFailed, err)
 		return
 	}

@@ -129,7 +129,7 @@ func newStartTaskFixture(status string) (*StartTaskUseCase, *startTaskUOWFake, *
 	tasks := &startTaskTaskRepositoryFake{
 		task: dao.Task{
 			ID: "task-1", UserID: "user-1", AssigneeID: "user-1", ProjectID: "project-7", Title: "Ship release",
-			Description: "Finalize notes", DueDate: 1_800_000_000, EstimatedMinutes: &progress,
+			Description: "Finalize notes", DueDate: 1_800_000_000, ManualEstimatedMinutes: &progress,
 			ActualMinutes: nil, Progress: 37, Priority: dao.Priority{Value: "high"},
 			Status: dao.TaskStatus{Value: status}, CreatedAt: 100, UpdatedAt: 200, Revision: 1,
 		},
@@ -159,7 +159,7 @@ func TestStartTaskUseCaseTransitions(t *testing.T) {
 			if tasks.getCalls != 3 || tasks.updateCalls != 1 || tasks.userID != userID || tasks.taskID != taskID {
 				t.Errorf("task repository calls/scope = %d/%d user:%q task:%q, want association pre-read, locked read, update, and persisted readback", tasks.getCalls, tasks.updateCalls, tasks.userID, tasks.taskID)
 			}
-			if tasks.updated.Status.String() != "in_progress" || tasks.updated.ID != taskID || tasks.updated.UserID != userID || tasks.updated.Title != "Ship release" || tasks.updated.Progress != 37 || tasks.updated.Priority.Value != "high" || tasks.updated.EstimatedMinutes == nil || *tasks.updated.EstimatedMinutes != 42 {
+			if tasks.updated.Status.String() != "in_progress" || tasks.updated.ID != taskID || tasks.updated.UserID != userID || tasks.updated.Title != "Ship release" || tasks.updated.Progress != 37 || tasks.updated.Priority.Value != "high" || tasks.updated.ManualEstimatedMinutes == nil || *tasks.updated.ManualEstimatedMinutes != 42 {
 				t.Errorf("updated task = %#v, want in_progress with existing fields preserved", tasks.updated)
 			}
 

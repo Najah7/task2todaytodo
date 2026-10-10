@@ -14,7 +14,7 @@ CREATE TABLE tasks (
     title text NOT NULL CHECK (btrim(title) <> ''),
     description text,
     due_date date,
-    estimated_minutes integer CHECK (estimated_minutes IS NULL OR estimated_minutes >= 0),
+    manual_estimated_minutes integer CHECK (manual_estimated_minutes IS NULL OR manual_estimated_minutes >= 0),
     actual_minutes integer CHECK (actual_minutes IS NULL OR actual_minutes >= 0),
     priority text NOT NULL DEFAULT 'low' REFERENCES priority_master(priority) ON DELETE RESTRICT,
     status text NOT NULL DEFAULT 'open' REFERENCES status_master(status) ON DELETE RESTRICT,
@@ -35,7 +35,7 @@ CREATE TABLE task_revisions (
     title text NOT NULL,
     description text,
     due_date date,
-    estimated_minutes integer,
+    manual_estimated_minutes integer,
     actual_minutes integer,
     priority text NOT NULL,
     status text NOT NULL,
@@ -65,11 +65,11 @@ CREATE FUNCTION snapshot_task_revision() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
     INSERT INTO task_revisions (
         id, revision, user_id, project_id, assignee_id, title, description,
-        due_date, estimated_minutes, actual_minutes, priority, status,
+        due_date, manual_estimated_minutes, actual_minutes, priority, status,
         deleted_at, created_at, updated_at, changed_by, changed_at
     ) VALUES (
         NEW.id, NEW.revision, NEW.user_id, NEW.project_id, NEW.assignee_id,
-        NEW.title, NEW.description, NEW.due_date, NEW.estimated_minutes,
+        NEW.title, NEW.description, NEW.due_date, NEW.manual_estimated_minutes,
         NEW.actual_minutes, NEW.priority, NEW.status, NEW.deleted_at,
         NEW.created_at, NEW.updated_at, NEW.changed_by, NEW.updated_at
     );
@@ -130,6 +130,8 @@ CREATE TABLE action_items (
     series_id text NOT NULL,
     occurrence_date date NOT NULL,
     timezone text NOT NULL CHECK (btrim(timezone) <> ''),
+    estimated_minutes integer CHECK (estimated_minutes IS NULL OR estimated_minutes >= 0),
+    priority text NOT NULL DEFAULT 'low',
     is_exception boolean NOT NULL DEFAULT false,
     repeat_state text DEFAULT 'one_off',
     frequency_anchor_date date,
@@ -138,6 +140,7 @@ CREATE TABLE action_items (
     skipped_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT action_items_priority_fk FOREIGN KEY (priority) REFERENCES priority_master(priority) ON DELETE RESTRICT,
     CONSTRAINT action_items_id_task_id_key UNIQUE (id, task_id),
     CONSTRAINT action_items_series_task_fk
         FOREIGN KEY (series_id, task_id) REFERENCES action_items(id, task_id) ON DELETE CASCADE,

@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared/calendar"
 	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
@@ -71,6 +72,7 @@ func expandActionItemRowsWithProjectState(rows []dao.ActionItem, request CursorP
 			return nil, domain.ErrRecurrenceTimezoneInvalid
 		}
 		startDate := localToday(asOf, location)
+		windowEnd := calendar.AddCalendarMonthClamped(startDate)
 		if requestedStart.After(startDate) {
 			startDate = requestedStart
 		}
@@ -124,12 +126,15 @@ func expandActionItemRowsWithProjectState(rows []dao.ActionItem, request CursorP
 			if root.FrequencyAnchorDate == 0 {
 				anchor = firstDate
 			}
-			generated, err := generateTodoListDates(anchor, phase, root.IntervalWeeks, frequencies, root, request, byOccurrence, skipped[root.ID])
+			generated, err := generateTodoListDates(anchor, phase, root.IntervalWeeks, frequencies, root, windowEnd)
 			if err != nil {
 				return nil, err
 			}
 			for _, occurrence := range generated {
 				date := occurrence.Date
+				if date.After(windowEnd) {
+					continue
+				}
 				keyDate := date.Format("2006-01-02")
 				if skipped[root.ID][keyDate] {
 					continue
@@ -157,18 +162,18 @@ func expandActionItemRowsWithProjectState(rows []dao.ActionItem, request CursorP
 				out = append(out, item)
 			}
 		}
-		if state == repeatStateActive && !taskDone && !firstDate.Before(localToday(asOf, location)) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasActionItem(out, root.ID, root.OccurrenceDate) {
+		if state == repeatStateActive && !taskDone && !firstDate.Before(localToday(asOf, location)) && !firstDate.After(windowEnd) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasActionItem(out, root.ID, root.OccurrenceDate) {
 			out = append(out, root)
 		}
-		if state == repeatStateActive && projectDone && !firstDate.Before(localToday(asOf, location)) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasActionItem(out, root.ID, root.OccurrenceDate) {
+		if state == repeatStateActive && projectDone && !firstDate.Before(localToday(asOf, location)) && !firstDate.After(windowEnd) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasActionItem(out, root.ID, root.OccurrenceDate) {
 			out = append(out, root)
 		}
-		if request.FromDate != "" && firstDate.Before(localToday(asOf, location)) && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasActionItem(out, root.ID, root.OccurrenceDate) {
+		if firstDate.Before(localToday(asOf, location)) && (root.Completed || request.FromDate != "") && requestedDateIncludes(request, requestedStart, firstDate) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasActionItem(out, root.ID, root.OccurrenceDate) {
 			out = append(out, root)
 		}
 		// Keep saved history addressable even when current rule no longer contains its date.
 		for _, saved := range rows {
-			if saved.SeriesID != root.ID || saved.ID == root.ID || saved.Deleted || skipped[root.ID][saved.OccurrenceDate] || (!saved.IsException && !saved.Completed) || !requestedDateIncludes(request, requestedStart, mustParseDate(saved.OccurrenceDate)) {
+			if saved.SeriesID != root.ID || saved.ID == root.ID || saved.Deleted || skipped[root.ID][saved.OccurrenceDate] || (!saved.IsException && !saved.Completed) || !recurringOccurrenceWithinListWindow(saved.OccurrenceDate, windowEnd) || !requestedDateIncludes(request, requestedStart, mustParseDate(saved.OccurrenceDate)) {
 				continue
 			}
 			if !hasActionItem(out, root.ID, saved.OccurrenceDate) {
@@ -188,61 +193,37 @@ func expandActionItemRowsWithProjectState(rows []dao.ActionItem, request CursorP
 	return out, nil
 }
 
-func listVisibleTarget(request CursorPageRequest) int {
-	target := request.Size + 1
-	if request.Anchor != nil {
-		target++
-	}
-	return target
-}
-
 func actionItemWithRootRecurrence(row, root dao.ActionItem) dao.ActionItem {
 	row.IntervalWeeks, row.Frequencies = root.IntervalWeeks, root.Frequencies
 	row.RepeatState, row.FrequencyAnchorDate = root.RepeatState, root.FrequencyAnchorDate
 	return row
 }
 
-func generateTodoListDates(anchor, from time.Time, interval int, frequencies domain.TaskFrequencies, root dao.ActionItem, request CursorPageRequest, overrides map[string]dao.ActionItem, skipped map[string]bool) ([]recurrence.RecurrenceDate, error) {
-	limit := listVisibleTarget(request)
-	for {
-		dates, err := recurrence.GenerateRecurrenceDatesFromAnchorLimit(anchor, from, interval, frequencies, root.Timezone, limit)
-		if err != nil {
-			return nil, err
-		}
-		visible := 0
-		for i, occurrence := range dates {
-			date := occurrence.Date
-			key := date.Format("2006-01-02")
-			if skipped[key] {
-				continue
-			}
-			if saved, ok := overrides[root.ID+"/"+key]; ok {
-				if !saved.Deleted && (saved.IsException || saved.Completed || saved.ID == root.ID) && requestedDateIncludes(request, mustRequestStart(request), date) {
-					visible++
-				}
-				if visible >= listVisibleTarget(request) {
-					return dates[:i+1], nil
-				}
-				continue
-			}
-			visible++
-			if visible >= listVisibleTarget(request) {
-				return dates[:i+1], nil
-			}
-		}
-		if len(dates) < limit {
-			return dates, nil
-		}
-		limit *= 2
+func generateTodoListDates(anchor, from time.Time, interval int, frequencies domain.TaskFrequencies, root dao.ActionItem, windowEnd time.Time) ([]recurrence.RecurrenceDate, error) {
+	const limit = 64 // An inclusive one-month window can contain at most 32 calendar dates.
+	dates, err := recurrence.GenerateRecurrenceDatesFromAnchorLimit(anchor, from, interval, frequencies, root.Timezone, limit)
+	if err != nil {
+		return nil, err
 	}
+	for i, date := range dates {
+		if date.Date.After(windowEnd) {
+			return dates[:i], nil
+		}
+	}
+	return dates, nil
 }
 
-func mustRequestStart(request CursorPageRequest) time.Time {
-	if request.FromDate == "" {
-		return time.Time{}
+func recurringOccurrenceWithinListWindow(date string, windowEnd time.Time) bool {
+	occurrenceDate, err := parseOccurrenceDate(date)
+	if err != nil {
+		return false
 	}
-	parsed, _ := parseOccurrenceDate(request.FromDate)
-	return parsed
+	return !occurrenceDate.After(windowEnd)
+}
+
+// ExpandActionItemListRows returns full default-list projection for one Task.
+func ExpandActionItemListRows(rows []dao.ActionItem, asOf time.Time, taskDone, projectDone bool, skipped map[string]map[string]bool) ([]dao.ActionItem, error) {
+	return expandActionItemRowsWithProjectState(rows, CursorPageRequest{}, asOf, taskDone, projectDone, skipped)
 }
 
 func requestedDateIncludes(request CursorPageRequest, requestedStart, date time.Time) bool {

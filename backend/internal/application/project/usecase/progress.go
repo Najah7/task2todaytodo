@@ -6,7 +6,6 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
-	sharedprogress "github.com/Najah7/task2todaytodo/internal/application/shared/progress"
 )
 
 type ProjectProgressReader interface {
@@ -27,10 +26,7 @@ func applyProjectProgress(ctx context.Context, reader ProjectProgressReader, pro
 	}
 	tasksByProject := make(map[string][]domain.TaskProgressFacts, len(projects))
 	for _, task := range sources.Tasks {
-		facts := domain.TaskProgressFacts{Done: task.Done, Total: task.Total, Completed: task.Completed}
-		for _, root := range task.Roots {
-			facts.Roots = append(facts.Roots, progressRule(root))
-		}
+		facts := domain.TaskProgressFacts{Progress: task.Progress}
 		tasksByProject[task.ProjectID] = append(tasksByProject[task.ProjectID], facts)
 	}
 	schedulesByProject := make(map[string][]domain.ScheduleProgressFacts, len(projects))
@@ -52,12 +48,4 @@ func applyProjectProgress(ctx context.Context, reader ProjectProgressReader, pro
 		}
 	}
 	return projects, nil
-}
-
-func progressRule(root dao.ProjectProgressRecurrence) sharedprogress.RecurrenceRule {
-	return sharedprogress.RecurrenceRule{
-		OccurrenceDate: root.OccurrenceDate, Timezone: root.Timezone, IntervalWeeks: root.IntervalWeeks,
-		FrequencyAnchorDate: root.FrequencyAnchorDate, Frequencies: root.Frequencies,
-		OccurrenceSavedToday: root.OccurrenceSavedToday, StartAt: root.StartAt, EndAt: root.EndAt,
-	}
 }

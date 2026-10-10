@@ -16,11 +16,27 @@ func (uow assignTaskTestUOW) Do(ctx context.Context, fn func(context.Context, Re
 }
 
 type assignTaskTestRepositories struct {
-	Repositories
+	taskProgressTestRepositories
 	tasks TaskRepository
 }
 
 func (repos assignTaskTestRepositories) Tasks() TaskRepository { return repos.tasks }
+
+type assignTaskTestActionItems struct{ ActionItemRepository }
+
+func (assignTaskTestActionItems) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	rows := make([]dao.ActionItem, 0, 4)
+	date := time.Now().UTC().Format("2006-01-02")
+	for index := 0; index < 4; index++ {
+		id := string(rune('a' + index))
+		rows = append(rows, dao.ActionItem{ID: id, TaskID: "task-1", SeriesID: id, OccurrenceDate: date, Timezone: "UTC", RepeatState: "one_off", Completed: index < 2})
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: map[string][]dao.ActionItem{"task-1": rows}, SkippedByTask: map[string]map[string]map[string]bool{}}, nil
+}
+
+func (repos assignTaskTestRepositories) ActionItems() ActionItemRepository {
+	return assignTaskTestActionItems{}
+}
 
 type assignTaskTestRepository struct {
 	TaskRepository

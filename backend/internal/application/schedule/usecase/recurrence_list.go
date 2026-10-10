@@ -25,14 +25,6 @@ func listReferenceTime(request CursorPageRequest, now time.Time) (time.Time, err
 	return now, nil
 }
 
-func listVisibleTarget(request CursorPageRequest) int {
-	target := request.Size + 1
-	if request.Anchor != nil {
-		target++
-	}
-	return target
-}
-
 func listStartDate(request CursorPageRequest, _ time.Time, _ string) (time.Time, error) {
 	if request.FromDate == "" {
 		return time.Time{}, nil
@@ -40,60 +32,19 @@ func listStartDate(request CursorPageRequest, _ time.Time, _ string) (time.Time,
 	return parseOccurrenceDate(request.FromDate)
 }
 
-func generateScheduleListDates(anchor, from time.Time, interval int, frequencies domain.Frequencies, root dao.Schedule, request CursorPageRequest, overrides map[string]dao.Schedule, skipped map[string]bool) ([]recurrence.RecurrenceDate, error) {
+func generateScheduleListDates(anchor, from time.Time, interval int, frequencies domain.Frequencies, root dao.Schedule, windowEnd time.Time) ([]recurrence.RecurrenceDate, error) {
 	timezone := root.Timezone
-	location, err := time.LoadLocation(timezone)
+	const limit = 64 // An inclusive one-month window can contain at most 32 calendar dates.
+	dates, err := recurrence.GenerateRecurrenceDatesFromAnchorLimit(anchor, from, interval, frequencies, timezone, limit)
 	if err != nil {
-		return nil, recurrence.ErrRecurrenceTimezoneInvalid
+		return nil, err
 	}
-	startLocal, endLocal := time.Unix(root.StartAt, 0).In(location), time.Unix(root.EndAt, 0).In(location)
-	limit := listVisibleTarget(request)
-	for {
-		dates, err := recurrence.GenerateRecurrenceDatesFromAnchorLimit(anchor, from, interval, frequencies, timezone, limit)
-		if err != nil {
-			return nil, err
+	for i, occurrence := range dates {
+		if occurrence.Date.After(windowEnd) {
+			return dates[:i], nil
 		}
-		visible := 0
-		for i, occurrence := range dates {
-			date := occurrence.Date
-			key := date.Format("2006-01-02")
-			if skipped[key] {
-				continue
-			}
-			_, ok := calendar.ResolveWallTime(date, startLocal, 0, location)
-			if !ok {
-				continue
-			}
-			if _, ok = calendar.ResolveWallTime(date, endLocal, calendar.CalendarDayOffset(startLocal, endLocal), location); !ok {
-				continue
-			}
-			if saved, found := overrides[root.ID+"/"+key]; found {
-				if !saved.Deleted && (saved.IsException || saved.Completed || saved.ID == root.ID) && requestedDateIncludes(request, mustRequestStart(request), date) {
-					visible++
-				}
-				if visible >= listVisibleTarget(request) {
-					return dates[:i+1], nil
-				}
-				continue
-			}
-			visible++
-			if visible >= listVisibleTarget(request) {
-				return dates[:i+1], nil
-			}
-		}
-		if len(dates) < limit {
-			return dates, nil
-		}
-		limit *= 2
 	}
-}
-
-func mustRequestStart(request CursorPageRequest) time.Time {
-	if request.FromDate == "" {
-		return time.Time{}
-	}
-	parsed, _ := parseOccurrenceDate(request.FromDate)
-	return parsed
+	return dates, nil
 }
 
 func requestedDateIncludes(request CursorPageRequest, requestedStart, date time.Time) bool {
@@ -134,6 +85,7 @@ func expandScheduleRowsWithSkipped(rows []dao.Schedule, request CursorPageReques
 			return nil, recurrence.ErrRecurrenceTimezoneInvalid
 		}
 		startDate := localToday(asOf, location)
+		windowEnd := calendar.AddCalendarMonthClamped(startDate)
 		if requestedStart.After(startDate) {
 			startDate = requestedStart
 		}
@@ -188,7 +140,7 @@ func expandScheduleRowsWithSkipped(rows []dao.Schedule, request CursorPageReques
 			if root.FrequencyAnchorDate == 0 {
 				anchor = firstDate
 			}
-			generated, err := generateScheduleListDates(anchor, phase, root.IntervalWeeks, frequencies, root, request, byOccurrence, skipped[root.ID])
+			generated, err := generateScheduleListDates(anchor, phase, root.IntervalWeeks, frequencies, root, windowEnd)
 			if err != nil {
 				return nil, err
 			}
@@ -196,6 +148,9 @@ func expandScheduleRowsWithSkipped(rows []dao.Schedule, request CursorPageReques
 			startLocal, endLocal := time.Unix(root.StartAt, 0).In(location), time.Unix(root.EndAt, 0).In(location)
 			for _, occurrence := range generated {
 				date := occurrence.Date
+				if date.After(windowEnd) {
+					continue
+				}
 				keyDate := date.Format("2006-01-02")
 				if skipped[root.ID][keyDate] {
 					continue
@@ -226,18 +181,18 @@ func expandScheduleRowsWithSkipped(rows []dao.Schedule, request CursorPageReques
 				out = append(out, item)
 			}
 		}
-		if state == repeatStateActive && !firstDate.Before(localToday(asOf, location)) && requestedScheduleIncludes(request, requestedStart, root) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasSchedule(out, root.ID, root.OccurrenceDate) {
+		if state == repeatStateActive && !firstDate.Before(localToday(asOf, location)) && !firstDate.After(windowEnd) && requestedScheduleIncludes(request, requestedStart, root) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasSchedule(out, root.ID, root.OccurrenceDate) {
 			root.CursorStartAt = time.Unix(root.StartAt, 0).UTC().Format(time.RFC3339Nano)
 			out = append(out, root)
 		}
 		for _, saved := range rows {
-			if saved.SeriesID != root.ID || saved.ID == root.ID || saved.Deleted || skipped[root.ID][saved.OccurrenceDate] || (!saved.IsException && !saved.Completed) || !requestedScheduleIncludes(request, requestedStart, saved) || hasSchedule(out, root.ID, saved.OccurrenceDate) {
+			if saved.SeriesID != root.ID || saved.ID == root.ID || saved.Deleted || skipped[root.ID][saved.OccurrenceDate] || (!saved.IsException && !saved.Completed) || !recurringOccurrenceWithinListWindow(saved.OccurrenceDate, windowEnd) || !requestedScheduleIncludes(request, requestedStart, saved) || hasSchedule(out, root.ID, saved.OccurrenceDate) {
 				continue
 			}
 			saved.CursorStartAt = time.Unix(saved.StartAt, 0).UTC().Format(time.RFC3339Nano)
 			out = append(out, scheduleWithRootRecurrence(saved, root))
 		}
-		if request.FromDate != "" && firstDate.Before(localToday(asOf, location)) && requestedScheduleIncludes(request, requestedStart, root) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasSchedule(out, root.ID, root.OccurrenceDate) {
+		if firstDate.Before(localToday(asOf, location)) && (root.Completed || request.FromDate != "") && requestedScheduleIncludes(request, requestedStart, root) && !root.Deleted && !skipped[root.ID][root.OccurrenceDate] && !hasSchedule(out, root.ID, root.OccurrenceDate) {
 			root.CursorStartAt = time.Unix(root.StartAt, 0).UTC().Format(time.RFC3339Nano)
 			out = append(out, root)
 		}
@@ -252,6 +207,14 @@ func expandScheduleRowsWithSkipped(rows []dao.Schedule, request CursorPageReques
 		return out[i].OccurrenceDate < out[j].OccurrenceDate
 	})
 	return out, nil
+}
+
+func recurringOccurrenceWithinListWindow(date string, windowEnd time.Time) bool {
+	occurrenceDate, err := parseOccurrenceDate(date)
+	if err != nil {
+		return false
+	}
+	return !occurrenceDate.After(windowEnd)
 }
 
 func scheduleRowOnOrAfter(row dao.Schedule, fromDate time.Time) bool {

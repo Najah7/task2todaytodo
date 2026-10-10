@@ -44,7 +44,7 @@ SELECT
     CURRENT_DATE + ((n % 60) + 14)
 FROM generate_series(0, 15) AS series(n);
 
-INSERT INTO tasks (id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status) VALUES
+INSERT INTO tasks (id, user_id, project_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status) VALUES
     ('00000000000000000000000201', '00000000000000000000000001', '00000000000000000000000101', 'ユーザーインタビューを整理する', '発見した課題をテーマごとにまとめる', CURRENT_DATE + 2, 90, 25, 'urgent', 'in_progress'),
     ('00000000000000000000000202', '00000000000000000000000001', '00000000000000000000000101', '改善案の優先順位を決める', '影響度と実装コストを比較する', CURRENT_DATE + 5, 60, NULL, 'high', 'open'),
     ('00000000000000000000000203', '00000000000000000000000001', '00000000000000000000000101', 'デザインレビューを依頼する', 'レビュー用の画面と論点を準備する', CURRENT_DATE + 1, 30, NULL, 'medium', 'waiting_on_others'),
@@ -55,7 +55,7 @@ INSERT INTO tasks (id, user_id, project_id, title, description, due_date, estima
     ('00000000000000000000000208', '00000000000000000000000001', NULL, '古いメモを整理する', NULL, NULL, NULL, NULL, 'someday', 'open'),
     ('00000000000000000000000209', '00000000000000000000000002', NULL, '別ユーザーのサンプルタスク', NULL, NULL, 30, NULL, 'low', 'open');
 
-INSERT INTO tasks (id, user_id, project_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status)
+INSERT INTO tasks (id, user_id, project_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status)
 SELECT
     lpad((220 + n)::text, 26, '0'),
     '00000000000000000000000001',

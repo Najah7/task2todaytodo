@@ -29,7 +29,15 @@ type getTaskRepositoriesFake struct {
 	taskProgressTestRepositories
 	tasks    TaskRepository
 	tags     TaskTagRepository
+	items    TaskListProjectionReader
 	accesses *[]string
+}
+
+func (repos getTaskRepositoriesFake) ActionItems() ActionItemRepository {
+	if items, ok := repos.items.(ActionItemRepository); ok {
+		return items
+	}
+	return taskProgressTestActionItems{}
 }
 
 func (repos getTaskRepositoriesFake) Tasks() TaskRepository {
@@ -80,6 +88,27 @@ type getTaskTagRepositoryFake struct {
 	accesses *[]string
 }
 
+type getTaskProjectionFake struct{ rows []dao.ActionItem }
+
+type getTaskActionItemsFake struct {
+	taskProgressTestActionItems
+	getTaskProjectionFake
+}
+
+func (reader getTaskActionItemsFake) ReadTaskListProjection(ctx context.Context, userID domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	return reader.getTaskProjectionFake.ReadTaskListProjection(ctx, userID, taskIDs)
+}
+
+func (reader getTaskProjectionFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		items[id] = reader.rows
+		skipped[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+}
+
 func (repo *getTaskTagRepositoryFake) ListByTaskAndUserID(_ context.Context, userID domain.UserID, taskID domain.TaskID) ([]dao.TaskTag, error) {
 	repo.calls++
 	repo.userID, repo.taskID = userID, taskID
@@ -100,8 +129,16 @@ func TestGetTaskUseCaseExecuteReturnsOwnedTaskAndTags(t *testing.T) {
 		}},
 	}
 	tagRepo := &getTaskTagRepositoryFake{tags: wantTags, accesses: &accesses}
+	rows := []dao.ActionItem{
+		{ID: "item-1", TaskID: string(taskID), SeriesID: "item-1", RepeatState: repeatStateOneOff, OccurrenceDate: "2026-10-10", Completed: true},
+		{ID: "item-2", TaskID: string(taskID), SeriesID: "item-2", RepeatState: repeatStateOneOff, OccurrenceDate: "2026-10-10", Completed: true},
+		{ID: "item-3", TaskID: string(taskID), SeriesID: "item-3", RepeatState: repeatStateOneOff, OccurrenceDate: "2026-10-10"},
+	}
+	wantTask.Progress, wantTask.ActionItemCount, wantTask.ActionItemCompletedCount = 66, 3, 2
+	wantTask.EstimateSource = "action_items"
+	wantTask.CanUpdate = true
 	uow := &getTaskUOWFake{repos: getTaskRepositoriesFake{
-		tasks: taskRepo, tags: tagRepo, accesses: &accesses,
+		tasks: taskRepo, tags: tagRepo, items: getTaskActionItemsFake{getTaskProjectionFake: getTaskProjectionFake{rows: rows}}, accesses: &accesses,
 	}}
 
 	got, err := NewGetTaskUseCase(uow, nil).Execute(context.Background(), userID, taskID)

@@ -15,13 +15,18 @@ type listProjectTasksTaskRepository interface {
 }
 
 type ListProjectTasksUseCase struct {
-	projects TaskProjectRepository
-	tasks    listProjectTasksTaskRepository
-	logger   logging.Logger
+	projects   TaskProjectRepository
+	tasks      listProjectTasksTaskRepository
+	projection TaskListProjectionReader
+	logger     logging.Logger
 }
 
-func NewListProjectTasksUseCase(projects TaskProjectRepository, tasks listProjectTasksTaskRepository, logger logging.Logger) *ListProjectTasksUseCase {
-	return &ListProjectTasksUseCase{logger: logging.OrNop(logger), projects: projects, tasks: tasks}
+func NewListProjectTasksUseCase(projects TaskProjectRepository, tasks listProjectTasksTaskRepository, logger logging.Logger, projection ...TaskListProjectionReader) *ListProjectTasksUseCase {
+	uc := &ListProjectTasksUseCase{logger: logging.OrNop(logger), projects: projects, tasks: tasks}
+	if len(projection) > 0 {
+		uc.projection = projection[0]
+	}
+	return uc
 }
 
 func (uc *ListProjectTasksUseCase) Execute(ctx context.Context, userID domain.UserID, projectID domain.ProjectID, request CursorPageRequest) (output CursorPage[dao.Task], err error) {
@@ -38,7 +43,7 @@ func (uc *ListProjectTasksUseCase) Execute(ctx context.Context, userID domain.Us
 	if err != nil {
 		return CursorPage[dao.Task]{}, err
 	}
-	rows, err = applyTaskProgress(ctx, uc.tasks, rows, time.Now())
+	rows, err = EnrichTaskList(ctx, uc.projection, userID, rows, time.Now())
 	if err != nil {
 		return CursorPage[dao.Task]{}, err
 	}

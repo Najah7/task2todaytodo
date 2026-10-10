@@ -49,6 +49,16 @@ type completeActionItemRepositoryFake struct {
 	err    error
 }
 
+func (*completeActionItemRepositoryFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		items[id] = nil
+		skipped[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+}
+
 func (repo *completeActionItemRepositoryFake) CheckForOwnedTask(_ context.Context, userID domain.UserID, taskID domain.TaskID, itemID domain.ActionItemID) error {
 	repo.calls++
 	repo.userID, repo.taskID, repo.itemID = userID, taskID, itemID

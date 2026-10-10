@@ -27,7 +27,7 @@ WHERE t.id = $2
   AND p.deleted_at IS NULL
   AND p.user_id = t.user_id
   AND project_has_permission(p.id, $1, 'task', 'create')
-RETURNING t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
+RETURNING t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
 `
 
 type AssignTaskToProjectByUserIDParams struct {
@@ -53,7 +53,7 @@ func (q *Queries) AssignTaskToProjectByUserID(ctx context.Context, arg AssignTas
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
-		&i.EstimatedMinutes,
+		&i.ManualEstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Priority,
 		&i.Status,
@@ -66,26 +66,57 @@ func (q *Queries) AssignTaskToProjectByUserID(ctx context.Context, arg AssignTas
 	return i, err
 }
 
+const bumpTaskRevisionByUserID = `-- name: BumpTaskRevisionByUserID :one
+UPDATE tasks
+SET changed_by = $1::text
+WHERE id = $2::text
+  AND deleted_at IS NULL
+  AND revision = $3::integer
+  AND task_has_permission(id, $1::text, $4::text, $5::action)
+RETURNING revision
+`
+
+type BumpTaskRevisionByUserIDParams struct {
+	UserID           string
+	ID               string
+	ExpectedRevision int32
+	ResourceID       string
+	Action           Action
+}
+
+func (q *Queries) BumpTaskRevisionByUserID(ctx context.Context, arg BumpTaskRevisionByUserIDParams) (int32, error) {
+	row := q.db.QueryRow(ctx, bumpTaskRevisionByUserID,
+		arg.UserID,
+		arg.ID,
+		arg.ExpectedRevision,
+		arg.ResourceID,
+		arg.Action,
+	)
+	var revision int32
+	err := row.Scan(&revision)
+	return revision, err
+}
+
 const createTask = `-- name: CreateTask :one
 INSERT INTO tasks (
-    id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes,
+    id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes,
     priority, status, changed_by
 )
 VALUES ($1, $2, $3, $2, $4, $5, $6, $7, $8, $9, $10, $2)
-RETURNING id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
+RETURNING id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type CreateTaskParams struct {
-	ID               string
-	UserID           string
-	ProjectID        pgtype.Text
-	Title            string
-	Description      pgtype.Text
-	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
-	ActualMinutes    pgtype.Int4
-	Priority         string
-	Status           string
+	ID                     string
+	UserID                 string
+	ProjectID              pgtype.Text
+	Title                  string
+	Description            pgtype.Text
+	DueDate                pgtype.Date
+	ManualEstimatedMinutes pgtype.Int4
+	ActualMinutes          pgtype.Int4
+	Priority               string
+	Status                 string
 }
 
 func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error) {
@@ -96,7 +127,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		arg.Title,
 		arg.Description,
 		arg.DueDate,
-		arg.EstimatedMinutes,
+		arg.ManualEstimatedMinutes,
 		arg.ActualMinutes,
 		arg.Priority,
 		arg.Status,
@@ -110,7 +141,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
-		&i.EstimatedMinutes,
+		&i.ManualEstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Priority,
 		&i.Status,
@@ -125,7 +156,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 
 const createTaskInProject = `-- name: CreateTaskInProject :one
 INSERT INTO tasks (
-    id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes,
+    id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes,
     priority, status, changed_by
 )
 SELECT
@@ -146,21 +177,21 @@ WHERE p.id = $11
   AND p.deleted_at IS NULL
   AND p.user_id = $2
   AND project_has_permission(p.id, $10, 'task', 'create')
-RETURNING id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
+RETURNING id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type CreateTaskInProjectParams struct {
-	ID               string
-	UserID           string
-	Title            string
-	Description      pgtype.Text
-	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
-	ActualMinutes    pgtype.Int4
-	Priority         string
-	Status           string
-	ActorID          string
-	ProjectID        string
+	ID                     string
+	UserID                 string
+	Title                  string
+	Description            pgtype.Text
+	DueDate                pgtype.Date
+	ManualEstimatedMinutes pgtype.Int4
+	ActualMinutes          pgtype.Int4
+	Priority               string
+	Status                 string
+	ActorID                string
+	ProjectID              string
 }
 
 func (q *Queries) CreateTaskInProject(ctx context.Context, arg CreateTaskInProjectParams) (Task, error) {
@@ -170,7 +201,7 @@ func (q *Queries) CreateTaskInProject(ctx context.Context, arg CreateTaskInProje
 		arg.Title,
 		arg.Description,
 		arg.DueDate,
-		arg.EstimatedMinutes,
+		arg.ManualEstimatedMinutes,
 		arg.ActualMinutes,
 		arg.Priority,
 		arg.Status,
@@ -186,7 +217,7 @@ func (q *Queries) CreateTaskInProject(ctx context.Context, arg CreateTaskInProje
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
-		&i.EstimatedMinutes,
+		&i.ManualEstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Priority,
 		&i.Status,
@@ -279,7 +310,7 @@ func (q *Queries) DeleteTaskByUserID(ctx context.Context, arg DeleteTaskByUserID
 }
 
 const lockTaskByUserID = `-- name: LockTaskByUserID :one
-SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks AS t
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks AS t
 WHERE t.id = $1
   AND task_has_permission(t.id, $2, 'task', 'update')
 FOR UPDATE
@@ -301,7 +332,7 @@ func (q *Queries) LockTaskByUserID(ctx context.Context, arg LockTaskByUserIDPara
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
-		&i.EstimatedMinutes,
+		&i.ManualEstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Priority,
 		&i.Status,
@@ -315,7 +346,7 @@ func (q *Queries) LockTaskByUserID(ctx context.Context, arg LockTaskByUserIDPara
 }
 
 const lockTaskByUserIDForPermission = `-- name: LockTaskByUserIDForPermission :one
-SELECT id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks AS t
+SELECT id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks AS t
 WHERE t.id = $1
   AND t.deleted_at IS NULL
   AND task_has_permission(t.id, $2, $3::text, $4::action)
@@ -345,7 +376,7 @@ func (q *Queries) LockTaskByUserIDForPermission(ctx context.Context, arg LockTas
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
-		&i.EstimatedMinutes,
+		&i.ManualEstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Priority,
 		&i.Status,
@@ -369,7 +400,7 @@ WHERE id = $2
   AND project_id = $4
   AND task_has_permission(id, $1, 'task', 'update')
   AND project_has_permission(project_id, $1, 'task', 'update')
-RETURNING id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
+RETURNING id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type RemoveTaskFromProjectByUserIDParams struct {
@@ -395,7 +426,7 @@ func (q *Queries) RemoveTaskFromProjectByUserID(ctx context.Context, arg RemoveT
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
-		&i.EstimatedMinutes,
+		&i.ManualEstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Priority,
 		&i.Status,
@@ -415,26 +446,26 @@ SET user_id = $2,
     title = $4,
     description = $5,
     due_date = $6,
-    estimated_minutes = $7,
+    manual_estimated_minutes = $7,
     actual_minutes = $8,
     priority = $9,
     status = $10,
     changed_by = user_id
 WHERE id = $1
-RETURNING id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
+RETURNING id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type UpdateTaskParams struct {
-	ID               string
-	UserID           string
-	ProjectID        pgtype.Text
-	Title            string
-	Description      pgtype.Text
-	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
-	ActualMinutes    pgtype.Int4
-	Priority         string
-	Status           string
+	ID                     string
+	UserID                 string
+	ProjectID              pgtype.Text
+	Title                  string
+	Description            pgtype.Text
+	DueDate                pgtype.Date
+	ManualEstimatedMinutes pgtype.Int4
+	ActualMinutes          pgtype.Int4
+	Priority               string
+	Status                 string
 }
 
 func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, error) {
@@ -445,7 +476,7 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, e
 		arg.Title,
 		arg.Description,
 		arg.DueDate,
-		arg.EstimatedMinutes,
+		arg.ManualEstimatedMinutes,
 		arg.ActualMinutes,
 		arg.Priority,
 		arg.Status,
@@ -459,7 +490,7 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, e
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
-		&i.EstimatedMinutes,
+		&i.ManualEstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Priority,
 		&i.Status,
@@ -487,7 +518,7 @@ WHERE t.id = $3::text
           WHERE pm.project_id = t.project_id AND pm.user_id = $1::text
       )
   )
-RETURNING id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
+RETURNING id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type UpdateTaskAssigneeByActorParams struct {
@@ -513,7 +544,7 @@ func (q *Queries) UpdateTaskAssigneeByActor(ctx context.Context, arg UpdateTaskA
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
-		&i.EstimatedMinutes,
+		&i.ManualEstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Priority,
 		&i.Status,
@@ -531,25 +562,31 @@ UPDATE tasks
 SET title = $1,
     description = $2,
     due_date = $3,
-    estimated_minutes = $4,
+    manual_estimated_minutes = $4,
     actual_minutes = $5,
-    changed_by = $6::text
-WHERE id = $7
+    priority = $6,
+    project_id = $7,
+    assignee_id = $8::text,
+    changed_by = $9::text
+WHERE id = $10
   AND deleted_at IS NULL
-  AND revision = $8::integer
-  AND task_has_permission(id, $6::text, 'task', 'update')
-RETURNING id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
+  AND revision = $11::integer
+  AND task_has_permission(id, $9::text, 'task', 'update')
+RETURNING id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type UpdateTaskByUserIDParams struct {
-	Title            string
-	Description      pgtype.Text
-	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
-	ActualMinutes    pgtype.Int4
-	UserID           string
-	ID               string
-	ExpectedRevision int32
+	Title                  string
+	Description            pgtype.Text
+	DueDate                pgtype.Date
+	ManualEstimatedMinutes pgtype.Int4
+	ActualMinutes          pgtype.Int4
+	Priority               string
+	ProjectID              pgtype.Text
+	AssigneeID             string
+	UserID                 string
+	ID                     string
+	ExpectedRevision       int32
 }
 
 func (q *Queries) UpdateTaskByUserID(ctx context.Context, arg UpdateTaskByUserIDParams) (Task, error) {
@@ -557,8 +594,11 @@ func (q *Queries) UpdateTaskByUserID(ctx context.Context, arg UpdateTaskByUserID
 		arg.Title,
 		arg.Description,
 		arg.DueDate,
-		arg.EstimatedMinutes,
+		arg.ManualEstimatedMinutes,
 		arg.ActualMinutes,
+		arg.Priority,
+		arg.ProjectID,
+		arg.AssigneeID,
 		arg.UserID,
 		arg.ID,
 		arg.ExpectedRevision,
@@ -572,7 +612,7 @@ func (q *Queries) UpdateTaskByUserID(ctx context.Context, arg UpdateTaskByUserID
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
-		&i.EstimatedMinutes,
+		&i.ManualEstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Priority,
 		&i.Status,
@@ -592,7 +632,7 @@ WHERE id = $3
   AND deleted_at IS NULL
   AND revision = $4::integer
   AND task_has_permission(id, $2, $5::text, $6::action)
-RETURNING id, user_id, project_id, assignee_id, title, description, due_date, estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
+RETURNING id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type UpdateTaskStatusByUserIDParams struct {
@@ -622,7 +662,7 @@ func (q *Queries) UpdateTaskStatusByUserID(ctx context.Context, arg UpdateTaskSt
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
-		&i.EstimatedMinutes,
+		&i.ManualEstimatedMinutes,
 		&i.ActualMinutes,
 		&i.Priority,
 		&i.Status,

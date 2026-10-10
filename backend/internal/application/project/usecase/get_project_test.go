@@ -60,7 +60,7 @@ func TestGetProjectUseCaseExecuteReturnsOwnedProject(t *testing.T) {
 	}}
 
 	progress := &projectProgressSourceFake{sources: dao.ProjectProgressSources{
-		Tasks: []dao.ProjectTaskProgress{{ProjectID: string(projectID), TaskID: "task-1", Total: 4, Completed: 1}},
+		Tasks: []dao.ProjectTaskProgress{{ProjectID: string(projectID), TaskID: "task-1", Progress: 25}},
 	}}
 	got, err := NewGetProjectUseCase(repo, progress, nil).Execute(context.Background(), userID, projectID)
 	if err != nil {

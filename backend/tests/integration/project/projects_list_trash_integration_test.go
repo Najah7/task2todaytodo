@@ -298,7 +298,7 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 	if err := taskDelete.Execute(ctx, taskdomain.UserID(fixture.ownerID), taskdomain.TaskID(taskIDs[0]), 1); err != nil {
 		t.Fatalf("individually delete Task: %v", err)
 	}
-	scheduleDelete := scheduleusecase.NewDeleteScheduleUseCase(application.NewScheduleUOW(pool, store.Schedule, store.Project), nil)
+	scheduleDelete := scheduleusecase.NewDeleteScheduleUseCase(application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task), nil)
 	if err := scheduleDelete.Execute(ctx, scheduledomain.UserID(fixture.ownerID), scheduledomain.ScheduleID(scheduleIDs[0])); err != nil {
 		t.Fatalf("individually delete Schedule: %v", err)
 	}

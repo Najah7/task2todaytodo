@@ -12,7 +12,7 @@ import (
 )
 
 const getProject = `-- name: GetProject :one
-SELECT id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at, status
+SELECT id, user_id, type, title, goal, description, priority, status, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 FROM projects
 WHERE id = $1
 `
@@ -28,6 +28,7 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 		&i.Goal,
 		&i.Description,
 		&i.Priority,
+		&i.Status,
 		&i.StartDate,
 		&i.EndDate,
 		&i.Revision,
@@ -35,13 +36,12 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Status,
 	)
 	return i, err
 }
 
 const getProjectByUserID = `-- name: GetProjectByUserID :one
-SELECT id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at, status
+SELECT id, user_id, type, title, goal, description, priority, status, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 FROM projects
 WHERE id = $1
   AND deleted_at IS NULL
@@ -64,6 +64,7 @@ func (q *Queries) GetProjectByUserID(ctx context.Context, arg GetProjectByUserID
 		&i.Goal,
 		&i.Description,
 		&i.Priority,
+		&i.Status,
 		&i.StartDate,
 		&i.EndDate,
 		&i.Revision,
@@ -71,13 +72,12 @@ func (q *Queries) GetProjectByUserID(ctx context.Context, arg GetProjectByUserID
 		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Status,
 	)
 	return i, err
 }
 
 const getProjectByUserIDForPermission = `-- name: GetProjectByUserIDForPermission :one
-SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at, p.status
+SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.status, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at
 FROM projects AS p
 WHERE p.id = $1::text
   AND p.deleted_at IS NULL
@@ -107,6 +107,7 @@ func (q *Queries) GetProjectByUserIDForPermission(ctx context.Context, arg GetPr
 		&i.Goal,
 		&i.Description,
 		&i.Priority,
+		&i.Status,
 		&i.StartDate,
 		&i.EndDate,
 		&i.Revision,
@@ -114,13 +115,12 @@ func (q *Queries) GetProjectByUserIDForPermission(ctx context.Context, arg GetPr
 		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Status,
 	)
 	return i, err
 }
 
 const listProjectCandidates = `-- name: ListProjectCandidates :many
-SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at, p.status, pm.weight AS priority_weight,
+SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.status, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at, pm.weight AS priority_weight,
        project_has_permission(p.id, $1::text, 'project', 'update') AS can_update,
        project_has_permission(p.id, $1::text, 'project', 'delete') AS can_delete
 FROM projects AS p
@@ -147,6 +147,7 @@ type ListProjectCandidatesRow struct {
 	Goal           pgtype.Text
 	Description    pgtype.Text
 	Priority       string
+	Status         string
 	StartDate      pgtype.Date
 	EndDate        pgtype.Date
 	Revision       int32
@@ -154,7 +155,6 @@ type ListProjectCandidatesRow struct {
 	ChangedBy      string
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
-	Status         string
 	PriorityWeight int32
 	CanUpdate      bool
 	CanDelete      bool
@@ -177,6 +177,7 @@ func (q *Queries) ListProjectCandidates(ctx context.Context, arg ListProjectCand
 			&i.Goal,
 			&i.Description,
 			&i.Priority,
+			&i.Status,
 			&i.StartDate,
 			&i.EndDate,
 			&i.Revision,
@@ -184,7 +185,6 @@ func (q *Queries) ListProjectCandidates(ctx context.Context, arg ListProjectCand
 			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Status,
 			&i.PriorityWeight,
 			&i.CanUpdate,
 			&i.CanDelete,
@@ -200,7 +200,7 @@ func (q *Queries) ListProjectCandidates(ctx context.Context, arg ListProjectCand
 }
 
 const listProjectPageBySort = `-- name: ListProjectPageBySort :many
-SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at, p.status, pm.weight AS priority_weight,
+SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.status, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at, pm.weight AS priority_weight,
        project_has_permission(p.id, $1::text, 'project', 'update') AS can_update,
        project_has_permission(p.id, $1::text, 'project', 'delete') AS can_delete
 FROM projects AS p
@@ -300,6 +300,7 @@ type ListProjectPageBySortRow struct {
 	Goal           pgtype.Text
 	Description    pgtype.Text
 	Priority       string
+	Status         string
 	StartDate      pgtype.Date
 	EndDate        pgtype.Date
 	Revision       int32
@@ -307,7 +308,6 @@ type ListProjectPageBySortRow struct {
 	ChangedBy      string
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
-	Status         string
 	PriorityWeight int32
 	CanUpdate      bool
 	CanDelete      bool
@@ -343,6 +343,7 @@ func (q *Queries) ListProjectPageBySort(ctx context.Context, arg ListProjectPage
 			&i.Goal,
 			&i.Description,
 			&i.Priority,
+			&i.Status,
 			&i.StartDate,
 			&i.EndDate,
 			&i.Revision,
@@ -350,7 +351,6 @@ func (q *Queries) ListProjectPageBySort(ctx context.Context, arg ListProjectPage
 			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Status,
 			&i.PriorityWeight,
 			&i.CanUpdate,
 			&i.CanDelete,
@@ -399,7 +399,7 @@ func (q *Queries) ListProjectPriorities(ctx context.Context) ([]PriorityMaster, 
 }
 
 const listProjectTasksByUserID = `-- name: ListProjectTasksByUserID :many
-SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
 FROM tasks AS t
 WHERE t.project_id = $1
   AND t.deleted_at IS NULL
@@ -430,7 +430,7 @@ func (q *Queries) ListProjectTasksByUserID(ctx context.Context, arg ListProjectT
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
-			&i.EstimatedMinutes,
+			&i.ManualEstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Priority,
 			&i.Status,
@@ -451,7 +451,7 @@ func (q *Queries) ListProjectTasksByUserID(ctx context.Context, arg ListProjectT
 }
 
 const listProjectsByUserID = `-- name: ListProjectsByUserID :many
-SELECT id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at, status
+SELECT id, user_id, type, title, goal, description, priority, status, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 FROM projects
 WHERE deleted_at IS NULL
   AND project_has_permission(projects.id, $1::text, 'project', 'read')
@@ -475,6 +475,7 @@ func (q *Queries) ListProjectsByUserID(ctx context.Context, userID string) ([]Pr
 			&i.Goal,
 			&i.Description,
 			&i.Priority,
+			&i.Status,
 			&i.StartDate,
 			&i.EndDate,
 			&i.Revision,
@@ -482,7 +483,6 @@ func (q *Queries) ListProjectsByUserID(ctx context.Context, userID string) ([]Pr
 			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -495,7 +495,7 @@ func (q *Queries) ListProjectsByUserID(ctx context.Context, userID string) ([]Pr
 }
 
 const listProjectsByUserIDPage = `-- name: ListProjectsByUserIDPage :many
-SELECT id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at, status
+SELECT id, user_id, type, title, goal, description, priority, status, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 FROM projects
 WHERE deleted_at IS NULL
   AND project_has_permission(projects.id, $1::text, 'project', 'read')
@@ -533,6 +533,7 @@ func (q *Queries) ListProjectsByUserIDPage(ctx context.Context, arg ListProjects
 			&i.Goal,
 			&i.Description,
 			&i.Priority,
+			&i.Status,
 			&i.StartDate,
 			&i.EndDate,
 			&i.Revision,
@@ -540,7 +541,6 @@ func (q *Queries) ListProjectsByUserIDPage(ctx context.Context, arg ListProjects
 			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -582,7 +582,7 @@ func (q *Queries) LockActiveProjectTasksForDeletion(ctx context.Context, project
 }
 
 const lockDeletedProjectByUserIDForPermission = `-- name: LockDeletedProjectByUserIDForPermission :one
-SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at, p.status
+SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.status, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at
 FROM projects AS p
 WHERE p.id = $1::text
   AND p.deleted_at IS NOT NULL
@@ -613,6 +613,7 @@ func (q *Queries) LockDeletedProjectByUserIDForPermission(ctx context.Context, a
 		&i.Goal,
 		&i.Description,
 		&i.Priority,
+		&i.Status,
 		&i.StartDate,
 		&i.EndDate,
 		&i.Revision,
@@ -620,13 +621,12 @@ func (q *Queries) LockDeletedProjectByUserIDForPermission(ctx context.Context, a
 		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Status,
 	)
 	return i, err
 }
 
 const lockProjectByUserIDForPermission = `-- name: LockProjectByUserIDForPermission :one
-SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at, p.status
+SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.status, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at
 FROM projects AS p
 WHERE p.id = $1::text
   AND p.deleted_at IS NULL
@@ -657,6 +657,7 @@ func (q *Queries) LockProjectByUserIDForPermission(ctx context.Context, arg Lock
 		&i.Goal,
 		&i.Description,
 		&i.Priority,
+		&i.Status,
 		&i.StartDate,
 		&i.EndDate,
 		&i.Revision,
@@ -664,7 +665,6 @@ func (q *Queries) LockProjectByUserIDForPermission(ctx context.Context, arg Lock
 		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Status,
 	)
 	return i, err
 }
@@ -689,15 +689,15 @@ WITH user_calendar AS (
     SELECT timezone, ($1::timestamptz AT TIME ZONE timezone)::date AS today
     FROM users WHERE id = $2::text
 ), live_readable AS (
-    SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at, p.status FROM projects p
+    SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.status, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at FROM projects p
     WHERE p.deleted_at IS NULL
       AND project_has_permission(p.id, $2::text, 'project', 'read')
 ), trash_deletable AS (
-    SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at, p.status FROM projects p
+    SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.status, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at FROM projects p
     WHERE p.deleted_at IS NOT NULL
       AND project_has_permission(p.id, $2::text, 'project', 'delete')
 ), selected AS (
-    SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at, p.status FROM projects p, user_calendar c
+    SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.status, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at FROM projects p, user_calendar c
     WHERE ($3::boolean AND p.deleted_at IS NOT NULL
            AND project_has_permission(p.id, $2::text, 'project', 'delete'))
        OR (NOT $3::boolean AND p.deleted_at IS NULL

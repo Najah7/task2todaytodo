@@ -23,20 +23,20 @@ type ProjectID string
 type TaskID string
 
 type Task struct {
-	ID               TaskID
-	UserID           UserID
-	AssigneeID       UserID
-	ProjectID        ProjectID
-	Title            string
-	Description      string
-	DueDate          time.Time
-	EstimatedMinutes *int
-	ActualMinutes    *int
-	Progress         int
-	Priority         TaskPriority
-	Status           TaskStatus
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID                     TaskID
+	UserID                 UserID
+	AssigneeID             UserID
+	ProjectID              ProjectID
+	Title                  string
+	Description            string
+	DueDate                time.Time
+	ManualEstimatedMinutes *int
+	ActualMinutes          *int
+	Progress               int
+	Priority               TaskPriority
+	Status                 TaskStatus
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
 }
 
 func NewTask(
@@ -76,18 +76,18 @@ func NewTaskWithDetails(
 		status, _ = NewTaskStatus(sharedstatus.Open)
 	}
 	task := Task{
-		ID:               id,
-		UserID:           userID,
-		AssigneeID:       userID,
-		ProjectID:        projectID,
-		Title:            title,
-		Description:      description,
-		DueDate:          dueDate,
-		EstimatedMinutes: estimatedMinutes,
-		ActualMinutes:    actualMinutes,
-		Progress:         progress,
-		Priority:         priority,
-		Status:           status,
+		ID:                     id,
+		UserID:                 userID,
+		AssigneeID:             userID,
+		ProjectID:              projectID,
+		Title:                  title,
+		Description:            description,
+		DueDate:                dueDate,
+		ManualEstimatedMinutes: estimatedMinutes,
+		ActualMinutes:          actualMinutes,
+		Progress:               progress,
+		Priority:               priority,
+		Status:                 status,
 	}
 	return task, task.Validate()
 }
@@ -109,20 +109,20 @@ func NewExistingTask(
 	updatedAt time.Time,
 ) (Task, error) {
 	task := Task{
-		ID:               id,
-		UserID:           userID,
-		AssigneeID:       assigneeID,
-		ProjectID:        projectID,
-		Title:            title,
-		Description:      description,
-		DueDate:          dueDate,
-		EstimatedMinutes: estimatedMinutes,
-		ActualMinutes:    actualMinutes,
-		Progress:         progress,
-		Priority:         priority,
-		Status:           status,
-		CreatedAt:        createdAt,
-		UpdatedAt:        updatedAt,
+		ID:                     id,
+		UserID:                 userID,
+		AssigneeID:             assigneeID,
+		ProjectID:              projectID,
+		Title:                  title,
+		Description:            description,
+		DueDate:                dueDate,
+		ManualEstimatedMinutes: estimatedMinutes,
+		ActualMinutes:          actualMinutes,
+		Progress:               progress,
+		Priority:               priority,
+		Status:                 status,
+		CreatedAt:              createdAt,
+		UpdatedAt:              updatedAt,
 	}
 	if err := task.Validate(); err != nil {
 		return NewZeroTask(), err
@@ -187,7 +187,7 @@ func (t Task) Validate() error {
 	if strings.TrimSpace(t.Title) == "" {
 		return ErrTaskTitleEmpty
 	}
-	if t.EstimatedMinutes != nil && *t.EstimatedMinutes < 0 {
+	if t.ManualEstimatedMinutes != nil && *t.ManualEstimatedMinutes < 0 {
 		return ErrTaskEstimatedMinutesInvalid
 	}
 	if t.ActualMinutes != nil && *t.ActualMinutes < 0 {

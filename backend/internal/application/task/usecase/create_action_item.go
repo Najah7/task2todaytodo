@@ -12,14 +12,16 @@ import (
 )
 
 type CreateActionItemInput struct {
-	ID            domain.ActionItemID
-	UserID        domain.UserID
-	TaskID        domain.TaskID
-	Title         string
-	Description   string
-	DueDate       time.Time
-	IntervalWeeks int
-	Frequencies   []string
+	ID               domain.ActionItemID
+	UserID           domain.UserID
+	TaskID           domain.TaskID
+	Title            string
+	Description      string
+	DueDate          time.Time
+	IntervalWeeks    int
+	Frequencies      []string
+	EstimatedMinutes *int
+	Priority         string
 }
 
 type CreateActionItemUseCase struct {
@@ -39,7 +41,7 @@ func (uc *CreateActionItemUseCase) Execute(ctx context.Context, input CreateActi
 	var created dao.ActionItem
 	asOf := uc.clock()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		return withTaskProgressMutationForPermission(ctx, repos, input.UserID, input.TaskID, asOf, shared.ActionItemCreate(), func() error {
+		return withTaskProgressMutationForPermissionAndState(ctx, repos, input.UserID, input.TaskID, asOf, shared.ActionItemCreate(), func(task dao.Task, _ taskProjectMutationSnapshot) error {
 			timezone, err := uc.timezones.GetTimezone(ctx, string(input.UserID))
 			if err != nil {
 				return err
@@ -56,6 +58,17 @@ func (uc *CreateActionItemUseCase) Execute(ctx context.Context, input CreateActi
 				}
 				frequencies = append(frequencies, frequency)
 			}
+			priorityValue := input.Priority
+			if priorityValue == "" {
+				priorityValue = task.Priority.Value
+			}
+			priority := domain.TaskPriority{}
+			if priorityValue != "" {
+				priority, err = domain.NewTaskPriority(priorityValue)
+				if err != nil {
+					return err
+				}
+			}
 
 			item, err := domain.NewActionItemWithDetails(
 				input.ID,
@@ -67,6 +80,7 @@ func (uc *CreateActionItemUseCase) Execute(ctx context.Context, input CreateActi
 				0,
 				input.IntervalWeeks,
 				frequencies,
+				domain.ActionItemPlanning{EstimatedMinutes: input.EstimatedMinutes, Priority: priority},
 			)
 			if err != nil {
 				return err

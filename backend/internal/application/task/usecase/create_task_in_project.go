@@ -87,7 +87,19 @@ func (uc *CreateTaskInProjectUseCase) Execute(ctx context.Context, input CreateT
 		if err != nil {
 			return err
 		}
-		return lifecycle.ReconcileWorkState(ctx, string(input.UserID), project.ID, before, asOf)
+		created.CanUpdate, err = repos.Tasks().HasPermission(ctx, input.UserID, domain.TaskID(created.ID), shared.TaskUpdate())
+		if err != nil {
+			return err
+		}
+		if err := lifecycle.ReconcileWorkState(ctx, string(input.UserID), project.ID, before, asOf); err != nil {
+			return err
+		}
+		rows, err := EnrichTasksInRepositories(ctx, repos, input.UserID, []dao.Task{created}, asOf)
+		if err != nil {
+			return err
+		}
+		created = rows[0]
+		return nil
 	})
 	if err != nil {
 		return dao.Task{}, err

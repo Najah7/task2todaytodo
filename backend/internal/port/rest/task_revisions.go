@@ -10,23 +10,23 @@ import (
 )
 
 type TaskRevisionResponse struct {
-	ID               string  `json:"id"`
-	Revision         int32   `json:"revision"`
-	UserID           string  `json:"user_id"`
-	ProjectID        *string `json:"project_id"`
-	AssigneeID       string  `json:"assignee_id"`
-	Title            string  `json:"title"`
-	Description      string  `json:"description"`
-	DueDate          *string `json:"due_date"`
-	EstimatedMinutes *int    `json:"estimated_minutes"`
-	ActualMinutes    *int    `json:"actual_minutes"`
-	Priority         string  `json:"priority"`
-	Status           string  `json:"status"`
-	DeletedAt        *int64  `json:"deleted_at"`
-	CreatedAt        int64   `json:"created_at"`
-	UpdatedAt        int64   `json:"updated_at"`
-	ChangedBy        string  `json:"changed_by"`
-	ChangedAt        int64   `json:"changed_at"`
+	ID                     string  `json:"id"`
+	Revision               int32   `json:"revision"`
+	UserID                 string  `json:"user_id"`
+	ProjectID              *string `json:"project_id"`
+	AssigneeID             string  `json:"assignee_id"`
+	Title                  string  `json:"title"`
+	Description            string  `json:"description"`
+	DueDate                *string `json:"due_date"`
+	ManualEstimatedMinutes *int    `json:"manual_estimated_minutes"`
+	ActualMinutes          *int    `json:"actual_minutes"`
+	Priority               string  `json:"priority"`
+	Status                 string  `json:"status"`
+	DeletedAt              *int64  `json:"deleted_at"`
+	CreatedAt              int64   `json:"created_at"`
+	UpdatedAt              int64   `json:"updated_at"`
+	ChangedBy              string  `json:"changed_by"`
+	ChangedAt              int64   `json:"changed_at"`
 }
 
 type TaskRevisionListResponse struct {
@@ -85,7 +85,7 @@ func (h *TaskHandler) ListRevisions(w http.ResponseWriter, r *http.Request) {
 func taskRevisionResponse(row dao.TaskRevision) TaskRevisionResponse {
 	response := TaskRevisionResponse{
 		ID: row.ID, Revision: row.Revision, UserID: row.UserID, AssigneeID: row.AssigneeID,
-		Title: row.Title, Description: row.Description, EstimatedMinutes: cloneInt(row.EstimatedMinutes),
+		Title: row.Title, Description: row.Description, ManualEstimatedMinutes: cloneInt(row.ManualEstimatedMinutes),
 		ActualMinutes: cloneInt(row.ActualMinutes), Priority: row.Priority, Status: row.Status,
 		DeletedAt: cloneInt64(row.DeletedAt), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		ChangedBy: row.ChangedBy, ChangedAt: row.ChangedAt,

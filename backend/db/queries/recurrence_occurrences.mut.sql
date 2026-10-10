@@ -1,11 +1,12 @@
 -- name: UpsertActionItemOverrideByTaskAndUserID :one
 INSERT INTO action_items (
-    id, task_id, title, description, due_date, completed, position,
+    id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
     series_id, occurrence_date, timezone, is_exception, repeat_state,
     frequency_anchor_date, interval_weeks, deleted_at, skipped_at
 )
 SELECT sqlc.arg(id)::text, t.id, sqlc.arg(title)::text, sqlc.narg(description)::text,
-       sqlc.narg(due_date)::date, sqlc.arg(completed)::boolean, sqlc.arg(position)::integer,
+       sqlc.narg(due_date)::date, sqlc.narg(estimated_minutes)::integer, sqlc.arg(priority)::text,
+       sqlc.arg(completed)::boolean, sqlc.arg(position)::integer,
        root.id, sqlc.arg(occurrence_date)::date, sqlc.arg(timezone)::text, true, NULL, NULL, 0,
        CASE WHEN sqlc.arg(deleted)::boolean THEN now() ELSE NULL END, NULL
 FROM tasks t
@@ -19,6 +20,8 @@ ON CONFLICT (series_id, occurrence_date) WHERE id <> series_id DO UPDATE SET
     title = EXCLUDED.title,
     description = EXCLUDED.description,
     due_date = EXCLUDED.due_date,
+    estimated_minutes = EXCLUDED.estimated_minutes,
+    priority = EXCLUDED.priority,
     completed = EXCLUDED.completed,
     position = EXCLUDED.position,
     timezone = EXCLUDED.timezone,

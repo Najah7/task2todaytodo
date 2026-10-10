@@ -139,7 +139,7 @@ func newAddTaskToProjectFixture(project legacyProjectFixture, task dao.Task) (*a
 
 func TestAddTaskToProjectUseCaseExecuteAddsStandaloneTask(t *testing.T) {
 	userID, projectID, taskID := domain.UserID("user-1"), domain.ProjectID("project-1"), domain.TaskID("task-1")
-	want := dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: string(projectID), Title: "Task", Status: dao.TaskStatus{Value: "open"}, Revision: 2}
+	want := dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: string(projectID), Title: "Task", Status: dao.TaskStatus{Value: "open"}, EstimateSource: "manual", ProjectStatus: "open", Revision: 2}
 	uow, projectRepo, taskRepo, accesses := newAddTaskToProjectFixture(
 		legacyProjectFixture{ID: string(projectID), UserID: string(userID)},
 		dao.Task{ID: string(taskID), UserID: string(userID), Revision: 1},
@@ -169,7 +169,7 @@ func TestAddTaskToProjectUseCaseExecuteAddsStandaloneTask(t *testing.T) {
 
 func TestAddTaskToProjectUseCaseExecuteMovesTaskFromAnotherProject(t *testing.T) {
 	userID, projectID, taskID := domain.UserID("user-1"), domain.ProjectID("project-new"), domain.TaskID("task-1")
-	want := dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: string(projectID), Title: "Task", Status: dao.TaskStatus{Value: "open"}, Revision: 2}
+	want := dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: string(projectID), Title: "Task", Status: dao.TaskStatus{Value: "open"}, EstimateSource: "manual", ProjectStatus: "open", Revision: 2}
 	uow, projectRepo, taskRepo, _ := newAddTaskToProjectFixture(
 		legacyProjectFixture{ID: string(projectID), UserID: string(userID)},
 		dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: "project-old", Revision: 1},
@@ -191,7 +191,7 @@ func TestAddTaskToProjectUseCaseExecuteMovesTaskFromAnotherProject(t *testing.T)
 
 func TestAddTaskToProjectUseCaseExecuteDoesNotSaveWhenAlreadyInProject(t *testing.T) {
 	userID, projectID, taskID := domain.UserID("user-1"), domain.ProjectID("project-1"), domain.TaskID("task-1")
-	want := dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: string(projectID), Title: "Task", Status: dao.TaskStatus{Value: "open"}, Revision: 1}
+	want := dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: string(projectID), Title: "Task", Status: dao.TaskStatus{Value: "open"}, EstimateSource: "manual", ProjectStatus: "open", Revision: 1}
 	uow, _, taskRepo, accesses := newAddTaskToProjectFixture(legacyProjectFixture{ID: string(projectID), UserID: string(userID)}, want)
 
 	got, err := NewAddTaskToProjectUseCase(uow, &taskProgressSourceFake{}, nil).Execute(context.Background(), userID, projectID, taskID, 1)

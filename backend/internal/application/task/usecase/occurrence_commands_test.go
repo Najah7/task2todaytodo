@@ -17,6 +17,16 @@ type occurrenceRowsRepo struct {
 	created *domain.ActionItem
 }
 
+func (repo occurrenceRowsRepo) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		items[id] = repo.rows
+		skipped[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+}
+
 type commandAwareActionItemRepository struct {
 	occurrenceRowsRepo
 	listCapability shared.Capability
@@ -267,6 +277,16 @@ type deletedOccurrenceActionItemRepository struct {
 	ActionItemRepository
 	rows          []dao.ActionItem
 	mutationCalls int
+}
+
+func (r *deletedOccurrenceActionItemRepository) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		items[id] = r.rows
+		skipped[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
 }
 
 func (r *deletedOccurrenceActionItemRepository) ListByTask(context.Context, domain.UserID, domain.TaskID) ([]dao.ActionItem, error) {

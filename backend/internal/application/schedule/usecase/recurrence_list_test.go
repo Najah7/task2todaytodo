@@ -44,6 +44,86 @@ func TestScheduleListKeepsRecurringRootAvailableAfterOccurrenceCursor(t *testing
 	}
 }
 
+func TestScheduleListUsesLocalCalendarMonthWindowAndKeepsSavedPastOnly(t *testing.T) {
+	location, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rootStart := time.Date(2026, 10, 1, 9, 0, 0, 0, location)
+	rootDate := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	root := dao.Schedule{
+		ID: "series", UserID: "owner", AssigneeID: "owner", Title: "Weekly focus", Completed: true,
+		IntervalWeeks: 1, Frequencies: []dao.Frequency{{Value: "thu"}}, RepeatState: repeatStateActive,
+		FrequencyAnchorDate: rootDate.Unix(), StartAt: rootStart.Unix(), EndAt: rootStart.Add(time.Hour).Unix(),
+		SeriesID: "series", OccurrenceDate: "2026-10-01", Timezone: "Asia/Tokyo",
+	}
+	future := root
+	future.ID, future.OccurrenceDate, future.IsException = "future-completed", "2026-11-12", true
+	future.StartAt = time.Date(2026, 11, 12, 11, 0, 0, 0, location).Unix()
+	future.EndAt = future.StartAt + 3600
+	asOf := time.Date(2026, 10, 4, 16, 30, 0, 0, time.UTC) // Oct 5 in Tokyo.
+	rows, err := expandScheduleRows([]dao.Schedule{root, future}, CursorPageRequest{}, asOf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seenEnd, seenNext, seenPast, seenOutside := false, false, false, false
+	for _, row := range rows {
+		switch row.OccurrenceDate {
+		case "2026-11-05":
+			seenEnd = true
+		case "2026-11-12":
+			seenNext = true
+		case "2026-10-01":
+			seenPast = row.ID == root.ID && row.Completed
+		}
+		if row.ID == future.ID {
+			seenOutside = true
+		}
+	}
+	if !seenEnd || seenNext || !seenPast || seenOutside {
+		t.Fatalf("month-window projection: end=%t next=%t past=%t future-saved=%t rows=%#v", seenEnd, seenNext, seenPast, seenOutside, rows)
+	}
+}
+
+func TestScheduleOneOffHasNoListHorizon(t *testing.T) {
+	startAt := time.Date(2027, 3, 1, 9, 0, 0, 0, time.UTC)
+	item := dao.Schedule{
+		ID: "one-off", UserID: "owner", AssigneeID: "owner", Title: "One-off",
+		StartAt: startAt.Unix(), EndAt: startAt.Add(time.Hour).Unix(), SeriesID: "one-off",
+		OccurrenceDate: "2027-03-01", Timezone: "UTC", RepeatState: repeatStateOneOff,
+	}
+	rows, err := expandScheduleRows([]dao.Schedule{item}, CursorPageRequest{}, time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].ID != item.ID {
+		t.Fatalf("one-off beyond recurring horizon omitted: %+v", rows)
+	}
+}
+
+func TestScheduleListExplicitFromDateKeepsPastRecurringRoot(t *testing.T) {
+	startAt := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
+	item := dao.Schedule{
+		ID: "series", UserID: "owner", AssigneeID: "owner", Title: "Weekly focus",
+		IntervalWeeks: 1, Frequencies: []dao.Frequency{{Value: "mon"}}, RepeatState: repeatStateActive,
+		FrequencyAnchorDate: startAt.Unix(), StartAt: startAt.Unix(), EndAt: startAt.Add(time.Hour).Unix(),
+		SeriesID: "series", OccurrenceDate: "2026-10-05", Timezone: "UTC",
+	}
+	rows, err := expandScheduleRows([]dao.Schedule{item}, CursorPageRequest{FromDate: "2026-10-01"}, time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundRoot := false
+	for _, row := range rows {
+		if row.ID == item.ID && row.OccurrenceDate == item.OccurrenceDate {
+			foundRoot = true
+		}
+	}
+	if !foundRoot {
+		t.Fatalf("explicit from_date omitted past recurring root: %+v", rows)
+	}
+}
+
 func TestScheduleListUsesMovedOverridesAndSkipsForCursorPages(t *testing.T) {
 	rootDate := time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC)
 	startAt := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)

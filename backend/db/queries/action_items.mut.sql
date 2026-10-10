@@ -1,17 +1,17 @@
 -- name: CreateActionItem :one
 WITH inserted AS (
     INSERT INTO action_items (
-        id, task_id, title, description, due_date, completed, position,
+        id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
         series_id, occurrence_date, timezone, is_exception, repeat_state,
         frequency_anchor_date, interval_weeks
     )
     VALUES (sqlc.arg(id), sqlc.arg(task_id), sqlc.arg(title), sqlc.narg(description),
-        sqlc.narg(due_date), sqlc.arg(completed), sqlc.arg(position),
+        sqlc.narg(due_date), sqlc.narg(estimated_minutes), sqlc.arg(priority), sqlc.arg(completed), sqlc.arg(position),
         sqlc.arg(series_id), sqlc.arg(occurrence_date), sqlc.arg(timezone), sqlc.arg(is_exception),
         CASE WHEN sqlc.arg(interval_weeks)::integer > 0 THEN 'active' ELSE 'one_off' END,
         CASE WHEN sqlc.arg(interval_weeks)::integer > 0 THEN sqlc.arg(occurrence_date)::date ELSE NULL END,
         sqlc.arg(interval_weeks)::integer)
-    RETURNING id, task_id, title, description, due_date, completed, position,
+    RETURNING id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
         series_id, occurrence_date, timezone, is_exception, (deleted_at IS NOT NULL) AS deleted,
         created_at, updated_at
 )
@@ -36,7 +36,7 @@ next_position AS (
 ),
 inserted AS (
     INSERT INTO action_items (
-        id, task_id, title, description, due_date, completed, position,
+        id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
         series_id, occurrence_date, timezone, is_exception, repeat_state,
         frequency_anchor_date, interval_weeks
     )
@@ -46,6 +46,8 @@ inserted AS (
         sqlc.arg(title),
         sqlc.arg(description),
         sqlc.arg(due_date),
+        sqlc.narg(estimated_minutes),
+        sqlc.arg(priority),
         false,
         next_position.position,
         sqlc.arg(series_id),
@@ -57,7 +59,7 @@ inserted AS (
         sqlc.arg(interval_weeks)::integer
     FROM owned_task
     CROSS JOIN next_position
-    RETURNING id, task_id, title, description, due_date, completed, position,
+    RETURNING id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
         series_id, occurrence_date, timezone, is_exception, interval_weeks, (deleted_at IS NOT NULL) AS deleted,
         created_at, updated_at
 ),
@@ -72,9 +74,11 @@ SELECT
     inserted.id,
     inserted.task_id,
     inserted.title,
-    inserted.description,
-    inserted.due_date,
-    inserted.completed,
+        inserted.description,
+        inserted.due_date,
+        inserted.estimated_minutes,
+        inserted.priority,
+        inserted.completed,
     inserted.position,
     sqlc.arg(interval_weeks)::integer AS interval_weeks,
     inserted.series_id,
@@ -95,7 +99,7 @@ FROM inserted;
 -- name: CreateActionItemOccurrenceByTaskAndUserID :one
 WITH inserted AS (
     INSERT INTO action_items (
-        id, task_id, title, description, due_date, completed, position,
+        id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
         series_id, occurrence_date, timezone, is_exception, repeat_state,
         frequency_anchor_date, interval_weeks
     )
@@ -103,7 +107,7 @@ WITH inserted AS (
         sqlc.arg(id), source.task_id,
         source.title,
         source.description,
-        sqlc.arg(due_date), false,
+        sqlc.arg(due_date), source.estimated_minutes, source.priority, false,
         source.position,
         source.series_id, sqlc.arg(occurrence_date), source.timezone, false, NULL, NULL, 0
     FROM action_items AS source
@@ -119,7 +123,7 @@ WITH inserted AS (
       AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
       AND t.status <> 'done'
     ON CONFLICT (series_id, occurrence_date) WHERE id <> series_id DO NOTHING
-    RETURNING id, task_id, title, description, due_date, completed, position,
+    RETURNING id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
         series_id, occurrence_date, timezone, is_exception, (deleted_at IS NOT NULL) AS deleted,
         created_at, updated_at
 ),
@@ -127,7 +131,7 @@ candidate AS (
     SELECT * FROM inserted
     UNION ALL
     SELECT existing.id, existing.task_id, existing.title, existing.description, existing.due_date,
-        existing.completed, existing.position, existing.series_id,
+        existing.estimated_minutes, existing.priority, existing.completed, existing.position, existing.series_id,
         existing.occurrence_date, existing.timezone, existing.is_exception,
         (existing.deleted_at IS NOT NULL) AS deleted, existing.created_at, existing.updated_at
     FROM action_items AS existing
@@ -150,6 +154,8 @@ SELECT
     candidate.title,
     candidate.description,
     candidate.due_date,
+    candidate.estimated_minutes,
+    candidate.priority,
     candidate.completed,
     candidate.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = candidate.series_id ), 0)::integer AS interval_weeks,
@@ -174,16 +180,18 @@ SET task_id = $2,
     title = $3,
     description = $4,
     due_date = $5,
-    completed = $6,
-    position = $7,
-    series_id = $8,
-    occurrence_date = $9,
-    timezone = $10,
-    is_exception = $11,
+    estimated_minutes = $6,
+    priority = $7,
+    completed = $8,
+    position = $9,
+    series_id = $10,
+    occurrence_date = $11,
+    timezone = $12,
+    is_exception = $13,
     updated_at = now()
 WHERE action_items.id = $1
   AND action_items.deleted_at IS NULL
-RETURNING id, task_id, title, description, due_date, completed, position, COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = action_items.series_id ), 0)::integer AS interval_weeks,
+RETURNING id, task_id, title, description, due_date, estimated_minutes, priority, completed, position, COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = action_items.series_id ), 0)::integer AS interval_weeks,
     series_id, occurrence_date, timezone, is_exception, (deleted_at IS NOT NULL) AS deleted,
     created_at, updated_at;
 
@@ -193,6 +201,8 @@ WITH updated AS (
     SET title = sqlc.arg(title),
         description = sqlc.arg(description),
         due_date = sqlc.arg(due_date),
+        estimated_minutes = sqlc.narg(estimated_minutes),
+        priority = sqlc.arg(priority),
         position = sqlc.arg(position),
         is_exception = true,
         updated_at = now()
@@ -204,7 +214,7 @@ WITH updated AS (
       AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
       AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'action_item', 'update')
       AND ti.deleted_at IS NULL
-    RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.completed, ti.position,
+    RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.estimated_minutes, ti.priority, ti.completed, ti.position,
         COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks, ti.series_id, ti.occurrence_date, ti.timezone, ti.is_exception,
         (ti.deleted_at IS NOT NULL) AS deleted, ti.created_at, ti.updated_at
 )
@@ -214,6 +224,8 @@ SELECT
     updated.title,
     updated.description,
     updated.due_date,
+    updated.estimated_minutes,
+    updated.priority,
     updated.completed,
     updated.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = updated.series_id ), 0)::integer AS interval_weeks,
@@ -245,7 +257,7 @@ WHERE ti.id = $1
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
   AND task_has_permission(t.id, $3, 'action_item', 'update')
   AND ti.deleted_at IS NULL
-RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.completed, ti.position,
+RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.estimated_minutes, ti.priority, ti.completed, ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks, ti.series_id, ti.occurrence_date, ti.timezone, ti.is_exception,
     (ti.deleted_at IS NOT NULL) AS deleted, ti.created_at, ti.updated_at;
 
@@ -320,7 +332,7 @@ WITH target AS (
         updated_at = now()
     FROM reordered
     WHERE ti.id = reordered.id
-    RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.completed, ti.position,
+    RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.estimated_minutes, ti.priority, ti.completed, ti.position,
         COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks, ti.series_id, ti.occurrence_date, ti.timezone, ti.is_exception,
         (ti.deleted_at IS NOT NULL) AS deleted, ti.created_at, ti.updated_at
 )
@@ -330,6 +342,8 @@ SELECT
     updated.title,
     updated.description,
     updated.due_date,
+    updated.estimated_minutes,
+    updated.priority,
     updated.completed,
     updated.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = updated.series_id ), 0)::integer AS interval_weeks,

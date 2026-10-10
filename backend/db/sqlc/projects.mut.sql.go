@@ -14,7 +14,7 @@ import (
 const createProject = `-- name: CreateProject :one
 INSERT INTO projects (id, user_id, type, title, goal, description, priority, start_date, end_date, changed_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $2)
-RETURNING id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at, status
+RETURNING id, user_id, type, title, goal, description, priority, status, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type CreateProjectParams struct {
@@ -50,6 +50,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.Goal,
 		&i.Description,
 		&i.Priority,
+		&i.Status,
 		&i.StartDate,
 		&i.EndDate,
 		&i.Revision,
@@ -57,7 +58,6 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Status,
 	)
 	return i, err
 }
@@ -110,7 +110,7 @@ WHERE id = $2::text
   AND deleted_at IS NOT NULL
   AND revision = $3::integer
   AND project_has_permission(id, $1::text, 'project', 'delete')
-RETURNING id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at, status
+RETURNING id, user_id, type, title, goal, description, priority, status, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type RestoreProjectByUserIDParams struct {
@@ -130,6 +130,7 @@ func (q *Queries) RestoreProjectByUserID(ctx context.Context, arg RestoreProject
 		&i.Goal,
 		&i.Description,
 		&i.Priority,
+		&i.Status,
 		&i.StartDate,
 		&i.EndDate,
 		&i.Revision,
@@ -137,7 +138,6 @@ func (q *Queries) RestoreProjectByUserID(ctx context.Context, arg RestoreProject
 		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Status,
 	)
 	return i, err
 }
@@ -150,7 +150,7 @@ WHERE id = $3::text
   AND deleted_at IS NULL
   AND revision = $4::integer
   AND project_has_permission(id, $2::text, 'project', 'update')
-RETURNING id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at, status
+RETURNING id, user_id, type, title, goal, description, priority, status, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type SetProjectStatusByUserIDParams struct {
@@ -176,6 +176,7 @@ func (q *Queries) SetProjectStatusByUserID(ctx context.Context, arg SetProjectSt
 		&i.Goal,
 		&i.Description,
 		&i.Priority,
+		&i.Status,
 		&i.StartDate,
 		&i.EndDate,
 		&i.Revision,
@@ -183,7 +184,6 @@ func (q *Queries) SetProjectStatusByUserID(ctx context.Context, arg SetProjectSt
 		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Status,
 	)
 	return i, err
 }
@@ -195,7 +195,7 @@ SET status = $1::text,
 WHERE id = $3::text
   AND deleted_at IS NULL
   AND status <> $1::text
-RETURNING id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at, status
+RETURNING id, user_id, type, title, goal, description, priority, status, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type SetProjectStatusForLifecycleParams struct {
@@ -215,6 +215,7 @@ func (q *Queries) SetProjectStatusForLifecycle(ctx context.Context, arg SetProje
 		&i.Goal,
 		&i.Description,
 		&i.Priority,
+		&i.Status,
 		&i.StartDate,
 		&i.EndDate,
 		&i.Revision,
@@ -222,7 +223,6 @@ func (q *Queries) SetProjectStatusForLifecycle(ctx context.Context, arg SetProje
 		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Status,
 	)
 	return i, err
 }
@@ -238,7 +238,7 @@ SET type = $2,
     end_date = $8,
     changed_by = $9
 WHERE id = $1
-RETURNING id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at, status
+RETURNING id, user_id, type, title, goal, description, priority, status, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type UpdateProjectParams struct {
@@ -274,6 +274,7 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.Goal,
 		&i.Description,
 		&i.Priority,
+		&i.Status,
 		&i.StartDate,
 		&i.EndDate,
 		&i.Revision,
@@ -281,7 +282,6 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Status,
 	)
 	return i, err
 }
@@ -300,7 +300,7 @@ WHERE id = $1
   AND deleted_at IS NULL
   AND revision = $10::integer
   AND project_has_permission(id, $11::text, 'project', 'update')
-RETURNING id, user_id, type, title, goal, description, priority, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at, status
+RETURNING id, user_id, type, title, goal, description, priority, status, start_date, end_date, revision, deleted_at, changed_by, created_at, updated_at
 `
 
 type UpdateProjectByUserIDParams struct {
@@ -340,6 +340,7 @@ func (q *Queries) UpdateProjectByUserID(ctx context.Context, arg UpdateProjectBy
 		&i.Goal,
 		&i.Description,
 		&i.Priority,
+		&i.Status,
 		&i.StartDate,
 		&i.EndDate,
 		&i.Revision,
@@ -347,7 +348,6 @@ func (q *Queries) UpdateProjectByUserID(ctx context.Context, arg UpdateProjectBy
 		&i.ChangedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Status,
 	)
 	return i, err
 }

@@ -45,12 +45,13 @@ action_item_roots AS (
     WHERE root.id = root.series_id AND root.deleted_at IS NULL AND root.repeat_state = 'active'
     GROUP BY root.task_id
 )
-SELECT t.id AS task_id, t.project_id, t.status,
+SELECT t.id AS task_id, t.user_id, t.project_id, t.status, p.status AS project_status,
        COALESCE(tc.total, 0)::bigint AS action_item_total,
        COALESCE(tc.completed, 0)::bigint AS action_item_completed,
        COALESCE(tr.roots, '[]'::json)::json AS action_item_roots
 FROM requested r
 JOIN tasks t ON t.id = r.task_id
+JOIN projects p ON p.id = t.project_id
 LEFT JOIN action_item_counts tc ON tc.task_id = t.id
 LEFT JOIN action_item_roots tr ON tr.task_id = t.id
 WHERE t.deleted_at IS NULL;

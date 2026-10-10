@@ -13,11 +13,12 @@ import (
 
 const snapshotActionItemRootOccurrenceByTaskAndUserID = `-- name: SnapshotActionItemRootOccurrenceByTaskAndUserID :exec
 INSERT INTO action_items (
-    id, task_id, title, description, due_date, completed, position,
+    id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
     series_id, occurrence_date, timezone, is_exception, repeat_state,
     frequency_anchor_date, interval_weeks, deleted_at
 )
 SELECT $1::text, root.task_id, root.title, root.description, root.due_date,
+       root.estimated_minutes, root.priority,
        root.completed, root.position, root.id, root.occurrence_date, root.timezone,
        true, NULL, NULL, 0, root.deleted_at
 FROM action_items root

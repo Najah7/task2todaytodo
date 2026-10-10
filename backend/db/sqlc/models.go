@@ -108,6 +108,8 @@ type ActionItem struct {
 	SeriesID            string
 	OccurrenceDate      pgtype.Date
 	Timezone            string
+	EstimatedMinutes    pgtype.Int4
+	Priority            string
 	IsException         bool
 	RepeatState         pgtype.Text
 	FrequencyAnchorDate pgtype.Date
@@ -172,6 +174,7 @@ type Project struct {
 	Goal        pgtype.Text
 	Description pgtype.Text
 	Priority    string
+	Status      string
 	StartDate   pgtype.Date
 	EndDate     pgtype.Date
 	Revision    int32
@@ -179,7 +182,6 @@ type Project struct {
 	ChangedBy   string
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
-	Status      string
 }
 
 type ProjectMember struct {
@@ -200,6 +202,7 @@ type ProjectRevision struct {
 	Goal        pgtype.Text
 	Description pgtype.Text
 	Priority    string
+	Status      string
 	StartDate   pgtype.Date
 	EndDate     pgtype.Date
 	DeletedAt   pgtype.Timestamptz
@@ -207,7 +210,6 @@ type ProjectRevision struct {
 	UpdatedAt   pgtype.Timestamptz
 	ChangedBy   string
 	ChangedAt   pgtype.Timestamptz
-	Status      string
 }
 
 type ProjectTypeMaster struct {
@@ -313,42 +315,42 @@ type Tag struct {
 }
 
 type Task struct {
-	ID               string
-	UserID           string
-	ProjectID        pgtype.Text
-	AssigneeID       string
-	Title            string
-	Description      pgtype.Text
-	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
-	ActualMinutes    pgtype.Int4
-	Priority         string
-	Status           string
-	Revision         int32
-	DeletedAt        pgtype.Timestamptz
-	ChangedBy        string
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	ID                     string
+	UserID                 string
+	ProjectID              pgtype.Text
+	AssigneeID             string
+	Title                  string
+	Description            pgtype.Text
+	DueDate                pgtype.Date
+	ManualEstimatedMinutes pgtype.Int4
+	ActualMinutes          pgtype.Int4
+	Priority               string
+	Status                 string
+	Revision               int32
+	DeletedAt              pgtype.Timestamptz
+	ChangedBy              string
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
 }
 
 type TaskRevision struct {
-	ID               string
-	Revision         int32
-	UserID           string
-	ProjectID        pgtype.Text
-	AssigneeID       string
-	Title            string
-	Description      pgtype.Text
-	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
-	ActualMinutes    pgtype.Int4
-	Priority         string
-	Status           string
-	DeletedAt        pgtype.Timestamptz
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-	ChangedBy        string
-	ChangedAt        pgtype.Timestamptz
+	ID                     string
+	Revision               int32
+	UserID                 string
+	ProjectID              pgtype.Text
+	AssigneeID             string
+	Title                  string
+	Description            pgtype.Text
+	DueDate                pgtype.Date
+	ManualEstimatedMinutes pgtype.Int4
+	ActualMinutes          pgtype.Int4
+	Priority               string
+	Status                 string
+	DeletedAt              pgtype.Timestamptz
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
+	ChangedBy              string
+	ChangedAt              pgtype.Timestamptz
 }
 
 type TaskTagAssignment struct {

@@ -28,7 +28,7 @@ func (r *ProjectRepository) ReadProjectProgressSources(ctx context.Context, proj
 			return dao.ProjectProgressSources{}, err
 		}
 		task := dao.ProjectTaskProgress{
-			ProjectID: row.ProjectID.String, TaskID: row.TaskID, Done: row.Status == "done",
+			ProjectID: row.ProjectID.String, TaskID: row.TaskID, UserID: row.UserID, Done: row.Status == "done", ProjectStatus: row.ProjectStatus,
 			Total: int(row.ActionItemTotal), Completed: int(row.ActionItemCompleted),
 		}
 		for _, root := range roots {

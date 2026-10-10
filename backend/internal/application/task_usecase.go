@@ -10,12 +10,12 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/logging"
 )
 
-func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, ID shared.ID, logger logging.Logger) usecase.TaskUseCases {
+func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthStore, ID shared.ID, logger logging.Logger) usecase.TaskUseCases {
 	return usecase.TaskUseCases{
-		Create:            usecase.NewCreateTaskUseCase(taskStore.Tasks, logger),
-		List:              usecase.NewListTasksUseCase(taskStore.Tasks, logger),
+		Create:            usecase.NewCreateTaskUseCase(taskUOW, logger),
+		List:              usecase.NewListTasksUseCase(taskStore.Tasks, logger, taskStore.ActionItems),
 		Get:               usecase.NewGetTaskUseCase(taskUOW, logger),
-		Update:            usecase.NewUpdateTaskUseCase(taskUOW, taskStore.Tasks, logger),
+		Update:            usecase.NewUpdateTaskUseCase(taskUOW, logger),
 		Delete:            usecase.NewDeleteTaskUseCase(taskUOW, logger),
 		Start:             usecase.NewStartTaskUseCase(taskUOW, logger),
 		Hold:              usecase.NewHoldTaskUseCase(taskUOW, logger),
@@ -25,7 +25,7 @@ func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, ID shared.ID, log
 		Assign:            usecase.NewAssignTaskUseCase(taskUOW, logger),
 		ListAssignees:     usecase.NewListTaskAssigneesUseCase(taskStore.Tasks, logger),
 		CreateInProject:   usecase.NewCreateTaskInProjectUseCase(taskUOW, logger),
-		ListByProject:     usecase.NewListProjectTasksUseCase(taskStore.Tasks, taskStore.Tasks, logger),
+		ListByProject:     usecase.NewListProjectTasksUseCase(taskStore.Tasks, taskStore.Tasks, logger, taskStore.ActionItems),
 		AddToProject:      usecase.NewAddTaskToProjectUseCase(taskUOW, taskStore.Tasks, logger),
 		RemoveFromProject: usecase.NewRemoveTaskFromProjectUseCase(taskUOW, taskStore.Tasks, logger),
 		Revisions:         usecase.NewListTaskRevisionsUseCase(taskStore.Tasks, logger),

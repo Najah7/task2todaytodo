@@ -49,6 +49,8 @@ type ActionItemResponse struct {
 	TaskID              string   `json:"task_id"`
 	Title               string   `json:"title"`
 	Description         string   `json:"description"`
+	EstimatedMinutes    *int     `json:"estimated_minutes" validate:"required" extensions:"x-nullable"`
+	Priority            string   `json:"priority"`
 	DueDate             *string  `json:"due_date"`
 	Completed           bool     `json:"completed"`
 	Position            int      `json:"position"`
@@ -70,19 +72,23 @@ type ActionItemListResponse struct {
 }
 
 type ActionItemCreateRequest struct {
-	Title         string   `json:"title"`
-	Description   string   `json:"description"`
-	DueDate       *string  `json:"due_date"`
-	IntervalWeeks int      `json:"interval_weeks"`
-	Frequencies   []string `json:"frequencies"`
+	Title            string   `json:"title"`
+	Description      string   `json:"description"`
+	EstimatedMinutes *int     `json:"estimated_minutes" extensions:"x-nullable"`
+	Priority         string   `json:"priority"`
+	DueDate          *string  `json:"due_date"`
+	IntervalWeeks    int      `json:"interval_weeks"`
+	Frequencies      []string `json:"frequencies"`
 }
 
 type ActionItemUpdateRequest struct {
-	Scope          string               `json:"scope" binding:"required,oneof=current future"`
-	OccurrenceDate string               `json:"occurrence_date"`
-	Title          optionalJSON[string] `json:"title" swaggertype:"string"`
-	Description    optionalJSON[string] `json:"description" swaggertype:"string"`
-	DueDate        optionalJSON[string] `json:"due_date" swaggertype:"string"`
+	Scope            string               `json:"scope" binding:"required,oneof=current future"`
+	OccurrenceDate   string               `json:"occurrence_date"`
+	Title            optionalJSON[string] `json:"title" swaggertype:"string"`
+	Description      optionalJSON[string] `json:"description" swaggertype:"string"`
+	DueDate          optionalJSON[string] `json:"due_date" swaggertype:"string"`
+	EstimatedMinutes optionalJSON[int]    `json:"estimated_minutes" swaggertype:"integer" extensions:"x-nullable"`
+	Priority         optionalJSON[string] `json:"priority" swaggertype:"string"`
 }
 
 type ActionItemReorderRequest struct {
@@ -107,21 +113,23 @@ func actionItemResponse(item dao.ActionItem) ActionItemResponse {
 		id = virtualOccurrenceID
 	}
 	response := ActionItemResponse{
-		ID:             id,
-		TaskID:         item.TaskID,
-		Title:          item.Title,
-		Description:    item.Description,
-		Completed:      item.Completed,
-		Position:       item.Position,
-		IntervalWeeks:  item.IntervalWeeks,
-		RepeatState:    item.RepeatState,
-		SeriesID:       item.SeriesID,
-		OccurrenceDate: item.OccurrenceDate,
-		Timezone:       item.Timezone,
-		IsException:    item.IsException,
-		CreatedAt:      item.CreatedAt,
-		UpdatedAt:      item.UpdatedAt,
-		Frequencies:    make([]string, 0, len(item.Frequencies)),
+		ID:               id,
+		TaskID:           item.TaskID,
+		Title:            item.Title,
+		Description:      item.Description,
+		EstimatedMinutes: cloneInt(item.EstimatedMinutes),
+		Priority:         item.Priority.Value,
+		Completed:        item.Completed,
+		Position:         item.Position,
+		IntervalWeeks:    item.IntervalWeeks,
+		RepeatState:      item.RepeatState,
+		SeriesID:         item.SeriesID,
+		OccurrenceDate:   item.OccurrenceDate,
+		Timezone:         item.Timezone,
+		IsException:      item.IsException,
+		CreatedAt:        item.CreatedAt,
+		UpdatedAt:        item.UpdatedAt,
+		Frequencies:      make([]string, 0, len(item.Frequencies)),
 	}
 	if item.DueDate != 0 {
 		dueDate := time.Unix(item.DueDate, 0).UTC().Format("2006-01-02")
@@ -178,6 +186,10 @@ func actionItemErrorResponse(err error) (int, ErrDetail) {
 		return http.StatusBadRequest, NewErrDetail("due_date", "future_due_date_unsupported", "Due date cannot be changed for future occurrences; change recurrence weekdays instead")
 	case errors.Is(err, taskusecase.ErrActionItemPatchRequiredFieldNull):
 		return http.StatusBadRequest, NewErrDetail("title", "title_required", "Title cannot be null")
+	case errors.Is(err, domain.ErrActionItemEstimatedMinutesInvalid):
+		return http.StatusBadRequest, NewErrDetail("estimated_minutes", "invalid_minutes", "Estimated minutes must be zero or greater")
+	case errors.Is(err, domain.ErrTaskPriorityEmpty), errors.Is(err, domain.ErrTaskPriorityInvalid):
+		return http.StatusBadRequest, NewErrDetail("priority", "invalid_priority", "Priority is invalid")
 	case errors.Is(err, domain.ErrActionItemTitleEmpty):
 		return http.StatusBadRequest, NewErrDetail("title", "title_required", "Title is required")
 	case errors.Is(err, domain.ErrActionItemPositionLess):
@@ -346,6 +358,7 @@ func (h *ActionItemHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ID: domain.ActionItemID(h.ID.Generate()), UserID: userID, TaskID: taskID,
 		Title: request.Title, Description: request.Description, DueDate: dueDate,
 		IntervalWeeks: request.IntervalWeeks, Frequencies: request.Frequencies,
+		EstimatedMinutes: cloneInt(request.EstimatedMinutes), Priority: request.Priority,
 	})
 	if err != nil {
 		writeActionItemError(w, actionItemsCreateFailure, err)
@@ -417,10 +430,11 @@ func (h *ActionItemHandler) Update(w http.ResponseWriter, r *http.Request) {
 	title, description := request.Title.patchField(), request.Description.patchField()
 	var item dao.ActionItem
 	var err error
+	planning := taskusecase.ActionItemPlanningPatch{EstimatedMinutes: request.EstimatedMinutes.patchField(), Priority: request.Priority.patchField()}
 	if scope == "future" {
-		item, err = h.actionItems.Update.Execute(r.Context(), userID, taskID, itemID, scope, title, description, dueDate)
+		item, err = h.actionItems.Update.Execute(r.Context(), userID, taskID, itemID, scope, title, description, dueDate, planning)
 	} else {
-		item, err = h.actionItems.Update.ExecuteOccurrence(r.Context(), userID, taskID, itemID, occurrenceDate, scope, title, description, dueDate)
+		item, err = h.actionItems.Update.ExecuteOccurrence(r.Context(), userID, taskID, itemID, occurrenceDate, scope, title, description, dueDate, planning)
 	}
 	if err != nil {
 		writeActionItemError(w, actionItemsUpdateFailure, err)

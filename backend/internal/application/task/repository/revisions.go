@@ -31,7 +31,7 @@ func (r TaskRepository) ListTaskRevisionsByActor(ctx context.Context, actor doma
 		revisions = append(revisions, dao.TaskRevision{
 			ID: row.ID, Revision: row.Revision, UserID: row.UserID, ProjectID: pgTextString(row.ProjectID),
 			AssigneeID: row.AssigneeID, Title: row.Title, Description: pgTextString(row.Description),
-			DueDate: pgDateUnix(row.DueDate), EstimatedMinutes: pgIntPointer(row.EstimatedMinutes),
+			DueDate: pgDateUnix(row.DueDate), ManualEstimatedMinutes: pgIntPointer(row.ManualEstimatedMinutes),
 			ActualMinutes: pgIntPointer(row.ActualMinutes), Priority: row.Priority, Status: row.Status,
 			DeletedAt: pgUnixPointer(row.DeletedAt), CreatedAt: row.CreatedAt.Time.Unix(),
 			UpdatedAt: row.UpdatedAt.Time.Unix(), ChangedBy: row.ChangedBy, ChangedAt: row.ChangedAt.Time.Unix(),

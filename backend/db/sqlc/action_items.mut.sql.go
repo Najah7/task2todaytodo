@@ -14,54 +14,58 @@ import (
 const createActionItem = `-- name: CreateActionItem :one
 WITH inserted AS (
     INSERT INTO action_items (
-        id, task_id, title, description, due_date, completed, position,
+        id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
         series_id, occurrence_date, timezone, is_exception, repeat_state,
         frequency_anchor_date, interval_weeks
     )
     VALUES ($2, $3, $4, $5,
-        $6, $7, $8,
-        $9, $10, $11, $12,
+        $6, $7, $8, $9, $10,
+        $11, $12, $13, $14,
         CASE WHEN $1::integer > 0 THEN 'active' ELSE 'one_off' END,
-        CASE WHEN $1::integer > 0 THEN $10::date ELSE NULL END,
+        CASE WHEN $1::integer > 0 THEN $12::date ELSE NULL END,
         $1::integer)
-    RETURNING id, task_id, title, description, due_date, completed, position,
+    RETURNING id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
         series_id, occurrence_date, timezone, is_exception, (deleted_at IS NOT NULL) AS deleted,
         created_at, updated_at
 )
-SELECT inserted.id, inserted.task_id, inserted.title, inserted.description, inserted.due_date, inserted.completed, inserted.position, inserted.series_id, inserted.occurrence_date, inserted.timezone, inserted.is_exception, inserted.deleted, inserted.created_at, inserted.updated_at, $1::integer AS interval_weeks FROM inserted
+SELECT inserted.id, inserted.task_id, inserted.title, inserted.description, inserted.due_date, inserted.estimated_minutes, inserted.priority, inserted.completed, inserted.position, inserted.series_id, inserted.occurrence_date, inserted.timezone, inserted.is_exception, inserted.deleted, inserted.created_at, inserted.updated_at, $1::integer AS interval_weeks FROM inserted
 `
 
 type CreateActionItemParams struct {
-	IntervalWeeks  int32
-	ID             string
-	TaskID         string
-	Title          string
-	Description    pgtype.Text
-	DueDate        pgtype.Date
-	Completed      bool
-	Position       int32
-	SeriesID       string
-	OccurrenceDate pgtype.Date
-	Timezone       string
-	IsException    bool
+	IntervalWeeks    int32
+	ID               string
+	TaskID           string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	Completed        bool
+	Position         int32
+	SeriesID         string
+	OccurrenceDate   pgtype.Date
+	Timezone         string
+	IsException      bool
 }
 
 type CreateActionItemRow struct {
-	ID             string
-	TaskID         string
-	Title          string
-	Description    pgtype.Text
-	DueDate        pgtype.Date
-	Completed      bool
-	Position       int32
-	SeriesID       string
-	OccurrenceDate pgtype.Date
-	Timezone       string
-	IsException    bool
-	Deleted        interface{}
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	IntervalWeeks  int32
+	ID               string
+	TaskID           string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	Completed        bool
+	Position         int32
+	SeriesID         string
+	OccurrenceDate   pgtype.Date
+	Timezone         string
+	IsException      bool
+	Deleted          interface{}
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	IntervalWeeks    int32
 }
 
 func (q *Queries) CreateActionItem(ctx context.Context, arg CreateActionItemParams) (CreateActionItemRow, error) {
@@ -72,6 +76,8 @@ func (q *Queries) CreateActionItem(ctx context.Context, arg CreateActionItemPara
 		arg.Title,
 		arg.Description,
 		arg.DueDate,
+		arg.EstimatedMinutes,
+		arg.Priority,
 		arg.Completed,
 		arg.Position,
 		arg.SeriesID,
@@ -86,6 +92,8 @@ func (q *Queries) CreateActionItem(ctx context.Context, arg CreateActionItemPara
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
+		&i.EstimatedMinutes,
+		&i.Priority,
 		&i.Completed,
 		&i.Position,
 		&i.SeriesID,
@@ -119,7 +127,7 @@ next_position AS (
 ),
 inserted AS (
     INSERT INTO action_items (
-        id, task_id, title, description, due_date, completed, position,
+        id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
         series_id, occurrence_date, timezone, is_exception, repeat_state,
         frequency_anchor_date, interval_weeks
     )
@@ -129,24 +137,26 @@ inserted AS (
         $7,
         $8,
         $9,
+        $10,
+        $11,
         false,
         next_position.position,
-        $10,
-        $5,
-        $11,
         $12,
+        $5,
+        $13,
+        $14,
         CASE WHEN $1::integer > 0 THEN 'active' ELSE 'one_off' END,
         CASE WHEN $1::integer > 0 THEN $5::date ELSE NULL END,
         $1::integer
     FROM owned_task
     CROSS JOIN next_position
-    RETURNING id, task_id, title, description, due_date, completed, position,
+    RETURNING id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
         series_id, occurrence_date, timezone, is_exception, interval_weeks, (deleted_at IS NOT NULL) AS deleted,
         created_at, updated_at
 ),
 inserted_frequencies AS (
     INSERT INTO action_item_frequencies (action_item_id, frequency)
-    SELECT inserted.id, unnest($13::text[])
+    SELECT inserted.id, unnest($15::text[])
     FROM inserted
     WHERE inserted.id = inserted.series_id AND inserted.interval_weeks > 0
     ON CONFLICT DO NOTHING
@@ -155,9 +165,11 @@ SELECT
     inserted.id,
     inserted.task_id,
     inserted.title,
-    inserted.description,
-    inserted.due_date,
-    inserted.completed,
+        inserted.description,
+        inserted.due_date,
+        inserted.estimated_minutes,
+        inserted.priority,
+        inserted.completed,
     inserted.position,
     $1::integer AS interval_weeks,
     inserted.series_id,
@@ -177,38 +189,42 @@ FROM inserted
 `
 
 type CreateActionItemByTaskAndUserIDParams struct {
-	IntervalWeeks  int32
-	TaskID         string
-	UserID         string
-	Position       pgtype.Int4
-	OccurrenceDate pgtype.Date
-	ID             string
-	Title          string
-	Description    pgtype.Text
-	DueDate        pgtype.Date
-	SeriesID       string
-	Timezone       string
-	IsException    bool
-	Frequencies    []string
+	IntervalWeeks    int32
+	TaskID           string
+	UserID           string
+	Position         pgtype.Int4
+	OccurrenceDate   pgtype.Date
+	ID               string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	SeriesID         string
+	Timezone         string
+	IsException      bool
+	Frequencies      []string
 }
 
 type CreateActionItemByTaskAndUserIDRow struct {
-	ID             string
-	TaskID         string
-	Title          string
-	Description    pgtype.Text
-	DueDate        pgtype.Date
-	Completed      bool
-	Position       int32
-	IntervalWeeks  int32
-	SeriesID       string
-	OccurrenceDate pgtype.Date
-	Timezone       string
-	IsException    bool
-	Deleted        interface{}
-	Frequencies    []string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID               string
+	TaskID           string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	Completed        bool
+	Position         int32
+	IntervalWeeks    int32
+	SeriesID         string
+	OccurrenceDate   pgtype.Date
+	Timezone         string
+	IsException      bool
+	Deleted          interface{}
+	Frequencies      []string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 func (q *Queries) CreateActionItemByTaskAndUserID(ctx context.Context, arg CreateActionItemByTaskAndUserIDParams) (CreateActionItemByTaskAndUserIDRow, error) {
@@ -222,6 +238,8 @@ func (q *Queries) CreateActionItemByTaskAndUserID(ctx context.Context, arg Creat
 		arg.Title,
 		arg.Description,
 		arg.DueDate,
+		arg.EstimatedMinutes,
+		arg.Priority,
 		arg.SeriesID,
 		arg.Timezone,
 		arg.IsException,
@@ -234,6 +252,8 @@ func (q *Queries) CreateActionItemByTaskAndUserID(ctx context.Context, arg Creat
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
+		&i.EstimatedMinutes,
+		&i.Priority,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
@@ -252,7 +272,7 @@ func (q *Queries) CreateActionItemByTaskAndUserID(ctx context.Context, arg Creat
 const createActionItemOccurrenceByTaskAndUserID = `-- name: CreateActionItemOccurrenceByTaskAndUserID :one
 WITH inserted AS (
     INSERT INTO action_items (
-        id, task_id, title, description, due_date, completed, position,
+        id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
         series_id, occurrence_date, timezone, is_exception, repeat_state,
         frequency_anchor_date, interval_weeks
     )
@@ -260,7 +280,7 @@ WITH inserted AS (
         $1, source.task_id,
         source.title,
         source.description,
-        $2, false,
+        $2, source.estimated_minutes, source.priority, false,
         source.position,
         source.series_id, $3, source.timezone, false, NULL, NULL, 0
     FROM action_items AS source
@@ -276,15 +296,15 @@ WITH inserted AS (
       AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
       AND t.status <> 'done'
     ON CONFLICT (series_id, occurrence_date) WHERE id <> series_id DO NOTHING
-    RETURNING id, task_id, title, description, due_date, completed, position,
+    RETURNING id, task_id, title, description, due_date, estimated_minutes, priority, completed, position,
         series_id, occurrence_date, timezone, is_exception, (deleted_at IS NOT NULL) AS deleted,
         created_at, updated_at
 ),
 candidate AS (
-    SELECT id, task_id, title, description, due_date, completed, position, series_id, occurrence_date, timezone, is_exception, deleted, created_at, updated_at FROM inserted
+    SELECT id, task_id, title, description, due_date, estimated_minutes, priority, completed, position, series_id, occurrence_date, timezone, is_exception, deleted, created_at, updated_at FROM inserted
     UNION ALL
     SELECT existing.id, existing.task_id, existing.title, existing.description, existing.due_date,
-        existing.completed, existing.position, existing.series_id,
+        existing.estimated_minutes, existing.priority, existing.completed, existing.position, existing.series_id,
         existing.occurrence_date, existing.timezone, existing.is_exception,
         (existing.deleted_at IS NOT NULL) AS deleted, existing.created_at, existing.updated_at
     FROM action_items AS existing
@@ -307,6 +327,8 @@ SELECT
     candidate.title,
     candidate.description,
     candidate.due_date,
+    candidate.estimated_minutes,
+    candidate.priority,
     candidate.completed,
     candidate.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = candidate.series_id ), 0)::integer AS interval_weeks,
@@ -335,22 +357,24 @@ type CreateActionItemOccurrenceByTaskAndUserIDParams struct {
 }
 
 type CreateActionItemOccurrenceByTaskAndUserIDRow struct {
-	ID             string
-	TaskID         string
-	Title          string
-	Description    pgtype.Text
-	DueDate        pgtype.Date
-	Completed      bool
-	Position       int32
-	IntervalWeeks  int32
-	SeriesID       string
-	OccurrenceDate pgtype.Date
-	Timezone       string
-	IsException    bool
-	Deleted        interface{}
-	Frequencies    []string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID               string
+	TaskID           string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	Completed        bool
+	Position         int32
+	IntervalWeeks    int32
+	SeriesID         string
+	OccurrenceDate   pgtype.Date
+	Timezone         string
+	IsException      bool
+	Deleted          interface{}
+	Frequencies      []string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 func (q *Queries) CreateActionItemOccurrenceByTaskAndUserID(ctx context.Context, arg CreateActionItemOccurrenceByTaskAndUserIDParams) (CreateActionItemOccurrenceByTaskAndUserIDRow, error) {
@@ -368,6 +392,8 @@ func (q *Queries) CreateActionItemOccurrenceByTaskAndUserID(ctx context.Context,
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
+		&i.EstimatedMinutes,
+		&i.Priority,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
@@ -545,7 +571,7 @@ WITH target AS (
         updated_at = now()
     FROM reordered
     WHERE ti.id = reordered.id
-    RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.completed, ti.position,
+    RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.estimated_minutes, ti.priority, ti.completed, ti.position,
         COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks, ti.series_id, ti.occurrence_date, ti.timezone, ti.is_exception,
         (ti.deleted_at IS NOT NULL) AS deleted, ti.created_at, ti.updated_at
 )
@@ -555,6 +581,8 @@ SELECT
     updated.title,
     updated.description,
     updated.due_date,
+    updated.estimated_minutes,
+    updated.priority,
     updated.completed,
     updated.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = updated.series_id ), 0)::integer AS interval_weeks,
@@ -583,22 +611,24 @@ type ReorderActionItemsByTaskAndUserIDParams struct {
 }
 
 type ReorderActionItemsByTaskAndUserIDRow struct {
-	ID             string
-	TaskID         string
-	Title          string
-	Description    pgtype.Text
-	DueDate        pgtype.Date
-	Completed      bool
-	Position       int32
-	IntervalWeeks  int32
-	SeriesID       string
-	OccurrenceDate pgtype.Date
-	Timezone       string
-	IsException    bool
-	Deleted        interface{}
-	Frequencies    []string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID               string
+	TaskID           string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	Completed        bool
+	Position         int32
+	IntervalWeeks    int32
+	SeriesID         string
+	OccurrenceDate   pgtype.Date
+	Timezone         string
+	IsException      bool
+	Deleted          interface{}
+	Frequencies      []string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 func (q *Queries) ReorderActionItemsByTaskAndUserID(ctx context.Context, arg ReorderActionItemsByTaskAndUserIDParams) (ReorderActionItemsByTaskAndUserIDRow, error) {
@@ -615,6 +645,8 @@ func (q *Queries) ReorderActionItemsByTaskAndUserID(ctx context.Context, arg Reo
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
+		&i.EstimatedMinutes,
+		&i.Priority,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
@@ -643,7 +675,7 @@ WHERE ti.id = $1
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
   AND task_has_permission(t.id, $3, 'action_item', 'update')
   AND ti.deleted_at IS NULL
-RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.completed, ti.position,
+RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.estimated_minutes, ti.priority, ti.completed, ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks, ti.series_id, ti.occurrence_date, ti.timezone, ti.is_exception,
     (ti.deleted_at IS NOT NULL) AS deleted, ti.created_at, ti.updated_at
 `
@@ -656,21 +688,23 @@ type SetActionItemCompletedByTaskAndUserIDParams struct {
 }
 
 type SetActionItemCompletedByTaskAndUserIDRow struct {
-	ID             string
-	TaskID         string
-	Title          string
-	Description    pgtype.Text
-	DueDate        pgtype.Date
-	Completed      bool
-	Position       int32
-	IntervalWeeks  int32
-	SeriesID       string
-	OccurrenceDate pgtype.Date
-	Timezone       string
-	IsException    bool
-	Deleted        interface{}
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID               string
+	TaskID           string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	Completed        bool
+	Position         int32
+	IntervalWeeks    int32
+	SeriesID         string
+	OccurrenceDate   pgtype.Date
+	Timezone         string
+	IsException      bool
+	Deleted          interface{}
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 func (q *Queries) SetActionItemCompletedByTaskAndUserID(ctx context.Context, arg SetActionItemCompletedByTaskAndUserIDParams) (SetActionItemCompletedByTaskAndUserIDRow, error) {
@@ -687,6 +721,8 @@ func (q *Queries) SetActionItemCompletedByTaskAndUserID(ctx context.Context, arg
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
+		&i.EstimatedMinutes,
+		&i.Priority,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
@@ -734,50 +770,56 @@ SET task_id = $2,
     title = $3,
     description = $4,
     due_date = $5,
-    completed = $6,
-    position = $7,
-    series_id = $8,
-    occurrence_date = $9,
-    timezone = $10,
-    is_exception = $11,
+    estimated_minutes = $6,
+    priority = $7,
+    completed = $8,
+    position = $9,
+    series_id = $10,
+    occurrence_date = $11,
+    timezone = $12,
+    is_exception = $13,
     updated_at = now()
 WHERE action_items.id = $1
   AND action_items.deleted_at IS NULL
-RETURNING id, task_id, title, description, due_date, completed, position, COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = action_items.series_id ), 0)::integer AS interval_weeks,
+RETURNING id, task_id, title, description, due_date, estimated_minutes, priority, completed, position, COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = action_items.series_id ), 0)::integer AS interval_weeks,
     series_id, occurrence_date, timezone, is_exception, (deleted_at IS NOT NULL) AS deleted,
     created_at, updated_at
 `
 
 type UpdateActionItemParams struct {
-	ID             string
-	TaskID         string
-	Title          string
-	Description    pgtype.Text
-	DueDate        pgtype.Date
-	Completed      bool
-	Position       int32
-	SeriesID       string
-	OccurrenceDate pgtype.Date
-	Timezone       string
-	IsException    bool
+	ID               string
+	TaskID           string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	Completed        bool
+	Position         int32
+	SeriesID         string
+	OccurrenceDate   pgtype.Date
+	Timezone         string
+	IsException      bool
 }
 
 type UpdateActionItemRow struct {
-	ID             string
-	TaskID         string
-	Title          string
-	Description    pgtype.Text
-	DueDate        pgtype.Date
-	Completed      bool
-	Position       int32
-	IntervalWeeks  int32
-	SeriesID       string
-	OccurrenceDate pgtype.Date
-	Timezone       string
-	IsException    bool
-	Deleted        interface{}
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID               string
+	TaskID           string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	Completed        bool
+	Position         int32
+	IntervalWeeks    int32
+	SeriesID         string
+	OccurrenceDate   pgtype.Date
+	Timezone         string
+	IsException      bool
+	Deleted          interface{}
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 func (q *Queries) UpdateActionItem(ctx context.Context, arg UpdateActionItemParams) (UpdateActionItemRow, error) {
@@ -787,6 +829,8 @@ func (q *Queries) UpdateActionItem(ctx context.Context, arg UpdateActionItemPara
 		arg.Title,
 		arg.Description,
 		arg.DueDate,
+		arg.EstimatedMinutes,
+		arg.Priority,
 		arg.Completed,
 		arg.Position,
 		arg.SeriesID,
@@ -801,6 +845,8 @@ func (q *Queries) UpdateActionItem(ctx context.Context, arg UpdateActionItemPara
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
+		&i.EstimatedMinutes,
+		&i.Priority,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
@@ -821,18 +867,20 @@ WITH updated AS (
     SET title = $1,
         description = $2,
         due_date = $3,
-        position = $4,
+        estimated_minutes = $4,
+        priority = $5,
+        position = $6,
         is_exception = true,
         updated_at = now()
     FROM tasks AS t
-    WHERE ti.id = $5
-      AND ti.task_id = $6
+    WHERE ti.id = $7
+      AND ti.task_id = $8
       AND t.id = ti.task_id
       AND t.deleted_at IS NULL
       AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-      AND task_has_permission(t.id, $7::text, 'action_item', 'update')
+      AND task_has_permission(t.id, $9::text, 'action_item', 'update')
       AND ti.deleted_at IS NULL
-    RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.completed, ti.position,
+    RETURNING ti.id, ti.task_id, ti.title, ti.description, ti.due_date, ti.estimated_minutes, ti.priority, ti.completed, ti.position,
         COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks, ti.series_id, ti.occurrence_date, ti.timezone, ti.is_exception,
         (ti.deleted_at IS NOT NULL) AS deleted, ti.created_at, ti.updated_at
 )
@@ -842,6 +890,8 @@ SELECT
     updated.title,
     updated.description,
     updated.due_date,
+    updated.estimated_minutes,
+    updated.priority,
     updated.completed,
     updated.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = updated.series_id ), 0)::integer AS interval_weeks,
@@ -862,32 +912,36 @@ FROM updated
 `
 
 type UpdateActionItemByTaskAndUserIDParams struct {
-	Title       string
-	Description pgtype.Text
-	DueDate     pgtype.Date
-	Position    int32
-	ID          string
-	TaskID      string
-	UserID      string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	Position         int32
+	ID               string
+	TaskID           string
+	UserID           string
 }
 
 type UpdateActionItemByTaskAndUserIDRow struct {
-	ID             string
-	TaskID         string
-	Title          string
-	Description    pgtype.Text
-	DueDate        pgtype.Date
-	Completed      bool
-	Position       int32
-	IntervalWeeks  int32
-	SeriesID       string
-	OccurrenceDate pgtype.Date
-	Timezone       string
-	IsException    bool
-	Deleted        interface{}
-	Frequencies    []string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID               string
+	TaskID           string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	Completed        bool
+	Position         int32
+	IntervalWeeks    int32
+	SeriesID         string
+	OccurrenceDate   pgtype.Date
+	Timezone         string
+	IsException      bool
+	Deleted          interface{}
+	Frequencies      []string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 func (q *Queries) UpdateActionItemByTaskAndUserID(ctx context.Context, arg UpdateActionItemByTaskAndUserIDParams) (UpdateActionItemByTaskAndUserIDRow, error) {
@@ -895,6 +949,8 @@ func (q *Queries) UpdateActionItemByTaskAndUserID(ctx context.Context, arg Updat
 		arg.Title,
 		arg.Description,
 		arg.DueDate,
+		arg.EstimatedMinutes,
+		arg.Priority,
 		arg.Position,
 		arg.ID,
 		arg.TaskID,
@@ -907,6 +963,8 @@ func (q *Queries) UpdateActionItemByTaskAndUserID(ctx context.Context, arg Updat
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
+		&i.EstimatedMinutes,
+		&i.Priority,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,

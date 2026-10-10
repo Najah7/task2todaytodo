@@ -12,7 +12,7 @@ import (
 )
 
 const listProjectRevisionsByActor = `-- name: ListProjectRevisionsByActor :many
-SELECT pr.id, pr.revision, pr.user_id, pr.type, pr.title, pr.goal, pr.description, pr.priority, pr.start_date, pr.end_date, pr.deleted_at, pr.created_at, pr.updated_at, pr.changed_by, pr.changed_at, pr.status
+SELECT pr.id, pr.revision, pr.user_id, pr.type, pr.title, pr.goal, pr.description, pr.priority, pr.status, pr.start_date, pr.end_date, pr.deleted_at, pr.created_at, pr.updated_at, pr.changed_by, pr.changed_at
 FROM project_revisions AS pr
 JOIN projects AS p ON p.id = pr.id
 WHERE pr.id = $1::text
@@ -58,6 +58,7 @@ func (q *Queries) ListProjectRevisionsByActor(ctx context.Context, arg ListProje
 			&i.Goal,
 			&i.Description,
 			&i.Priority,
+			&i.Status,
 			&i.StartDate,
 			&i.EndDate,
 			&i.DeletedAt,
@@ -65,7 +66,6 @@ func (q *Queries) ListProjectRevisionsByActor(ctx context.Context, arg ListProje
 			&i.UpdatedAt,
 			&i.ChangedBy,
 			&i.ChangedAt,
-			&i.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -154,7 +154,7 @@ func (q *Queries) ListScheduleRevisionsByActor(ctx context.Context, arg ListSche
 }
 
 const listTaskRevisionsByActor = `-- name: ListTaskRevisionsByActor :many
-SELECT tr.id, tr.revision, tr.user_id, tr.project_id, tr.assignee_id, tr.title, tr.description, tr.due_date, tr.estimated_minutes, tr.actual_minutes, tr.priority, tr.status, tr.deleted_at, tr.created_at, tr.updated_at, tr.changed_by, tr.changed_at
+SELECT tr.id, tr.revision, tr.user_id, tr.project_id, tr.assignee_id, tr.title, tr.description, tr.due_date, tr.manual_estimated_minutes, tr.actual_minutes, tr.priority, tr.status, tr.deleted_at, tr.created_at, tr.updated_at, tr.changed_by, tr.changed_at
 FROM task_revisions AS tr
 JOIN tasks AS t ON t.id = tr.id
 LEFT JOIN projects AS p ON p.id = t.project_id
@@ -201,7 +201,7 @@ func (q *Queries) ListTaskRevisionsByActor(ctx context.Context, arg ListTaskRevi
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
-			&i.EstimatedMinutes,
+			&i.ManualEstimatedMinutes,
 			&i.ActualMinutes,
 			&i.Priority,
 			&i.Status,

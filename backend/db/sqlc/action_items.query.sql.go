@@ -18,6 +18,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
@@ -47,6 +49,8 @@ type GetActionItemRow struct {
 	Title               string
 	Description         pgtype.Text
 	DueDate             pgtype.Date
+	EstimatedMinutes    pgtype.Int4
+	Priority            string
 	Completed           bool
 	Position            int32
 	IntervalWeeks       int32
@@ -71,6 +75,8 @@ func (q *Queries) GetActionItem(ctx context.Context, id string) (GetActionItemRo
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
+		&i.EstimatedMinutes,
+		&i.Priority,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
@@ -95,6 +101,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
@@ -135,6 +143,8 @@ type GetActionItemByTaskAndUserIDRow struct {
 	Title               string
 	Description         pgtype.Text
 	DueDate             pgtype.Date
+	EstimatedMinutes    pgtype.Int4
+	Priority            string
 	Completed           bool
 	Position            int32
 	IntervalWeeks       int32
@@ -159,6 +169,8 @@ func (q *Queries) GetActionItemByTaskAndUserID(ctx context.Context, arg GetActio
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
+		&i.EstimatedMinutes,
+		&i.Priority,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
@@ -183,6 +195,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id), 0)::integer AS interval_weeks,
@@ -224,6 +238,8 @@ type GetActionItemByTaskAndUserIDForCommandRow struct {
 	Title               string
 	Description         pgtype.Text
 	DueDate             pgtype.Date
+	EstimatedMinutes    pgtype.Int4
+	Priority            string
 	Completed           bool
 	Position            int32
 	IntervalWeeks       int32
@@ -254,6 +270,8 @@ func (q *Queries) GetActionItemByTaskAndUserIDForCommand(ctx context.Context, ar
 		&i.Title,
 		&i.Description,
 		&i.DueDate,
+		&i.EstimatedMinutes,
+		&i.Priority,
 		&i.Completed,
 		&i.Position,
 		&i.IntervalWeeks,
@@ -278,6 +296,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
@@ -317,6 +337,8 @@ type ListActionItemsByTaskAndUserIDRow struct {
 	Title               string
 	Description         pgtype.Text
 	DueDate             pgtype.Date
+	EstimatedMinutes    pgtype.Int4
+	Priority            string
 	Completed           bool
 	Position            int32
 	IntervalWeeks       int32
@@ -347,6 +369,8 @@ func (q *Queries) ListActionItemsByTaskAndUserID(ctx context.Context, arg ListAc
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
+			&i.EstimatedMinutes,
+			&i.Priority,
 			&i.Completed,
 			&i.Position,
 			&i.IntervalWeeks,
@@ -378,6 +402,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
@@ -423,6 +449,8 @@ type ListActionItemsByTaskAndUserIDCursorPageRow struct {
 	Title               string
 	Description         pgtype.Text
 	DueDate             pgtype.Date
+	EstimatedMinutes    pgtype.Int4
+	Priority            string
 	Completed           bool
 	Position            int32
 	IntervalWeeks       int32
@@ -460,6 +488,8 @@ func (q *Queries) ListActionItemsByTaskAndUserIDCursorPage(ctx context.Context, 
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
+			&i.EstimatedMinutes,
+			&i.Priority,
 			&i.Completed,
 			&i.Position,
 			&i.IntervalWeeks,
@@ -491,6 +521,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id), 0)::integer AS interval_weeks,
@@ -531,6 +563,8 @@ type ListActionItemsForOccurrenceCommandByTaskAndUserIDRow struct {
 	Title               string
 	Description         pgtype.Text
 	DueDate             pgtype.Date
+	EstimatedMinutes    pgtype.Int4
+	Priority            string
 	Completed           bool
 	Position            int32
 	IntervalWeeks       int32
@@ -566,6 +600,8 @@ func (q *Queries) ListActionItemsForOccurrenceCommandByTaskAndUserID(ctx context
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
+			&i.EstimatedMinutes,
+			&i.Priority,
 			&i.Completed,
 			&i.Position,
 			&i.IntervalWeeks,
@@ -597,6 +633,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
@@ -635,6 +673,8 @@ type ListActionItemsForOccurrenceProjectionByTaskAndUserIDRow struct {
 	Title               string
 	Description         pgtype.Text
 	DueDate             pgtype.Date
+	EstimatedMinutes    pgtype.Int4
+	Priority            string
 	Completed           bool
 	Position            int32
 	IntervalWeeks       int32
@@ -665,6 +705,97 @@ func (q *Queries) ListActionItemsForOccurrenceProjectionByTaskAndUserID(ctx cont
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
+			&i.EstimatedMinutes,
+			&i.Priority,
+			&i.Completed,
+			&i.Position,
+			&i.IntervalWeeks,
+			&i.RepeatState,
+			&i.FrequencyAnchorDate,
+			&i.SeriesID,
+			&i.OccurrenceDate,
+			&i.Timezone,
+			&i.IsException,
+			&i.Deleted,
+			&i.Frequencies,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActionItemsForOccurrenceProjectionByTaskIDsAndUserID = `-- name: ListActionItemsForOccurrenceProjectionByTaskIDsAndUserID :many
+SELECT
+    ti.id, ti.task_id, ti.title, ti.description, ti.due_date,
+    ti.estimated_minutes, ti.priority, ti.completed, ti.position,
+    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id), 0)::integer AS interval_weeks,
+    (SELECT r.repeat_state FROM action_items r WHERE r.id = ti.series_id) AS repeat_state,
+    (SELECT r.frequency_anchor_date FROM action_items r WHERE r.id = ti.series_id) AS frequency_anchor_date,
+    ti.series_id, ti.occurrence_date, ti.timezone, ti.is_exception,
+    (ti.deleted_at IS NOT NULL) AS deleted,
+    ARRAY(SELECT tif.frequency FROM action_item_frequencies tif WHERE tif.action_item_id = ti.series_id ORDER BY tif.frequency)::text[] AS frequencies,
+    ti.created_at, ti.updated_at
+FROM action_items ti
+JOIN tasks t ON t.id = ti.task_id
+WHERE ti.task_id = ANY($1::text[])
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $2::text, 'action_item', 'read')
+ORDER BY ti.task_id, ti.position, ti.occurrence_date
+`
+
+type ListActionItemsForOccurrenceProjectionByTaskIDsAndUserIDParams struct {
+	TaskIds []string
+	UserID  string
+}
+
+type ListActionItemsForOccurrenceProjectionByTaskIDsAndUserIDRow struct {
+	ID                  string
+	TaskID              string
+	Title               string
+	Description         pgtype.Text
+	DueDate             pgtype.Date
+	EstimatedMinutes    pgtype.Int4
+	Priority            string
+	Completed           bool
+	Position            int32
+	IntervalWeeks       int32
+	RepeatState         pgtype.Text
+	FrequencyAnchorDate pgtype.Date
+	SeriesID            string
+	OccurrenceDate      pgtype.Date
+	Timezone            string
+	IsException         bool
+	Deleted             interface{}
+	Frequencies         []string
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+}
+
+func (q *Queries) ListActionItemsForOccurrenceProjectionByTaskIDsAndUserID(ctx context.Context, arg ListActionItemsForOccurrenceProjectionByTaskIDsAndUserIDParams) ([]ListActionItemsForOccurrenceProjectionByTaskIDsAndUserIDRow, error) {
+	rows, err := q.db.Query(ctx, listActionItemsForOccurrenceProjectionByTaskIDsAndUserID, arg.TaskIds, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActionItemsForOccurrenceProjectionByTaskIDsAndUserIDRow
+	for rows.Next() {
+		var i ListActionItemsForOccurrenceProjectionByTaskIDsAndUserIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.Title,
+			&i.Description,
+			&i.DueDate,
+			&i.EstimatedMinutes,
+			&i.Priority,
 			&i.Completed,
 			&i.Position,
 			&i.IntervalWeeks,
@@ -696,6 +827,8 @@ SELECT
     ti.title,
     ti.description,
     ti.due_date,
+    ti.estimated_minutes,
+    ti.priority,
     ti.completed,
     ti.position,
     COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
@@ -732,6 +865,8 @@ type ListActiveActionItemSeriesByUserIDRow struct {
 	Title               string
 	Description         pgtype.Text
 	DueDate             pgtype.Date
+	EstimatedMinutes    pgtype.Int4
+	Priority            string
 	Completed           bool
 	Position            int32
 	IntervalWeeks       int32
@@ -762,6 +897,8 @@ func (q *Queries) ListActiveActionItemSeriesByUserID(ctx context.Context, userID
 			&i.Title,
 			&i.Description,
 			&i.DueDate,
+			&i.EstimatedMinutes,
+			&i.Priority,
 			&i.Completed,
 			&i.Position,
 			&i.IntervalWeeks,

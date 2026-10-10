@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 )
 
@@ -46,6 +47,16 @@ type reopenActionItemRepositoryFake struct {
 	itemID domain.ActionItemID
 	calls  int
 	err    error
+}
+
+func (*reopenActionItemRepositoryFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		items[id] = nil
+		skipped[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
 }
 
 func (repo *reopenActionItemRepositoryFake) UncheckForOwnedTask(_ context.Context, userID domain.UserID, taskID domain.TaskID, itemID domain.ActionItemID) error {

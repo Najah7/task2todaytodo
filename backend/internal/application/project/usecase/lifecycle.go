@@ -101,3 +101,11 @@ func projectWorkState(status string, sources dao.ProjectProgressSources, asOf ti
 	}
 	return state, nil
 }
+
+func progressRule(root dao.ProjectProgressRecurrence) sharedprogress.RecurrenceRule {
+	return sharedprogress.RecurrenceRule{
+		OccurrenceDate: root.OccurrenceDate, Timezone: root.Timezone, IntervalWeeks: root.IntervalWeeks,
+		FrequencyAnchorDate: root.FrequencyAnchorDate, Frequencies: root.Frequencies,
+		OccurrenceSavedToday: root.OccurrenceSavedToday, StartAt: root.StartAt, EndAt: root.EndAt,
+	}
+}

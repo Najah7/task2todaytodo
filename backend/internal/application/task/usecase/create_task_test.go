@@ -6,11 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 )
 
 type createTaskRepositoryFake struct {
+	TaskRepository
 	task   domain.Task
 	result dao.Task
 	err    error
@@ -23,6 +25,23 @@ func (repo *createTaskRepositoryFake) Create(_ context.Context, task domain.Task
 	return repo.result, repo.err
 }
 
+func (repo *createTaskRepositoryFake) HasPermission(context.Context, domain.UserID, domain.TaskID, shared.Capability) (bool, error) {
+	return true, nil
+}
+
+type createTaskUOWFake struct{ repo *createTaskRepositoryFake }
+
+func (uow createTaskUOWFake) Do(ctx context.Context, fn func(context.Context, Repositories) error) error {
+	return fn(ctx, createTaskRepositoriesFake{repo: uow.repo})
+}
+
+type createTaskRepositoriesFake struct {
+	taskProgressTestRepositories
+	repo *createTaskRepositoryFake
+}
+
+func (repos createTaskRepositoriesFake) Tasks() TaskRepository { return repos.repo }
+
 func validCreateTaskInput() CreateTaskInput {
 	return CreateTaskInput{
 		ID:          domain.TaskID("task-1"),
@@ -33,15 +52,15 @@ func validCreateTaskInput() CreateTaskInput {
 }
 
 func TestCreateTaskUseCaseExecuteCreatesStandaloneTaskWithDefaults(t *testing.T) {
-	want := dao.Task{ID: "task-1", UserID: "user-1", Title: "Task title"}
+	want := dao.Task{ID: "task-1", UserID: "user-1", Title: "Task title", Status: dao.TaskStatus{Value: "open"}}
 	repo := &createTaskRepositoryFake{result: want}
 
-	got, err := NewCreateTaskUseCase(repo, nil).Execute(context.Background(), validCreateTaskInput())
+	got, err := NewCreateTaskUseCase(createTaskUOWFake{repo: repo}, nil).Execute(context.Background(), validCreateTaskInput())
 	if err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
 	}
-	if got != want {
-		t.Errorf("Execute() = %#v, want %#v", got, want)
+	if got.ID != want.ID || got.UserID != want.UserID || got.Title != want.Title || got.EstimateSource != "manual" || got.CanUpdate != true {
+		t.Errorf("Execute() = %#v, want created task with manual estimate source and update permission", got)
 	}
 	if repo.calls != 1 {
 		t.Fatalf("Create() calls = %d, want 1", repo.calls)
@@ -66,12 +85,12 @@ func TestCreateTaskUseCaseExecutePassesOptionalFields(t *testing.T) {
 	input.Priority = "high"
 	repo := &createTaskRepositoryFake{}
 
-	_, err := NewCreateTaskUseCase(repo, nil).Execute(context.Background(), input)
+	_, err := NewCreateTaskUseCase(createTaskUOWFake{repo: repo}, nil).Execute(context.Background(), input)
 	if err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
 	}
-	if !repo.task.DueDate.Equal(dueDate) || repo.task.EstimatedMinutes == nil || *repo.task.EstimatedMinutes != estimatedMinutes || repo.task.Priority.String() != "high" {
-		t.Errorf("created optional fields = due %v, estimate %v, priority %q; want due %v, estimate %d, high", repo.task.DueDate, repo.task.EstimatedMinutes, repo.task.Priority.String(), dueDate, estimatedMinutes)
+	if !repo.task.DueDate.Equal(dueDate) || repo.task.ManualEstimatedMinutes == nil || *repo.task.ManualEstimatedMinutes != estimatedMinutes || repo.task.Priority.String() != "high" {
+		t.Errorf("created optional fields = due %v, estimate %v, priority %q; want due %v, estimate %d, high", repo.task.DueDate, repo.task.ManualEstimatedMinutes, repo.task.Priority.String(), dueDate, estimatedMinutes)
 	}
 }
 
@@ -80,7 +99,7 @@ func TestCreateTaskUseCaseExecuteRejectsEmptyTitle(t *testing.T) {
 	input.Title = " \t "
 	repo := &createTaskRepositoryFake{}
 
-	_, err := NewCreateTaskUseCase(repo, nil).Execute(context.Background(), input)
+	_, err := NewCreateTaskUseCase(createTaskUOWFake{repo: repo}, nil).Execute(context.Background(), input)
 	if !errors.Is(err, domain.ErrTaskTitleEmpty) {
 		t.Errorf("Execute() error = %v, want %v", err, domain.ErrTaskTitleEmpty)
 	}
@@ -94,7 +113,7 @@ func TestCreateTaskUseCaseExecuteRejectsInvalidPriority(t *testing.T) {
 	input.Priority = "invalid"
 	repo := &createTaskRepositoryFake{}
 
-	_, err := NewCreateTaskUseCase(repo, nil).Execute(context.Background(), input)
+	_, err := NewCreateTaskUseCase(createTaskUOWFake{repo: repo}, nil).Execute(context.Background(), input)
 	if !errors.Is(err, domain.ErrTaskPriorityInvalid) {
 		t.Errorf("Execute() error = %v, want %v", err, domain.ErrTaskPriorityInvalid)
 	}
@@ -109,7 +128,7 @@ func TestCreateTaskUseCaseExecuteRejectsNegativeEstimate(t *testing.T) {
 	input.EstimatedMinutes = &negative
 	repo := &createTaskRepositoryFake{}
 
-	_, err := NewCreateTaskUseCase(repo, nil).Execute(context.Background(), input)
+	_, err := NewCreateTaskUseCase(createTaskUOWFake{repo: repo}, nil).Execute(context.Background(), input)
 	if !errors.Is(err, domain.ErrTaskEstimatedMinutesInvalid) {
 		t.Errorf("Execute() error = %v, want %v", err, domain.ErrTaskEstimatedMinutesInvalid)
 	}
@@ -122,7 +141,7 @@ func TestCreateTaskUseCaseExecutePropagatesRepositoryError(t *testing.T) {
 	wantErr := errors.New("database unavailable")
 	repo := &createTaskRepositoryFake{err: wantErr}
 
-	_, err := NewCreateTaskUseCase(repo, nil).Execute(context.Background(), validCreateTaskInput())
+	_, err := NewCreateTaskUseCase(createTaskUOWFake{repo: repo}, nil).Execute(context.Background(), validCreateTaskInput())
 	if !errors.Is(err, wantErr) {
 		t.Errorf("Execute() error = %v, want %v", err, wantErr)
 	}

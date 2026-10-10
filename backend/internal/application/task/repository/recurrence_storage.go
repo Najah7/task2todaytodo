@@ -72,6 +72,7 @@ func (r ActionItemRepository) UpsertActionItemOverride(ctx context.Context, user
 	return r.queries.UpsertActionItemOverrideByTaskAndUserID(ctx, sqlc.UpsertActionItemOverrideByTaskAndUserIDParams{
 		ID: string(item.ID), TaskID: string(item.TaskID), UserID: string(userID), SeriesID: string(item.SeriesID),
 		Title: item.Title, Description: stringToPgText(item.Description), DueDate: timeToPgDate(item.DueDate),
+		EstimatedMinutes: intPointerToPgInt(item.EstimatedMinutes), Priority: taskPriorityString(item.Priority),
 		Completed: item.Completed, Position: int32(item.Position), OccurrenceDate: timeToPgDate(item.OccurrenceDate),
 		Timezone: item.Timezone, Deleted: item.Deleted,
 	})

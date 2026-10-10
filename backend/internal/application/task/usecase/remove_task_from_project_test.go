@@ -135,12 +135,14 @@ func TestRemoveTaskFromProjectUseCaseExecuteRemovesTaskAndPreservesTaskData(t *t
 	childMinutes := 45
 	want := dao.Task{
 		ID: string(taskID), UserID: string(userID), ProjectID: "", Title: "Task",
-		Description: "Keep task and children", EstimatedMinutes: &childMinutes,
+		Description: "Keep task and children", ManualEstimatedMinutes: &childMinutes,
 		Priority: dao.Priority{Value: "high"}, Status: dao.TaskStatus{Value: "open"}, Revision: 2,
 	}
+	want.EstimatedMinutes = &childMinutes
+	want.EstimateSource = "manual"
 	uow, projectRepo, taskRepo, accesses := newRemoveTaskFromProjectFixture(
 		legacyProjectFixture{ID: string(projectID), UserID: string(userID)},
-		dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: string(projectID), Title: want.Title, Description: want.Description, EstimatedMinutes: &childMinutes, Priority: want.Priority, Status: want.Status, Revision: 1},
+		dao.Task{ID: string(taskID), UserID: string(userID), ProjectID: string(projectID), Title: want.Title, Description: want.Description, ManualEstimatedMinutes: &childMinutes, Priority: want.Priority, Status: want.Status, Revision: 1},
 	)
 	taskRepo.removedTask = want
 
@@ -176,7 +178,11 @@ func TestRemoveTaskFromProjectUseCaseExecuteIsIdempotentWhenTaskNotInProject(t *
 
 			got, err := NewRemoveTaskFromProjectUseCase(uow, &taskProgressSourceFake{}, nil).Execute(context.Background(), userID, projectID, "task-1", 1)
 			want := testCase.task
-			want.Status = dao.TaskStatus{Value: "open"} // Return the task with current child-progress status.
+			want.EstimatedMinutes = want.ManualEstimatedMinutes
+			want.EstimateSource = "manual"
+			if want.ProjectID != "" {
+				want.ProjectStatus = "open"
+			}
 			if err != nil || !reflect.DeepEqual(got, want) {
 				t.Fatalf("Execute() = %#v, %v; want projected task %#v, nil", got, err, want)
 			}

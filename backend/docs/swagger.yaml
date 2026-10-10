@@ -6,12 +6,17 @@ definitions:
         type: string
       due_date:
         type: string
+      estimated_minutes:
+        type: integer
+        x-nullable: true
       frequencies:
         items:
           type: string
         type: array
       interval_weeks:
         type: integer
+      priority:
+        type: string
       title:
         type: string
     type: object
@@ -58,6 +63,9 @@ definitions:
         type: string
       due_date:
         type: string
+      estimated_minutes:
+        type: integer
+        x-nullable: true
       frequencies:
         items:
           type: string
@@ -74,6 +82,8 @@ definitions:
         type: string
       position:
         type: integer
+      priority:
+        type: string
       repeat_state:
         type: string
       series_id:
@@ -86,6 +96,8 @@ definitions:
         type: string
       updated_at:
         type: integer
+    required:
+    - estimated_minutes
     type: object
   rest.ActionItemUpdateRequest:
     properties:
@@ -93,7 +105,12 @@ definitions:
         type: string
       due_date:
         type: string
+      estimated_minutes:
+        type: integer
+        x-nullable: true
       occurrence_date:
+        type: string
+      priority:
         type: string
       scope:
         enum:
@@ -467,7 +484,7 @@ definitions:
         type: string
       due_date:
         type: string
-      estimated_minutes:
+      manual_estimated_minutes:
         type: integer
       priority:
         type: string
@@ -485,6 +502,10 @@ definitions:
     type: object
   rest.ProjectTaskResponse:
     properties:
+      action_item_completed_count:
+        type: integer
+      action_item_count:
+        type: integer
       actual_minutes:
         type: integer
       assignee_id:
@@ -495,10 +516,14 @@ definitions:
         type: string
       due_date:
         type: string
+      estimate_source:
+        type: string
       estimated_minutes:
         type: integer
       id:
         type: string
+      manual_estimated_minutes:
+        type: integer
       priority:
         $ref: '#/definitions/rest.ProjectPriorityResponse'
       progress:
@@ -886,8 +911,9 @@ definitions:
         type: string
       due_date:
         type: string
-      estimated_minutes:
+      manual_estimated_minutes:
         type: integer
+        x-nullable: true
       priority:
         type: string
       title:
@@ -904,35 +930,80 @@ definitions:
     type: object
   rest.TaskListResponse:
     properties:
+      action_item_completed_count:
+        type: integer
+      action_item_total_count:
+        type: integer
+      estimated_minutes_total:
+        type: integer
+        x-nullable: true
       items:
         items:
           $ref: '#/definitions/rest.TaskResponse'
         type: array
       next_page_token:
         type: string
+      previous_page_token:
+        type: string
+      status_counts:
+        additionalProperties:
+          type: integer
+        type: object
+      total_count:
+        type: integer
+    required:
+    - action_item_completed_count
+    - action_item_total_count
+    - estimated_minutes_total
+    - items
+    - next_page_token
+    - previous_page_token
+    - status_counts
+    - total_count
     type: object
   rest.TaskResponse:
     properties:
+      action_item_completed_count:
+        type: integer
+      action_item_count:
+        type: integer
       actual_minutes:
         type: integer
+        x-nullable: true
       assignee_id:
         type: string
+      can_update:
+        type: boolean
       created_at:
         type: string
       description:
         type: string
       due_date:
         type: string
+        x-nullable: true
+      estimate_source:
+        type: string
       estimated_minutes:
         type: integer
+        x-nullable: true
       id:
         type: string
+      manual_estimated_minutes:
+        type: integer
+        x-nullable: true
       priority:
         type: string
       progress:
         type: integer
       project_id:
         type: string
+        x-nullable: true
+      project_name:
+        type: string
+        x-nullable: true
+      remaining_days:
+        type: integer
+        x-nullable: true
       revision:
         type: integer
       status:
@@ -943,6 +1014,29 @@ definitions:
         type: string
       user_id:
         type: string
+    required:
+    - action_item_completed_count
+    - action_item_count
+    - actual_minutes
+    - assignee_id
+    - can_update
+    - created_at
+    - description
+    - due_date
+    - estimate_source
+    - estimated_minutes
+    - id
+    - manual_estimated_minutes
+    - priority
+    - progress
+    - project_id
+    - project_name
+    - remaining_days
+    - revision
+    - status
+    - title
+    - updated_at
+    - user_id
     type: object
   rest.TaskRevisionListResponse:
     properties:
@@ -971,10 +1065,10 @@ definitions:
         type: string
       due_date:
         type: string
-      estimated_minutes:
-        type: integer
       id:
         type: string
+      manual_estimated_minutes:
+        type: integer
       priority:
         type: string
       project_id:
@@ -998,15 +1092,24 @@ definitions:
   rest.TaskUpdateRequest:
     properties:
       actual_minutes:
-        $ref: '#/definitions/rest.optionalJSON-int'
+        type: integer
+        x-nullable: true
       description:
-        $ref: '#/definitions/rest.optionalJSON-string'
+        type: string
+        x-nullable: true
       due_date:
-        $ref: '#/definitions/rest.optionalJSON-string'
-      estimated_minutes:
-        $ref: '#/definitions/rest.optionalJSON-int'
+        type: string
+        x-nullable: true
+      manual_estimated_minutes:
+        type: integer
+        x-nullable: true
+      priority:
+        type: string
+      project_id:
+        type: string
+        x-nullable: true
       title:
-        $ref: '#/definitions/rest.optionalJSON-string'
+        type: string
     type: object
   rest.UserInfoUpdateRequest:
     properties:
@@ -1034,20 +1137,6 @@ definitions:
   rest.UserTimezoneUpdateRequest:
     properties:
       timezone:
-        type: string
-    type: object
-  rest.optionalJSON-int:
-    properties:
-      present:
-        type: boolean
-      value:
-        type: integer
-    type: object
-  rest.optionalJSON-string:
-    properties:
-      present:
-        type: boolean
-      value:
         type: string
     type: object
 info:
@@ -2872,14 +2961,58 @@ paths:
       - Tags
   /tasks:
     get:
-      description: Returns a page of tasks assigned to the authenticated user, including
-        tasks in projects.
+      description: Returns a filtered page of tasks with counts and estimates for
+        the full matching result set.
       parameters:
+      - description: Task status
+        enum:
+        - all
+        - open
+        - in_progress
+        - pending
+        - waiting_on_others
+        - done
+        in: query
+        name: status
+        type: string
+      - description: Project ID
+        in: query
+        name: project_id
+        type: string
+      - description: Due date filter
+        enum:
+        - all
+        - overdue
+        - today
+        - due_soon
+        - no_due
+        in: query
+        name: due_filter
+        type: string
+      - description: Title substring
+        in: query
+        name: title
+        type: string
+      - description: Sort field
+        enum:
+        - due_date
+        - title
+        - created_at
+        in: query
+        name: sort_by
+        type: string
+      - description: Sort direction
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
       - description: Items per page (default 50, maximum 100)
         in: query
         name: page_size
         type: integer
-      - description: Opaque next page token
+      - description: Opaque cursor for the next page
         in: query
         name: page_token
         type: string
@@ -2895,7 +3028,7 @@ paths:
           schema:
             $ref: '#/definitions/rest.TaskListResponse'
         "400":
-          description: Invalid pagination
+          description: Invalid filter or pagination
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "401":
@@ -3028,8 +3161,8 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Partially updates basic task fields. Project membership, status,
-        and progress cannot be changed here.
+      description: Atomically updates Task fields. ActionItems are managed through
+        their own endpoints. If-Match uses the Task aggregate revision.
       parameters:
       - description: Current task ETag, for example \
         in: header

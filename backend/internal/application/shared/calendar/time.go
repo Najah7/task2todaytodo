@@ -28,6 +28,22 @@ func CalendarDayOffset(start, end time.Time) int {
 	return int(endDate.Sub(startDate).Hours() / 24)
 }
 
+// AddCalendarMonthClamped advances date by one calendar month, preserving its
+// day when possible and otherwise using the last day of the target month.
+func AddCalendarMonthClamped(date time.Time) time.Time {
+	date = NormalizeCalendarDate(date)
+	if date.IsZero() {
+		return time.Time{}
+	}
+	firstOfNextMonth := time.Date(date.Year(), date.Month()+1, 1, 0, 0, 0, 0, time.UTC)
+	lastDay := time.Date(firstOfNextMonth.Year(), firstOfNextMonth.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
+	day := date.Day()
+	if day > lastDay {
+		day = lastDay
+	}
+	return time.Date(firstOfNextMonth.Year(), firstOfNextMonth.Month(), day, 0, 0, 0, 0, time.UTC)
+}
+
 // ResolveWallTime places wallTime's clock components on date plus dayOffset in
 // location. It reports false when the requested local time does not exist,
 // such as during a daylight-saving clock jump. location must be non-nil.

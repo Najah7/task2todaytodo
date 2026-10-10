@@ -35,7 +35,7 @@ func TestTaskUpdateIfMatchStatusesAndSuccessETag(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := &revisionUpdateRepository{task: revisionTaskDAO(), updateErr: tc.updateErr}
 			handler := NewTaskHandler(taskusecase.TaskUseCases{
-				Update: taskusecase.NewUpdateTaskUseCase(revisionUpdateUOW{repo: repo}, repo, nil),
+				Update: taskusecase.NewUpdateTaskUseCase(revisionUpdateUOW{repo: repo}, nil),
 			}, taskHandlerID{value: "unused"}, listTestCodec())
 			request := newRevisionTaskRequest(http.MethodPatch, "/tasks/task-1", `{"title":"Updated title"}`, "user-1")
 			if tc.setIfMatch {
@@ -215,6 +215,23 @@ type revisionUpdateRepositories struct {
 }
 
 func (repos revisionUpdateRepositories) Tasks() taskusecase.TaskRepository { return repos.repo }
+func (revisionUpdateRepositories) ActionItems() taskusecase.ActionItemRepository {
+	return revisionUpdateActionItems{}
+}
+
+type revisionUpdateActionItems struct {
+	taskusecase.ActionItemRepository
+}
+
+func (revisionUpdateActionItems) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		items[id] = nil
+		skipped[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+}
 
 type revisionHistoryReaderCall struct {
 	actor          domain.UserID

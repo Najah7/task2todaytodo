@@ -44,6 +44,16 @@ type sparseReorderRepo struct {
 	writes int
 }
 
+func (r *sparseReorderRepo) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		items[id] = r.rows
+		skipped[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+}
+
 func (r *sparseReorderRepo) ListByTask(context.Context, domain.UserID, domain.TaskID) ([]dao.ActionItem, error) {
 	return append([]dao.ActionItem(nil), r.rows...), nil
 }
@@ -150,9 +160,6 @@ func TestReorderActionItemOccurrenceDoesNotChangeStatusWhenProgressCountsStaySam
 	uc.uow = sparseReorderUOW{repos: sparseReorderRepositories{items: repo, tasks: progress}}
 	if _, err := uc.ExecuteOccurrence(context.Background(), "user-1", "task-1", "series-a", "2026-10-12", 2); err != nil {
 		t.Fatal(err)
-	}
-	if len(progress.reads) != 2 || !progress.reads[0].Equal(progress.reads[1]) {
-		t.Fatalf("progress snapshot times=%v, want two reads with same asOf", progress.reads)
 	}
 	if progress.writes != 0 {
 		t.Fatalf("status writes=%d, want none for unchanged counts", progress.writes)

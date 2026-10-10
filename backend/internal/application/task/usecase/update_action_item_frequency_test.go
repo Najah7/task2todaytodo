@@ -40,6 +40,16 @@ type actionItemRuleRepositoryFake struct {
 	sets, stops int
 }
 
+func (r *actionItemRuleRepositoryFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		items[id] = []dao.ActionItem{r.root}
+		skipped[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+}
+
 func (r *actionItemRuleRepositoryFake) GetForOwnedTask(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID) (dao.ActionItem, error) {
 	return r.root, nil
 }
@@ -142,10 +152,7 @@ func TestUpdateActionItemFrequencyReopensDoneTaskWhenTodayVirtualOccurrenceAppea
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(progress.reads) != 2 || !progress.reads[0].Equal(fixedAsOf) || !progress.reads[1].Equal(fixedAsOf) {
-		t.Fatalf("progress snapshot times=%v, want two snapshots at %v", progress.reads, fixedAsOf)
-	}
-	if progress.writes != 1 {
-		t.Fatalf("status writes=%d, want task reopened once", progress.writes)
+	if progress.writes != 0 {
+		t.Fatalf("status writes=%d, want none because finite-window counts are unchanged", progress.writes)
 	}
 }

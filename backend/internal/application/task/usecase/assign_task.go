@@ -81,7 +81,7 @@ func (uc *AssignTaskUseCase) Execute(
 		if err != nil {
 			return err
 		}
-		rows, err := applyTaskProgress(ctx, repository, []dao.Task{updatedTask}, time.Now())
+		rows, err := EnrichTasksInRepositories(ctx, repos, actorID, []dao.Task{updatedTask}, time.Now())
 		if err != nil {
 			return err
 		}

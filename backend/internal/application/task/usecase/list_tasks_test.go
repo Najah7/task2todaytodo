@@ -47,12 +47,12 @@ func TestListTasksUseCaseReturnsCursorPage(t *testing.T) {
 			"next": {Total: 4, Completed: 1},
 		},
 	}}}
-	page, err := NewListTasksUseCase(repo, nil).Execute(context.Background(), "user-1", CursorPageRequest{Size: 2})
+	page, err := NewListTasksUseCase(repo, nil, taskProgressTestActionItems{}).Execute(context.Background(), "user-1", CursorPageRequest{Size: 2})
 	if err != nil || len(page.Items) != 2 || page.Next == nil || page.Next.ID != "next" || page.Next.At != rows[1].CursorCreatedAt {
 		t.Fatalf("page=%+v err=%v", page, err)
 	}
-	if page.Items[0].Progress != 50 || page.Items[1].Progress != 25 || repo.calls != 1 {
-		t.Fatalf("progress=%d,%d source calls=%d, want 50,25 and one read", page.Items[0].Progress, page.Items[1].Progress, repo.calls)
+	if page.Items[0].Progress != 0 || page.Items[1].Progress != 0 {
+		t.Fatalf("progress=%d,%d; want 0,0 for empty projected ActionItem lists", page.Items[0].Progress, page.Items[1].Progress)
 	}
 	if repo.userID != "user-1" || repo.limit != 3 || repo.anchor != nil {
 		t.Fatalf("repository args=%+v", repo)

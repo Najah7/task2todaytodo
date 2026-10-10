@@ -10,12 +10,21 @@ import (
 )
 
 type ListTasksUseCase struct {
-	tasks  TaskCursorRepository
-	logger logging.Logger
+	tasks      TaskCursorRepository
+	repo       taskListRepository
+	projection TaskListProjectionReader
+	logger     logging.Logger
 }
 
-func NewListTasksUseCase(tasks TaskCursorRepository, logger logging.Logger) *ListTasksUseCase {
-	return &ListTasksUseCase{logger: logging.OrNop(logger), tasks: tasks}
+func NewListTasksUseCase(tasks TaskCursorRepository, logger logging.Logger, projection ...TaskListProjectionReader) *ListTasksUseCase {
+	uc := &ListTasksUseCase{logger: logging.OrNop(logger), tasks: tasks}
+	if repo, ok := tasks.(taskListRepository); ok {
+		uc.repo = repo
+	}
+	if len(projection) > 0 {
+		uc.projection = projection[0]
+	}
+	return uc
 }
 
 func (uc *ListTasksUseCase) Execute(ctx context.Context, userID domain.UserID, request CursorPageRequest) (output CursorPage[dao.Task], err error) {
@@ -28,7 +37,7 @@ func (uc *ListTasksUseCase) Execute(ctx context.Context, userID domain.UserID, r
 	if err != nil {
 		return CursorPage[dao.Task]{}, err
 	}
-	rows, err = applyTaskProgress(ctx, uc.tasks, rows, time.Now())
+	rows, err = EnrichTaskList(ctx, uc.projection, userID, rows, time.Now())
 	if err != nil {
 		return CursorPage[dao.Task]{}, err
 	}

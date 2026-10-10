@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	taskrepo "github.com/Najah7/task2todaytodo/internal/application/task/repository"
@@ -22,6 +23,7 @@ func TestTaskProgressCountsSavedOccurrencesAndCurrentVirtualOccurrenceOnce(t *te
 	pool := recurrenceIntegrationPool(t)
 	userID, taskID := seedRecurrenceTask(t, pool, "Asia/Tokyo")
 	ctx := t.Context()
+	asOf := time.Now()
 	location, err := time.LoadLocation("Asia/Tokyo")
 	if err != nil {
 		t.Fatal(err)
@@ -41,49 +43,60 @@ func TestTaskProgressCountsSavedOccurrencesAndCurrentVirtualOccurrenceOnce(t *te
 	}
 
 	taskRepo := taskrepo.NewTaskRepository(pool)
-	current, err := taskRepo.ReadTaskProgressSources(ctx, []string{string(taskID)}, time.Now())
-	if err != nil {
-		t.Fatalf("read current progress sources: %v", err)
+	itemRepo := taskrepo.NewActionItemRepository(pool)
+	listItems := func() []dao.ActionItem {
+		t.Helper()
+		page, err := usecase.NewListActionItemsUseCase(occurrenceTestUOW{pool: pool}, nil, func() time.Time { return asOf }).ExecutePage(ctx, userID, taskID, usecase.CursorPageRequest{Size: 20, AsOf: asOf})
+		if err != nil {
+			t.Fatalf("list monthly ActionItem projection: %v", err)
+		}
+		return page.Items
 	}
-	if got := current.Counts[string(taskID)]; got != (dao.TaskProgressCounts{Total: 2, Completed: 1}) {
-		t.Errorf("saved progress counts = %+v, want root + saved future, with one completed", got)
+	listTask := func() usecase.TaskListPage {
+		t.Helper()
+		page, err := usecase.NewListTasksUseCase(taskRepo, nil, itemRepo).ExecuteFilteredPage(ctx, userID, usecase.TaskListRequest{
+			Size: 10, Status: "all", DueFilter: "all", SortBy: "due_date", SortOrder: "asc", AsOf: asOf,
+		})
+		if err != nil {
+			t.Fatalf("project monthly Task progress: %v", err)
+		}
+		return page
 	}
-	if len(current.ActionItemRoots) != 1 || current.ActionItemRoots[0].OccurrenceSavedToday {
-		t.Fatalf("recurrence roots = %+v, want one active root with today's occurrence still virtual", current.ActionItemRoots)
+	currentItems := listItems()
+	current := listTask()
+	if len(currentItems) != 5 || len(current.Items) != 1 || current.Items[0].ActionItemCount != len(currentItems) || current.Items[0].ActionItemCompletedCount != 1 || current.Items[0].Progress != 20 {
+		t.Errorf("current Task/list projection = %d ActionItems, %+v; want five in-window rows, one completed and 20%%", len(currentItems), current.Items)
 	}
-	page, err := usecase.NewListTasksUseCase(taskRepo, nil).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
-	if err != nil {
-		t.Fatalf("project current progress: %v", err)
+	if currentItems[1].OccurrenceDate != futureDate.Format("2006-01-02") || !currentItems[1].Completed {
+		t.Fatalf("saved future occurrence in projected list = %+v; want completed row at %s", currentItems[1], futureDate.Format("2006-01-02"))
 	}
-	if len(page.Items) != 1 || page.Items[0].Progress != 33 {
-		t.Errorf("current task page = %+v, want three total occurrences and 33%% progress", page.Items)
+	if len(current.Items) != 1 {
+		t.Fatalf("current Task page has %d rows; want one", len(current.Items))
 	}
 	if err := usecase.NewCompleteActionItemUseCase(occurrenceTestUOW{pool: pool}, nil, occurrenceTestID{}).ExecuteOccurrence(
 		ctx, userID, taskID, rootID, today.Format("2006-01-02"),
 	); err != nil {
 		t.Fatalf("materialize and complete today's virtual occurrence: %v", err)
 	}
-	materialized, err := taskRepo.ReadTaskProgressSources(ctx, []string{string(taskID)}, time.Now())
-	if err != nil {
-		t.Fatalf("read materialized occurrence progress: %v", err)
-	}
-	if got := materialized.Counts[string(taskID)]; got != (dao.TaskProgressCounts{Total: 3, Completed: 2}) {
-		t.Errorf("materialized progress counts = %+v, want three saved occurrences counted once", got)
-	}
-	if len(materialized.ActionItemRoots) != 1 || !materialized.ActionItemRoots[0].OccurrenceSavedToday {
-		t.Errorf("materialized recurrence roots = %+v, want saved-today marker suppressing virtual duplicate", materialized.ActionItemRoots)
-	}
-	page, err = usecase.NewListTasksUseCase(taskRepo, nil).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
-	if err != nil || len(page.Items) != 1 || page.Items[0].Progress != 66 {
-		t.Errorf("materialized task page = %+v, error=%v, want progress 66%% after one deduplicated occurrence", page.Items, err)
+	materializedItems := listItems()
+	materialized := listTask()
+	if len(materializedItems) != 5 || len(materialized.Items) != 1 || materialized.Items[0].ActionItemCount != len(materializedItems) || materialized.Items[0].ActionItemCompletedCount != 2 || materialized.Items[0].Progress != 40 {
+		t.Errorf("materialized Task/list projection = %d ActionItems, %+v; want five rows, two completed and 40%%", len(materializedItems), materialized.Items)
 	}
 
-	rolledOver, err := taskRepo.ReadTaskProgressSources(ctx, []string{string(taskID)}, today.AddDate(0, 0, 1))
+	nextAsOf := asOf.AddDate(0, 0, 1)
+	rolledItems, err := usecase.NewListActionItemsUseCase(occurrenceTestUOW{pool: pool}, nil, func() time.Time { return nextAsOf }).ExecutePage(ctx, userID, taskID, usecase.CursorPageRequest{Size: 20, AsOf: nextAsOf})
 	if err != nil {
-		t.Fatalf("read next-day progress sources: %v", err)
+		t.Fatalf("list next-day monthly ActionItem projection: %v", err)
 	}
-	if got := rolledOver.Counts[string(taskID)]; got != (dao.TaskProgressCounts{Total: 3, Completed: 2}) {
-		t.Errorf("next-day progress counts = %+v, want all three saved occurrences", got)
+	rolledTasks, err := usecase.NewListTasksUseCase(taskRepo, nil, itemRepo).ExecuteFilteredPage(ctx, userID, usecase.TaskListRequest{
+		Size: 10, Status: "all", DueFilter: "all", SortBy: "due_date", SortOrder: "asc", AsOf: nextAsOf,
+	})
+	if err != nil {
+		t.Fatalf("project next-day Task progress: %v", err)
+	}
+	if len(rolledItems.Items) != 5 || len(rolledTasks.Items) != 1 || rolledTasks.Items[0].ActionItemCount != len(rolledItems.Items) || rolledTasks.Items[0].ActionItemCompletedCount != 2 || rolledTasks.Items[0].Progress != 40 {
+		t.Errorf("next-day Task/list projection = %d ActionItems, %+v; want five rows and matching 2/5 progress", len(rolledItems.Items), rolledTasks.Items)
 	}
 	status, err := taskRepo.GetByUserID(ctx, userID, taskID)
 	if err != nil {
@@ -128,7 +141,7 @@ func TestExplicitCompleteAndReopenProjectProgressProjection(t *testing.T) {
 	if _, err := usecase.NewCompleteTaskUseCase(occurrenceTestUOW{pool: pool}, nil, nil).Execute(ctx, userID, taskID, currentTask.Revision); err != nil {
 		t.Fatalf("explicitly complete task: %v", err)
 	}
-	page, err := usecase.NewListTasksUseCase(tasks, nil).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
+	page, err := usecase.NewListTasksUseCase(tasks, nil, repo).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
 	if err != nil || len(page.Items) != 1 || page.Items[0].Status.Value != "done" || page.Items[0].Progress != 100 {
 		t.Fatalf("explicitly completed task page = %+v, error=%v, want done at 100%%", page.Items, err)
 	}
@@ -139,7 +152,7 @@ func TestExplicitCompleteAndReopenProjectProgressProjection(t *testing.T) {
 	if _, err := usecase.NewReopenTaskUseCase(occurrenceTestUOW{pool: pool}, nil).Execute(ctx, userID, taskID, currentTask.Revision); err != nil {
 		t.Fatalf("explicitly reopen task: %v", err)
 	}
-	page, err = usecase.NewListTasksUseCase(tasks, nil).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
+	page, err = usecase.NewListTasksUseCase(tasks, nil, repo).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
 	if err != nil || len(page.Items) != 1 || page.Items[0].Status.Value != "open" || page.Items[0].Progress != 0 {
 		t.Fatalf("explicitly reopened task page = %+v, error=%v, want open at 0%% while children remain unfinished", page.Items, err)
 	}
@@ -157,7 +170,7 @@ func TestExplicitCompleteAndReopenProjectProgressProjection(t *testing.T) {
 	if _, err := usecase.NewReopenTaskUseCase(uow, nil).Execute(ctx, userID, taskID, currentTask.Revision); err != nil {
 		t.Fatalf("explicitly reopen fully completed task: %v", err)
 	}
-	page, err = usecase.NewListTasksUseCase(tasks, nil).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
+	page, err = usecase.NewListTasksUseCase(tasks, nil, repo).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
 	if err != nil || len(page.Items) != 1 || page.Items[0].Status.Value != "open" || page.Items[0].Progress != 100 {
 		t.Fatalf("fully completed reopened task page = %+v, error=%v, want open at 100%%", page.Items, err)
 	}
@@ -174,9 +187,10 @@ func TestStatusRecomputationFailureRollsBackChildMutation(t *testing.T) {
 	today := localDate(time.Now(), location)
 	rootID := domain.ActionItemID(occurrenceTestID{}.Generate())
 	createWeeklyActionItemRoot(t, ctx, pool, userID, taskID, rootID, today.AddDate(0, 0, -7), location)
+	targetDate := today.AddDate(0, 0, 7)
 	wantErr := errors.New("progress query failed")
 	uow := progressFailureUOW{base: occurrenceTestUOW{pool: pool}, failAt: 2, err: wantErr}
-	err = usecase.NewSkipActionItemUseCase(uow, nil).Execute(ctx, userID, taskID, rootID, today.Format("2006-01-02"))
+	err = usecase.NewSkipActionItemUseCase(uow, nil).Execute(ctx, userID, taskID, rootID, targetDate.Format("2006-01-02"))
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("skip error = %v, want progress query failure", err)
 	}
@@ -190,7 +204,7 @@ func TestStatusRecomputationFailureRollsBackChildMutation(t *testing.T) {
 	assertProgressTaskStatus(t, ctx, pool, userID, taskID, "open")
 }
 
-func TestSkipAutoCompletesAndRestoreReopensWithVirtualOccurrence(t *testing.T) {
+func TestSkipKeepsMonthlyListOpenAndRestoreKeepsProgress(t *testing.T) {
 	pool := recurrenceIntegrationPool(t)
 	userID, taskID := seedRecurrenceTask(t, pool, "Asia/Tokyo")
 	ctx := t.Context()
@@ -203,6 +217,7 @@ func TestSkipAutoCompletesAndRestoreReopensWithVirtualOccurrence(t *testing.T) {
 	rootID := domain.ActionItemID(occurrenceTestID{}.Generate())
 	createWeeklyActionItemRoot(t, ctx, pool, userID, taskID, rootID, rootDate, location)
 	uow := occurrenceTestUOW{pool: pool}
+	itemsRepository := taskrepo.NewActionItemRepository(pool)
 
 	if err := usecase.NewCompleteActionItemUseCase(uow, nil).Execute(ctx, userID, taskID, rootID); err != nil {
 		t.Fatalf("complete saved root occurrence: %v", err)
@@ -210,19 +225,19 @@ func TestSkipAutoCompletesAndRestoreReopensWithVirtualOccurrence(t *testing.T) {
 	if err := usecase.NewSkipActionItemUseCase(uow, nil).Execute(ctx, userID, taskID, rootID, today.Format("2006-01-02")); err != nil {
 		t.Fatalf("skip today's virtual occurrence: %v", err)
 	}
-	assertProgressTaskStatus(t, ctx, pool, userID, taskID, "done")
+	assertProgressTaskStatus(t, ctx, pool, userID, taskID, "open")
 
 	if err := usecase.NewRestoreActionItemUseCase(uow, nil).Execute(ctx, userID, taskID, rootID, today.Format("2006-01-02")); err != nil {
 		t.Fatalf("restore today's virtual occurrence: %v", err)
 	}
 	assertProgressTaskStatus(t, ctx, pool, userID, taskID, "open")
 
-	page, err := usecase.NewListTasksUseCase(taskrepo.NewTaskRepository(pool), nil).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
+	page, err := usecase.NewListTasksUseCase(taskrepo.NewTaskRepository(pool), nil, itemsRepository).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
 	if err != nil {
 		t.Fatalf("read task progress after restore: %v", err)
 	}
-	if len(page.Items) != 1 || page.Items[0].Progress != 50 {
-		t.Fatalf("restored task page = %+v, want one reopened task at 50%%", page.Items)
+	if len(page.Items) != 1 || page.Items[0].ActionItemCount == 0 || page.Items[0].Progress != 100/page.Items[0].ActionItemCount {
+		t.Fatalf("restored task page = %+v, want progress matching one completed saved row in the finite monthly list", page.Items)
 	}
 }
 
@@ -252,7 +267,7 @@ func TestRestoreFutureSkipLeavesListAndProgressUnchanged(t *testing.T) {
 	}
 	progress := func() (int, string) {
 		t.Helper()
-		page, err := usecase.NewListTasksUseCase(taskrepo.NewTaskRepository(pool), nil).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
+		page, err := usecase.NewListTasksUseCase(taskrepo.NewTaskRepository(pool), nil, taskrepo.NewActionItemRepository(pool)).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
 		if err != nil {
 			t.Fatalf("read task progress: %v", err)
 		}
@@ -275,10 +290,6 @@ func TestRestoreFutureSkipLeavesListAndProgressUnchanged(t *testing.T) {
 		t.Fatalf("future list before skip = %+v, want occurrence on %s among page results", beforeList, futureDate.Format("2006-01-02"))
 	}
 	beforeProgress, beforeStatus := progress()
-	beforeSources, err := taskrepo.NewTaskRepository(pool).ReadTaskProgressSources(ctx, []string{string(taskID)}, asOf)
-	if err != nil {
-		t.Fatalf("read progress sources before skip: %v", err)
-	}
 
 	if err := usecase.NewSkipActionItemUseCase(uow, nil).Execute(ctx, userID, taskID, rootID, futureDate.Format("2006-01-02")); err != nil {
 		t.Fatalf("skip future occurrence: %v", err)
@@ -299,13 +310,6 @@ func TestRestoreFutureSkipLeavesListAndProgressUnchanged(t *testing.T) {
 	}
 	if gotProgress, gotStatus := progress(); gotProgress != beforeProgress || gotStatus != beforeStatus {
 		t.Fatalf("progress after restore = %d/%s, before was %d/%s", gotProgress, gotStatus, beforeProgress, beforeStatus)
-	}
-	afterSources, err := taskrepo.NewTaskRepository(pool).ReadTaskProgressSources(ctx, []string{string(taskID)}, asOf)
-	if err != nil {
-		t.Fatalf("read progress sources after restore: %v", err)
-	}
-	if beforeSources.Counts[string(taskID)] != afterSources.Counts[string(taskID)] || !reflect.DeepEqual(beforeSources.ActionItemRoots, afterSources.ActionItemRoots) {
-		t.Fatalf("progress sources changed after future skip restore: before=%+v after=%+v", beforeSources, afterSources)
 	}
 }
 
@@ -356,7 +360,7 @@ func TestConcurrentFinalActionItemCompletionsSetTaskDone(t *testing.T) {
 		}
 	}
 	assertProgressTaskStatus(t, ctx, pool, userID, taskID, "done")
-	page, err := usecase.NewListTasksUseCase(taskrepo.NewTaskRepository(pool), nil).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
+	page, err := usecase.NewListTasksUseCase(taskrepo.NewTaskRepository(pool), nil, repo).Execute(ctx, userID, usecase.CursorPageRequest{Size: 10})
 	if err != nil {
 		t.Fatalf("read completed task progress: %v", err)
 	}
@@ -367,6 +371,9 @@ func TestConcurrentFinalActionItemCompletionsSetTaskDone(t *testing.T) {
 
 func createWeeklyActionItemRoot(t *testing.T, ctx context.Context, pool *pgxpool.Pool, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID, rootDate time.Time, location *time.Location) {
 	t.Helper()
+	// Persist the anchor as UTC midnight for the intended calendar date. The
+	// recurrence command interprets FrequencyAnchorDate as a UTC calendar date.
+	rootDate = time.Date(rootDate.Year(), rootDate.Month(), rootDate.Day(), 0, 0, 0, 0, time.UTC)
 	frequency := strings.ToLower(rootDate.Weekday().String()[:3])
 	weekday, err := domain.NewTaskFrequency(frequency)
 	if err != nil {
@@ -413,22 +420,58 @@ type progressFailureUOW struct {
 
 func (uow progressFailureUOW) Do(ctx context.Context, fn func(context.Context, usecase.Repositories) error) error {
 	return uow.base.Do(ctx, func(ctx context.Context, repos usecase.Repositories) error {
-		tasks := &progressFailureTaskRepository{TaskRepository: repos.Tasks(), failAt: uow.failAt, err: uow.err}
-		return fn(ctx, occurrenceTestRepositories{task: tasks, actionItem: repos.ActionItems()})
+		actionItems := &progressFailureActionItemRepository{ActionItemRepository: repos.ActionItems(), failAt: uow.failAt, err: uow.err}
+		return fn(ctx, occurrenceTestRepositories{task: repos.Tasks(), actionItem: actionItems})
 	})
 }
 
-type progressFailureTaskRepository struct {
-	usecase.TaskRepository
+type progressFailureActionItemRepository struct {
+	usecase.ActionItemRepository
 	readCount int
 	failAt    int
 	err       error
 }
 
-func (repo *progressFailureTaskRepository) ReadTaskProgressSources(ctx context.Context, taskIDs []string, asOf time.Time) (dao.TaskProgressSources, error) {
+func (repo *progressFailureActionItemRepository) ReadTaskListProjection(ctx context.Context, userID domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
 	repo.readCount++
 	if repo.readCount == repo.failAt {
-		return dao.TaskProgressSources{}, repo.err
+		return dao.TaskListProjectionSources{}, repo.err
 	}
-	return repo.TaskRepository.ReadTaskProgressSources(ctx, taskIDs, asOf)
+	return repo.ActionItemRepository.ReadTaskListProjection(ctx, userID, taskIDs)
+}
+
+func (repo *progressFailureActionItemRepository) ListByTaskForOccurrenceProjection(ctx context.Context, userID domain.UserID, taskID domain.TaskID) ([]dao.ActionItem, error) {
+	return repo.ActionItemRepository.(interface {
+		ListByTaskForOccurrenceProjection(context.Context, domain.UserID, domain.TaskID) ([]dao.ActionItem, error)
+	}).ListByTaskForOccurrenceProjection(ctx, userID, taskID)
+}
+
+func (repo *progressFailureActionItemRepository) ListByTaskForOccurrenceCommand(ctx context.Context, userID domain.UserID, taskID domain.TaskID, capability shared.Capability) ([]dao.ActionItem, error) {
+	return repo.ActionItemRepository.(interface {
+		ListByTaskForOccurrenceCommand(context.Context, domain.UserID, domain.TaskID, shared.Capability) ([]dao.ActionItem, error)
+	}).ListByTaskForOccurrenceCommand(ctx, userID, taskID, capability)
+}
+
+func (repo *progressFailureActionItemRepository) GetForCommand(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID, capability shared.Capability) (dao.ActionItem, error) {
+	return repo.ActionItemRepository.(interface {
+		GetForCommand(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID, shared.Capability) (dao.ActionItem, error)
+	}).GetForCommand(ctx, userID, taskID, id, capability)
+}
+
+func (repo *progressFailureActionItemRepository) ListActionItemSkippedOccurrences(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.ActionItemID) ([]int64, error) {
+	return repo.ActionItemRepository.(interface {
+		ListActionItemSkippedOccurrences(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID) ([]int64, error)
+	}).ListActionItemSkippedOccurrences(ctx, userID, taskID, seriesID)
+}
+
+func (repo *progressFailureActionItemRepository) ListActionItemSkippedOccurrencesForCapability(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.ActionItemID, capability shared.Capability) ([]int64, error) {
+	return repo.ActionItemRepository.(interface {
+		ListActionItemSkippedOccurrencesForCapability(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID, shared.Capability) ([]int64, error)
+	}).ListActionItemSkippedOccurrencesForCapability(ctx, userID, taskID, seriesID, capability)
+}
+
+func (repo *progressFailureActionItemRepository) SetActionItemSkippedOccurrence(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.ActionItemID, occurrenceDate time.Time, skipped bool) error {
+	return repo.ActionItemRepository.(interface {
+		SetActionItemSkippedOccurrence(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID, time.Time, bool) error
+	}).SetActionItemSkippedOccurrence(ctx, userID, taskID, seriesID, occurrenceDate, skipped)
 }

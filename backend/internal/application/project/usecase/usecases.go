@@ -22,17 +22,21 @@ type UseCases struct {
 }
 
 func NewUseCases(repo Repository, tx UnitOfWork, logger logging.Logger) *UseCases {
+	return NewUseCasesWithProgressReader(repo, tx, repo, logger)
+}
+
+func NewUseCasesWithProgressReader(repo Repository, tx UnitOfWork, progress ProjectProgressReader, logger logging.Logger) *UseCases {
 	return &UseCases{
 		Create:       NewCreateProjectUseCase(repo, logger),
-		List:         NewListProjectsUseCase(repo, repo, logger),
-		Get:          NewGetProjectUseCase(repo, repo, logger),
-		Update:       NewUpdateProjectUseCase(repo, repo, logger),
+		List:         NewListProjectsUseCase(repo, progress, logger),
+		Get:          NewGetProjectUseCase(repo, progress, logger),
+		Update:       NewUpdateProjectUseCase(repo, progress, logger),
 		Delete:       NewDeleteProjectUseCase(tx, logger),
 		Members:      &ProjectMemberUseCases{ListMembers: NewListProjectMembersUseCase(tx, logger), UpsertMember: NewUpsertProjectMemberUseCase(tx, logger), DeleteMember: NewDeleteProjectMemberUseCase(tx, logger)},
 		Revisions:    NewListProjectRevisionsUseCase(repo, logger),
 		Types:        NewListProjectTypesUseCase(repo, logger),
 		Options:      NewListProjectOptionsUseCase(repo, logger),
-		ChangeStatus: NewChangeProjectStatusUseCase(tx, repo, logger),
-		Restore:      NewRestoreProjectUseCase(tx, repo, logger),
+		ChangeStatus: NewChangeProjectStatusUseCase(tx, progress, logger),
+		Restore:      NewRestoreProjectUseCase(tx, progress, logger),
 	}
 }

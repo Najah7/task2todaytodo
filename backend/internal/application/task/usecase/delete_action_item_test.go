@@ -57,6 +57,16 @@ type deleteActionItemRepositoryFake struct {
 	accesses         *[]string
 }
 
+func (*deleteActionItemRepositoryFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		items[id] = nil
+		skipped[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+}
+
 func (repo *deleteActionItemRepositoryFake) GetForOwnedTask(_ context.Context, userID domain.UserID, taskID domain.TaskID, itemID domain.ActionItemID) (dao.ActionItem, error) {
 	repo.getCalls++
 	repo.userID, repo.taskID, repo.itemID = userID, taskID, itemID
@@ -107,7 +117,7 @@ func TestDeleteActionItemUseCaseTombstonesRecurringRootAndKeepsHistory(t *testin
 	if repo.userID != userID || repo.taskID != taskID || repo.itemID != itemID {
 		t.Errorf("repository scope = user:%q task:%q item:%q, want %q/%q/%q", repo.userID, repo.taskID, repo.itemID, userID, taskID, itemID)
 	}
-	if !reflect.DeepEqual(*accesses, []string{"action-items", "get-owned-item", "tombstone-item"}) {
+	if !reflect.DeepEqual(*accesses, []string{"action-items", "action-items", "get-owned-item", "tombstone-item", "action-items"}) {
 		t.Errorf("repository access order = %v, want load and tombstone root", *accesses)
 	}
 }
@@ -130,7 +140,7 @@ func TestDeleteActionItemUseCaseTombstonesSingleOccurrenceWithoutDeletingSeries(
 	if repo.userID != userID || repo.taskID != taskID || repo.itemID != itemID {
 		t.Errorf("tombstone scope = (%q, %q, %q), want (%q, %q, %q)", repo.userID, repo.taskID, repo.itemID, userID, taskID, itemID)
 	}
-	if !reflect.DeepEqual(*accesses, []string{"action-items", "get-owned-item", "tombstone-item"}) {
+	if !reflect.DeepEqual(*accesses, []string{"action-items", "action-items", "get-owned-item", "tombstone-item", "action-items"}) {
 		t.Errorf("repository access order = %v, want only load and tombstone this occurrence", *accesses)
 	}
 }

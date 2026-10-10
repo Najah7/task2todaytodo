@@ -6,6 +6,8 @@ type ActionItem struct {
 	Title               string
 	Description         string
 	DueDate             int64
+	EstimatedMinutes    *int
+	Priority            Priority
 	Completed           bool
 	Position            int
 	IntervalWeeks       int

@@ -13,8 +13,8 @@ func TestApplyProjectProgressUsesProjectFactsForWholeTaskAndScheduleOccurrenceWe
 	projects := []dao.Project{{ID: "mixed"}, {ID: "schedule-only"}, {ID: "empty"}}
 	reader := &projectProgressSourceFake{sources: dao.ProjectProgressSources{
 		Tasks: []dao.ProjectTaskProgress{
-			{ProjectID: "mixed", TaskID: "task-partial", Total: 3, Completed: 1}, // 33% after flooring.
-			{ProjectID: "mixed", TaskID: "task-done", Done: true},
+			{ProjectID: "mixed", TaskID: "task-partial", Progress: 33},
+			{ProjectID: "mixed", TaskID: "task-done", Done: true, Progress: 100},
 		},
 		Schedules: []dao.ProjectScheduleProgress{
 			{ProjectID: "mixed", Total: 2, Completed: 1},

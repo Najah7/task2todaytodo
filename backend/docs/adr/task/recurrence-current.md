@@ -10,9 +10,13 @@ recurrence details in older planning documents where they differ.
   does not own or import Schedules.
 - `repeat_state` is `one_off`, `active`, or `stopped`. Active weekday recurrence
   uses `frequency_anchor_date`, `interval_weeks`, and the shared weekday catalog.
-- Lists generate virtual occurrences from the user's local today onward, as
-  needed to fill the requested page. The system does not materialize a rolling
-  window.
+- ActionItem and Schedule lists generate recurring virtual occurrences from
+  each series' local today through the same local calendar date one month later,
+  inclusive. If that date does not exist in the next month, use its final day.
+  Recurring rows after that boundary are omitted, including saved future
+  overrides or completions. Saved past recurring rows remain visible, including
+  completed rows. One-off rows have no one-month bound. The window is a
+  projection only; the system does not materialize a rolling window.
 - A virtual occurrence uses the stable response ID
   `TASK2TODAYTODO000000000000`. `series_id` remains the root ID. The root
   occurrence and saved occurrence overrides keep their real IDs.

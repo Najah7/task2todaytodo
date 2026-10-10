@@ -20,6 +20,6 @@ func NewUOW(pool *pgxpool.Pool, authStore AuthStore, projectStore ProjectStore, 
 		Auth:     NewAuthUOW(pool, authStore),
 		Project:  NewProjectUOW(pool, projectStore, taskStore, scheduleStore),
 		Task:     NewTaskUOW(pool, taskStore, projectStore),
-		Schedule: NewScheduleUOW(pool, scheduleStore, projectStore),
+		Schedule: NewScheduleUOW(pool, scheduleStore, projectStore, taskStore),
 	}
 }
