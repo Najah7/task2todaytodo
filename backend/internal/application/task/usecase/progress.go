@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	sharedprogress "github.com/Najah7/task2todaytodo/internal/application/shared/progress"
+	"github.com/Najah7/task2todaytodo/internal/application/shared/progress"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 )
@@ -245,7 +245,7 @@ func setTaskStatusForPermission(ctx context.Context, tasks TaskRepository, userI
 }
 
 func taskProgressPercent(status string, counts dao.TaskProgressCounts) int {
-	return sharedprogress.TaskPercent(status == "done", counts.Completed, counts.Total)
+	return progress.TaskPercent(status == "done", counts.Completed, counts.Total)
 }
 
 func progressCountsChanged(before, after dao.TaskProgressCounts) bool {

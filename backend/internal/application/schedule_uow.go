@@ -14,21 +14,19 @@ type ScheduleUOW struct {
 	pool     *pgxpool.Pool
 	store    ScheduleStore
 	projects ProjectStore
-	tasks    TaskStore
 }
 
-func NewScheduleUOW(pool *pgxpool.Pool, store ScheduleStore, projects ProjectStore, tasks TaskStore) scheduleusecase.UOW {
-	return &ScheduleUOW{pool: pool, store: store, projects: projects, tasks: tasks}
+func NewScheduleUOW(pool *pgxpool.Pool, store ScheduleStore, projects ProjectStore) scheduleusecase.UOW {
+	return &ScheduleUOW{pool: pool, store: store, projects: projects}
 }
 
 func (u *ScheduleUOW) Do(ctx context.Context, fn func(context.Context, scheduleusecase.Repositories) error) error {
 	return RunInTx(ctx, u.pool, func(tx pgx.Tx) error {
 		projectRepository := u.projects.WithTx(tx).Projects
-		progress := newTaskProjectProgressReader(projectRepository, u.tasks.WithTx(tx).ActionItems)
 		scheduleStore := u.store.WithTx(tx)
 		return fn(ctx, scheduleRepositories{
 			store:     scheduleStore,
-			lifecycle: projectusecase.NewProjectLifecycleUseCase(projectRepository, progress, scheduleStore.Schedules),
+			lifecycle: projectusecase.NewProjectLifecycleUseCase(projectRepository, projectRepository, scheduleStore.Schedules),
 		})
 	})
 }

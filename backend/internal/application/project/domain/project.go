@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Najah7/task2todaytodo/internal/application/shared/calendar"
 	sharedstatus "github.com/Najah7/task2todaytodo/internal/application/shared/status"
 )
 
@@ -95,7 +94,11 @@ func normalizeDate(v *time.Time) *time.Time {
 	if v == nil {
 		return nil
 	}
-	d := calendar.NormalizeCalendarDate(*v)
+	if v.IsZero() {
+		d := time.Time{}
+		return &d
+	}
+	d := time.Date(v.Year(), v.Month(), v.Day(), 0, 0, 0, 0, time.UTC)
 	return &d
 }
 

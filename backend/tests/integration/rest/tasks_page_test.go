@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application"
-	"github.com/Najah7/task2todaytodo/internal/application/shared/calendar"
+	"github.com/Najah7/task2todaytodo/internal/port/adapter"
 	restapi "github.com/Najah7/task2todaytodo/internal/port/rest"
 	"github.com/Najah7/task2todaytodo/internal/port/rest/pagination"
 	"github.com/Najah7/task2todaytodo/tests/integration/internal/testdb"
@@ -51,14 +51,14 @@ func newTasksPageREST(t *testing.T) *tasksPageREST {
 	ids := tasksPageIDs{}
 	store := application.NewStore(pool)
 	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
-	usecases, stopUseCases := application.NewUseCase(store.Auth, store.Project, store.Task, store.Admin, uow.Project, uow.Task, uow.Schedule, ids, nil)
+	usecases, stopUseCases := application.NewUseCase(store, uow, adapter.NewIDIssuer(), nil)
 	testdb.RegisterShutdown(t, stopUseCases)
 	pageTokens, err := pagination.NewCodec([]byte(strings.Repeat("t", 32)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskHandler := restapi.NewTaskHandler(usecases.Task, ids, pageTokens)
-	actionItemHandler := restapi.NewActionItemHandler(usecases.ActionItem, ids, pageTokens)
+	taskHandler := restapi.NewTaskHandler(usecases.Task, ids.Generate, pageTokens)
+	actionItemHandler := restapi.NewActionItemHandler(usecases.ActionItem, ids.Generate, pageTokens)
 	router := chi.NewRouter()
 	router.Post("/tasks", taskHandler.Create)
 	router.Get("/tasks", taskHandler.List)
@@ -452,7 +452,8 @@ func TestRESTTaskListDueFiltersAndNullLastOrdering(t *testing.T) {
 func TestRESTTaskEstimateMatchesAllPagedActionItemRows(t *testing.T) {
 	api := newTasksPageREST(t)
 	task := createTasksPageTask(t, api, `{"title":"Action item estimate","manual_estimated_minutes":120,"priority":"high"}`)
-	today := calendar.NormalizeCalendarDate(time.Now().UTC())
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	todayText := today.Format("2006-01-02")
 	actionItemResponse := api.request(http.MethodPost, fmt.Sprintf("/tasks/%s/action-items", task.ID), fmt.Sprintf(`{"title":"Planned item","due_date":%q,"estimated_minutes":17}`, todayText))
 	if actionItemResponse.Code != http.StatusCreated {

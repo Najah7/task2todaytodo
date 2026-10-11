@@ -32,7 +32,7 @@ func traceFixture(t *testing.T, output *bytes.Buffer, configure func(*chi.Mux, *
 	t.Cleanup(func() { _ = provider.Shutdown(context.Background()) })
 	logger := telemetry.NewLogger(output, settings.ApplicationSettings{Service: "test"}, settings.LoggerSettings{LogLevel: -4})
 	router := chi.NewRouter()
-	router.Use(NewRequestLogging(logger, fixedID(integrationRequestID)))
+	router.Use(NewRequestLogging(logger, fixedID(integrationRequestID).Generate))
 	configure(router, provider, logger)
 	return otelhttp.NewHandler(
 		router,
@@ -130,7 +130,7 @@ func TestRequestLoggingTraceCorrelationAcrossLevels(t *testing.T) {
 func TestRequestLoggingUnmatchedPathNeverLeaks(t *testing.T) {
 	var output bytes.Buffer
 	handler, recorder := traceFixture(t, &output, func(router *chi.Mux, _ *sdktrace.TracerProvider, logger telemetry.Logger) {
-		notFound := NewRequestLogging(logger, fixedID(integrationRequestID))(http.NotFoundHandler())
+		notFound := NewRequestLogging(logger, fixedID(integrationRequestID).Generate)(http.NotFoundHandler())
 		router.NotFound(notFound.ServeHTTP)
 	})
 	req := httptest.NewRequest(http.MethodGet, "/missing/secret-path?password=private&token=secret", nil)

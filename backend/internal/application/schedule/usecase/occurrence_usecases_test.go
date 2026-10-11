@@ -66,16 +66,33 @@ func TestOccurrenceMutationUsesSeparateAssignmentPermission(t *testing.T) {
 
 func TestVirtualOccurrenceMutationRequiresGeneratedIdentity(t *testing.T) {
 	if _, err := virtualOccurrenceID(nil); !errors.Is(err, ErrOccurrenceIDGeneratorUnavailable) {
-		t.Fatalf("missing ID generator error = %v", err)
+		t.Fatalf("virtualOccurrenceID(nil) error = %v, want unavailable", err)
 	}
-	if _, err := virtualOccurrenceID(emptyOccurrenceID{}); !errors.Is(err, ErrOccurrenceIDGeneratorUnavailable) {
-		t.Fatalf("empty generated ID error = %v", err)
+	for _, generated := range []string{"", " \t"} {
+		if _, err := virtualOccurrenceID(func() string { return generated }); !errors.Is(err, ErrOccurrenceIDGeneratorUnavailable) {
+			t.Errorf("virtualOccurrenceID(%q) error = %v, want unavailable", generated, err)
+		}
+	}
+
+	ids := []string{"occurrence-1", "occurrence-2"}
+	index := 0
+	nextID := func() string {
+		id := ids[index]
+		index++
+		return id
+	}
+	first, err := virtualOccurrenceID(nextID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := virtualOccurrenceID(nextID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == second {
+		t.Fatalf("successive virtual occurrence IDs = %q and %q, want distinct IDs", first, second)
 	}
 }
-
-type emptyOccurrenceID struct{}
-
-func (emptyOccurrenceID) Generate() string { return "" }
 
 type occurrenceReloadBlueprintRepo struct {
 	BlueprintRepository

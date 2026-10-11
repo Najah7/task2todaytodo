@@ -46,105 +46,6 @@ func (q *Queries) ReadProjectScheduleProgressCounts(ctx context.Context, project
 	return items, nil
 }
 
-const readProjectScheduleProgressRoots = `-- name: ReadProjectScheduleProgressRoots :many
-WITH effective AS (
-    SELECT DISTINCT ON (b.id)
-           r.project_id, b.id AS blueprint_id, r.recurrence_anchor_date,
-           r.local_start, r.local_end,
-           r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.cutoff_after,
-           ($2::timestamptz AT TIME ZONE r.timezone)::date AS occurrence_date
-    FROM schedule_blueprints b
-    JOIN schedule_blueprint_revisions r ON r.blueprint_id = b.id
-    WHERE b.deleted_at IS NULL
-      AND b.id IN (
-          SELECT history.blueprint_id
-          FROM schedule_blueprint_revisions history
-          WHERE history.project_id = ANY($1::text[])
-      )
-      AND r.superseded_at IS NULL
-      AND r.effective_from <= ($2::timestamptz AT TIME ZONE r.timezone)::date
-    ORDER BY b.id, r.effective_from DESC, r.revision DESC
-)
-SELECT root.project_id, root.blueprint_id, root.recurrence_anchor_date::text AS recurrence_anchor_date,
-       root.local_start, root.local_end,
-       root.timezone, root.frequency, root.interval_count, root.weekdays,
-       CAST(COALESCE(root.end_date::text, ''::text) AS varchar) AS end_date,
-       root.occurrence_date::text AS occurrence_date,
-       CAST(COALESCE(root.cutoff_after::text, ''::text) AS varchar) AS cutoff_after,
-       EXISTS (
-           SELECT 1 FROM schedules saved
-           WHERE saved.blueprint_id = root.blueprint_id
-             AND saved.occurrence_date = root.occurrence_date
-       ) AS occurrence_saved_today,
-       pauses.paused_at AS pause_started_at, pauses.resumed_at AS pause_ended_at
-FROM effective root
-LEFT JOIN schedule_project_pause_intervals pauses
-  ON pauses.blueprint_id = root.blueprint_id AND pauses.project_id = root.project_id
-WHERE root.frequency <> 'once'
-  AND root.project_id = ANY($1::text[])
-  AND (root.end_date IS NULL OR root.end_date >= root.occurrence_date)
-  AND (root.cutoff_after IS NULL OR root.cutoff_after >= root.occurrence_date)
-`
-
-type ReadProjectScheduleProgressRootsParams struct {
-	ProjectIds []string
-	AsOf       pgtype.Timestamptz
-}
-
-type ReadProjectScheduleProgressRootsRow struct {
-	ProjectID            pgtype.Text
-	BlueprintID          string
-	RecurrenceAnchorDate string
-	LocalStart           pgtype.Timestamp
-	LocalEnd             pgtype.Timestamp
-	Timezone             string
-	Frequency            string
-	IntervalCount        int32
-	Weekdays             []string
-	EndDate              string
-	OccurrenceDate       string
-	CutoffAfter          string
-	OccurrenceSavedToday bool
-	PauseStartedAt       pgtype.Timestamptz
-	PauseEndedAt         pgtype.Timestamptz
-}
-
-func (q *Queries) ReadProjectScheduleProgressRoots(ctx context.Context, arg ReadProjectScheduleProgressRootsParams) ([]ReadProjectScheduleProgressRootsRow, error) {
-	rows, err := q.db.Query(ctx, readProjectScheduleProgressRoots, arg.ProjectIds, arg.AsOf)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ReadProjectScheduleProgressRootsRow
-	for rows.Next() {
-		var i ReadProjectScheduleProgressRootsRow
-		if err := rows.Scan(
-			&i.ProjectID,
-			&i.BlueprintID,
-			&i.RecurrenceAnchorDate,
-			&i.LocalStart,
-			&i.LocalEnd,
-			&i.Timezone,
-			&i.Frequency,
-			&i.IntervalCount,
-			&i.Weekdays,
-			&i.EndDate,
-			&i.OccurrenceDate,
-			&i.CutoffAfter,
-			&i.OccurrenceSavedToday,
-			&i.PauseStartedAt,
-			&i.PauseEndedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const readTaskProgressSources = `-- name: ReadTaskProgressSources :many
 WITH requested AS (
     SELECT unnest($1::text[]) AS task_id
@@ -159,6 +60,8 @@ WITH requested AS (
            COUNT(*) FILTER (WHERE ai.completed)::bigint AS completed
     FROM action_items ai
     JOIN requested r ON r.task_id = ai.task_id
+    JOIN tasks t ON t.id = r.task_id
+    JOIN projects p ON p.id = t.project_id AND p.deleted_at IS NULL
     WHERE ai.deleted_at IS NULL
     GROUP BY ai.task_id
 )

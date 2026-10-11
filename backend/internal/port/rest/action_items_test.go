@@ -281,7 +281,7 @@ func newActionItemsHandlerFixture() actionItemsHandlerFixture {
 		Complete: taskusecase.NewCompleteActionItemUseCase(uow, nil), Reopen: taskusecase.NewReopenActionItemUseCase(uow, nil),
 		Reorder: taskusecase.NewReorderActionItemUseCase(uow, nil),
 	}
-	return actionItemsHandlerFixture{handler: NewActionItemHandler(usecases, ids, listTestCodec()), taskRepo: taskRepo, itemRepo: itemRepo}
+	return actionItemsHandlerFixture{handler: NewActionItemHandler(usecases, ids.Generate, listTestCodec()), taskRepo: taskRepo, itemRepo: itemRepo}
 }
 
 func actionItemRequest(method, path, body string, authenticated bool) *http.Request {

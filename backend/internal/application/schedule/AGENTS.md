@@ -91,10 +91,14 @@ approved decisions.
 - Preserve the original recurrence cadence on resume. Do not generate occurrences
   whose original start falls within the Project's done interval; resume from
   the reopening time without backfilling that interval.
-- Preserve existing progress eligibility: saved, nondeleted, nonskipped schedules
-  plus eligible virtual occurrences due today in the blueprint's timezone.
-  Unsaved past occurrences enter progress only after backfill persists them.
-  Backfill itself must not trigger automatic Project completion or reopening.
+- Project progress and automatic completion/reopening count only persisted,
+  nondeleted, nonskipped Schedules, including saved future occurrences. Virtual
+  occurrences do not count before they are materialized. A Project may become
+  done while a blueprint still has ungenerated occurrences; the done transition
+  pauses its recurring blueprints.
+- Backfill materializes eligible occurrences but never triggers Project status
+  transitions or pause/resume workflows. Its single UTC cutoff is captured when
+  the job starts.
 - Give Projects the same status action endpoints as Tasks: `:start`, `:hold`,
   `:wait`, `:complete`, and `:reopen` under `/projects/{id}`.
 

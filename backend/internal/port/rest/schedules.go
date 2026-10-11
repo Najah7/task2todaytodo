@@ -9,7 +9,6 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
-	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
 	"github.com/Najah7/task2todaytodo/internal/port/rest/pagination"
 	"github.com/go-chi/chi/v5"
 )
@@ -113,7 +112,7 @@ func scheduleUseCaseError(err error) (int, ErrDetail) {
 		return http.StatusBadRequest, scheduleField("assignee_id", "assignee_not_eligible", "Assignee must be the owner or an eligible Project member")
 	case errors.Is(err, scheduleusecase.ErrTimezoneNotAllowed):
 		return http.StatusBadRequest, scheduleField("timezone", "not_allowed", "Timezone is not supported")
-	case errors.Is(err, recurrence.ErrRecurrenceTimezoneInvalid):
+	case errors.Is(err, domain.ErrRecurrenceTimezoneInvalid):
 		return http.StatusBadRequest, scheduleField("timezone", "invalid_timezone", "Timezone is invalid")
 	case errors.Is(err, scheduleusecase.ErrTimezoneValidationUnavailable):
 		return http.StatusInternalServerError, ErrDetailInternalServerError
@@ -121,7 +120,7 @@ func scheduleUseCaseError(err error) (int, ErrDetail) {
 		return http.StatusBadRequest, scheduleField("title", "required", "Title is required")
 	case errors.Is(err, domain.ErrBlueprintTimezoneEmpty):
 		return http.StatusBadRequest, scheduleField("timezone", "required", "Timezone is required")
-	case errors.Is(err, domain.ErrBlueprintFrequency), errors.Is(err, recurrence.ErrBlueprintFrequencyInvalid):
+	case errors.Is(err, domain.ErrBlueprintFrequency), errors.Is(err, domain.ErrBlueprintFrequencyInvalid):
 		return http.StatusBadRequest, scheduleField("frequency", "invalid_frequency", "Frequency is invalid")
 	case errors.Is(err, domain.ErrBlueprintInterval):
 		return http.StatusBadRequest, scheduleField("interval", "invalid_interval", "Interval must be positive")

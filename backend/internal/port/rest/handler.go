@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/Najah7/task2todaytodo/internal/application"
-	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/port/rest/pagination"
 )
 
@@ -23,7 +22,7 @@ type Handler struct {
 	Admin               *AdminHandler
 }
 
-func NewHandler(usecases application.UseCase, ids shared.ID, pageTokenKey []byte) (*Handler, error) {
+func NewHandler(usecases application.UseCase, issueID func() string, pageTokenKey []byte) (*Handler, error) {
 	pageTokens, err := pagination.NewCodec(pageTokenKey)
 	if err != nil {
 		return nil, fmt.Errorf("initialize page token codec: %w", err)
@@ -31,12 +30,12 @@ func NewHandler(usecases application.UseCase, ids shared.ID, pageTokenKey []byte
 
 	return &Handler{
 		User:                NewUserHandler(usecases.User),
-		Signup:              NewSignupHandler(usecases.User, ids),
+		Signup:              NewSignupHandler(usecases.User, issueID),
 		Login:               NewLoginHandler(usecases.PersonalAccessToken),
 		PersonalAccessToken: NewPersonalAccessTokenHandler(usecases.PersonalAccessToken),
-		Project:             NewProjectHandler(usecases.Project, usecases.Task, ids, pageTokens),
-		Task:                NewTaskHandler(usecases.Task, ids, pageTokens),
-		ActionItem:          NewActionItemHandler(usecases.ActionItem, ids, pageTokens),
+		Project:             NewProjectHandler(usecases.Project, usecases.Task, issueID, pageTokens),
+		Task:                NewTaskHandler(usecases.Task, issueID, pageTokens),
+		ActionItem:          NewActionItemHandler(usecases.ActionItem, issueID, pageTokens),
 		Schedule:            NewScheduleHandler(usecases.Schedule, pageTokens),
 		ProjectMember:       NewProjectMemberHandler(usecases.Project),
 		Role:                NewRoleHandler(usecases.Role),

@@ -8,22 +8,21 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
 )
 
 type UpdateBlueprintUseCase struct {
 	uow       UOW
-	ids       shared.ID
+	issueID   func() string
 	timezones TimezoneValidator
 	now       func() time.Time
 }
 
-func NewUpdateBlueprintUseCase(uow UOW, ids shared.ID, timezones TimezoneValidator, clocks ...func() time.Time) *UpdateBlueprintUseCase {
+func NewUpdateBlueprintUseCase(uow UOW, issueID func() string, timezones TimezoneValidator, clocks ...func() time.Time) *UpdateBlueprintUseCase {
 	now := time.Now
 	if len(clocks) > 0 && clocks[0] != nil {
 		now = clocks[0]
 	}
-	return &UpdateBlueprintUseCase{uow: uow, ids: ids, timezones: timezones, now: now}
+	return &UpdateBlueprintUseCase{uow: uow, issueID: issueID, timezones: timezones, now: now}
 }
 
 func (uc *UpdateBlueprintUseCase) Execute(ctx context.Context, actorID, blueprintID, occurrenceDate, scope string, input UpdateBlueprintInput, expectedRevision int32) (dao.Blueprint, error) {
@@ -66,10 +65,10 @@ func (uc *UpdateBlueprintUseCase) Execute(ctx context.Context, actorID, blueprin
 		originalStart := definition.LocalStart
 		originalEnd := definition.LocalEnd
 		dayOffset := int((localCalendarDate(originalEnd).Unix() - localCalendarDate(definition.LocalStart).Unix()) / 86400)
-		originalRule := recurrence.BlueprintRule{Start: originalStart, AnchorDate: parseDateValue(base.RecurrenceAnchorDate),
+		originalRule := domain.BlueprintRule{Start: originalStart, AnchorDate: parseDateValue(base.RecurrenceAnchorDate),
 			End: originalEnd, Timezone: base.Timezone, Frequency: base.Frequency, Interval: base.Interval,
 			Weekdays: mustParseWeekdays(base.Weekdays), EndDate: parseEndDate(base.EndDate)}
-		originalOccurrences, err := recurrence.GenerateBlueprintOccurrences(originalRule, selectedDate, selectedDate)
+		originalOccurrences, err := domain.GenerateBlueprintOccurrences(originalRule, selectedDate, selectedDate)
 		if err != nil {
 			return err
 		}
@@ -123,7 +122,7 @@ func (uc *UpdateBlueprintUseCase) Execute(ctx context.Context, actorID, blueprin
 			return ErrTimezoneNotAllowed
 		}
 		if _, err := time.LoadLocation(validated.Timezone); err != nil {
-			return recurrence.ErrRecurrenceTimezoneInvalid
+			return domain.ErrRecurrenceTimezoneInvalid
 		}
 		projectChanged := validated.ProjectID != base.ProjectID
 		if validated.AssigneeID != "" {
@@ -177,7 +176,7 @@ func (uc *UpdateBlueprintUseCase) Execute(ctx context.Context, actorID, blueprin
 			Frequency: validated.Frequency, Interval: validated.Interval, Weekdays: weekdays,
 			EndDate: formatOptionalDate(validated.EndDate), CutoffAfter: cutoffAfter, Title: validated.Title,
 			Description: validated.Description, Location: validated.Location, ProjectID: validated.ProjectID, AssigneeID: validated.AssigneeID,
-		}, RevisionID: uc.ids.Generate(), ChangedBy: actorID}
+		}, RevisionID: uc.issueID(), ChangedBy: actorID}
 		projectIDs := uniqueProjectIDs([]dao.BlueprintRevision{
 			{Blueprint: dao.Blueprint{ProjectID: base.ProjectID}},
 			{Blueprint: dao.Blueprint{ProjectID: validated.ProjectID}},
@@ -242,7 +241,7 @@ func (uc *UpdateBlueprintUseCase) Execute(ctx context.Context, actorID, blueprin
 		}
 		result.CreatedAt = base.CreatedAt
 		if currentOccurrence != nil && !currentOccurrence.IsOverride && currentOccurrence.ProjectID == base.ProjectID {
-			occurrences, err := recurrence.GenerateBlueprintOccurrences(recurrence.BlueprintRule{
+			occurrences, err := domain.GenerateBlueprintOccurrences(domain.BlueprintRule{
 				Start: validated.LocalStart, AnchorDate: anchor, End: validated.LocalEnd, Timezone: validated.Timezone,
 				Frequency: validated.Frequency, Interval: validated.Interval, Weekdays: mustParseWeekdays(weekdays), EndDate: validated.EndDate,
 			}, selectedDate, selectedDate)
@@ -261,7 +260,7 @@ func (uc *UpdateBlueprintUseCase) Execute(ctx context.Context, actorID, blueprin
 				return err
 			}
 		} else if validated.Frequency == domain.FrequencyOnce && currentOccurrence == nil {
-			occurrences, err := recurrence.GenerateBlueprintOccurrences(recurrence.BlueprintRule{
+			occurrences, err := domain.GenerateBlueprintOccurrences(domain.BlueprintRule{
 				Start: validated.LocalStart, AnchorDate: anchor, End: validated.LocalEnd, Timezone: validated.Timezone,
 				Frequency: validated.Frequency, Interval: 0,
 			}, selectedDate, selectedDate)
@@ -281,7 +280,7 @@ func (uc *UpdateBlueprintUseCase) Execute(ctx context.Context, actorID, blueprin
 					return nil
 				}
 			}
-			id := uc.ids.Generate()
+			id := uc.issueID()
 			row := dao.ScheduleOccurrence{ID: &id, BlueprintID: blueprintID, OccurrenceDate: occurrenceDate,
 				SourceRevisionID: newRevision.RevisionID, UserID: base.UserID, ProjectID: validated.ProjectID,
 				AssigneeID: validated.AssigneeID, Title: validated.Title, Description: validated.Description,

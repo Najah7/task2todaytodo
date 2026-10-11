@@ -36,7 +36,7 @@ func TestTaskUpdateIfMatchStatusesAndSuccessETag(t *testing.T) {
 			repo := &revisionUpdateRepository{task: revisionTaskDAO(), updateErr: tc.updateErr}
 			handler := NewTaskHandler(taskusecase.TaskUseCases{
 				Update: taskusecase.NewUpdateTaskUseCase(revisionUpdateUOW{repo: repo}, nil),
-			}, taskHandlerID{value: "unused"}, listTestCodec())
+			}, taskHandlerID{value: "unused"}.Generate, listTestCodec())
 			request := newRevisionTaskRequest(http.MethodPatch, "/tasks/task-1", `{"title":"Updated title"}`, "user-1")
 			if tc.setIfMatch {
 				request.Header.Set("If-Match", tc.ifMatch)
@@ -73,7 +73,7 @@ func TestTaskAssignRejectsWhitespaceAssigneeID(t *testing.T) {
 	uow := &assignmentNeverUOW{}
 	handler := NewTaskHandler(taskusecase.TaskUseCases{
 		Assign: taskusecase.NewAssignTaskUseCase(uow, nil),
-	}, taskHandlerID{value: "unused"}, listTestCodec())
+	}, taskHandlerID{value: "unused"}.Generate, listTestCodec())
 	request := newRevisionTaskRequest(http.MethodPatch, "/tasks/task-1/assignees", `{"assignee_id":"   "}`, "user-1")
 	request.Header.Set(ifMatchHeader, `"1"`)
 	response := httptest.NewRecorder()
@@ -108,7 +108,7 @@ func TestTaskRevisionPageTokenBindsActorAndTaskResource(t *testing.T) {
 	}}
 	handler := NewTaskHandler(taskusecase.TaskUseCases{
 		Revisions: taskusecase.NewListTaskRevisionsUseCase(reader, nil),
-	}, taskHandlerID{value: "unused"}, listTestCodec())
+	}, taskHandlerID{value: "unused"}.Generate, listTestCodec())
 
 	first := httptest.NewRecorder()
 	handler.ListRevisions(first, newRevisionTaskRequest(http.MethodGet, "/tasks/task-1/revisions?page_size=1", "", "user-1"))

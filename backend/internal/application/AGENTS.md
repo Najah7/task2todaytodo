@@ -25,11 +25,13 @@ transport boundary, and integration scenarios may exercise multiple contexts.
 These are composition, transport, and test boundaries; they do not permit
 business-context dependencies.
 
-`application/shared` may contain contracts or pure policy shared by contexts,
-but must not depend on a business context or `port/rest`. Keep Task and Schedule
-independent. Define cross-context reads and writes at the consuming usecase
-boundary, then inject their implementations through root wiring. Keep HTTP
-query parsing, field masks, cursor tokens, and response types in `port/rest`.
+`application/shared` may contain contracts or pure policy consumed by at least
+two business contexts, but must not depend on a business context or
+`port/rest`. Tests and transport use alone do not justify a shared package;
+keep one-context helpers with their owner. Keep Task and Schedule independent.
+Define cross-context reads and writes at the consuming usecase boundary, then
+inject their implementations through root wiring. Keep HTTP query parsing,
+field masks, cursor tokens, and response types in `port/rest`.
 
 Construct context stores and use cases through `NewStore` and `NewUseCase`,
 with per-context wiring in the application root factory files. `Application`
@@ -83,6 +85,9 @@ owns business state and behavior.
   do not duplicate them in a read model. Projections still depend on the shared
   database schema, so a schema change may require updates to multiple context
   repositories.
+- Project progress reads Task status and nondeleted ActionItem counts through
+  the Project repository, then uses the shared Task percentage policy. It does
+  not call a Task repository or application adapter.
 - Pass a DAO through when no domain behavior is needed. Otherwise, the usecase
   converts its fields to value objects and domain models through existing
   factories. Do not make domain factories accept DAOs.

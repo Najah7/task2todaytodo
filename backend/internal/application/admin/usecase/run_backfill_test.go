@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -26,6 +27,8 @@ type operationRepoFake struct {
 	done            chan struct{}
 	failureCode     string
 	failureMessage  string
+	processed       int64
+	generated       int64
 }
 
 func (r *operationRepoFake) HasPermission(context.Context, string, shared.Capability) (bool, error) {
@@ -52,11 +55,13 @@ func (r *operationRepoFake) List(context.Context, string, int) ([]dao.Operation,
 func (r *operationRepoFake) Heartbeat(context.Context, string, string, time.Duration) (bool, error) {
 	return true, nil
 }
-func (r *operationRepoFake) Progress(context.Context, string, string, int64, int64, time.Duration) (bool, error) {
+func (r *operationRepoFake) Progress(_ context.Context, _, _ string, processed, generated int64, _ time.Duration) (bool, error) {
+	r.processed, r.generated = processed, generated
 	return true, nil
 }
-func (r *operationRepoFake) Succeed(context.Context, string, string, int64, int64) error {
+func (r *operationRepoFake) Succeed(_ context.Context, _, _ string, processed, generated int64) error {
 	r.completed = true
+	r.processed, r.generated = processed, generated
 	if r.done != nil {
 		close(r.done)
 	}
@@ -77,7 +82,8 @@ func (c fixedClock) Now() time.Time { return c.now }
 
 type sequentialIDs struct{ n int }
 
-func (i *sequentialIDs) Generate() string { i.n++; return "id" }
+func (i *sequentialIDs) NewULID() string { i.n++; return fmt.Sprintf("ulid-%d", i.n) }
+func (i *sequentialIDs) NewUUID() string { i.n++; return fmt.Sprintf("uuid-%d", i.n) }
 
 type runnerFake struct{ started int }
 
@@ -93,6 +99,9 @@ func TestRunBackfillPersistsBeforeStartingAndReusesActiveOperation(t *testing.T)
 	}
 	if !first.Cutoff.Equal(now.UTC()) || first.JobName != backfillJobName {
 		t.Fatalf("operation = %+v", first)
+	}
+	if first.ID != "ulid-2" || repo.token != "uuid-1" {
+		t.Fatalf("issued IDs = operation %q, lease %q; want ULID and UUID", first.ID, repo.token)
 	}
 	if runner.started != 1 {
 		t.Fatalf("runner starts = %d, want 1", runner.started)

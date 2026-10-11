@@ -73,7 +73,7 @@ func TestApplicationCompositionAndCleanup(t *testing.T) {
 	app, closeApp, err := application.New(settings.DatabaseSettings{
 		User: conn.User, Password: conn.Password, Host: conn.Host,
 		Port: strconv.Itoa(int(conn.Port)), Name: conn.Database, SSLMode: "disable",
-	}, adapter.NewULID(), telemetry.Nop())
+	}, adapter.NewIDIssuer(), telemetry.Nop())
 	if err != nil {
 		t.Fatalf("application.New(): %v", err)
 	}
@@ -257,7 +257,7 @@ func TestAdminUseCasesEnforcePermissionsBeforeOperationAccess(t *testing.T) {
 	repo := adminrepo.NewOperationRepository(pool)
 	runner := &integrationRunnerFake{}
 	uses := adminusecase.UseCases{
-		RunBackfill:    adminusecase.NewRunBackfillSchedulesUseCase(repo, runner, integrationIDFake{}, integrationClockFake{}, time.Minute),
+		RunBackfill:    adminusecase.NewRunBackfillSchedulesUseCase(repo, runner, adapter.NewIDIssuer(), integrationClockFake{}, time.Minute),
 		ListOperations: adminusecase.NewListOperationsUseCase(repo),
 		GetOperation:   adminusecase.NewGetOperationUseCase(repo),
 	}
@@ -317,10 +317,6 @@ func (r *integrationRunnerFake) StartOperation(_, leaseToken, actorID string, _ 
 	r.actorID = actorID
 	r.leaseToken = leaseToken
 }
-
-type integrationIDFake struct{}
-
-func (integrationIDFake) Generate() string { return ulid.Make().String() }
 
 type integrationClockFake struct{}
 

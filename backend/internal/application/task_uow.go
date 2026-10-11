@@ -33,7 +33,7 @@ func (u *TaskUOW) Do(
 		scheduleBlueprints := u.schedules.WithTx(tx).Schedules
 		return fn(ctx, taskRepositories{
 			store:     store,
-			lifecycle: projectusecase.NewProjectLifecycleUseCase(projects, newTaskProjectProgressReader(projects, store.ActionItems), scheduleBlueprints),
+			lifecycle: projectusecase.NewProjectLifecycleUseCase(projects, projects, scheduleBlueprints),
 		})
 	})
 }

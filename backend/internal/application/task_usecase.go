@@ -4,12 +4,11 @@ import (
 	"time"
 
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
-	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/usecase"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
-func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthStore, ID shared.ID, logger telemetry.Logger) usecase.TaskUseCases {
+func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthStore, _ IDIssuer, logger telemetry.Logger) usecase.TaskUseCases {
 	return usecase.TaskUseCases{
 		Create:            usecase.NewCreateTaskUseCase(taskUOW, logger),
 		List:              usecase.NewListTasksUseCase(taskStore.Tasks, logger, taskStore.ActionItems),
@@ -31,24 +30,24 @@ func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthSto
 	}
 }
 
-func NewScheduleUseCases(scheduleUOW scheduleusecase.UOW, authStore AuthStore, ID shared.ID, logger telemetry.Logger) scheduleusecase.ScheduleUseCases {
+func NewScheduleUseCases(scheduleUOW scheduleusecase.UOW, authStore AuthStore, id IDIssuer, logger telemetry.Logger) scheduleusecase.ScheduleUseCases {
 	return scheduleusecase.ScheduleUseCases{
-		CreateBlueprint:          scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, ID, authStore.Users, logger),
+		CreateBlueprint:          scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, id.NewULID, authStore.Users, logger),
 		GetBlueprint:             scheduleusecase.NewGetBlueprintUseCase(scheduleUOW),
 		ListBlueprintRevisions:   scheduleusecase.NewListBlueprintRevisionsUseCase(scheduleUOW),
-		UpdateBlueprint:          scheduleusecase.NewUpdateBlueprintUseCase(scheduleUOW, ID, authStore.Users),
-		DeleteBlueprintFollowing: scheduleusecase.NewDeleteBlueprintFollowingUseCase(scheduleUOW, ID),
+		UpdateBlueprint:          scheduleusecase.NewUpdateBlueprintUseCase(scheduleUOW, id.NewULID, authStore.Users),
+		DeleteBlueprintFollowing: scheduleusecase.NewDeleteBlueprintFollowingUseCase(scheduleUOW, id.NewULID),
 		ListOccurrences:          scheduleusecase.NewListOccurrencesUseCase(scheduleUOW),
 		GetOccurrence:            scheduleusecase.NewGetOccurrenceUseCase(scheduleUOW, logger),
 		OccurrenceRevisions:      scheduleusecase.NewListOccurrenceRevisionsUseCase(scheduleUOW),
-		UpdateOccurrence:         scheduleusecase.NewUpdateOccurrenceUseCase(scheduleUOW, logger, ID),
-		CompleteOccurrence:       scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "complete", logger, ID),
-		ReopenOccurrence:         scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "reopen", logger, ID),
-		SkipOccurrence:           scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "skip", logger, ID),
-		RestoreOccurrence:        scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "restore", logger, ID),
-		DeleteOccurrence:         scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "delete", logger, ID),
-		RescheduleOccurrence:     scheduleusecase.NewRescheduleOccurrenceUseCase(scheduleUOW, logger, ID),
-		Backfill:                 scheduleusecase.NewBackfillUseCase(scheduleUOW, ID),
+		UpdateOccurrence:         scheduleusecase.NewUpdateOccurrenceUseCase(scheduleUOW, logger, id.NewULID),
+		CompleteOccurrence:       scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "complete", logger, id.NewULID),
+		ReopenOccurrence:         scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "reopen", logger, id.NewULID),
+		SkipOccurrence:           scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "skip", logger, id.NewULID),
+		RestoreOccurrence:        scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "restore", logger, id.NewULID),
+		DeleteOccurrence:         scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "delete", logger, id.NewULID),
+		RescheduleOccurrence:     scheduleusecase.NewRescheduleOccurrenceUseCase(scheduleUOW, logger, id.NewULID),
+		Backfill:                 scheduleusecase.NewBackfillUseCase(scheduleUOW, id.NewULID),
 		ListAssignees:            scheduleusecase.NewListScheduleAssigneesUseCase(scheduleUOW, logger),
 	}
 }

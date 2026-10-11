@@ -21,14 +21,14 @@ var (
 )
 
 type UpdateOccurrenceUseCase struct {
-	uow    UOW
-	logger telemetry.Logger
-	ids    shared.ID
-	now    func() time.Time
+	uow     UOW
+	logger  telemetry.Logger
+	issueID func() string
+	now     func() time.Time
 }
 
-func NewUpdateOccurrenceUseCase(uow UOW, logger telemetry.Logger, ids shared.ID) *UpdateOccurrenceUseCase {
-	return &UpdateOccurrenceUseCase{uow: uow, logger: telemetry.OrNop(logger), ids: ids, now: time.Now}
+func NewUpdateOccurrenceUseCase(uow UOW, logger telemetry.Logger, issueID func() string) *UpdateOccurrenceUseCase {
+	return &UpdateOccurrenceUseCase{uow: uow, logger: telemetry.OrNop(logger), issueID: issueID, now: time.Now}
 }
 
 func (uc *UpdateOccurrenceUseCase) Execute(ctx context.Context, actorID, blueprintID, occurrenceDate string, input UpdateScheduleInput, expectedRevision int32) (dao.ScheduleOccurrence, error) {
@@ -82,7 +82,7 @@ func (uc *UpdateOccurrenceUseCase) execute(ctx context.Context, actorID, bluepri
 		}
 		updated.IsOverride = true
 		if !current.persisted {
-			id, err := virtualOccurrenceID(uc.ids)
+			id, err := virtualOccurrenceID(uc.issueID)
 			if err != nil {
 				return err
 			}

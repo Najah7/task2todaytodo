@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
-	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
@@ -30,8 +29,8 @@ func isExpectedScheduleError(err error) bool {
 		domain.ErrBlueprintIDEmpty, domain.ErrBlueprintTitleEmpty, domain.ErrBlueprintTimezoneEmpty,
 		domain.ErrBlueprintFrequency, domain.ErrBlueprintInterval, domain.ErrBlueprintWeekdays,
 		domain.ErrBlueprintDateRange, domain.ErrBlueprintTimeRange,
-		recurrence.ErrRecurrenceTimezoneInvalid, recurrence.ErrBlueprintFrequencyInvalid,
-		recurrence.ErrBlueprintIntervalInvalid, recurrence.ErrBlueprintRangeInvalid,
+		domain.ErrRecurrenceTimezoneInvalid, domain.ErrBlueprintFrequencyInvalid,
+		domain.ErrBlueprintIntervalInvalid, domain.ErrBlueprintRangeInvalid,
 	} {
 		if errors.Is(err, expected) {
 			return true

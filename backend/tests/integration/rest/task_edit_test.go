@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/Najah7/task2todaytodo/internal/application"
+	"github.com/Najah7/task2todaytodo/internal/port/adapter"
 	restapi "github.com/Najah7/task2todaytodo/internal/port/rest"
 	"github.com/Najah7/task2todaytodo/internal/port/rest/pagination"
 	"github.com/Najah7/task2todaytodo/tests/integration/internal/testdb"
@@ -49,15 +50,15 @@ func newTaskEditAPI(t *testing.T) *taskEditAPI {
 	ids := taskEditIDs{}
 	store := application.NewStore(pool)
 	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
-	usecases, stopUseCases := application.NewUseCase(store.Auth, store.Project, store.Task, store.Admin, uow.Project, uow.Task, uow.Schedule, ids, nil)
+	usecases, stopUseCases := application.NewUseCase(store, uow, adapter.NewIDIssuer(), nil)
 	testdb.RegisterShutdown(t, stopUseCases)
 	pageTokens, err := pagination.NewCodec([]byte(strings.Repeat("e", 32)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	tasks := restapi.NewTaskHandler(usecases.Task, ids, pageTokens)
-	actionItems := restapi.NewActionItemHandler(usecases.ActionItem, ids, pageTokens)
-	projects := restapi.NewProjectHandler(usecases.Project, usecases.Task, ids, pageTokens)
+	tasks := restapi.NewTaskHandler(usecases.Task, ids.Generate, pageTokens)
+	actionItems := restapi.NewActionItemHandler(usecases.ActionItem, ids.Generate, pageTokens)
+	projects := restapi.NewProjectHandler(usecases.Project, usecases.Task, ids.Generate, pageTokens)
 	router := chi.NewRouter()
 	router.Post("/tasks", tasks.Create)
 	router.Patch("/tasks/{id}", tasks.Update)

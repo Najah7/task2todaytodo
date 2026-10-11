@@ -9,12 +9,12 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 )
 
-func TestApplyProjectProgressUsesProjectFactsForWholeTaskAndScheduleOccurrenceWeights(t *testing.T) {
+func TestApplyProjectProgressUsesStoredTaskCountsAndScheduleOccurrenceWeights(t *testing.T) {
 	projects := []dao.Project{{ID: "mixed"}, {ID: "schedule-only"}, {ID: "empty"}}
 	reader := &projectProgressSourceFake{sources: dao.ProjectProgressSources{
 		Tasks: []dao.ProjectTaskProgress{
-			{ProjectID: "mixed", TaskID: "task-partial", Progress: 33},
-			{ProjectID: "mixed", TaskID: "task-done", Done: true, Progress: 100},
+			{ProjectID: "mixed", TotalActionItems: 3, CompletedActionItems: 1},
+			{ProjectID: "mixed", TaskDone: true, TotalActionItems: 3, CompletedActionItems: 1},
 		},
 		Schedules: []dao.ProjectScheduleProgress{
 			{ProjectID: "mixed", Total: 2, Completed: 1},

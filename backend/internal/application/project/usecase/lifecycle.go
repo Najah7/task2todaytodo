@@ -61,7 +61,7 @@ func (uc *ProjectLifecycleUseCase) CaptureWorkState(ctx context.Context, project
 	if err != nil {
 		return shared.ProjectWorkState{}, err
 	}
-	return projectWorkState(status, sources, asOf)
+	return projectWorkState(status, sources), nil
 }
 
 func (uc *ProjectLifecycleUseCase) ReconcileWorkState(ctx context.Context, actorID, projectID string, before shared.ProjectWorkState, asOf time.Time) error {
@@ -99,30 +99,17 @@ func transitionProjectSchedules(ctx context.Context, schedules ProjectScheduleLi
 	return nil
 }
 
-func projectWorkState(status string, sources dao.ProjectProgressSources, asOf time.Time) (shared.ProjectWorkState, error) {
+func projectWorkState(status string, sources dao.ProjectProgressSources) shared.ProjectWorkState {
 	state := shared.ProjectWorkState{Status: status}
 	for _, task := range sources.Tasks {
 		state.Eligible++
-		if task.Done {
+		if task.TaskDone {
 			state.Completed++
 		}
 	}
 	for _, schedule := range sources.Schedules {
 		state.Eligible += schedule.Total
 		state.Completed += schedule.Completed
-		for _, root := range schedule.Roots {
-			rule, err := projectProgressRule(root)
-			if err != nil {
-				return shared.ProjectWorkState{}, err
-			}
-			eligible, err := domain.VirtualScheduleOccurrenceOccursToday(rule, asOf)
-			if err != nil {
-				return shared.ProjectWorkState{}, err
-			}
-			if eligible {
-				state.Eligible++
-			}
-		}
 	}
-	return state, nil
+	return state
 }

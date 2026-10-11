@@ -50,8 +50,8 @@ func main() {
 	}))
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
-	ids := adapter.NewULID()
-	app, closeApp, err := application.New(settings.Database, ids, logger)
+	idIssuer := adapter.NewIDIssuer()
+	app, closeApp, err := application.New(settings.Database, idIssuer, logger)
 	if err != nil {
 		logger.Error(context.Background(), "API initialization failed", append([]any{"operation", "initialize_application"}, telemetry.ErrorFields(err)...)...)
 		stop()
@@ -60,9 +60,9 @@ func main() {
 	}
 	r := chi.NewRouter()
 	r.Use(middleware.StripTrailingSlash)
-	r.Use(middleware.NewRequestLogging(logger, adapter.NewUUID()))
+	r.Use(middleware.NewRequestLogging(logger, idIssuer.NewUUID))
 
-	handler, err := rest.NewHandler(app.UseCase, ids, settings.Secrets.PageTokenKey)
+	handler, err := rest.NewHandler(app.UseCase, idIssuer.NewULID, settings.Secrets.PageTokenKey)
 	if err != nil {
 		logger.Error(context.Background(), "API initialization failed", append([]any{"operation", "initialize_http_handler"}, telemetry.ErrorFields(err)...)...)
 		var closeErr error

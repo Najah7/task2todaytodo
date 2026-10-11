@@ -84,7 +84,7 @@ func TestBlueprintCreateAndVirtualListDoesNotPersistRecurringRows(t *testing.T) 
 	ctx := t.Context()
 	userID := createScheduleTestUser(t, pool)
 	uow := blueprintTestUOW{pool: pool}
-	ids := blueprintTestIDs{}
+	ids := (blueprintTestIDs{}).Generate
 	now := time.Now().UTC()
 	localToday, err := time.LoadLocation("Asia/Tokyo")
 	if err != nil {
@@ -177,7 +177,7 @@ func TestMovedOccurrenceKeepsOriginalIdentityAndAppearsOnlyAtActualTime(t *testi
 	}
 	localNow := now.In(location)
 	localDate := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
-	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
 		Title: "Daily stand-up", Timezone: "Asia/Tokyo", LocalStart: localDate.Add(9 * time.Hour),
 		LocalEnd: localDate.Add(10 * time.Hour), Frequency: "daily", Interval: 1,
 	})
@@ -187,14 +187,14 @@ func TestMovedOccurrenceKeepsOriginalIdentityAndAppearsOnlyAtActualTime(t *testi
 	originalDate := localDate.Format("2006-01-02")
 	movedStart := time.Date(localDate.Year(), localDate.Month(), localDate.Day()+1, 11, 0, 0, 0, location)
 	movedEnd := movedStart.Add(time.Hour)
-	moved, err := usecase.NewRescheduleOccurrenceUseCase(uow, nil, blueprintTestIDs{}).Execute(ctx, userID, blueprint.ID, originalDate, movedStart, movedEnd, 0)
+	moved, err := usecase.NewRescheduleOccurrenceUseCase(uow, nil, (blueprintTestIDs{}).Generate).Execute(ctx, userID, blueprint.ID, originalDate, movedStart, movedEnd, 0)
 	if err != nil {
 		t.Fatalf("move occurrence: %v", err)
 	}
 	if moved.BlueprintID != blueprint.ID || moved.OccurrenceDate != originalDate || moved.ID == nil || moved.StartAt != movedStart.Unix() {
 		t.Fatalf("moved occurrence lost its original identity: %+v", moved)
 	}
-	if _, err := usecase.NewRescheduleOccurrenceUseCase(uow, nil, blueprintTestIDs{}).Execute(ctx, userID, blueprint.ID,
+	if _, err := usecase.NewRescheduleOccurrenceUseCase(uow, nil, (blueprintTestIDs{}).Generate).Execute(ctx, userID, blueprint.ID,
 		originalDate, movedStart.Add(time.Hour), movedEnd.Add(time.Hour), 0); err != usecase.ErrOccurrenceRevisionMismatch {
 		t.Fatalf("stale reschedule revision error=%v, want ErrOccurrenceRevisionMismatch", err)
 	}
@@ -239,7 +239,7 @@ func TestBackfillHonorsCutoffBoundaryAndNeverOverwritesSavedOverride(t *testing.
 	today := now.In(location)
 	localDate := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
 	startDate := localDate.AddDate(0, 0, -3)
-	create := usecase.NewCreateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now })
+	create := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now })
 	makeDaily := func(title string, hour time.Duration) usecase.CreateBlueprintInput {
 		start := startDate.Add(hour)
 		return usecase.CreateBlueprintInput{Title: title, Timezone: "Asia/Tokyo", LocalStart: start,
@@ -261,13 +261,13 @@ func TestBackfillHonorsCutoffBoundaryAndNeverOverwritesSavedOverride(t *testing.
 	// retain the moved snapshot and never recreate the origin for that key.
 	overrideDate := startDate.AddDate(0, 0, 1).Format("2006-01-02")
 	movedStart := time.Date(today.Year(), today.Month(), today.Day()+2, 16, 0, 0, 0, location)
-	_, err = usecase.NewRescheduleOccurrenceUseCase(uow, nil, blueprintTestIDs{}).Execute(ctx, userID, before.ID, overrideDate, movedStart, movedStart.Add(time.Hour), 0)
+	_, err = usecase.NewRescheduleOccurrenceUseCase(uow, nil, (blueprintTestIDs{}).Generate).Execute(ctx, userID, before.ID, overrideDate, movedStart, movedStart.Add(time.Hour), 0)
 	if err != nil {
 		t.Fatalf("save override before backfill: %v", err)
 	}
-	backfill := usecase.NewBackfillUseCase(uow, blueprintTestIDs{})
+	backfill := usecase.NewBackfillUseCase(uow, (blueprintTestIDs{}).Generate)
 	cutoff := time.Date(today.Year(), today.Month(), today.Day(), 12, 0, 0, 0, location).UTC()
-	if _, err := backfill.Execute(ctx, userID, cutoff, nil); err != nil {
+	if _, _, err := backfill.Execute(ctx, userID, cutoff, nil); err != nil {
 		t.Fatalf("backfill at noon cutoff: %v", err)
 	}
 	todayKey := localDate.Format("2006-01-02")
@@ -285,7 +285,7 @@ func TestBackfillHonorsCutoffBoundaryAndNeverOverwritesSavedOverride(t *testing.
 	// Advancing the cutoff on the same local day must revisit occurrences whose
 	// start had not yet passed; a date-only checkpoint must not lose them.
 	laterCutoff := time.Date(today.Year(), today.Month(), today.Day(), 15, 0, 0, 0, location).UTC()
-	if _, err := backfill.Execute(ctx, userID, laterCutoff, nil); err != nil {
+	if _, _, err := backfill.Execute(ctx, userID, laterCutoff, nil); err != nil {
 		t.Fatalf("backfill later on same local day: %v", err)
 	}
 	if countOnDate(equal.ID) != 1 || countOnDate(future.ID) != 1 {
@@ -326,7 +326,7 @@ func TestDeleteFollowingSuppressesVirtualTailAndSavedOverride(t *testing.T) {
 	localNow := now.In(location)
 	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
 	startDate := today.AddDate(0, 0, 14)
-	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
 		Title: "Recurring review", ProjectID: projectID, Timezone: "Asia/Tokyo", LocalStart: startDate.Add(9 * time.Hour),
 		LocalEnd: startDate.Add(10 * time.Hour), Frequency: "daily", Interval: 1,
 	})
@@ -336,7 +336,7 @@ func TestDeleteFollowingSuppressesVirtualTailAndSavedOverride(t *testing.T) {
 	deletedFrom := startDate.AddDate(0, 0, 3)
 	savedDate := startDate.AddDate(0, 0, 5)
 	movedStart := time.Date(savedDate.Year(), savedDate.Month(), savedDate.Day()+2, 16, 0, 0, 0, location)
-	_, err = usecase.NewRescheduleOccurrenceUseCase(uow, nil, blueprintTestIDs{}).Execute(ctx, userID, blueprint.ID,
+	_, err = usecase.NewRescheduleOccurrenceUseCase(uow, nil, (blueprintTestIDs{}).Generate).Execute(ctx, userID, blueprint.ID,
 		savedDate.Format("2006-01-02"), movedStart, movedStart.Add(time.Hour), 0)
 	if err != nil {
 		t.Fatalf("save tail override: %v", err)
@@ -344,7 +344,7 @@ func TestDeleteFollowingSuppressesVirtualTailAndSavedOverride(t *testing.T) {
 	if _, err := usecase.NewGetOccurrenceUseCase(uow).Execute(ctx, viewerID, blueprint.ID, savedDate.Format("2006-01-02")); err != nil {
 		t.Fatalf("Project viewer cannot read saved occurrence before deletion: %v", err)
 	}
-	deleteFollowing := usecase.NewDeleteBlueprintFollowingUseCase(uow, blueprintTestIDs{}, func() time.Time { return now })
+	deleteFollowing := usecase.NewDeleteBlueprintFollowingUseCase(uow, (blueprintTestIDs{}).Generate, func() time.Time { return now })
 	if err := deleteFollowing.Execute(ctx, userID, blueprint.ID, deletedFrom.Format("2006-01-02"), blueprint.Revision); err != nil {
 		t.Fatalf("delete following tail: %v", err)
 	}
@@ -387,14 +387,14 @@ func TestDeleteFollowingAdvancesAggregateRevisionAndInvalidatesStaleEditor(t *te
 	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
 	startDate := today.AddDate(0, 0, 10)
 	start := startDate.Add(9 * time.Hour)
-	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
 		Title: "Deletion revision", Timezone: "Asia/Tokyo", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "daily", Interval: 1,
 	})
 	if err != nil {
 		t.Fatalf("create recurrence: %v", err)
 	}
 	deletedFrom := startDate.AddDate(0, 0, 3)
-	if err := usecase.NewDeleteBlueprintFollowingUseCase(uow, blueprintTestIDs{}, func() time.Time { return now }).Execute(ctx, userID, blueprint.ID, deletedFrom.Format("2006-01-02"), blueprint.Revision); err != nil {
+	if err := usecase.NewDeleteBlueprintFollowingUseCase(uow, (blueprintTestIDs{}).Generate, func() time.Time { return now }).Execute(ctx, userID, blueprint.ID, deletedFrom.Format("2006-01-02"), blueprint.Revision); err != nil {
 		t.Fatalf("delete future tail: %v", err)
 	}
 	current, err := usecase.NewGetBlueprintUseCase(uow).Execute(ctx, userID, blueprint.ID)
@@ -405,14 +405,14 @@ func TestDeleteFollowingAdvancesAggregateRevisionAndInvalidatesStaleEditor(t *te
 		t.Fatalf("aggregate revision after deletion=%d, want greater than initial %d", current.Revision, blueprint.Revision)
 	}
 	staleTitle := "Stale earlier edit"
-	if _, err := usecase.NewUpdateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now }).Execute(
+	if _, err := usecase.NewUpdateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now }).Execute(
 		ctx, userID, blueprint.ID, startDate.AddDate(0, 0, 1).Format("2006-01-02"), "following",
 		usecase.UpdateBlueprintInput{Title: &staleTitle}, blueprint.Revision,
 	); !errors.Is(err, usecase.ErrOccurrenceRevisionMismatch) {
 		t.Fatalf("earlier edit with stale pre-deletion revision error=%v, want ErrOccurrenceRevisionMismatch", err)
 	}
 	updatedTitle := "Earlier edit after cancellation"
-	if _, err := usecase.NewUpdateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now }).Execute(
+	if _, err := usecase.NewUpdateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now }).Execute(
 		ctx, userID, blueprint.ID, startDate.AddDate(0, 0, 1).Format("2006-01-02"), "following",
 		usecase.UpdateBlueprintInput{Title: &updatedTitle}, current.Revision,
 	); err != nil {
@@ -439,7 +439,7 @@ func TestSkipRetryIsIdempotentAndRestoreOnlyUnskips(t *testing.T) {
 	localNow := now.In(time.FixedZone("JST", 9*60*60))
 	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
 	start := today.AddDate(0, 0, 2).Add(9 * time.Hour)
-	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
 		Title: "Daily task", Timezone: "Asia/Tokyo", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "daily", Interval: 1,
 	})
 	if err != nil {
@@ -447,13 +447,29 @@ func TestSkipRetryIsIdempotentAndRestoreOnlyUnskips(t *testing.T) {
 	}
 	date := start.Format("2006-01-02")
 	get := usecase.NewGetOccurrenceUseCase(uow)
-	skip := usecase.NewSetOccurrenceStateUseCase(uow, "skip", nil, blueprintTestIDs{})
+	skip := usecase.NewSetOccurrenceStateUseCase(uow, "skip", nil, (blueprintTestIDs{}).Generate)
 	if err := skip.Execute(ctx, userID, blueprint.ID, date, 0); err != nil {
 		t.Fatalf("skip virtual occurrence: %v", err)
 	}
 	skipped, err := get.Execute(ctx, userID, blueprint.ID, date)
 	if err != nil || !skipped.Skipped || skipped.ID == nil {
 		t.Fatalf("read skipped occurrence = %+v, %v", skipped, err)
+	}
+	secondDate := start.AddDate(0, 0, 1).Format("2006-01-02")
+	if err := skip.Execute(ctx, userID, blueprint.ID, secondDate, 0); err != nil {
+		t.Fatalf("skip second virtual occurrence: %v", err)
+	}
+	secondSkipped, err := get.Execute(ctx, userID, blueprint.ID, secondDate)
+	if err != nil || !secondSkipped.Skipped || secondSkipped.ID == nil {
+		t.Fatalf("read second skipped occurrence = %+v, %v", secondSkipped, err)
+	}
+	if *secondSkipped.ID == *skipped.ID {
+		t.Fatalf("distinct skipped occurrences share ID %q", *skipped.ID)
+	}
+	for _, id := range []string{*skipped.ID, *secondSkipped.ID} {
+		if _, err := ulid.Parse(id); err != nil {
+			t.Errorf("occurrence ID %q is not a ULID: %v", id, err)
+		}
 	}
 	if err := skip.Execute(ctx, userID, blueprint.ID, date, skipped.Revision); err != nil {
 		t.Fatalf("retry skip with current revision: %v", err)
@@ -462,7 +478,7 @@ func TestSkipRetryIsIdempotentAndRestoreOnlyUnskips(t *testing.T) {
 	if err != nil || !stillSkipped.Skipped || stillSkipped.Revision != skipped.Revision {
 		t.Fatalf("retry changed skipped occurrence: %+v, %v", stillSkipped, err)
 	}
-	restore := usecase.NewSetOccurrenceStateUseCase(uow, "restore", nil, blueprintTestIDs{})
+	restore := usecase.NewSetOccurrenceStateUseCase(uow, "restore", nil, (blueprintTestIDs{}).Generate)
 	if err := restore.Execute(ctx, userID, blueprint.ID, date, stillSkipped.Revision); err != nil {
 		t.Fatalf("restore skipped occurrence: %v", err)
 	}
@@ -470,7 +486,7 @@ func TestSkipRetryIsIdempotentAndRestoreOnlyUnskips(t *testing.T) {
 	if err != nil || restored.Skipped || restored.Revision == stillSkipped.Revision {
 		t.Fatalf("read restored occurrence = %+v, %v", restored, err)
 	}
-	delete := usecase.NewSetOccurrenceStateUseCase(uow, "delete", nil, blueprintTestIDs{})
+	delete := usecase.NewSetOccurrenceStateUseCase(uow, "delete", nil, (blueprintTestIDs{}).Generate)
 	if err := delete.Execute(ctx, userID, blueprint.ID, date, restored.Revision); err != nil {
 		t.Fatalf("delete occurrence: %v", err)
 	}
@@ -496,13 +512,13 @@ func TestFollowingEditUsesOriginalStartAndRejectsOccurrenceDateChange(t *testing
 	}
 	localNow := now.In(location)
 	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
-	create := usecase.NewCreateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now })
+	create := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now })
 	makeDaily := func(title string, date time.Time) usecase.CreateBlueprintInput {
 		start := date.Add(9 * time.Hour)
 		return usecase.CreateBlueprintInput{Title: title, Timezone: "Asia/Tokyo", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "daily", Interval: 1}
 	}
 	update := func(id, date string, revision int32, patch usecase.UpdateBlueprintInput) (dao.Blueprint, error) {
-		return usecase.NewUpdateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now }).Execute(ctx, userID, id, date, "following", patch, revision)
+		return usecase.NewUpdateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now }).Execute(ctx, userID, id, date, "following", patch, revision)
 	}
 
 	past := today.AddDate(0, 0, -4)
@@ -512,7 +528,7 @@ func TestFollowingEditUsesOriginalStartAndRejectsOccurrenceDateChange(t *testing
 	}
 	pastOccurrence := past.AddDate(0, 0, 1)
 	movedFuture := time.Date(today.Year(), today.Month(), today.Day()+5, 15, 0, 0, 0, location)
-	if _, err := usecase.NewRescheduleOccurrenceUseCase(uow, nil, blueprintTestIDs{}).Execute(ctx, userID, pastRule.ID,
+	if _, err := usecase.NewRescheduleOccurrenceUseCase(uow, nil, (blueprintTestIDs{}).Generate).Execute(ctx, userID, pastRule.ID,
 		pastOccurrence.Format("2006-01-02"), movedFuture, movedFuture.Add(time.Hour), 0); err != nil {
 		t.Fatalf("move past original into future: %v", err)
 	}
@@ -528,7 +544,7 @@ func TestFollowingEditUsesOriginalStartAndRejectsOccurrenceDateChange(t *testing
 	}
 	futureOccurrence := futureDate.AddDate(0, 0, 1)
 	movedPast := time.Date(today.Year(), today.Month(), today.Day()-2, 15, 0, 0, 0, location)
-	if _, err := usecase.NewRescheduleOccurrenceUseCase(uow, nil, blueprintTestIDs{}).Execute(ctx, userID, futureRule.ID,
+	if _, err := usecase.NewRescheduleOccurrenceUseCase(uow, nil, (blueprintTestIDs{}).Generate).Execute(ctx, userID, futureRule.ID,
 		futureOccurrence.Format("2006-01-02"), movedPast, movedPast.Add(time.Hour), 0); err != nil {
 		t.Fatalf("move future original into past: %v", err)
 	}
@@ -554,13 +570,13 @@ func TestOnceRepeatConversionsAndFollowingBaseEdit(t *testing.T) {
 	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
 	date := today.AddDate(0, 0, 5)
 	start := date.Add(9 * time.Hour)
-	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
 		Title: "One-off", Timezone: "Asia/Tokyo", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "once",
 	})
 	if err != nil {
 		t.Fatalf("create one-off: %v", err)
 	}
-	update := usecase.NewUpdateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now })
+	update := usecase.NewUpdateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now })
 	dateKey := date.Format("2006-01-02")
 	newTitle := "Edited one-off"
 	current, err := update.Execute(ctx, userID, blueprint.ID, dateKey, "following", usecase.UpdateBlueprintInput{Title: &newTitle}, blueprint.Revision)
@@ -613,7 +629,7 @@ func TestFollowingEditKeepsMultidayDurationAcrossYearBoundary(t *testing.T) {
 	now := time.Now().UTC()
 	start := time.Date(2026, time.December, 30, 22, 0, 0, 0, time.UTC)
 	end := time.Date(2027, time.January, 1, 1, 0, 0, 0, time.UTC)
-	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
 		Title: "Overnight operation", Timezone: "Asia/Tokyo", LocalStart: start, LocalEnd: end, Frequency: "daily", Interval: 1,
 	})
 	if err != nil {
@@ -621,7 +637,7 @@ func TestFollowingEditKeepsMultidayDurationAcrossYearBoundary(t *testing.T) {
 	}
 	date := "2026-12-31"
 	title := "Updated overnight operation"
-	if _, err := usecase.NewUpdateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now }).Execute(ctx, userID,
+	if _, err := usecase.NewUpdateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now }).Execute(ctx, userID,
 		blueprint.ID, date, "following", usecase.UpdateBlueprintInput{Title: &title}, blueprint.Revision); err != nil {
 		t.Fatalf("following edit over year boundary: %v", err)
 	}
@@ -644,13 +660,13 @@ func TestEarlierFollowingEditSupersedesPlannedRevisionAndRejectsStaleRevision(t 
 	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
 	startDate := today.AddDate(0, 0, 3)
 	start := startDate.Add(9 * time.Hour)
-	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
 		Title: "Original", Timezone: "Asia/Tokyo", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "daily", Interval: 1,
 	})
 	if err != nil {
 		t.Fatalf("create recurrence: %v", err)
 	}
-	update := usecase.NewUpdateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now })
+	update := usecase.NewUpdateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now })
 	plannedDate := startDate.AddDate(0, 0, 5).Format("2006-01-02")
 	plannedTitle := "Planned future revision"
 	planned, err := update.Execute(ctx, userID, blueprint.ID, plannedDate, "following", usecase.UpdateBlueprintInput{Title: &plannedTitle}, blueprint.Revision)
@@ -689,7 +705,7 @@ func TestConcurrentFollowingEditsWithSameRevisionProduceOneConflict(t *testing.T
 	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
 	startDate := today.AddDate(0, 0, 7)
 	start := startDate.Add(9 * time.Hour)
-	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
 		Title: "Concurrent edit", Timezone: "Asia/Tokyo", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "daily", Interval: 1,
 	})
 	if err != nil {
@@ -697,7 +713,7 @@ func TestConcurrentFollowingEditsWithSameRevisionProduceOneConflict(t *testing.T
 	}
 
 	date := startDate.AddDate(0, 0, 2).Format("2006-01-02")
-	update := usecase.NewUpdateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now })
+	update := usecase.NewUpdateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now })
 	titles := []string{"Concurrent edit A", "Concurrent edit B"}
 	startGate := make(chan struct{})
 	results := make([]error, len(titles))
@@ -752,7 +768,7 @@ func TestProjectPauseResumePreservesCadenceAndBackfillHistory(t *testing.T) {
 	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
 	startDate := today.AddDate(0, 0, -8)
 	start := startDate.Add(9 * time.Hour)
-	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
 		Title: "Project daily cadence", ProjectID: projectID, Timezone: "Asia/Tokyo", LocalStart: start,
 		LocalEnd: start.Add(time.Hour), Frequency: "daily", Interval: 1,
 	})
@@ -778,12 +794,12 @@ func TestProjectPauseResumePreservesCadenceAndBackfillHistory(t *testing.T) {
 		t.Fatalf("pause history count=%d resumed_at=%v; want one interval ending at %s", intervalCount, persistedResume, resumedAt)
 	}
 	cutoff := time.Date(startDate.Year(), startDate.Month(), startDate.Day()+6, 12, 0, 0, 0, location).UTC()
-	result, err := usecase.NewBackfillUseCase(uow, blueprintTestIDs{}).Execute(ctx, userID, cutoff, nil)
+	_, generatedSchedules, err := usecase.NewBackfillUseCase(uow, (blueprintTestIDs{}).Generate).Execute(ctx, userID, cutoff, nil)
 	if err != nil {
 		t.Fatalf("backfill across pause interval: %v", err)
 	}
-	if result.GeneratedSchedules != 5 {
-		t.Fatalf("backfill generated %d schedules, want 5 outside the two-day pause", result.GeneratedSchedules)
+	if generatedSchedules != 5 {
+		t.Fatalf("backfill generated %d schedules, want 5 outside the two-day pause", generatedSchedules)
 	}
 	rows, err := pool.Query(ctx, `SELECT occurrence_date::text FROM schedules WHERE blueprint_id=$1 ORDER BY occurrence_date`, blueprint.ID)
 	if err != nil {
@@ -840,7 +856,7 @@ func TestProjectSchedulePermissionsAndProjectOwnerAssigneeDefault(t *testing.T) 
 	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
 	startDate := today.AddDate(0, 0, 6)
 	start := startDate.Add(9 * time.Hour)
-	create := usecase.NewCreateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now })
+	create := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now })
 	input := usecase.CreateBlueprintInput{Title: "Shared recurrence", ProjectID: projectID, Timezone: "Asia/Tokyo",
 		LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "daily", Interval: 1}
 	blueprint, err := create.Execute(ctx, editorID, input)
@@ -887,13 +903,13 @@ func TestProjectSchedulePermissionsAndProjectOwnerAssigneeDefault(t *testing.T) 
 		t.Fatalf("editor read blueprint: %v", err)
 	}
 	updatedTitle := "Editor updated recurrence"
-	update := usecase.NewUpdateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now })
+	update := usecase.NewUpdateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now })
 	current, err := update.Execute(ctx, editorID, blueprint.ID, startDate.Format("2006-01-02"), "following",
 		usecase.UpdateBlueprintInput{Title: &updatedTitle}, blueprint.Revision)
 	if err != nil {
 		t.Fatalf("editor update blueprint: %v", err)
 	}
-	deleteFollowing := usecase.NewDeleteBlueprintFollowingUseCase(uow, blueprintTestIDs{}, func() time.Time { return now })
+	deleteFollowing := usecase.NewDeleteBlueprintFollowingUseCase(uow, (blueprintTestIDs{}).Generate, func() time.Time { return now })
 	cutoffDate := startDate.AddDate(0, 0, 2).Format("2006-01-02")
 	if err := deleteFollowing.Execute(ctx, editorID, blueprint.ID, cutoffDate, current.Revision); err == nil {
 		t.Fatal("editor deleted following occurrences without schedule:delete")
@@ -917,7 +933,7 @@ func TestCreatingRecurrenceInDoneProjectOpensAutomaticPauseInterval(t *testing.T
 	localNow := now.In(time.FixedZone("JST", 9*60*60))
 	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
 	start := today.AddDate(0, 0, 1).Add(9 * time.Hour)
-	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, blueprintTestIDs{}, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
 		Title: "Paused after completion", ProjectID: projectID, Timezone: "Asia/Tokyo", LocalStart: start,
 		LocalEnd: start.Add(time.Hour), Frequency: "daily", Interval: 1,
 	})

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
+	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared/pagination"
-	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
 )
 
 var (
@@ -125,12 +125,12 @@ func projectOccurrences(revisions []dao.BlueprintRevision, saved []dao.ScheduleO
 			rule := rules[i]
 			location, err := time.LoadLocation(rule.Timezone)
 			if err != nil {
-				return nil, recurrence.ErrRecurrenceTimezoneInvalid
+				return nil, domain.ErrRecurrenceTimezoneInvalid
 			}
 			localStart := parseLocalTimestamp(rule.LocalStart)
 			localEnd := parseLocalTimestamp(rule.LocalEnd)
 			if localStart.IsZero() || localEnd.IsZero() {
-				return nil, recurrence.ErrBlueprintRangeInvalid
+				return nil, domain.ErrBlueprintRangeInvalid
 			}
 			phase := localCalendarDate(localStart)
 			if rule.EffectiveFrom != "" {
@@ -194,7 +194,7 @@ func projectOccurrences(revisions []dao.BlueprintRevision, saved []dao.ScheduleO
 				value, _ := time.Parse("2006-01-02", *rule.EndDate)
 				recurrenceEnd = &value
 			}
-			occurrences, err := recurrence.GenerateBlueprintOccurrences(recurrence.BlueprintRule{
+			occurrences, err := domain.GenerateBlueprintOccurrences(domain.BlueprintRule{
 				Start: localStart, AnchorDate: anchorDate, End: localEnd, Timezone: rule.Timezone,
 				Frequency: rule.Frequency, Interval: rule.Interval, Weekdays: weekdays, EndDate: recurrenceEnd,
 			}, startDate, endDate)
@@ -296,7 +296,7 @@ func parseWeekdays(values []string) ([]time.Weekday, error) {
 		case "sat":
 			result = append(result, time.Saturday)
 		default:
-			return nil, recurrence.ErrBlueprintFrequencyInvalid
+			return nil, domain.ErrBlueprintFrequencyInvalid
 		}
 	}
 	return result, nil

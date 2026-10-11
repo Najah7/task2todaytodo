@@ -53,13 +53,8 @@ type ProjectBlueprintLifecycle interface {
 	ResumeProjectBlueprints(ctx context.Context, actorID, projectID string, at time.Time) error
 }
 
-type BackfillResult struct {
-	ProcessedBlueprints int
-	GeneratedSchedules  int
-}
-
 type ScheduleBackfill interface {
-	Execute(ctx context.Context, actorID string, cutoff time.Time, report func(processedBlueprints, generatedSchedules int) error) (BackfillResult, error)
+	Execute(ctx context.Context, actorID string, cutoff time.Time, report func(processedBlueprints, generatedSchedules int) error) (processedBlueprints, generatedSchedules int, err error)
 }
 
 // BlueprintRepository contains persistence operations for recurrence

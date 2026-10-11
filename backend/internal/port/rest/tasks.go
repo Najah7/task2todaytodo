@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
@@ -32,12 +31,12 @@ var (
 
 type TaskHandler struct {
 	tasks      taskusecase.TaskUseCases
-	ID         shared.ID
+	issueID    func() string
 	pageTokens *pagination.Codec
 }
 
-func NewTaskHandler(tasks taskusecase.TaskUseCases, ID shared.ID, codecs ...*pagination.Codec) *TaskHandler {
-	h := &TaskHandler{tasks: tasks, ID: ID}
+func NewTaskHandler(tasks taskusecase.TaskUseCases, issueID func() string, codecs ...*pagination.Codec) *TaskHandler {
+	h := &TaskHandler{tasks: tasks, issueID: issueID}
 	if len(codecs) > 0 {
 		h.pageTokens = codecs[0]
 	}
@@ -288,7 +287,7 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	task, err := h.tasks.Create.Execute(r.Context(), taskusecase.CreateTaskInput{
-		ID:               domain.TaskID(h.ID.Generate()),
+		ID:               domain.TaskID(h.issueID()),
 		UserID:           userID,
 		Title:            request.Title,
 		Description:      request.Description,

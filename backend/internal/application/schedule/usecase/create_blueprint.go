@@ -8,7 +8,6 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
@@ -20,18 +19,18 @@ var (
 
 type CreateBlueprintUseCase struct {
 	uow       UOW
-	ids       shared.ID
+	issueID   func() string
 	timezones TimezoneValidator
 	now       func() time.Time
 	logger    telemetry.Logger
 }
 
-func NewCreateBlueprintUseCase(uow UOW, ids shared.ID, timezones TimezoneValidator, logger telemetry.Logger, clocks ...func() time.Time) *CreateBlueprintUseCase {
+func NewCreateBlueprintUseCase(uow UOW, issueID func() string, timezones TimezoneValidator, logger telemetry.Logger, clocks ...func() time.Time) *CreateBlueprintUseCase {
 	now := time.Now
 	if len(clocks) > 0 && clocks[0] != nil {
 		now = clocks[0]
 	}
-	return &CreateBlueprintUseCase{uow: uow, ids: ids, timezones: timezones, now: now, logger: telemetry.OrNop(logger)}
+	return &CreateBlueprintUseCase{uow: uow, issueID: issueID, timezones: timezones, now: now, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *CreateBlueprintUseCase) Execute(ctx context.Context, actorID string, input CreateBlueprintInput) (output dao.Blueprint, err error) {
@@ -50,7 +49,7 @@ func (uc *CreateBlueprintUseCase) Execute(ctx context.Context, actorID string, i
 		return dao.Blueprint{}, ErrTimezoneNotAllowed
 	}
 	if _, err := time.LoadLocation(input.Timezone); err != nil {
-		return dao.Blueprint{}, recurrence.ErrRecurrenceTimezoneInvalid
+		return dao.Blueprint{}, domain.ErrRecurrenceTimezoneInvalid
 	}
 	if input.AssigneeID == "" && input.ProjectID == "" {
 		input.AssigneeID = actorID
@@ -68,24 +67,24 @@ func (uc *CreateBlueprintUseCase) Execute(ctx context.Context, actorID string, i
 	if err != nil {
 		return dao.Blueprint{}, err
 	}
-	blueprintID, revisionID := uc.ids.Generate(), uc.ids.Generate()
+	blueprintID, revisionID := uc.issueID(), uc.issueID()
 	startDate := localCalendarDate(definition.LocalStart)
 	anchorDate := startDate
-	rule := recurrence.BlueprintRule{
+	rule := domain.BlueprintRule{
 		Start: definition.LocalStart, AnchorDate: anchorDate, End: definition.LocalEnd,
 		Timezone: definition.Timezone, Frequency: definition.Frequency, Interval: definition.Interval,
 		Weekdays: weekdays, EndDate: definition.EndDate,
 	}
 	var firstOccurrence *dao.ScheduleOccurrence
 	if definition.Frequency == domain.FrequencyOnce {
-		occurrences, recurrenceErr := recurrence.GenerateBlueprintOccurrences(rule, startDate, startDate)
+		occurrences, recurrenceErr := domain.GenerateBlueprintOccurrences(rule, startDate, startDate)
 		if recurrenceErr != nil {
 			return dao.Blueprint{}, recurrenceErr
 		}
 		if len(occurrences) != 1 {
 			return dao.Blueprint{}, ErrBlueprintOccurrenceInvalid
 		}
-		id := uc.ids.Generate()
+		id := uc.issueID()
 		firstOccurrence = &dao.ScheduleOccurrence{
 			ID: &id, BlueprintID: blueprintID, OccurrenceDate: startDate.Format("2006-01-02"),
 			SourceRevisionID: revisionID, AssigneeID: definition.AssigneeID, Title: definition.Title,

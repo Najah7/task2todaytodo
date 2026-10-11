@@ -55,7 +55,8 @@ func (adminRunnerFake) StartOperation(string, string, string, time.Time) {}
 
 type adminIDFake struct{}
 
-func (adminIDFake) Generate() string { return "01J00000000000000000000000" }
+func (adminIDFake) NewULID() string { return "01J00000000000000000000000" }
+func (adminIDFake) NewUUID() string { return "123e4567-e89b-12d3-a456-426614174000" }
 
 type adminClockFake struct{}
 

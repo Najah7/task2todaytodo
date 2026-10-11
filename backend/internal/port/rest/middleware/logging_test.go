@@ -47,7 +47,7 @@ func TestRequestLoggingIDsStatusAndSafePath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var output bytes.Buffer
-			handler := NewRequestLogging(testLogger{&output}, fixedID("123e4567-e89b-12d3-a456-426614174000"))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handler := NewRequestLogging(testLogger{&output}, fixedID("123e4567-e89b-12d3-a456-426614174000").Generate)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if telemetry.RequestID(r.Context()) != tt.wantID {
 					t.Errorf("context request ID = %q", telemetry.RequestID(r.Context()))
 				}
@@ -101,7 +101,7 @@ func TestRequestLoggingIDsStatusAndSafePath(t *testing.T) {
 func TestRequestLoggingPanicBeforeAndAfterCommit(t *testing.T) {
 	for _, committed := range []bool{false, true} {
 		var output bytes.Buffer
-		handler := NewRequestLogging(testLogger{&output}, fixedID("123e4567-e89b-12d3-a456-426614174000"))(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		handler := NewRequestLogging(testLogger{&output}, fixedID("123e4567-e89b-12d3-a456-426614174000").Generate)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			if committed {
 				_, _ = w.Write([]byte("already sent"))
 			}
@@ -135,7 +135,7 @@ func TestRequestLoggingPanicBeforeAndAfterCommit(t *testing.T) {
 
 func TestRequestLoggingPreservesFlusher(t *testing.T) {
 	flushed := false
-	handler := NewRequestLogging(testLogger{&bytes.Buffer{}}, fixedID("123e4567-e89b-12d3-a456-426614174000"))(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	handler := NewRequestLogging(testLogger{&bytes.Buffer{}}, fixedID("123e4567-e89b-12d3-a456-426614174000").Generate)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		flusher, ok := w.(http.Flusher)
 		if !ok {
 			t.Error("http.Flusher interface not preserved")
@@ -152,7 +152,7 @@ func TestRequestLoggingPreservesFlusher(t *testing.T) {
 
 func TestRequestLoggingRethrowsAbortHandler(t *testing.T) {
 	var output bytes.Buffer
-	handler := NewRequestLogging(testLogger{&output}, fixedID("123e4567-e89b-12d3-a456-426614174000"))(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	handler := NewRequestLogging(testLogger{&output}, fixedID("123e4567-e89b-12d3-a456-426614174000").Generate)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		panic(http.ErrAbortHandler)
 	}))
 	defer func() {
@@ -175,7 +175,7 @@ func TestRequestLoggingRethrowsAbortHandler(t *testing.T) {
 func TestRequestLoggingUsesResolvedChiRouteForCompletion(t *testing.T) {
 	var output bytes.Buffer
 	router := chi.NewRouter()
-	router.Use(NewRequestLogging(testLogger{&output}, fixedID("123e4567-e89b-12d3-a456-426614174000")))
+	router.Use(NewRequestLogging(testLogger{&output}, fixedID("123e4567-e89b-12d3-a456-426614174000").Generate))
 	router.Get("/items/{itemID}", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	router.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/items/secret-id", nil))
 	lines := strings.Split(strings.TrimSpace(output.String()), "\n")

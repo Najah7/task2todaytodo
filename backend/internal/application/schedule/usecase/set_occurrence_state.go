@@ -14,15 +14,15 @@ import (
 // SetOccurrenceStateUseCase applies one named state transition to an occurrence.
 // State is fixed at construction so each public action retains its own ACL.
 type SetOccurrenceStateUseCase struct {
-	uow    UOW
-	state  string
-	logger telemetry.Logger
-	ids    shared.ID
-	now    func() time.Time
+	uow     UOW
+	state   string
+	logger  telemetry.Logger
+	issueID func() string
+	now     func() time.Time
 }
 
-func NewSetOccurrenceStateUseCase(uow UOW, state string, logger telemetry.Logger, ids shared.ID) *SetOccurrenceStateUseCase {
-	return &SetOccurrenceStateUseCase{uow: uow, state: state, logger: telemetry.OrNop(logger), ids: ids, now: time.Now}
+func NewSetOccurrenceStateUseCase(uow UOW, state string, logger telemetry.Logger, issueID func() string) *SetOccurrenceStateUseCase {
+	return &SetOccurrenceStateUseCase{uow: uow, state: state, logger: telemetry.OrNop(logger), issueID: issueID, now: time.Now}
 }
 
 func (uc *SetOccurrenceStateUseCase) Execute(ctx context.Context, actorID, blueprintID, occurrenceDate string, expectedRevision int32) (err error) {
@@ -76,7 +76,7 @@ func (uc *SetOccurrenceStateUseCase) Execute(ctx context.Context, actorID, bluep
 		updated.UpdatedAt = uc.now().UTC().Unix()
 		updated.IsOverride = true
 		if !current.persisted {
-			id, err := virtualOccurrenceID(uc.ids)
+			id, err := virtualOccurrenceID(uc.issueID)
 			if err != nil {
 				return err
 			}

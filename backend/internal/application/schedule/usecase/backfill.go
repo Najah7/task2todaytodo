@@ -8,29 +8,27 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
-	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
 )
 
 var ErrBackfillProjectSetChanged = errors.New("schedule project associations changed during backfill")
 
 type BackfillUseCase struct {
-	uow UOW
-	ids shared.ID
+	uow     UOW
+	issueID func() string
 }
 
-func NewBackfillUseCase(uow UOW, ids shared.ID) *BackfillUseCase {
-	return &BackfillUseCase{uow: uow, ids: ids}
+func NewBackfillUseCase(uow UOW, issueID func() string) *BackfillUseCase {
+	return &BackfillUseCase{uow: uow, issueID: issueID}
 }
 
-func (uc *BackfillUseCase) Execute(ctx context.Context, actorID string, cutoff time.Time, report func(processedBlueprints, generatedSchedules int) error) (BackfillResult, error) {
+func (uc *BackfillUseCase) Execute(ctx context.Context, actorID string, cutoff time.Time, report func(processedBlueprints, generatedSchedules int) error) (processedBlueprints, generatedSchedules int, err error) {
 	var candidates []dao.BlueprintRevision
 	if err := uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		var err error
 		candidates, err = repos.Blueprints().ListRevisionsForBackfill(ctx)
 		return err
 	}); err != nil {
-		return BackfillResult{}, err
+		return 0, 0, err
 	}
 
 	blueprintSet := make(map[string]struct{}, len(candidates))
@@ -44,10 +42,9 @@ func (uc *BackfillUseCase) Execute(ctx context.Context, actorID string, cutoff t
 	sort.Strings(blueprintIDs)
 
 	cutoff = cutoff.UTC()
-	result := BackfillResult{}
 	for _, blueprintID := range blueprintIDs {
 		if err := ctx.Err(); err != nil {
-			return result, err
+			return processedBlueprints, generatedSchedules, err
 		}
 
 		var generated int
@@ -94,25 +91,25 @@ func (uc *BackfillUseCase) Execute(ctx context.Context, actorID string, cutoff t
 			return nil
 		})
 		if err != nil {
-			return result, err
+			return processedBlueprints, generatedSchedules, err
 		}
 		if processed {
-			result.ProcessedBlueprints++
+			processedBlueprints++
 		}
-		result.GeneratedSchedules += generated
+		generatedSchedules += generated
 		if processed && report != nil {
-			if err := report(result.ProcessedBlueprints, result.GeneratedSchedules); err != nil {
-				return result, err
+			if err := report(processedBlueprints, generatedSchedules); err != nil {
+				return processedBlueprints, generatedSchedules, err
 			}
 		}
 	}
-	return result, nil
+	return processedBlueprints, generatedSchedules, nil
 }
 
 func (uc *BackfillUseCase) backfillRevision(ctx context.Context, repos Repositories, actorID string, revision dao.BlueprintRevision, cutoff time.Time) (int, error) {
 	location, err := time.LoadLocation(revision.Timezone)
 	if err != nil {
-		return 0, recurrence.ErrRecurrenceTimezoneInvalid
+		return 0, domain.ErrRecurrenceTimezoneInvalid
 	}
 	localCutoffDate := localCalendarDate(cutoff.In(location))
 	start := parseLocalTimestamp(revision.LocalStart)
@@ -130,7 +127,7 @@ func (uc *BackfillUseCase) backfillRevision(ctx context.Context, repos Repositor
 		}
 		ruleEnd = &value
 	}
-	rule := recurrence.BlueprintRule{
+	rule := domain.BlueprintRule{
 		Start: start, AnchorDate: anchor, End: end, Timezone: revision.Timezone,
 		Frequency: revision.Frequency, Interval: revision.Interval,
 		Weekdays: mustParseWeekdays(revision.Weekdays), EndDate: ruleEnd,
@@ -176,7 +173,7 @@ func (uc *BackfillUseCase) backfillRevision(ctx context.Context, repos Repositor
 		return 0, nil
 	}
 
-	occurrences, err := recurrence.GenerateBlueprintOccurrences(rule, from, through)
+	occurrences, err := domain.GenerateBlueprintOccurrences(rule, from, through)
 	if err != nil {
 		return 0, err
 	}
@@ -185,7 +182,7 @@ func (uc *BackfillUseCase) backfillRevision(ctx context.Context, repos Repositor
 		if !occurrence.StartAt.Before(cutoff) {
 			continue
 		}
-		id := uc.ids.Generate()
+		id := uc.issueID()
 		row := dao.ScheduleOccurrence{
 			ID: &id, BlueprintID: revision.ID, OccurrenceDate: occurrence.Date.Format("2006-01-02"),
 			SourceRevisionID: revision.RevisionID, UserID: revision.UserID, ProjectID: revision.ProjectID,
@@ -204,11 +201,11 @@ func (uc *BackfillUseCase) backfillRevision(ctx context.Context, repos Repositor
 	return generated, repos.Blueprints().AdvanceRevisionBackfillCheckpoint(ctx, revision.RevisionID, through.Format("2006-01-02"))
 }
 
-func lastSafeBackfillDate(rule recurrence.BlueprintRule, from, through, localCutoffDate time.Time, cutoff time.Time) (time.Time, error) {
+func lastSafeBackfillDate(rule domain.BlueprintRule, from, through, localCutoffDate time.Time, cutoff time.Time) (time.Time, error) {
 	if through.Before(from) || localCutoffDate.Before(from) || through.Before(localCutoffDate) {
 		return through, nil
 	}
-	todays, err := recurrence.GenerateBlueprintOccurrences(rule, localCutoffDate, localCutoffDate)
+	todays, err := domain.GenerateBlueprintOccurrences(rule, localCutoffDate, localCutoffDate)
 	if err != nil {
 		return time.Time{}, err
 	}

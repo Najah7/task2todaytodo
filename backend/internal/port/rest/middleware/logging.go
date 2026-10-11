@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/port/rest"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 	"github.com/go-chi/chi/v5"
@@ -17,13 +16,13 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func NewRequestLogging(logger telemetry.Logger, ids shared.ID) func(http.Handler) http.Handler {
+func NewRequestLogging(logger telemetry.Logger, issueID func() string) func(http.Handler) http.Handler {
 	logger = telemetry.OrNop(logger)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			requestID := incomingRequestID(r.Header.Get("X-Request-ID"))
 			if requestID == "" {
-				requestID = ids.Generate()
+				requestID = issueID()
 			}
 			w.Header().Set("X-Request-ID", requestID)
 			ctx := telemetry.WithRequestID(r.Context(), requestID)

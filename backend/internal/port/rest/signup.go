@@ -5,16 +5,15 @@ import (
 	"net/http"
 
 	authusecase "github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
-	"github.com/Najah7/task2todaytodo/internal/application/shared"
 )
 
 type SignupHandler struct {
-	user authusecase.UserUseCases
-	ID   shared.ID
+	user    authusecase.UserUseCases
+	issueID func() string
 }
 
-func NewSignupHandler(user authusecase.UserUseCases, ID shared.ID) *SignupHandler {
-	return &SignupHandler{user: user, ID: ID}
+func NewSignupHandler(user authusecase.UserUseCases, issueID func() string) *SignupHandler {
+	return &SignupHandler{user: user, issueID: issueID}
 }
 
 type SignupRequest struct {
@@ -43,7 +42,7 @@ func (h *SignupHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := h.user.Create.Execute(ctx, h.ID.Generate(), req.Email, req.Password)
+	u, err := h.user.Create.Execute(ctx, h.issueID(), req.Email, req.Password)
 	if err != nil {
 		status, detail := errToErrResponse(err, "password")
 		WriteError(w, status, ErrSpecUsersCreateFailed, detail)

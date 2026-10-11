@@ -13,19 +13,19 @@ const backfillJobName = "backfill-schedules"
 type RunBackfillSchedulesUseCase struct {
 	repo   OperationRepository
 	runner Runner
-	ids    IDGenerator
+	id     IDIssuer
 	clock  Clock
 	lease  time.Duration
 }
 
-func NewRunBackfillSchedulesUseCase(repo OperationRepository, runner Runner, ids IDGenerator, clock Clock, lease time.Duration) *RunBackfillSchedulesUseCase {
+func NewRunBackfillSchedulesUseCase(repo OperationRepository, runner Runner, id IDIssuer, clock Clock, lease time.Duration) *RunBackfillSchedulesUseCase {
 	if clock == nil {
 		clock = systemClock{}
 	}
 	if lease <= 0 {
 		lease = 30 * time.Second
 	}
-	return &RunBackfillSchedulesUseCase{repo: repo, runner: runner, ids: ids, clock: clock, lease: lease}
+	return &RunBackfillSchedulesUseCase{repo: repo, runner: runner, id: id, clock: clock, lease: lease}
 }
 
 func (uc *RunBackfillSchedulesUseCase) Execute(ctx context.Context, actorID string) (dao.Operation, error) {
@@ -40,9 +40,9 @@ func (uc *RunBackfillSchedulesUseCase) Execute(ctx context.Context, actorID stri
 		return dao.Operation{}, ErrPermissionDenied
 	}
 	now := uc.clock.Now().UTC()
-	leaseToken := uc.ids.Generate()
+	leaseToken := uc.id.NewUUID()
 	operation, created, token, err := uc.repo.CreateOrGetActive(ctx, dao.Operation{
-		ID: uc.ids.Generate(), JobName: backfillJobName,
+		ID: uc.id.NewULID(), JobName: backfillJobName,
 		State: "running", RequestedBy: actorID, Cutoff: now, CreatedAt: now, StartedAt: now,
 	}, leaseToken, uc.lease)
 	if err != nil {

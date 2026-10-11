@@ -15,10 +15,9 @@ internal/application/<context>/usecase/  Single-operation use cases, ports, test
 internal/application/<context>/repository/ DB adapter and sqlc mapping
 internal/application/shared/             Cross-context application contracts
 internal/application/shared/pagination/  Transport-independent List page policy
+internal/application/schedule/domain/    Schedule models and blueprint recurrence rules
 internal/config/                          Process environment loading and validation
 internal/telemetry/                       Structured logging and OpenTelemetry setup, propagation and trace export
-internal/application/shared/calendar/    Shared calendar and wall-time helpers
-internal/application/shared/recurrence/  Shared recurrence values and occurrence rules
 internal/port/rest/                      HTTP handlers, response and error mapping
 internal/port/rest/middleware/           HTTP middleware
 internal/port/rest/pagination/           Query parsing and encrypted page tokens

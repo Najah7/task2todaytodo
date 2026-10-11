@@ -7,7 +7,6 @@ import (
 	authusecase "github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
-	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
@@ -24,17 +23,17 @@ type UseCase struct {
 	Admin               adminusecase.UseCases
 }
 
-func NewUseCase(authStore AuthStore, projectStore ProjectStore, taskStore TaskStore, adminStore AdminStore, projectUOW projectusecase.UnitOfWork, taskUOW taskusecase.UOW, scheduleUOW scheduleusecase.UOW, ID shared.ID, logger telemetry.Logger) (UseCase, func(context.Context) error) {
-	schedules := NewScheduleUseCases(scheduleUOW, authStore, ID, logger)
-	admin, closeAdmin := NewAdminUseCases(adminStore, scheduleBackfillAdapter{usecase: schedules.Backfill}, ID, logger)
+func NewUseCase(store Store, uow UOW, id IDIssuer, logger telemetry.Logger) (UseCase, func(context.Context) error) {
+	schedules := NewScheduleUseCases(uow.Schedule, store.Auth, id, logger)
+	admin, closeAdmin := NewAdminUseCases(store.Admin, schedules.Backfill, id, logger)
 	return UseCase{
-		User:                NewUserUseCases(authStore, logger),
-		PersonalAccessToken: NewPersonalAccessTokenUseCases(authStore, logger),
-		Role:                NewRoleUseCases(authStore, logger),
-		Timezone:            authusecase.TimezoneUseCases{List: authusecase.NewListTimezonesUseCase(authStore.Users, logger)},
-		Project:             NewProjectUseCases(projectStore, projectUOW, logger, newTaskProjectProgressReader(projectStore.Projects, taskStore.ActionItems)),
-		Task:                NewTaskUseCases(taskStore, taskUOW, authStore, ID, logger),
-		ActionItem:          NewActionItemUseCases(taskUOW, logger),
+		User:                NewUserUseCases(store.Auth, logger),
+		PersonalAccessToken: NewPersonalAccessTokenUseCases(store.Auth, logger),
+		Role:                NewRoleUseCases(store.Auth, logger),
+		Timezone:            NewTimezoneUseCases(store.Auth, logger),
+		Project:             NewProjectUseCases(store.Project, uow.Project, logger),
+		Task:                NewTaskUseCases(store.Task, uow.Task, store.Auth, id, logger),
+		ActionItem:          NewActionItemUseCases(uow.Task, logger),
 		Schedule:            schedules,
 		Admin:               admin,
 	}, closeAdmin

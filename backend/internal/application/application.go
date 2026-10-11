@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/settings"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
@@ -15,7 +14,12 @@ type Application struct {
 	UOW     UOW
 }
 
-func New(database settings.DatabaseSettings, ids shared.ID, logger telemetry.Logger) (*Application, func(context.Context) error, error) {
+type IDIssuer interface {
+	NewULID() string
+	NewUUID() string
+}
+
+func New(database settings.DatabaseSettings, id IDIssuer, logger telemetry.Logger) (*Application, func(context.Context) error, error) {
 	ctx := context.Background()
 	pool, err := newPool(ctx, database)
 	if err != nil {
@@ -24,7 +28,7 @@ func New(database settings.DatabaseSettings, ids shared.ID, logger telemetry.Log
 
 	store := NewStore(pool)
 	uow := NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
-	uc, stopUseCases := NewUseCase(store.Auth, store.Project, store.Task, store.Admin, uow.Project, uow.Task, uow.Schedule, ids, logger)
+	uc, stopUseCases := NewUseCase(store, uow, id, logger)
 	closeApp := func(ctx context.Context) error {
 		if err := stopUseCases(ctx); err != nil {
 			return fmt.Errorf("shutdown admin operations: %w", err)

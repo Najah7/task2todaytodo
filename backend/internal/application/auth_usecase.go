@@ -32,3 +32,9 @@ func NewRoleUseCases(authStore AuthStore, logger telemetry.Logger) authusecase.R
 		Permissions: authusecase.NewListPermissionsUseCase(authStore.Roles, logger),
 	}
 }
+
+func NewTimezoneUseCases(authStore AuthStore, logger telemetry.Logger) authusecase.TimezoneUseCases {
+	return authusecase.TimezoneUseCases{
+		List: authusecase.NewListTimezonesUseCase(authStore.Users, logger),
+	}
+}

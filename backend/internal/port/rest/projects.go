@@ -12,7 +12,6 @@ import (
 	projectdao "github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	projectdomain "github.com/Najah7/task2todaytodo/internal/application/project/domain"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
-	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	sharedstatus "github.com/Najah7/task2todaytodo/internal/application/shared/status"
 	taskdao "github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	taskdomain "github.com/Najah7/task2todaytodo/internal/application/task/domain"
@@ -23,12 +22,12 @@ import (
 type ProjectHandler struct {
 	projects   *projectusecase.UseCases
 	tasks      taskusecase.TaskUseCases
-	ID         shared.ID
+	issueID    func() string
 	pageTokens *pagination.Codec
 }
 
-func NewProjectHandler(projects *projectusecase.UseCases, tasks taskusecase.TaskUseCases, ID shared.ID, codecs ...*pagination.Codec) *ProjectHandler {
-	h := &ProjectHandler{projects: projects, tasks: tasks, ID: ID}
+func NewProjectHandler(projects *projectusecase.UseCases, tasks taskusecase.TaskUseCases, issueID func() string, codecs ...*pagination.Codec) *ProjectHandler {
+	h := &ProjectHandler{projects: projects, tasks: tasks, issueID: issueID}
 	if len(codecs) > 0 {
 		h.pageTokens = codecs[0]
 	}
@@ -285,7 +284,7 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	project, err := h.projects.Create.Execute(r.Context(), projectusecase.CreateProjectInput{
-		ID: projectdomain.ProjectID(h.ID.Generate()), UserID: userID, Type: request.Type,
+		ID: projectdomain.ProjectID(h.issueID()), UserID: userID, Type: request.Type,
 		Title: request.Title, Goal: request.Goal, Description: request.Description, Priority: request.Priority,
 		StartDate: startDate, EndDate: endDate,
 	})
@@ -784,7 +783,7 @@ func (h *ProjectHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	task, err := h.tasks.CreateInProject.Execute(r.Context(), taskusecase.CreateTaskInProjectInput{
-		ID: taskdomain.TaskID(h.ID.Generate()), UserID: taskdomain.UserID(userID), ProjectID: taskdomain.ProjectID(projectID),
+		ID: taskdomain.TaskID(h.issueID()), UserID: taskdomain.UserID(userID), ProjectID: taskdomain.ProjectID(projectID),
 		Title: request.Title, Description: request.Description, DueDate: dueDate,
 		EstimatedMinutes: cloneInt(request.ManualEstimatedMinutes), Priority: request.Priority,
 	})

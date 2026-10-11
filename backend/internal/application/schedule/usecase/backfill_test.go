@@ -4,12 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
+	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 )
 
 func TestLastSafeBackfillDateRespectsSameDayInstantCutoff(t *testing.T) {
 	day := time.Date(2025, time.October, 11, 0, 0, 0, 0, time.UTC)
-	rule := recurrence.BlueprintRule{
+	rule := domain.BlueprintRule{
 		Start:    time.Date(2025, time.October, 11, 9, 0, 0, 0, time.UTC),
 		End:      time.Date(2025, time.October, 11, 10, 0, 0, 0, time.UTC),
 		Timezone: "UTC", Frequency: "daily", Interval: 1,

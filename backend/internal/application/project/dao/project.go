@@ -6,44 +6,16 @@ type ProjectProgressSources struct {
 }
 
 type ProjectTaskProgress struct {
-	ProjectID     string
-	TaskID        string
-	UserID        string
-	ProjectStatus string
-	Done          bool
-	Progress      int
-	Total         int
-	Completed     int
+	ProjectID            string
+	TaskDone             bool
+	TotalActionItems     int
+	CompletedActionItems int
 }
 
 type ProjectScheduleProgress struct {
 	ProjectID string
 	Total     int
 	Completed int
-	Roots     []ProjectProgressRecurrence
-}
-
-type ProjectSchedulePauseInterval struct {
-	PausedAt  string
-	ResumedAt *string
-}
-
-// ProjectProgressRecurrence contains recurrence facts read from storage. It
-// deliberately carries no progress or eligibility result.
-type ProjectProgressRecurrence struct {
-	BlueprintID          string
-	RecurrenceAnchorDate string
-	LocalStart           string
-	LocalEnd             string
-	Timezone             string
-	Frequency            string
-	Interval             int
-	Weekdays             []string
-	EndDate              *string
-	CutoffAfter          *string
-	OccurrenceDate       string
-	OccurrenceSavedToday bool
-	PauseIntervals       []ProjectSchedulePauseInterval
 }
 
 type Project struct {

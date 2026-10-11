@@ -12,10 +12,8 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application"
 	projectdomain "github.com/Najah7/task2todaytodo/internal/application/project/domain"
-	projectrepo "github.com/Najah7/task2todaytodo/internal/application/project/repository"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
-	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
 	taskdomain "github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
 	"github.com/Najah7/task2todaytodo/tests/integration/internal/testdb"
@@ -57,9 +55,9 @@ func TestProjectScheduleAndTaskCreateUseProjectOwnerAndRecordMemberActor(t *test
 	if err != nil {
 		t.Fatalf("create shared Task: %v", err)
 	}
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task)
+	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
 	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
-	schedule, err := scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, projectActionItemID{}, store.Auth.Users, nil).Execute(ctx, actorID, scheduleusecase.CreateBlueprintInput{
+	schedule, err := scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, (projectActionItemID{}).Generate, store.Auth.Users, nil).Execute(ctx, actorID, scheduleusecase.CreateBlueprintInput{
 		Title: "Created by editor", ProjectID: projectID, Timezone: "UTC", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "once",
 	})
 	if err != nil {
@@ -273,7 +271,7 @@ func TestProjectMemberRemovalRacesCannotLeaveRemovedAssignee(t *testing.T) {
 	})
 	store := application.NewStore(pool)
 	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project, store.Schedule)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task)
+	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
 	raceCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -289,7 +287,7 @@ func TestProjectMemberRemovalRacesCannotLeaveRemovedAssignee(t *testing.T) {
 	go func() {
 		<-startGate
 		member := memberID
-		_, err := scheduleusecase.NewUpdateOccurrenceUseCase(scheduleUOW, nil, projectActionItemID{}).Execute(raceCtx, ownerID, blueprintID, occurrenceDate, scheduleusecase.UpdateScheduleInput{AssigneeID: &member}, 1)
+		_, err := scheduleusecase.NewUpdateOccurrenceUseCase(scheduleUOW, nil, (projectActionItemID{}).Generate).Execute(raceCtx, ownerID, blueprintID, occurrenceDate, scheduleusecase.UpdateScheduleInput{AssigneeID: &member}, 1)
 		assignSchedule <- err
 	}()
 	go func() {
@@ -399,17 +397,29 @@ func TestProjectDeletionLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 func TestProjectProgressCombinesPerTaskFloorsAndScheduleOccurrencesFromDB(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
-	ownerID, projectID := ulid.Make().String(), ulid.Make().String()
-	taskIDs := []string{ulid.Make().String(), ulid.Make().String()}
+	ownerID, memberID, projectID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
+	taskIDs := []string{ulid.Make().String(), ulid.Make().String(), ulid.Make().String()}
 	scheduleID, blueprintID := ulid.Make().String(), ulid.Make().String()
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Progress',$2,'unused','UTC')`, ownerID, ownerID+"@project-flow.test"); err != nil {
-		t.Fatal(err)
+	for _, id := range []string{ownerID, memberID} {
+		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Progress',$2,'unused','UTC')`, id, id+"@project-flow.test"); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','Progress project','low',$2)`, projectID, ownerID); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := pool.Exec(ctx, `INSERT INTO project_members(project_id,user_id,role_id,added_by) VALUES($1,$2,'editor',$3)`, projectID, memberID, ownerID); err != nil {
+		t.Fatal(err)
+	}
 	for i, id := range taskIDs {
-		if _, err := pool.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,changed_by) VALUES($1,$2,$3,$2,$4,$2)`, id, ownerID, projectID, fmt.Sprintf("Task %d", i)); err != nil {
+		status, assigneeID := "open", ownerID
+		if i == 1 {
+			assigneeID = memberID
+		}
+		if i == 2 {
+			status = "done"
+		}
+		if _, err := pool.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,status,changed_by) VALUES($1,$2,$3,$4,$5,$6,$2)`, id, ownerID, projectID, assigneeID, fmt.Sprintf("Task %d", i), status); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -422,6 +432,11 @@ func TestProjectProgressCombinesPerTaskFloorsAndScheduleOccurrencesFromDB(t *tes
 	insertActionItem(ulid.Make().String(), taskIDs[0], 0, true)
 	insertActionItem(ulid.Make().String(), taskIDs[0], 1, false)
 	insertActionItem(ulid.Make().String(), taskIDs[0], 2, false)
+	deletedActionItemID := ulid.Make().String()
+	insertActionItem(deletedActionItemID, taskIDs[0], 3, true)
+	if _, err := pool.Exec(ctx, `UPDATE action_items SET deleted_at=now() WHERE id=$1`, deletedActionItemID); err != nil {
+		t.Fatal(err)
+	}
 	insertActionItem(ulid.Make().String(), taskIDs[1], 0, true)
 	insertActionItem(ulid.Make().String(), taskIDs[1], 1, false)
 	start := time.Now().UTC().Truncate(time.Minute)
@@ -430,6 +445,7 @@ func TestProjectProgressCombinesPerTaskFloorsAndScheduleOccurrencesFromDB(t *tes
 	}
 	t.Cleanup(func() {
 		_ = testdb.DeleteScheduleFixture(context.Background(), pool, blueprintID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM project_members WHERE project_id=$1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM task_revisions WHERE id=ANY($1::text[])`, taskIDs)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_revisions WHERE id=$1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM tasks WHERE id=ANY($1::text[])`, taskIDs)
@@ -438,16 +454,16 @@ func TestProjectProgressCombinesPerTaskFloorsAndScheduleOccurrencesFromDB(t *tes
 	})
 	store := application.NewStore(pool)
 	getProject := newProjectUseCases(t, pool, store).Get
-	got, err := getProject.Execute(ctx, projectdomain.UserID(ownerID), projectdomain.ProjectID(projectID))
+	got, err := getProject.Execute(ctx, projectdomain.UserID(memberID), projectdomain.ProjectID(projectID))
 	if err != nil {
-		t.Fatalf("get Project with derived progress: %v", err)
+		t.Fatalf("get Project with derived progress as a member: %v", err)
 	}
-	if got.Progress != 61 {
-		t.Fatalf("Project progress = %d; want floor((33 + 50 + 100)/3) = 61", got.Progress)
+	if got.Progress != 70 {
+		t.Fatalf("Project progress = %d; want floor((33 + 50 + 100 + 100)/4) = 70", got.Progress)
 	}
 }
 
-func TestProjectProgressUsesScheduleWallTimeAcrossDSTGap(t *testing.T) {
+func TestProjectProgressUsesOnlySavedScheduleOccurrences(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, projectID, scheduleID, blueprintID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
@@ -457,9 +473,17 @@ func TestProjectProgressUsesScheduleWallTimeAcrossDSTGap(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','DST progress','low',$2)`, projectID, ownerID); err != nil {
 		t.Fatal(err)
 	}
-	start := time.Date(2026, 3, 1, 2, 30, 0, 0, time.FixedZone("EST", -5*60*60))
+	location, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().In(location)
+	occurrenceDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, location)
+	rootDate := occurrenceDate.AddDate(0, 0, -7)
+	weekday := strings.ToLower(rootDate.Weekday().String())[:3]
+	start := time.Date(rootDate.Year(), rootDate.Month(), rootDate.Day(), 12, 0, 0, 0, location)
 	end := start.Add(time.Hour)
-	if err := testdb.InsertScheduleFixture(ctx, pool, testdb.ScheduleFixture{BlueprintID: blueprintID, ScheduleID: scheduleID, UserID: ownerID, ProjectID: projectID, Title: "Sunday at 2:30", Timezone: "America/New_York", Frequency: "weekly", Interval: 1, Weekdays: []string{"sun"}, AnchorDate: "2026-03-01", OccurrenceDate: "2026-03-01", StartAt: start, EndAt: end, Completed: true}); err != nil {
+	if err := testdb.InsertScheduleFixture(ctx, pool, testdb.ScheduleFixture{BlueprintID: blueprintID, ScheduleID: scheduleID, UserID: ownerID, ProjectID: projectID, Title: "Weekly Schedule", Timezone: location.String(), Frequency: "weekly", Interval: 1, Weekdays: []string{weekday}, AnchorDate: rootDate.Format("2006-01-02"), OccurrenceDate: rootDate.Format("2006-01-02"), StartAt: start, EndAt: end, Completed: true}); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
@@ -469,75 +493,25 @@ func TestProjectProgressUsesScheduleWallTimeAcrossDSTGap(t *testing.T) {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, ownerID)
 	})
 
-	readProgress := func(asOf time.Time) int {
-		t.Helper()
-		sources, err := projectrepo.NewProjectRepository(pool).ReadProjectProgressSources(ctx, []string{projectID}, asOf)
-		if err != nil || len(sources.Schedules) != 1 {
-			t.Fatalf("read Project progress at %s: sources=%+v error=%v", asOf, sources, err)
-		}
-		schedule := sources.Schedules[0]
-		facts := projectdomain.ScheduleProgressFacts{Total: schedule.Total, Completed: schedule.Completed}
-		for _, root := range schedule.Roots {
-			startLocal, err := time.Parse("2006-01-02 15:04:05", root.LocalStart)
-			if err != nil {
-				t.Fatalf("parse recurrence local start: %v", err)
-			}
-			endLocal, err := time.Parse("2006-01-02 15:04:05", root.LocalEnd)
-			if err != nil {
-				t.Fatalf("parse recurrence local end: %v", err)
-			}
-			anchor, err := time.Parse("2006-01-02", root.RecurrenceAnchorDate)
-			if err != nil {
-				t.Fatalf("parse recurrence anchor date: %v", err)
-			}
-			rule := recurrence.BlueprintRule{Start: startLocal, End: endLocal, AnchorDate: anchor, Timezone: root.Timezone, Frequency: root.Frequency, Interval: root.Interval}
-			for _, weekday := range root.Weekdays {
-				switch weekday {
-				case "sun":
-					rule.Weekdays = append(rule.Weekdays, time.Sunday)
-				case "mon":
-					rule.Weekdays = append(rule.Weekdays, time.Monday)
-				case "tue":
-					rule.Weekdays = append(rule.Weekdays, time.Tuesday)
-				case "wed":
-					rule.Weekdays = append(rule.Weekdays, time.Wednesday)
-				case "thu":
-					rule.Weekdays = append(rule.Weekdays, time.Thursday)
-				case "fri":
-					rule.Weekdays = append(rule.Weekdays, time.Friday)
-				case "sat":
-					rule.Weekdays = append(rule.Weekdays, time.Saturday)
-				}
-			}
-			if root.EndDate != nil {
-				endDate, err := time.Parse("2006-01-02", *root.EndDate)
-				if err != nil {
-					t.Fatalf("parse recurrence end date: %v", err)
-				}
-				rule.EndDate = &endDate
-			}
-			if root.CutoffAfter != nil {
-				cutoff, err := time.Parse("2006-01-02", *root.CutoffAfter)
-				if err != nil {
-					t.Fatalf("parse recurrence cutoff: %v", err)
-				}
-				if rule.EndDate == nil || cutoff.Before(*rule.EndDate) {
-					rule.EndDate = &cutoff
-				}
-			}
-			facts.Roots = append(facts.Roots, projectdomain.ScheduleProgressRule{Rule: rule, OccurrenceSavedToday: root.OccurrenceSavedToday})
-		}
-		progress, err := projectdomain.CalculateProjectProgress(nil, []projectdomain.ScheduleProgressFacts{facts}, asOf)
-		if err != nil {
-			t.Fatalf("calculate Project progress at %s: %v", asOf, err)
-		}
-		return progress
+	store := application.NewStore(pool)
+	projectCases := newProjectUseCases(t, pool, store)
+	project, err := projectCases.Get.Execute(ctx, projectdomain.UserID(ownerID), projectdomain.ProjectID(projectID))
+	if err != nil || project.Progress != 100 {
+		t.Fatalf("Project progress with only the completed recurrence root saved = %d, error=%v; want 100%%", project.Progress, err)
 	}
-	if got := readProgress(time.Date(2026, 3, 8, 7, 30, 0, 0, time.UTC)); got != 100 {
-		t.Fatalf("progress on nonexistent 02:30 DST wall time = %d; want 100 with virtual occurrence excluded", got)
+
+	backfillUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	cutoff := time.Date(occurrenceDate.Year(), occurrenceDate.Month(), occurrenceDate.Day(), 12, 1, 0, 0, location)
+	_, generated, err := scheduleusecase.NewBackfillUseCase(backfillUOW, (projectActionItemID{}).Generate).Execute(ctx, ownerID, cutoff, nil)
+	if err != nil || generated != 1 {
+		t.Fatalf("backfill today's recurring Schedule generated %d occurrences, error=%v; want one saved occurrence", generated, err)
 	}
-	if got := readProgress(time.Date(2026, 3, 15, 6, 30, 0, 0, time.UTC)); got != 50 {
-		t.Fatalf("progress on valid recurring Sunday = %d; want completed root plus one virtual occurrence", got)
+	if status, _ := readProjectState(t, pool, projectID); status != "open" {
+		t.Fatalf("Project status after Schedule backfill = %q; want unchanged open status", status)
+	}
+	project, err = projectCases.Get.Execute(ctx, projectdomain.UserID(ownerID), projectdomain.ProjectID(projectID))
+	if err != nil || project.Progress != 50 {
+		t.Fatalf("Project progress after saving today's incomplete recurrence = %d, error=%v; want 50%%", project.Progress, err)
 	}
 }
 
@@ -568,7 +542,7 @@ func TestProjectTaskAndScheduleCreationRaceWithParentOnlyDeletion(t *testing.T) 
 	})
 	store := application.NewStore(pool)
 	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project, store.Schedule)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task)
+	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
 	taskIDValue := taskdomain.TaskID(taskID)
 	start := time.Now().UTC().AddDate(0, 0, 2).Truncate(time.Hour)
@@ -585,7 +559,7 @@ func TestProjectTaskAndScheduleCreationRaceWithParentOnlyDeletion(t *testing.T) 
 	}()
 	go func() {
 		<-startGate
-		created, err := scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, projectActionItemID{}, store.Auth.Users, nil).Execute(raceCtx, editorID, scheduleusecase.CreateBlueprintInput{Title: "Racing Schedule", ProjectID: projectID, Timezone: "UTC", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "once"})
+		created, err := scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, (projectActionItemID{}).Generate, store.Auth.Users, nil).Execute(raceCtx, editorID, scheduleusecase.CreateBlueprintInput{Title: "Racing Schedule", ProjectID: projectID, Timezone: "UTC", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "once"})
 		if err == nil {
 			scheduleBlueprintID = created.ID
 		}

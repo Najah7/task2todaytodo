@@ -311,7 +311,7 @@ func updateProject(
 
 func updateProjectProgressSource() *projectProgressSourceFake {
 	return &projectProgressSourceFake{sources: dao.ProjectProgressSources{
-		Tasks: []dao.ProjectTaskProgress{{ProjectID: "project-1", TaskID: "task-1", Progress: 50}},
+		Tasks: []dao.ProjectTaskProgress{{ProjectID: "project-1", TotalActionItems: 2, CompletedActionItems: 1}},
 	}}
 }
 

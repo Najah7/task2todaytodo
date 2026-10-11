@@ -1,4 +1,4 @@
-package recurrence
+package domain
 
 import (
 	"errors"
@@ -25,6 +25,7 @@ type BlueprintOccurrence struct {
 }
 
 var (
+	ErrRecurrenceTimezoneInvalid = errors.New("recurrence timezone must be a valid IANA timezone")
 	ErrBlueprintFrequencyInvalid = errors.New("invalid blueprint recurrence frequency")
 	ErrBlueprintIntervalInvalid  = errors.New("blueprint recurrence interval must be positive")
 	ErrBlueprintRangeInvalid     = errors.New("blueprint recurrence range is invalid")

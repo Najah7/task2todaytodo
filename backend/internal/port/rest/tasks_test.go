@@ -273,7 +273,7 @@ func newTaskHandlerFixture() (*TaskHandler, *taskHandlerTaskRepository, *taskHan
 		Complete: taskusecase.NewCompleteTaskUseCase(uow, func() time.Time { return createdAt }, nil),
 		Reopen:   taskusecase.NewReopenTaskUseCase(uow, nil),
 	}
-	return NewTaskHandler(tasks, taskHandlerID{value: "task-new"}, listTestCodec()), taskRepo, uow
+	return NewTaskHandler(tasks, taskHandlerID{value: "task-new"}.Generate, listTestCodec()), taskRepo, uow
 }
 
 func taskRequest(method, path, body string, authenticated bool) *http.Request {

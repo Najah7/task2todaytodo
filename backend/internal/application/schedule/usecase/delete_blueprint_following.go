@@ -7,21 +7,20 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
 )
 
 type DeleteBlueprintFollowingUseCase struct {
-	uow UOW
-	ids shared.ID
-	now func() time.Time
+	uow     UOW
+	issueID func() string
+	now     func() time.Time
 }
 
-func NewDeleteBlueprintFollowingUseCase(uow UOW, ids shared.ID, clocks ...func() time.Time) *DeleteBlueprintFollowingUseCase {
+func NewDeleteBlueprintFollowingUseCase(uow UOW, issueID func() string, clocks ...func() time.Time) *DeleteBlueprintFollowingUseCase {
 	now := time.Now
 	if len(clocks) > 0 && clocks[0] != nil {
 		now = clocks[0]
 	}
-	return &DeleteBlueprintFollowingUseCase{uow: uow, ids: ids, now: now}
+	return &DeleteBlueprintFollowingUseCase{uow: uow, issueID: issueID, now: now}
 }
 
 func (uc *DeleteBlueprintFollowingUseCase) Execute(ctx context.Context, actorID, blueprintID, occurrenceDate string, expectedRevision int32) error {
@@ -43,7 +42,7 @@ func (uc *DeleteBlueprintFollowingUseCase) Execute(ctx context.Context, actorID,
 			return err
 		}
 		definition := definitionFromRevision(base)
-		occurrences, err := recurrence.GenerateBlueprintOccurrences(recurrence.BlueprintRule{
+		occurrences, err := domain.GenerateBlueprintOccurrences(domain.BlueprintRule{
 			Start: definition.LocalStart, AnchorDate: parseDateValue(base.RecurrenceAnchorDate), End: definition.LocalEnd,
 			Timezone: base.Timezone, Frequency: base.Frequency, Interval: base.Interval,
 			Weekdays: mustParseWeekdays(base.Weekdays), EndDate: definition.EndDate,
@@ -99,10 +98,10 @@ func (uc *DeleteBlueprintFollowingUseCase) Execute(ctx context.Context, actorID,
 		if freshRevision.RevisionID != base.RevisionID || currentVersion != expectedRevision {
 			return ErrOccurrenceRevisionMismatch
 		}
-		if uc.ids == nil {
+		if uc.issueID == nil {
 			return ErrBlueprintIDGeneratorUnavailable
 		}
-		if err := repo.DeleteFollowing(ctx, actorID, blueprintID, occurrenceDate, uc.ids.Generate(), expectedRevision); err != nil {
+		if err := repo.DeleteFollowing(ctx, actorID, blueprintID, occurrenceDate, uc.issueID(), expectedRevision); err != nil {
 			return err
 		}
 		for _, projectID := range projectIDs {

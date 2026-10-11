@@ -23,18 +23,16 @@ type OperationRepository interface {
 	Fail(context.Context, string, string, string, string) error
 }
 
-// BackfillExecutor is a consumer-owned primitive port implemented by root wiring.
+// BackfillExecutor is the primitive backfill port injected into the admin usecase.
 type BackfillExecutor interface {
-	Execute(ctx context.Context, actorID string, cutoff time.Time, report func(processedBlueprints, generatedSchedules int) error) (BackfillResult, error)
-}
-
-type BackfillResult struct {
-	ProcessedBlueprints int64
-	GeneratedSchedules  int64
+	Execute(ctx context.Context, actorID string, cutoff time.Time, report func(processedBlueprints, generatedSchedules int) error) (processedBlueprints, generatedSchedules int, err error)
 }
 
 type Clock interface{ Now() time.Time }
-type IDGenerator interface{ Generate() string }
+type IDIssuer interface {
+	NewULID() string
+	NewUUID() string
+}
 
 type Runner interface {
 	StartOperation(id, leaseToken, actorID string, cutoff time.Time)

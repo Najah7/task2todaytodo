@@ -11,26 +11,26 @@ import (
 
 type backfillBlockingFake struct{ started, release chan struct{} }
 
-func (f backfillBlockingFake) Execute(ctx context.Context, actor string, cutoff time.Time, report func(int, int) error) (BackfillResult, error) {
+func (f backfillBlockingFake) Execute(ctx context.Context, actor string, cutoff time.Time, report func(int, int) error) (int, int, error) {
 	if actor != "actor" || cutoff.IsZero() {
 		panic("unexpected execution input")
 	}
 	if err := report(3, 8); err != nil {
-		return BackfillResult{}, err
+		return 3, 8, err
 	}
 	close(f.started)
 	select {
 	case <-f.release:
-		return BackfillResult{ProcessedBlueprints: 3, GeneratedSchedules: 8}, nil
+		return 3, 8, nil
 	case <-ctx.Done():
-		return BackfillResult{}, ctx.Err()
+		return 3, 8, ctx.Err()
 	}
 }
 
 type backfillErrorFake struct{ err error }
 
-func (f backfillErrorFake) Execute(context.Context, string, time.Time, func(int, int) error) (BackfillResult, error) {
-	return BackfillResult{}, f.err
+func (f backfillErrorFake) Execute(context.Context, string, time.Time, func(int, int) error) (int, int, error) {
+	return 0, 0, f.err
 }
 
 func TestAsyncRunnerRunsOutsideRequestContextAndCompletes(t *testing.T) {
@@ -54,6 +54,9 @@ func TestAsyncRunnerRunsOutsideRequestContextAndCompletes(t *testing.T) {
 	case <-repo.done:
 	case <-time.After(time.Second):
 		t.Fatal("operation did not complete")
+	}
+	if !repo.completed || repo.processed != 3 || repo.generated != 8 {
+		t.Fatalf("completed progress = %v, %d, %d; want true, 3, 8", repo.completed, repo.processed, repo.generated)
 	}
 	cancelProcess()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -87,7 +90,7 @@ func TestAsyncRunnerStoresSafeFailureAndShutdownWaits(t *testing.T) {
 func TestAsyncRunnerShutdownCancelsActiveExecution(t *testing.T) {
 	repo := &operationRepoFake{operation: daoOperation("op"), done: make(chan struct{})}
 	executing := make(chan struct{})
-	executor := backfillWaitForCancel{started: executing}
+	executor := backfillBlockingFake{started: executing, release: make(chan struct{})}
 	runner := NewAsyncRunner(repo, executor, context.Background(), time.Second, 10*time.Millisecond)
 	runner.StartOperation("op", "lease", "actor", time.Now().UTC())
 	select {
@@ -102,6 +105,9 @@ func TestAsyncRunnerShutdownCancelsActiveExecution(t *testing.T) {
 	}
 	if !repo.failed || repo.failureCode != "interrupted" {
 		t.Fatalf("shutdown failure = %v %q", repo.failed, repo.failureCode)
+	}
+	if repo.processed != 3 || repo.generated != 8 {
+		t.Fatalf("interrupted progress = %d, %d; want 3, 8", repo.processed, repo.generated)
 	}
 }
 
@@ -203,21 +209,13 @@ func TestAsyncRunnerShutdownDuringHeartbeatPersistsInterruptedState(t *testing.T
 	}
 }
 
-type backfillWaitForCancel struct{ started chan struct{} }
-
-func (f backfillWaitForCancel) Execute(ctx context.Context, _ string, _ time.Time, _ func(int, int) error) (BackfillResult, error) {
-	close(f.started)
-	<-ctx.Done()
-	return BackfillResult{}, ctx.Err()
-}
-
 type backfillObservedCancellation struct{ started, stopped chan struct{} }
 
-func (f backfillObservedCancellation) Execute(ctx context.Context, _ string, _ time.Time, _ func(int, int) error) (BackfillResult, error) {
+func (f backfillObservedCancellation) Execute(ctx context.Context, _ string, _ time.Time, _ func(int, int) error) (int, int, error) {
 	close(f.started)
 	<-ctx.Done()
 	close(f.stopped)
-	return BackfillResult{}, ctx.Err()
+	return 0, 0, ctx.Err()
 }
 
 type leaseLostRepository struct{ *operationRepoFake }

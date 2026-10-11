@@ -121,7 +121,7 @@ func (r *AsyncRunner) execute(id, token, actorID string, cutoff time.Time) {
 		}
 		return nil
 	}
-	result, err := r.executor.Execute(ctx, actorID, cutoff, report)
+	processed, generated, err := r.executor.Execute(ctx, actorID, cutoff, report)
 	if err == nil && ctx.Err() != nil {
 		err = ctx.Err()
 	}
@@ -148,11 +148,11 @@ func (r *AsyncRunner) execute(id, token, actorID string, cutoff time.Time) {
 		cancelWrite()
 		return
 	}
-	if result.ProcessedBlueprints > latestProcessed {
-		latestProcessed = result.ProcessedBlueprints
+	if int64(processed) > latestProcessed {
+		latestProcessed = int64(processed)
 	}
-	if result.GeneratedSchedules > latestGenerated {
-		latestGenerated = result.GeneratedSchedules
+	if int64(generated) > latestGenerated {
+		latestGenerated = int64(generated)
 	}
 	if leaseLost.Load() {
 		return

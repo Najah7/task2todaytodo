@@ -6,6 +6,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
+	"github.com/Najah7/task2todaytodo/internal/application/shared/progress"
 )
 
 type ProjectProgressReader interface {
@@ -26,19 +27,12 @@ func applyProjectProgress(ctx context.Context, reader ProjectProgressReader, pro
 	}
 	tasksByProject := make(map[string][]domain.TaskProgressFacts, len(projects))
 	for _, task := range sources.Tasks {
-		facts := domain.TaskProgressFacts{Progress: task.Progress}
+		facts := domain.TaskProgressFacts{Progress: progress.TaskPercent(task.TaskDone, task.CompletedActionItems, task.TotalActionItems)}
 		tasksByProject[task.ProjectID] = append(tasksByProject[task.ProjectID], facts)
 	}
 	schedulesByProject := make(map[string][]domain.ScheduleProgressFacts, len(projects))
 	for _, schedule := range sources.Schedules {
 		facts := domain.ScheduleProgressFacts{Total: schedule.Total, Completed: schedule.Completed}
-		for _, root := range schedule.Roots {
-			rule, err := projectProgressRule(root)
-			if err != nil {
-				return nil, err
-			}
-			facts.Roots = append(facts.Roots, rule)
-		}
 		schedulesByProject[schedule.ProjectID] = append(schedulesByProject[schedule.ProjectID], facts)
 	}
 	for index := range projects {
@@ -46,10 +40,7 @@ func applyProjectProgress(ctx context.Context, reader ProjectProgressReader, pro
 			projects[index].Progress = 100
 			continue
 		}
-		projects[index].Progress, err = domain.CalculateProjectProgress(tasksByProject[projects[index].ID], schedulesByProject[projects[index].ID], asOf)
-		if err != nil {
-			return nil, err
-		}
+		projects[index].Progress = domain.CalculateProjectProgress(tasksByProject[projects[index].ID], schedulesByProject[projects[index].ID])
 	}
 	return projects, nil
 }

@@ -482,7 +482,7 @@ func newProjectHandlerHarness() projectHandlerHarness {
 		RemoveFromProject: taskusecase.NewRemoveTaskFromProjectUseCase(uow, tasks, nil),
 	}
 	return projectHandlerHarness{
-		handler:  NewProjectHandler(projectUseCases, taskUseCases, &projectHandlerID{}, listTestCodec()),
+		handler:  NewProjectHandler(projectUseCases, taskUseCases, (&projectHandlerID{}).Generate, listTestCodec()),
 		projects: projects, tasks: tasks, uow: uow, projectUOW: projectUOW,
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
@@ -27,12 +26,12 @@ var (
 
 type ActionItemHandler struct {
 	actionItems taskusecase.ActionItemUseCases
-	ID          shared.ID
+	issueID     func() string
 	pageTokens  *pagination.Codec
 }
 
-func NewActionItemHandler(actionItems taskusecase.ActionItemUseCases, ID shared.ID, codecs ...*pagination.Codec) *ActionItemHandler {
-	h := &ActionItemHandler{actionItems: actionItems, ID: ID}
+func NewActionItemHandler(actionItems taskusecase.ActionItemUseCases, issueID func() string, codecs ...*pagination.Codec) *ActionItemHandler {
+	h := &ActionItemHandler{actionItems: actionItems, issueID: issueID}
 	if len(codecs) > 0 {
 		h.pageTokens = codecs[0]
 	}
@@ -254,7 +253,7 @@ func (h *ActionItemHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	item, err := h.actionItems.Create.Execute(r.Context(), taskusecase.CreateActionItemInput{
-		ID: domain.ActionItemID(h.ID.Generate()), UserID: userID, TaskID: taskID,
+		ID: domain.ActionItemID(h.issueID()), UserID: userID, TaskID: taskID,
 		Title: request.Title, Description: request.Description, DueDate: dueDate,
 		EstimatedMinutes: cloneInt(request.EstimatedMinutes), Priority: request.Priority,
 	})

@@ -97,7 +97,7 @@ func TestProjectLifecycleReconcilesCountsOnlyOnEligibleTransitions(t *testing.T)
 			status: "done",
 			before: shared.ProjectWorkState{Status: "done", Eligible: 1, Completed: 1},
 			after: dao.ProjectProgressSources{Tasks: []dao.ProjectTaskProgress{
-				{TaskID: "task-done", Done: true}, {TaskID: "task-open", Done: false},
+				{TaskDone: true, TotalActionItems: 1, CompletedActionItems: 1}, {TaskDone: false, TotalActionItems: 1},
 			}},
 			wantStatus: "open",
 		},
@@ -105,14 +105,28 @@ func TestProjectLifecycleReconcilesCountsOnlyOnEligibleTransitions(t *testing.T)
 			name:       "empty project can become done when completed work is attached",
 			status:     "open",
 			before:     shared.ProjectWorkState{Status: "open"},
-			after:      dao.ProjectProgressSources{Tasks: []dao.ProjectTaskProgress{{TaskID: "task-done", Done: true}}},
+			after:      dao.ProjectProgressSources{Tasks: []dao.ProjectTaskProgress{{TaskDone: true, TotalActionItems: 1, CompletedActionItems: 1}}},
+			wantStatus: "done",
+		},
+		{
+			name:       "done project reopens when persisted unfinished schedule is attached",
+			status:     "done",
+			before:     shared.ProjectWorkState{Status: "done", Eligible: 1, Completed: 1},
+			after:      dao.ProjectProgressSources{Schedules: []dao.ProjectScheduleProgress{{ProjectID: "project-1", Total: 2, Completed: 1}}},
+			wantStatus: "open",
+		},
+		{
+			name:       "project completes when its persisted schedule completes",
+			status:     "open",
+			before:     shared.ProjectWorkState{Status: "open", Eligible: 1},
+			after:      dao.ProjectProgressSources{Schedules: []dao.ProjectScheduleProgress{{ProjectID: "project-1", Total: 1, Completed: 1}}},
 			wantStatus: "done",
 		},
 		{
 			name:       "unrelated count-neutral change does not reopen done project",
 			status:     "done",
 			before:     shared.ProjectWorkState{Status: "done", Eligible: 1, Completed: 1},
-			after:      dao.ProjectProgressSources{Tasks: []dao.ProjectTaskProgress{{TaskID: "task-done", Done: true}}},
+			after:      dao.ProjectProgressSources{Tasks: []dao.ProjectTaskProgress{{TaskDone: true, TotalActionItems: 1, CompletedActionItems: 1}}},
 			wantStatus: "",
 		},
 	}
@@ -141,8 +155,8 @@ func TestProjectLifecyclePausesAndResumesBlueprintsWithAutomaticStatus(t *testin
 		wantPause  int
 		wantResume int
 	}{
-		{name: "completion pauses", status: "open", before: shared.ProjectWorkState{Status: "open", Eligible: 1}, after: dao.ProjectProgressSources{Tasks: []dao.ProjectTaskProgress{{Done: true}}}, wantStatus: "done", wantPause: 1},
-		{name: "reopening resumes", status: "done", before: shared.ProjectWorkState{Status: "done", Eligible: 1, Completed: 1}, after: dao.ProjectProgressSources{Tasks: []dao.ProjectTaskProgress{{Done: false}}}, wantStatus: "open", wantResume: 1},
+		{name: "persisted schedule completion pauses", status: "open", before: shared.ProjectWorkState{Status: "open", Eligible: 1}, after: dao.ProjectProgressSources{Schedules: []dao.ProjectScheduleProgress{{ProjectID: "project-1", Total: 1, Completed: 1}}}, wantStatus: "done", wantPause: 1},
+		{name: "persisted unfinished schedule resumes", status: "done", before: shared.ProjectWorkState{Status: "done", Eligible: 1, Completed: 1}, after: dao.ProjectProgressSources{Schedules: []dao.ProjectScheduleProgress{{ProjectID: "project-1", Total: 1}}}, wantStatus: "open", wantResume: 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -162,55 +176,6 @@ func TestProjectLifecyclePausesAndResumesBlueprintsWithAutomaticStatus(t *testin
 		})
 	}
 }
-
-func TestVirtualScheduleOccursTodayUsesBlueprintRuleAndPauseIntervals(t *testing.T) {
-	today := time.Date(2026, 10, 11, 0, 0, 0, 0, time.UTC)
-	asOf := time.Date(2026, 10, 11, 0, 30, 0, 0, time.UTC)
-	root := dao.ProjectProgressRecurrence{
-		RecurrenceAnchorDate: "2026-10-01",
-		LocalStart:           "2026-10-01 10:00:00", LocalEnd: "2026-10-01 11:00:00", Timezone: "Asia/Tokyo",
-		Frequency: "daily", Interval: 1,
-	}
-	rule, err := projectProgressRule(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := domain.VirtualScheduleOccurrenceOccursToday(rule, asOf)
-	if err != nil || !got {
-		t.Fatalf("occurrence due today = (%v, %v), want true", got, err)
-	}
-	rule, err = projectProgressRule(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err = domain.VirtualScheduleOccurrenceOccursToday(rule, asOf.Add(2*time.Hour))
-	if err != nil || !got {
-		t.Fatalf("unsaved occurrence later today = (%v, %v), want true", got, err)
-	}
-	root.OccurrenceSavedToday = true
-	rule, err = projectProgressRule(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err = domain.VirtualScheduleOccurrenceOccursToday(rule, asOf)
-	if err != nil || got {
-		t.Fatalf("saved occurrence virtual result = (%v, %v), want false", got, err)
-	}
-	root.OccurrenceSavedToday = false
-	pausedAt := today.Add(time.Hour) // 10:00 in Tokyo.
-	resumedAt := pausedAt.Add(2 * time.Hour)
-	root.PauseIntervals = []dao.ProjectSchedulePauseInterval{{PausedAt: pausedAt.Format(time.RFC3339Nano), ResumedAt: projectScheduleStringPointer(resumedAt.Format(time.RFC3339Nano))}}
-	rule, err = projectProgressRule(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err = domain.VirtualScheduleOccurrenceOccursToday(rule, asOf)
-	if err != nil || got {
-		t.Fatalf("paused occurrence virtual result = (%v, %v), want false", got, err)
-	}
-}
-
-func projectScheduleStringPointer(value string) *string { return &value }
 
 func boolInt(value bool) int {
 	if value {

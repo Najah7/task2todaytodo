@@ -186,7 +186,7 @@ func (r *ProjectRepository) ReadProjectListSummary(ctx context.Context, actor do
 		statusArg = pgtype.Text{String: status, Valid: true}
 	}
 	row, err := r.queries.ReadProjectListSummary(ctx, sqlc.ReadProjectListSummaryParams{
-		UserID: string(actor), Status: statusArg, IsTrash: trash, AsOf: projectProgressTime(asOf),
+		UserID: string(actor), Status: statusArg, IsTrash: trash, AsOf: pgtype.Timestamptz{Time: asOf, Valid: true},
 	})
 	if err != nil {
 		return dao.ProjectListSummary{}, err
@@ -198,6 +198,7 @@ func (r *ProjectRepository) ReadProjectListSummary(ctx context.Context, actor do
 		Today: row.Today.Time.Format("2006-01-02"), Timezone: row.Timezone,
 	}, nil
 }
+
 func (r *ProjectRepository) Create(ctx context.Context, p domain.Project) (dao.Project, error) {
 	x, err := r.queries.CreateProject(ctx, sqlc.CreateProjectParams{ID: string(p.ID), UserID: string(p.UserID), Type: p.Type.String(), Title: p.Title, Goal: pgText(p.Goal), Description: pgText(p.Description), Priority: priorityValue(p.Priority), StartDate: projectDate(p.Schedule.StartDate), EndDate: projectDate(p.Schedule.EndDate)})
 	if err != nil {

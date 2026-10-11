@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Najah7/task2todaytodo/internal/settings"
 	"github.com/Najah7/task2todaytodo/internal/port/adapter"
+	"github.com/Najah7/task2todaytodo/internal/settings"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
@@ -50,7 +50,7 @@ func TestCloseSuccessPreservesOriginalError(t *testing.T) {
 }
 
 func TestNewRejectsInvalidDatabaseSettingsWithoutInitializingApplication(t *testing.T) {
-	app, closeApp, err := New(settings.DatabaseSettings{SSLMode: "invalid"}, adapter.NewULID(), telemetry.Nop())
+	app, closeApp, err := New(settings.DatabaseSettings{SSLMode: "invalid"}, adapter.NewIDIssuer(), telemetry.Nop())
 	if err == nil {
 		t.Fatal("New() error = nil, want invalid database settings error")
 	}

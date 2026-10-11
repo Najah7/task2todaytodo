@@ -266,16 +266,25 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 	pool := projectRepositoryIntegrationPool(t)
 	fixture := newProjectRepositoryFixture(t, pool)
 	ctx := t.Context()
-	taskIDs := []string{ulid.Make().String(), ulid.Make().String()}
-	actionItemIDs := []string{ulid.Make().String(), ulid.Make().String()}
+	taskIDs := []string{ulid.Make().String(), ulid.Make().String(), ulid.Make().String()}
+	actionItemIDs := []string{ulid.Make().String(), ulid.Make().String(), ulid.Make().String()}
 	scheduleIDs := []string{ulid.Make().String(), ulid.Make().String()}
 	blueprintIDs := []string{ulid.Make().String(), ulid.Make().String()}
 	start := time.Date(2026, 10, 8, 9, 0, 0, 0, time.UTC)
 	for i, taskID := range taskIDs {
-		if _, err := fixture.tx.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,status,changed_by) VALUES($1,$2,$3,$2,$4,'open',$2)`, taskID, fixture.ownerID, fixture.projectID, []string{"Individually deleted Task", "Live Task"}[i]); err != nil {
+		status := "open"
+		if i == 2 {
+			status = "done"
+		}
+		if _, err := fixture.tx.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,status,changed_by) VALUES($1,$2,$3,$2,$4,$5,$2)`, taskID, fixture.ownerID, fixture.projectID, []string{"Individually deleted Task", "Live Task with ActionItems", "Done Task without ActionItems"}[i], status); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := fixture.tx.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position) VALUES($1,$2,$3,0)`, actionItemIDs[i], taskID, "Action item"); err != nil {
+	}
+	for i, item := range []struct {
+		task, position int
+		completed      bool
+	}{{task: 0, position: 0}, {task: 1, position: 0, completed: true}, {task: 1, position: 1}} {
+		if _, err := fixture.tx.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,completed) VALUES($1,$2,$3,$4,$5)`, actionItemIDs[i], taskIDs[item.task], "Action item", item.position, item.completed); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -298,8 +307,8 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 	if err := taskDelete.Execute(ctx, taskdomain.UserID(fixture.ownerID), taskdomain.TaskID(taskIDs[0]), 1); err != nil {
 		t.Fatalf("individually delete Task: %v", err)
 	}
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task)
-	scheduleDelete := scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "delete", nil, projectActionItemID{})
+	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleDelete := scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "delete", nil, (projectActionItemID{}).Generate)
 	if err := scheduleDelete.Execute(ctx, fixture.ownerID, blueprintIDs[0], "2026-10-08", 1); err != nil {
 		t.Fatalf("individually delete Schedule: %v", err)
 	}
@@ -314,8 +323,16 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 		}
 		beforeActionItemDeleted = append(beforeActionItemDeleted, deleted)
 	}
-	if !beforeTasks[0].deleted || beforeTasks[1].deleted || !beforeSchedules[0].deleted || beforeSchedules[1].deleted || !beforeActionItemDeleted[0] || beforeActionItemDeleted[1] {
+	if !beforeTasks[0].deleted || beforeTasks[1].deleted || beforeTasks[2].deleted || !beforeSchedules[0].deleted || beforeSchedules[1].deleted || !beforeActionItemDeleted[0] || beforeActionItemDeleted[1] || beforeActionItemDeleted[2] {
 		t.Fatalf("child fixture states not established: Tasks=%+v Schedules=%+v ActionItemDeleted=%v", beforeTasks, beforeSchedules, beforeActionItemDeleted)
+	}
+
+	projectCases := newProjectUseCases(t, pool, store)
+	livePage, err := projectCases.List.ExecuteFilteredPage(ctx, projectdomain.UserID(fixture.ownerID), projectusecase.ProjectListRequest{
+		Size: 10, SortBy: "created_at", SortOrder: "desc",
+	})
+	if err != nil || len(livePage.Items) != 1 || livePage.Items[0].Progress != 50 {
+		t.Fatalf("live Project progress before trash = %+v error=%v; want 50%% from Task(50), done Task(100), and Schedule(0)", livePage.Items, err)
 	}
 
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
@@ -335,13 +352,19 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 	assertProjectListChildStates(t, pool, "after Project trash", "tasks", taskIDs, beforeTasks)
 	assertProjectListChildStates(t, pool, "after Project trash", "schedules", scheduleIDs, beforeSchedules)
 	assertProjectListActionItemDeleted(t, pool, actionItemIDs, beforeActionItemDeleted)
+	trashPage, err := projectCases.List.ExecuteFilteredPage(ctx, projectdomain.UserID(fixture.ownerID), projectusecase.ProjectListRequest{
+		Size: 10, Trash: true, SortBy: "created_at", SortOrder: "desc",
+	})
+	if err != nil || len(trashPage.Items) != 1 || trashPage.Items[0].Progress != 33 {
+		t.Fatalf("trashed Project progress = %+v error=%v; want 33%% from hidden Task(0), done Task(100), and Schedule(0)", trashPage.Items, err)
+	}
 
 	restored, err := projectusecase.NewRestoreProjectUseCase(projectUOW, store.Project.Projects, nil).Execute(ctx, projectdomain.UserID(fixture.ownerID), projectdomain.ProjectID(fixture.projectID), 2)
 	if err != nil {
 		t.Fatalf("restore Project: %v", err)
 	}
-	if restored.Status != "open" || restored.Revision != 3 {
-		t.Fatalf("restored Project status=%q revision=%d; want open/3", restored.Status, restored.Revision)
+	if restored.Status != "open" || restored.Revision != 3 || restored.Progress != 50 {
+		t.Fatalf("restored Project status=%q revision=%d progress=%d; want open/3/50%%", restored.Status, restored.Revision, restored.Progress)
 	}
 	if err := pool.QueryRow(ctx, `SELECT deleted_at IS NOT NULL,status,revision FROM projects WHERE id=$1`, fixture.projectID).Scan(&deleted, &status, &projectRevision); err != nil {
 		t.Fatal(err)

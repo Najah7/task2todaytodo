@@ -77,11 +77,11 @@ func lockAndReloadOccurrence(ctx context.Context, repos Repositories, actorID, b
 	return current, before, nil
 }
 
-func virtualOccurrenceID(ids shared.ID) (string, error) {
-	if ids == nil {
+func virtualOccurrenceID(issueID func() string) (string, error) {
+	if issueID == nil {
 		return "", ErrOccurrenceIDGeneratorUnavailable
 	}
-	id := ids.Generate()
+	id := issueID()
 	if strings.TrimSpace(id) == "" {
 		return "", ErrOccurrenceIDGeneratorUnavailable
 	}
