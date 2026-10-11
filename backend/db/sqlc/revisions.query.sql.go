@@ -78,7 +78,7 @@ func (q *Queries) ListProjectRevisionsByActor(ctx context.Context, arg ListProje
 }
 
 const listScheduleOccurrenceRevisionsByActor = `-- name: ListScheduleOccurrenceRevisionsByActor :many
-SELECT history.schedule_id, history.revision, history.source_revision_id, history.user_id, history.occurrence_date, history.start_at, history.end_at, history.title, history.description, history.location, history.project_id, history.assignee_id, history.timezone, history.completed, history.skipped_at, history.deleted_at, history.is_override, history.changed_by, history.changed_at
+SELECT history.schedule_id, history.revision, history.source_revision_id, history.user_id, history.occurrence_date, history.start_at, history.end_at, history.all_day, history.title, history.description, history.location, history.project_id, history.assignee_id, history.timezone, history.completed, history.skipped_at, history.deleted_at, history.is_override, history.changed_by, history.changed_at
 FROM schedule_revisions history
 JOIN schedules occurrence ON occurrence.id = history.schedule_id
 JOIN schedule_blueprints blueprint ON blueprint.id = occurrence.blueprint_id AND blueprint.deleted_at IS NULL
@@ -127,6 +127,7 @@ func (q *Queries) ListScheduleOccurrenceRevisionsByActor(ctx context.Context, ar
 			&i.OccurrenceDate,
 			&i.StartAt,
 			&i.EndAt,
+			&i.AllDay,
 			&i.Title,
 			&i.Description,
 			&i.Location,

@@ -6,12 +6,14 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/Najah7/task2todaytodo/db/sqlc"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
+	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	schedulerepo "github.com/Najah7/task2todaytodo/internal/application/schedule/repository"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
@@ -463,6 +465,30 @@ func TestSkipRetryIsIdempotentAndRestoreOnlyUnskips(t *testing.T) {
 	if err != nil || !secondSkipped.Skipped || secondSkipped.ID == nil {
 		t.Fatalf("read second skipped occurrence = %+v, %v", secondSkipped, err)
 	}
+	list := usecase.NewListOccurrencesUseCase(uow)
+	from := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC).Add(-time.Hour)
+	defaultPage, err := list.ExecutePage(ctx, userID, usecase.CursorPageRequest{Size: 10, From: from, To: from.Add(72 * time.Hour)})
+	if err != nil {
+		t.Fatalf("list default skipped visibility: %v", err)
+	}
+	for _, item := range defaultPage.Items {
+		if item.BlueprintID == blueprint.ID && (item.OccurrenceDate == date || item.OccurrenceDate == secondDate) {
+			t.Fatalf("default list included skipped occurrence %+v", item)
+		}
+	}
+	includeSkippedPage, err := list.ExecutePage(ctx, userID, usecase.CursorPageRequest{Size: 10, From: from, To: from.Add(72 * time.Hour), IncludeSkipped: true})
+	if err != nil {
+		t.Fatalf("list with skipped occurrences: %v", err)
+	}
+	var listedSkipped int
+	for _, item := range includeSkippedPage.Items {
+		if item.BlueprintID == blueprint.ID && item.Skipped {
+			listedSkipped++
+		}
+	}
+	if listedSkipped != 2 {
+		t.Fatalf("include_skipped listed %d skipped rows, want 2", listedSkipped)
+	}
 	if *secondSkipped.ID == *skipped.ID {
 		t.Fatalf("distinct skipped occurrences share ID %q", *skipped.ID)
 	}
@@ -486,6 +512,22 @@ func TestSkipRetryIsIdempotentAndRestoreOnlyUnskips(t *testing.T) {
 	if err != nil || restored.Skipped || restored.Revision == stillSkipped.Revision {
 		t.Fatalf("read restored occurrence = %+v, %v", restored, err)
 	}
+	restoredPage, err := list.ExecutePage(ctx, userID, usecase.CursorPageRequest{Size: 10, From: from, To: from.Add(72 * time.Hour), IncludeSkipped: true})
+	if err != nil {
+		t.Fatalf("list restored occurrence: %v", err)
+	}
+	foundRestored, foundStillSkipped := false, false
+	for _, item := range restoredPage.Items {
+		if item.BlueprintID == blueprint.ID && item.OccurrenceDate == date {
+			foundRestored = !item.Skipped
+		}
+		if item.BlueprintID == blueprint.ID && item.OccurrenceDate == secondDate {
+			foundStillSkipped = item.Skipped
+		}
+	}
+	if !foundRestored || !foundStillSkipped {
+		t.Fatalf("restore changed more than the selected skip state: %+v", restoredPage.Items)
+	}
 	delete := usecase.NewSetOccurrenceStateUseCase(uow, "delete", nil, (blueprintTestIDs{}).Generate)
 	if err := delete.Execute(ctx, userID, blueprint.ID, date, restored.Revision); err != nil {
 		t.Fatalf("delete occurrence: %v", err)
@@ -497,6 +539,209 @@ func TestSkipRetryIsIdempotentAndRestoreOnlyUnskips(t *testing.T) {
 	}
 	if err := restore.Execute(ctx, userID, blueprint.ID, date, deletedRevision); err == nil {
 		t.Fatal("restore cleared a deletion tombstone; deleted occurrences are only canceled by the requested API")
+	}
+	deletedPage, err := list.ExecutePage(ctx, userID, usecase.CursorPageRequest{Size: 10, From: from, To: from.Add(72 * time.Hour), IncludeSkipped: true})
+	if err != nil {
+		t.Fatalf("list after occurrence deletion: %v", err)
+	}
+	for _, item := range deletedPage.Items {
+		if item.BlueprintID == blueprint.ID && item.OccurrenceDate == date {
+			t.Fatalf("deleted occurrence remained visible in calendar list: %+v", item)
+		}
+	}
+}
+
+func TestAllDayPersistsLocalCalendarSpanAndOccurrenceRevision(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := t.Context()
+	userID := createScheduleTestUser(t, pool)
+	uow := blueprintTestUOW{pool: pool}
+	ids := (blueprintTestIDs{}).Generate
+	create := usecase.NewCreateBlueprintUseCase(uow, ids, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil)
+	localStart := time.Date(2026, time.March, 8, 0, 0, 0, 0, time.UTC)
+	localEnd := time.Date(2026, time.March, 10, 0, 0, 0, 0, time.UTC)
+	blueprint, err := create.Execute(ctx, userID, usecase.CreateBlueprintInput{
+		Title: "DST all-day span", Timezone: "America/New_York", LocalStart: localStart, LocalEnd: localEnd,
+		AllDay: true, Frequency: "once",
+	})
+	if err != nil {
+		t.Fatalf("create all-day blueprint: %v", err)
+	}
+	if !blueprint.AllDay {
+		t.Fatalf("created blueprint all_day=%v, want true", blueprint.AllDay)
+	}
+	var startAt, endAt time.Time
+	var allDay bool
+	if err := pool.QueryRow(ctx, `SELECT start_at,end_at,all_day FROM schedules WHERE blueprint_id=$1`, blueprint.ID).Scan(&startAt, &endAt, &allDay); err != nil {
+		t.Fatalf("read persisted all-day occurrence: %v", err)
+	}
+	if !allDay || endAt.Sub(startAt) != 47*time.Hour {
+		t.Fatalf("persisted all-day interval %s..%s all_day=%v, want 47h across DST", startAt, endAt, allDay)
+	}
+	var revisionAllDay bool
+	if err := pool.QueryRow(ctx, `SELECT all_day FROM schedule_revisions WHERE schedule_id=(SELECT id FROM schedules WHERE blueprint_id=$1) AND revision=1`, blueprint.ID).Scan(&revisionAllDay); err != nil {
+		t.Fatalf("read all-day audit snapshot: %v", err)
+	}
+	if !revisionAllDay {
+		t.Fatal("initial occurrence revision did not snapshot all_day=true")
+	}
+}
+
+func TestAllDayCanToggleForOccurrenceAndFollowingRevision(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := t.Context()
+	userID := createScheduleTestUser(t, pool)
+	uow := blueprintTestUOW{pool: pool}
+	now := time.Now().UTC()
+	location, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	startDate := time.Date(2026, time.March, 8, 0, 0, 0, 0, time.UTC)
+	start := startDate.Add(9 * time.Hour)
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
+		Title: "Toggle all-day", Timezone: "America/New_York", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "daily", Interval: 1,
+	})
+	if err != nil {
+		t.Fatalf("create timed schedule: %v", err)
+	}
+	date := start.Format("2006-01-02")
+	toggle := true
+	updated, err := usecase.NewUpdateOccurrenceUseCase(uow, nil, (blueprintTestIDs{}).Generate).Execute(ctx, userID, blueprint.ID, date,
+		usecase.UpdateScheduleInput{AllDay: &toggle}, 0)
+	if err != nil {
+		t.Fatalf("toggle virtual occurrence to all-day: %v", err)
+	}
+	if !updated.AllDay || time.Unix(updated.StartAt, 0).In(location).Format("15:04") != "00:00" ||
+		time.Unix(updated.EndAt, 0).Sub(time.Unix(updated.StartAt, 0)) != 23*time.Hour {
+		t.Fatalf("all-day occurrence after toggle=%+v", updated)
+	}
+	var snapshotAllDay bool
+	if err := pool.QueryRow(ctx, `SELECT all_day FROM schedule_revisions WHERE schedule_id=$1 AND revision=$2`, *updated.ID, updated.Revision).Scan(&snapshotAllDay); err != nil || !snapshotAllDay {
+		t.Fatalf("all-day toggle audit snapshot=%v err=%v", snapshotAllDay, err)
+	}
+
+	allDay := true
+	localToday := now.In(location)
+	followingDate := time.Date(localToday.Year(), localToday.Month(), localToday.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, 3).Format("2006-01-02")
+	update := usecase.NewUpdateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now })
+	allDayRevision, err := update.Execute(ctx, userID, blueprint.ID, followingDate, "following", usecase.UpdateBlueprintInput{AllDay: &allDay}, blueprint.Revision)
+	if err != nil || !allDayRevision.AllDay {
+		t.Fatalf("following all-day revision=%+v err=%v", allDayRevision, err)
+	}
+	timed := false
+	timedRevision, err := update.Execute(ctx, userID, blueprint.ID, followingDate, "following", usecase.UpdateBlueprintInput{AllDay: &timed}, allDayRevision.Revision)
+	if err != nil || timedRevision.AllDay {
+		t.Fatalf("following timed revision=%+v err=%v", timedRevision, err)
+	}
+	var auditRows int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM schedule_blueprint_revisions WHERE blueprint_id=$1 AND effective_from=$2 AND all_day`, blueprint.ID, followingDate).Scan(&auditRows); err != nil {
+		t.Fatal(err)
+	}
+	if auditRows != 1 {
+		t.Fatalf("all-day following revision audit rows=%d, want one", auditRows)
+	}
+}
+
+func TestFollowingAllDayRejectsExplicitNonMidnightStart(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := t.Context()
+	userID := createScheduleTestUser(t, pool)
+	uow := blueprintTestUOW{pool: pool}
+	now := time.Now().UTC()
+	localNow := now.In(time.FixedZone("JST", 9*60*60))
+	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
+	startDate := today.AddDate(0, 0, 5)
+	start := startDate.Add(9 * time.Hour)
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate,
+		blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID,
+		usecase.CreateBlueprintInput{Title: "Timed recurrence", Timezone: "Asia/Tokyo", LocalStart: start,
+			LocalEnd: start.Add(time.Hour), Frequency: "daily", Interval: 1})
+	if err != nil {
+		t.Fatalf("create timed recurrence: %v", err)
+	}
+	allDay := true
+	explicitStart := startDate.Add(10 * time.Hour)
+	update := usecase.NewUpdateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate,
+		blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now })
+	if _, err := update.Execute(ctx, userID, blueprint.ID, startDate.Format("2006-01-02"), "following",
+		usecase.UpdateBlueprintInput{AllDay: &allDay, LocalStart: &explicitStart}, blueprint.Revision); err != domain.ErrBlueprintAllDayTime {
+		t.Fatalf("explicit non-midnight all-day start error=%v, want %v", err, domain.ErrBlueprintAllDayTime)
+	}
+	if _, err := update.Execute(ctx, userID, blueprint.ID, startDate.Format("2006-01-02"), "following",
+		usecase.UpdateBlueprintInput{AllDay: &allDay}, blueprint.Revision); err != nil {
+		t.Fatalf("all-day toggle with omitted start should normalize to midnight: %v", err)
+	}
+}
+
+func TestFollowingAllDayIncludesDatesTouchedByOvernightEnd(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := t.Context()
+	userID := createScheduleTestUser(t, pool)
+	uow := blueprintTestUOW{pool: pool}
+	now := time.Now().UTC()
+	localNow := now.In(time.FixedZone("JST", 9*60*60))
+	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
+	startDate := today.AddDate(0, 0, 5)
+	localStart := startDate.Add(22 * time.Hour)
+	localEnd := startDate.AddDate(0, 0, 1).Add(2 * time.Hour)
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate,
+		blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID,
+		usecase.CreateBlueprintInput{Title: "Overnight timed recurrence", Timezone: "Asia/Tokyo", LocalStart: localStart,
+			LocalEnd: localEnd, Frequency: "daily", Interval: 1})
+	if err != nil {
+		t.Fatalf("create overnight recurrence: %v", err)
+	}
+	allDay := true
+	updated, err := usecase.NewUpdateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate,
+		blueprintTimezoneValidator{queries: sqlc.New(pool)}, func() time.Time { return now }).Execute(ctx, userID,
+		blueprint.ID, startDate.Format("2006-01-02"), "following", usecase.UpdateBlueprintInput{AllDay: &allDay}, blueprint.Revision)
+	if err != nil {
+		t.Fatalf("toggle overnight recurrence to all-day: %v", err)
+	}
+	if want := startDate.AddDate(0, 0, 2).Format("2006-01-02 15:04:05"); updated.LocalEnd != want {
+		t.Fatalf("all-day exclusive end = %q, want %q to include the overnight end date", updated.LocalEnd, want)
+	}
+	occurrence, err := usecase.NewGetOccurrenceUseCase(uow).Execute(ctx, userID, blueprint.ID, startDate.Format("2006-01-02"))
+	if err != nil {
+		t.Fatalf("get all-day occurrence: %v", err)
+	}
+	if !occurrence.AllDay || occurrence.EndAt-occurrence.StartAt != int64(48*time.Hour/time.Second) {
+		t.Fatalf("all-day overnight occurrence = %+v; want 48h across both local dates", occurrence)
+	}
+}
+
+func TestAllDayBackfillCopiesRevisionAndMaterializesLocalBoundaries(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := t.Context()
+	userID := createScheduleTestUser(t, pool)
+	uow := blueprintTestUOW{pool: pool}
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	start := today.AddDate(0, 0, -3)
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate, blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, userID, usecase.CreateBlueprintInput{
+		Title: "Backfilled all-day", Timezone: "UTC", LocalStart: start, LocalEnd: start.AddDate(0, 0, 2),
+		AllDay: true, Frequency: "daily", Interval: 1,
+	})
+	if err != nil {
+		t.Fatalf("create recurring all-day definition: %v", err)
+	}
+	if _, _, err := usecase.NewBackfillUseCase(uow, (blueprintTestIDs{}).Generate).Execute(ctx, userID, now, nil); err != nil {
+		t.Fatalf("backfill all-day occurrences: %v", err)
+	}
+	var rows, nonAllDay int
+	if err := pool.QueryRow(ctx, `SELECT count(*),count(*) FILTER (WHERE NOT all_day) FROM schedules WHERE blueprint_id=$1`, blueprint.ID).Scan(&rows, &nonAllDay); err != nil {
+		t.Fatal(err)
+	}
+	if rows < 2 || nonAllDay != 0 {
+		t.Fatalf("backfilled rows=%d, non-all-day=%d; want multiple all-day rows", rows, nonAllDay)
+	}
+	var badBoundaries int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM schedules WHERE blueprint_id=$1 AND (start_at AT TIME ZONE timezone <> date_trunc('day',start_at AT TIME ZONE timezone) OR end_at AT TIME ZONE timezone <> date_trunc('day',end_at AT TIME ZONE timezone))`, blueprint.ID).Scan(&badBoundaries); err != nil {
+		t.Fatal(err)
+	}
+	if badBoundaries != 0 {
+		t.Fatalf("backfill produced %d non-midnight local boundaries", badBoundaries)
 	}
 }
 
@@ -827,18 +1072,26 @@ func TestProjectSchedulePermissionsAndProjectOwnerAssigneeDefault(t *testing.T) 
 	editorID := createScheduleTestUser(t, pool)
 	viewerID := createScheduleTestUser(t, pool)
 	deleterID := createScheduleTestUser(t, pool)
+	skippingID := createScheduleTestUser(t, pool)
 	projectID := ulid.Make().String()
 	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,status,changed_by) VALUES($1,$2,'other','Schedule ACL project','low','open',$2)`, projectID, ownerID); err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 	roleID := "schedule_delete_only"
+	skipRoleID := "schedule_skip_" + strings.ToLower(ulid.Make().String())
 	if _, err := pool.Exec(ctx, `INSERT INTO roles(role_id,name) VALUES($1,'Schedule delete only')`, roleID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO role_permissions(role_id,permission_id) SELECT $1,permission_id FROM permissions WHERE resource_id='schedule' AND action='delete' AND effect='allow'`, roleID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO role_permissions(role_id,permission_id) SELECT $1,permission_id FROM permissions WHERE resource_id='schedule' AND action IN ('read','delete') AND effect='allow'`, roleID); err != nil {
 		t.Fatal(err)
 	}
-	for _, member := range []struct{ id, role string }{{editorID, "editor"}, {viewerID, "viewer"}, {deleterID, roleID}} {
+	if _, err := pool.Exec(ctx, `INSERT INTO roles(role_id,name) VALUES($1,'Occurrence skip only')`, skipRoleID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO role_permissions(role_id,permission_id) SELECT $1,permission_id FROM permissions WHERE effect='allow' AND ((resource_id='schedule' AND action='read') OR (resource_id='occurrence' AND action='update'))`, skipRoleID); err != nil {
+		t.Fatal(err)
+	}
+	for _, member := range []struct{ id, role string }{{editorID, "editor"}, {viewerID, "viewer"}, {deleterID, roleID}, {skippingID, skipRoleID}} {
 		if _, err := pool.Exec(ctx, `INSERT INTO project_members(project_id,user_id,role_id,added_by) VALUES($1,$2,$3,$4)`, projectID, member.id, member.role, ownerID); err != nil {
 			t.Fatalf("add %s membership: %v", member.role, err)
 		}
@@ -849,6 +1102,8 @@ func TestProjectSchedulePermissionsAndProjectOwnerAssigneeDefault(t *testing.T) 
 		_, _ = pool.Exec(context.Background(), `DELETE FROM projects WHERE id=$1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM role_permissions WHERE role_id=$1`, roleID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM roles WHERE role_id=$1`, roleID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM role_permissions WHERE role_id=$1`, skipRoleID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM roles WHERE role_id=$1`, skipRoleID)
 	})
 	uow := blueprintTestUOW{pool: pool}
 	now := time.Now().UTC()
@@ -891,12 +1146,53 @@ func TestProjectSchedulePermissionsAndProjectOwnerAssigneeDefault(t *testing.T) 
 		t.Fatalf("list viewer-readable Project schedules: %v", err)
 	}
 	foundProjectSchedule, foundPersonalSchedule := false, false
+	var viewerCapabilities dao.ScheduleOccurrence
 	for _, occurrence := range projectView.Items {
-		foundProjectSchedule = foundProjectSchedule || occurrence.BlueprintID == blueprint.ID
+		if occurrence.BlueprintID == blueprint.ID {
+			foundProjectSchedule = true
+			viewerCapabilities = occurrence
+		}
 		foundPersonalSchedule = foundPersonalSchedule || occurrence.BlueprintID == personal.ID
 	}
 	if !foundProjectSchedule || foundPersonalSchedule {
 		t.Fatalf("Project-scoped view must include the shared Project Schedule and hide the editor's personal Schedule: %+v", projectView.Items)
+	}
+	if viewerCapabilities.CanUpdate || viewerCapabilities.CanDelete || viewerCapabilities.CanSkip || viewerCapabilities.CanAssign || viewerCapabilities.CanUpdateFollowing || viewerCapabilities.CanDeleteFollowing {
+		t.Fatalf("viewer capability flags exceed read-only ACL: %+v", viewerCapabilities)
+	}
+	deleterView, err := list.ExecutePage(ctx, deleterID, usecase.CursorPageRequest{Size: 20, From: from, To: from.AddDate(0, 0, 3), ProjectID: projectID})
+	if err != nil {
+		t.Fatalf("list delete-only member schedule: %v", err)
+	}
+	foundDeleterSchedule := false
+	for _, occurrence := range deleterView.Items {
+		if occurrence.BlueprintID == blueprint.ID {
+			foundDeleterSchedule = true
+			if !occurrence.CanDelete || occurrence.CanUpdate || occurrence.CanSkip || occurrence.CanAssign || !occurrence.CanDeleteFollowing || occurrence.CanUpdateFollowing {
+				t.Fatalf("delete-only capability flags do not match ACL: %+v", occurrence)
+			}
+			break
+		}
+	}
+	if !foundDeleterSchedule {
+		t.Fatal("delete-only member could not read the shared schedule")
+	}
+	skippingView, err := list.ExecutePage(ctx, skippingID, usecase.CursorPageRequest{Size: 20, From: from, To: from.AddDate(0, 0, 3), ProjectID: projectID})
+	if err != nil {
+		t.Fatalf("list occurrence-skip-only member schedule: %v", err)
+	}
+	foundSkippingSchedule := false
+	for _, occurrence := range skippingView.Items {
+		if occurrence.BlueprintID == blueprint.ID {
+			foundSkippingSchedule = true
+			if occurrence.CanUpdate || !occurrence.CanSkip || occurrence.CanDelete || occurrence.CanUpdateFollowing || occurrence.CanDeleteFollowing {
+				t.Fatalf("schedule update and occurrence skip capabilities were conflated: %+v", occurrence)
+			}
+			break
+		}
+	}
+	if !foundSkippingSchedule {
+		t.Fatal("occurrence-skip-only member could not read the shared schedule")
 	}
 	get := usecase.NewGetBlueprintUseCase(uow)
 	if _, err := get.Execute(ctx, editorID, blueprint.ID); err != nil {
@@ -918,6 +1214,59 @@ func TestProjectSchedulePermissionsAndProjectOwnerAssigneeDefault(t *testing.T) 
 		t.Fatalf("delete-only role could not delete following occurrences: %v", err)
 	}
 
+}
+
+func TestGetMovedOccurrenceDoesNotRequireAccessToBlueprintProject(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := t.Context()
+	sourceOwnerID := createScheduleTestUser(t, pool)
+	viewerID := createScheduleTestUser(t, pool)
+	sourceProjectID, targetProjectID := ulid.Make().String(), ulid.Make().String()
+	for _, project := range []struct{ id, owner, title string }{
+		{sourceProjectID, sourceOwnerID, "Private source Project"},
+		{targetProjectID, sourceOwnerID, "Readable destination Project"},
+	} {
+		if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,status,changed_by) VALUES($1,$2,'other',$3,'low','open',$2)`,
+			project.id, project.owner, project.title); err != nil {
+			t.Fatalf("create Project %q: %v", project.title, err)
+		}
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO project_members(project_id,user_id,role_id,added_by) VALUES($1,$2,'viewer',$3)`,
+		targetProjectID, viewerID, sourceOwnerID); err != nil {
+		t.Fatalf("add destination Project viewer: %v", err)
+	}
+	uow := blueprintTestUOW{pool: pool}
+	now := time.Now().UTC()
+	start := time.Now().In(time.FixedZone("JST", 9*60*60))
+	start = time.Date(start.Year(), start.Month(), start.Day(), 9, 0, 0, 0, start.Location()).AddDate(0, 0, 2)
+	blueprint, err := usecase.NewCreateBlueprintUseCase(uow, (blueprintTestIDs{}).Generate,
+		blueprintTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, sourceOwnerID,
+		usecase.CreateBlueprintInput{Title: "Moved one-off", ProjectID: sourceProjectID, Timezone: "Asia/Tokyo",
+			LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "once"})
+	if err != nil {
+		t.Fatalf("create source Project schedule: %v", err)
+	}
+	date := start.Format("2006-01-02")
+	if _, err := pool.Exec(ctx, `UPDATE schedules SET project_id=$1 WHERE blueprint_id=$2 AND occurrence_date=$3`, targetProjectID, blueprint.ID, date); err != nil {
+		t.Fatalf("move saved occurrence to readable Project: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `UPDATE schedules SET project_id=NULL WHERE blueprint_id=$1`, blueprint.ID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM project_revisions WHERE id=$1`, targetProjectID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM project_members WHERE project_id=$1`, targetProjectID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM projects WHERE id=$1`, targetProjectID)
+	})
+
+	occurrence, err := usecase.NewGetOccurrenceUseCase(uow).Execute(ctx, viewerID, blueprint.ID, date)
+	if err != nil {
+		t.Fatalf("read occurrence from destination Project without source Project access: %v", err)
+	}
+	if occurrence.ProjectID != targetProjectID {
+		t.Fatalf("occurrence ProjectID = %q, want destination %q", occurrence.ProjectID, targetProjectID)
+	}
+	if occurrence.CanUpdateFollowing || occurrence.CanDeleteFollowing {
+		t.Fatalf("following permissions leaked from unreadable source blueprint: %+v", occurrence)
+	}
 }
 
 func TestCreatingRecurrenceInDoneProjectOpensAutomaticPauseInterval(t *testing.T) {

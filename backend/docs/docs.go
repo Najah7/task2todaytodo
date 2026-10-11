@@ -1054,6 +1054,24 @@ const docTemplate = `{
                         "name": "to",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include skipped occurrences",
+                        "name": "include_skipped",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque page token",
+                        "name": "page_token",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2087,6 +2105,18 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque page token",
+                        "name": "page_token",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2127,6 +2157,12 @@ const docTemplate = `{
                         "name": "to",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include skipped occurrences",
+                        "name": "include_skipped",
+                        "in": "query"
                     },
                     {
                         "type": "integer",
@@ -5210,6 +5246,9 @@ const docTemplate = `{
         "rest.ScheduleBlueprintCreateRequest": {
             "type": "object",
             "properties": {
+                "all_day": {
+                    "type": "boolean"
+                },
                 "assignee_id": {
                     "type": "string"
                 },
@@ -5254,6 +5293,9 @@ const docTemplate = `{
         "rest.ScheduleBlueprintResponse": {
             "type": "object",
             "properties": {
+                "all_day": {
+                    "type": "boolean"
+                },
                 "assignee_id": {
                     "type": "string"
                 },
@@ -5322,6 +5364,9 @@ const docTemplate = `{
         "rest.ScheduleBlueprintRevisionResponse": {
             "type": "object",
             "properties": {
+                "all_day": {
+                    "type": "boolean"
+                },
                 "assignee_id": {
                     "type": "string"
                 },
@@ -5405,6 +5450,9 @@ const docTemplate = `{
         "rest.ScheduleBlueprintUpdateRequest": {
             "type": "object",
             "properties": {
+                "all_day": {
+                    "type": "boolean"
+                },
                 "assignee_id": {
                     "type": "string"
                 },
@@ -5412,7 +5460,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "end_date": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "frequency": {
                     "type": "string"
@@ -5433,7 +5482,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "project_id": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "scope": {
                     "type": "string"
@@ -5480,11 +5530,32 @@ const docTemplate = `{
         "rest.ScheduleOccurrenceResponse": {
             "type": "object",
             "properties": {
+                "all_day": {
+                    "type": "boolean"
+                },
                 "assignee_id": {
                     "type": "string"
                 },
                 "blueprint_id": {
                     "type": "string"
+                },
+                "can_assign": {
+                    "type": "boolean"
+                },
+                "can_delete": {
+                    "type": "boolean"
+                },
+                "can_delete_following": {
+                    "type": "boolean"
+                },
+                "can_skip": {
+                    "type": "boolean"
+                },
+                "can_update": {
+                    "type": "boolean"
+                },
+                "can_update_following": {
+                    "type": "boolean"
                 },
                 "completed": {
                     "type": "boolean"
@@ -5548,6 +5619,9 @@ const docTemplate = `{
         "rest.ScheduleOccurrenceRevisionResponse": {
             "type": "object",
             "properties": {
+                "all_day": {
+                    "type": "boolean"
+                },
                 "assignee_id": {
                     "type": "string"
                 },
@@ -5607,6 +5681,9 @@ const docTemplate = `{
         "rest.ScheduleOccurrenceUpdateRequest": {
             "type": "object",
             "properties": {
+                "all_day": {
+                    "type": "boolean"
+                },
                 "assignee_id": {
                     "type": "string"
                 },
@@ -5620,7 +5697,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "project_id": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "start_at": {
                     "type": "string"

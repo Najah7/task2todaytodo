@@ -23,6 +23,7 @@ WHERE schedule_blueprint_has_permission_at(b.id, sqlc.arg(occurrence_date)::date
 SELECT b.id, b.user_id, b.deleted_at IS NOT NULL AS deleted, b.created_at,
        r.id AS revision_id, (SELECT MAX(all_revisions.revision)::integer FROM schedule_blueprint_revisions all_revisions WHERE all_revisions.blueprint_id = b.id) AS revision, r.effective_from, r.recurrence_anchor_date,
        r.local_start, r.local_end, r.timezone, r.frequency, r.interval_count,
+       r.all_day,
        r.weekdays, r.end_date, r.cutoff_after, r.title, r.description, r.location,
        r.project_id, r.assignee_id, r.changed_by, r.created_at AS revision_created_at
 FROM schedule_blueprints b
@@ -89,9 +90,20 @@ WHERE current.project_id IS NOT NULL
 ORDER BY is_owner DESC, last_name, first_name, id;
 
 -- name: ListScheduleBlueprintRevisionsByActor :many
-SELECT r.*, b.deleted_at IS NOT NULL AS blueprint_deleted
+WITH active_boundaries AS (
+    SELECT id,
+           LEAD(effective_from) OVER (PARTITION BY blueprint_id ORDER BY effective_from, revision) AS next_effective_from
+    FROM schedule_blueprint_revisions
+    WHERE blueprint_id = sqlc.arg(blueprint_id)::text AND superseded_at IS NULL
+)
+SELECT r.*, b.deleted_at IS NOT NULL AS blueprint_deleted,
+       CASE WHEN r.superseded_at IS NOT NULL THEN NULL
+            WHEN r.cutoff_after IS NULL THEN active.next_effective_from - 1
+            WHEN active.next_effective_from IS NULL THEN r.cutoff_after
+            ELSE LEAST(r.cutoff_after, active.next_effective_from - 1) END AS effective_until
 FROM schedule_blueprint_revisions r
 JOIN schedule_blueprints b ON b.id = r.blueprint_id
+LEFT JOIN active_boundaries active ON active.id = r.id
 WHERE r.blueprint_id = sqlc.arg(blueprint_id)::text
   AND schedule_blueprint_has_permission(b.id, sqlc.arg(actor_id)::text, 'schedule', 'read')
   AND (sqlc.narg(before_revision)::integer IS NULL OR r.revision < sqlc.narg(before_revision)::integer)

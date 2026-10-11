@@ -110,7 +110,7 @@ func virtualOccurrenceForDate(ctx context.Context, repo BlueprintRepository, act
 	if err != nil {
 		return dao.ScheduleOccurrence{}, err
 	}
-	items, err := projectOccurrences([]dao.BlueprintRevision{revision}, nil, origins, from, to)
+	items, err := projectOccurrences([]dao.BlueprintRevision{revision}, nil, origins, from, to, false)
 	if err != nil {
 		return dao.ScheduleOccurrence{}, err
 	}

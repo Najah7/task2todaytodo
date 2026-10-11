@@ -62,7 +62,7 @@ func (uc *CreateBlueprintUseCase) Execute(ctx context.Context, actorID string, i
 		Title: input.Title, Description: input.Description, Location: input.Location,
 		ProjectID: input.ProjectID, AssigneeID: input.AssigneeID,
 		LocalStart: input.LocalStart, LocalEnd: input.LocalEnd, Timezone: input.Timezone,
-		Frequency: input.Frequency, Interval: input.Interval, Weekdays: weekdays, EndDate: input.EndDate,
+		AllDay: input.AllDay, Frequency: input.Frequency, Interval: input.Interval, Weekdays: weekdays, EndDate: input.EndDate,
 	})
 	if err != nil {
 		return dao.Blueprint{}, err
@@ -89,7 +89,7 @@ func (uc *CreateBlueprintUseCase) Execute(ctx context.Context, actorID string, i
 			ID: &id, BlueprintID: blueprintID, OccurrenceDate: startDate.Format("2006-01-02"),
 			SourceRevisionID: revisionID, AssigneeID: definition.AssigneeID, Title: definition.Title,
 			Description: definition.Description, Location: definition.Location, ProjectID: definition.ProjectID,
-			Timezone: definition.Timezone, StartAt: occurrences[0].StartAt.Unix(), EndAt: occurrences[0].EndAt.Unix(),
+			Timezone: definition.Timezone, AllDay: definition.AllDay, StartAt: occurrences[0].StartAt.Unix(), EndAt: occurrences[0].EndAt.Unix(),
 		}
 	}
 	revision := dao.BlueprintRevision{
@@ -97,7 +97,7 @@ func (uc *CreateBlueprintUseCase) Execute(ctx context.Context, actorID string, i
 			ID: blueprintID, Revision: 1, EffectiveFrom: startDate.Format("2006-01-02"),
 			RecurrenceAnchorDate: anchorDate.Format("2006-01-02"),
 			LocalStart:           formatLocal(definition.LocalStart), LocalEnd: formatLocal(definition.LocalEnd),
-			Timezone: definition.Timezone, Frequency: definition.Frequency, Interval: definition.Interval,
+			Timezone: definition.Timezone, AllDay: definition.AllDay, Frequency: definition.Frequency, Interval: definition.Interval,
 			Weekdays: append([]string(nil), input.Weekdays...), EndDate: formatOptionalDate(definition.EndDate),
 			Title: definition.Title, Description: definition.Description, Location: definition.Location,
 			ProjectID: definition.ProjectID, AssigneeID: definition.AssigneeID,

@@ -27,6 +27,7 @@ type ScheduleBlueprintResponse struct {
 	RecurrenceAnchorDate string   `json:"recurrence_anchor_date"`
 	LocalStart           string   `json:"local_start"`
 	LocalEnd             string   `json:"local_end"`
+	AllDay               bool     `json:"all_day"`
 	Timezone             string   `json:"timezone"`
 	Frequency            string   `json:"frequency"`
 	Interval             int      `json:"interval"`
@@ -43,27 +44,34 @@ type ScheduleBlueprintResponse struct {
 }
 
 type ScheduleOccurrenceResponse struct {
-	ID               *string `json:"id,omitempty"`
-	Persisted        bool    `json:"persisted"`
-	BlueprintID      string  `json:"blueprint_id"`
-	OccurrenceDate   string  `json:"occurrence_date"`
-	SourceRevisionID string  `json:"source_revision_id,omitempty"`
-	UserID           string  `json:"user_id"`
-	ProjectID        string  `json:"project_id,omitempty"`
-	AssigneeID       string  `json:"assignee_id"`
-	Title            string  `json:"title"`
-	Description      string  `json:"description"`
-	Location         string  `json:"location"`
-	Timezone         string  `json:"timezone"`
-	StartAt          string  `json:"start_at"`
-	EndAt            string  `json:"end_at"`
-	Completed        bool    `json:"completed"`
-	Skipped          bool    `json:"skipped"`
-	Deleted          bool    `json:"deleted"`
-	IsOverride       bool    `json:"is_override"`
-	Revision         int32   `json:"revision"`
-	CreatedAt        int64   `json:"created_at"`
-	UpdatedAt        int64   `json:"updated_at"`
+	ID                 *string `json:"id,omitempty"`
+	Persisted          bool    `json:"persisted"`
+	BlueprintID        string  `json:"blueprint_id"`
+	OccurrenceDate     string  `json:"occurrence_date"`
+	SourceRevisionID   string  `json:"source_revision_id,omitempty"`
+	UserID             string  `json:"user_id"`
+	ProjectID          string  `json:"project_id,omitempty"`
+	AssigneeID         string  `json:"assignee_id"`
+	Title              string  `json:"title"`
+	Description        string  `json:"description"`
+	Location           string  `json:"location"`
+	Timezone           string  `json:"timezone"`
+	StartAt            string  `json:"start_at"`
+	EndAt              string  `json:"end_at"`
+	AllDay             bool    `json:"all_day"`
+	Completed          bool    `json:"completed"`
+	Skipped            bool    `json:"skipped"`
+	Deleted            bool    `json:"deleted"`
+	IsOverride         bool    `json:"is_override"`
+	Revision           int32   `json:"revision"`
+	CreatedAt          int64   `json:"created_at"`
+	UpdatedAt          int64   `json:"updated_at"`
+	CanUpdate          bool    `json:"can_update"`
+	CanDelete          bool    `json:"can_delete"`
+	CanSkip            bool    `json:"can_skip"`
+	CanAssign          bool    `json:"can_assign"`
+	CanUpdateFollowing bool    `json:"can_update_following"`
+	CanDeleteFollowing bool    `json:"can_delete_following"`
 }
 
 type ScheduleBlueprintCreateRequest struct {
@@ -75,6 +83,7 @@ type ScheduleBlueprintCreateRequest struct {
 	Timezone    string   `json:"timezone"`
 	LocalStart  string   `json:"local_start"`
 	LocalEnd    string   `json:"local_end"`
+	AllDay      bool     `json:"all_day"`
 	Frequency   string   `json:"frequency"`
 	Interval    int      `json:"interval"`
 	Weekdays    []string `json:"weekdays"`
@@ -87,25 +96,27 @@ type ScheduleBlueprintUpdateRequest struct {
 	Title          optionalJSON[string]   `json:"title" swaggertype:"string"`
 	Description    optionalJSON[string]   `json:"description" swaggertype:"string"`
 	Location       optionalJSON[string]   `json:"location" swaggertype:"string"`
-	ProjectID      optionalJSON[string]   `json:"project_id" swaggertype:"string"`
+	ProjectID      optionalJSON[string]   `json:"project_id" swaggertype:"string" extensions:"x-nullable"`
 	AssigneeID     optionalJSON[string]   `json:"assignee_id" swaggertype:"string"`
 	Timezone       optionalJSON[string]   `json:"timezone" swaggertype:"string"`
 	LocalStart     optionalJSON[string]   `json:"local_start" swaggertype:"string"`
 	LocalEnd       optionalJSON[string]   `json:"local_end" swaggertype:"string"`
+	AllDay         optionalJSON[bool]     `json:"all_day" swaggertype:"boolean"`
 	Frequency      optionalJSON[string]   `json:"frequency" swaggertype:"string"`
 	Interval       optionalJSON[int]      `json:"interval" swaggertype:"integer"`
 	Weekdays       optionalJSON[[]string] `json:"weekdays" swaggertype:"array,string"`
-	EndDate        optionalJSON[string]   `json:"end_date" swaggertype:"string"`
+	EndDate        optionalJSON[string]   `json:"end_date" swaggertype:"string" extensions:"x-nullable"`
 }
 
 type ScheduleOccurrenceUpdateRequest struct {
 	Title       optionalJSON[string] `json:"title" swaggertype:"string"`
 	Description optionalJSON[string] `json:"description" swaggertype:"string"`
 	Location    optionalJSON[string] `json:"location" swaggertype:"string"`
-	ProjectID   optionalJSON[string] `json:"project_id" swaggertype:"string"`
+	ProjectID   optionalJSON[string] `json:"project_id" swaggertype:"string" extensions:"x-nullable"`
 	AssigneeID  optionalJSON[string] `json:"assignee_id" swaggertype:"string"`
 	StartAt     optionalJSON[string] `json:"start_at" swaggertype:"string"`
 	EndAt       optionalJSON[string] `json:"end_at" swaggertype:"string"`
+	AllDay      optionalJSON[bool]   `json:"all_day" swaggertype:"boolean"`
 }
 
 // CreateBlueprint creates a one-off or recurring definition.
@@ -233,8 +244,10 @@ type ScheduleBlueprintRevisionResponse struct {
 //	@Tags		Schedules
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		id	path		string	true	"Blueprint ID"
-//	@Success	200	{object}	listEnvelope[ScheduleBlueprintRevisionResponse]
+//	@Param		id			path		string	true	"Blueprint ID"
+//	@Param		page_size	query		int		false	"Items per page"
+//	@Param		page_token	query		string	false	"Opaque page token"
+//	@Success	200			{object}	listEnvelope[ScheduleBlueprintRevisionResponse]
 //	@Router		/schedule-blueprints/{id}/revisions [get]
 func (h *ScheduleHandler) ListBlueprintRevisions(w http.ResponseWriter, r *http.Request) {
 	actor, ok := scheduleActor(r.Context())
@@ -370,7 +383,7 @@ func (request ScheduleBlueprintCreateRequest) input() (scheduleusecase.CreateBlu
 		Title: request.Title, Description: request.Description, Location: request.Location,
 		ProjectID: request.ProjectID, AssigneeID: request.AssigneeID, Timezone: request.Timezone,
 		LocalStart: start, LocalEnd: end, Frequency: request.Frequency, Interval: request.Interval,
-		Weekdays: request.Weekdays, EndDate: endDate,
+		AllDay: request.AllDay, Weekdays: request.Weekdays, EndDate: endDate,
 	}, nil
 }
 
@@ -421,6 +434,7 @@ func (request ScheduleBlueprintUpdateRequest) input() (scheduleusecase.UpdateBlu
 		{"timezone", request.Timezone.Present, request.Timezone.Value == nil},
 		{"local_start", request.LocalStart.Present, request.LocalStart.Value == nil},
 		{"local_end", request.LocalEnd.Present, request.LocalEnd.Value == nil},
+		{"all_day", request.AllDay.Present, request.AllDay.Value == nil},
 		{"frequency", request.Frequency.Present, request.Frequency.Value == nil},
 		{"interval", request.Interval.Present, request.Interval.Value == nil},
 		{"weekdays", request.Weekdays.Present, request.Weekdays.Value == nil},
@@ -456,6 +470,9 @@ func (request ScheduleBlueprintUpdateRequest) input() (scheduleusecase.UpdateBlu
 	}
 	if request.Timezone.Present {
 		input.Timezone = request.Timezone.Value
+	}
+	if request.AllDay.Present {
+		input.AllDay = request.AllDay.Value
 	}
 	if request.Frequency.Present {
 		input.Frequency = request.Frequency.Value
@@ -498,7 +515,7 @@ func scheduleBlueprintResponse(row dao.Blueprint) ScheduleBlueprintResponse {
 	return ScheduleBlueprintResponse{
 		ID: row.ID, UserID: row.UserID, Revision: row.Revision, EffectiveFrom: row.EffectiveFrom,
 		RecurrenceAnchorDate: row.RecurrenceAnchorDate, LocalStart: restLocalTimestamp(row.LocalStart), LocalEnd: restLocalTimestamp(row.LocalEnd),
-		Timezone: row.Timezone, Frequency: row.Frequency, Interval: row.Interval, Weekdays: row.Weekdays,
+		Timezone: row.Timezone, AllDay: row.AllDay, Frequency: row.Frequency, Interval: row.Interval, Weekdays: row.Weekdays,
 		EndDate: row.EndDate, CutoffAfter: row.CutoffAfter, Title: row.Title, Description: row.Description, Location: row.Location,
 		ProjectID: row.ProjectID, AssigneeID: row.AssigneeID, Deleted: row.Deleted, CreatedAt: row.CreatedAt,
 	}

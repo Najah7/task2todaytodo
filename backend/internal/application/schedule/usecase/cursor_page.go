@@ -18,13 +18,14 @@ type CursorAnchor struct {
 }
 
 type CursorPageRequest struct {
-	Size      int
-	From      time.Time
-	To        time.Time
-	ProjectID string
-	FromDate  string
-	AsOf      time.Time
-	Anchor    *CursorAnchor
+	Size           int
+	From           time.Time
+	To             time.Time
+	ProjectID      string
+	IncludeSkipped bool
+	FromDate       string
+	AsOf           time.Time
+	Anchor         *CursorAnchor
 }
 
 type CursorPage[T any] struct {

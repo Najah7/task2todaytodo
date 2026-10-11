@@ -11,12 +11,12 @@ import (
 
 const listProjectMemberBlueprintRevisionCandidates = `-- name: ListProjectMemberBlueprintRevisionCandidates :many
 WITH active AS (
-    SELECT revision.id, revision.blueprint_id, revision.user_id, revision.revision, revision.effective_from, revision.recurrence_anchor_date, revision.local_start, revision.local_end, revision.timezone, revision.frequency, revision.interval_count, revision.weekdays, revision.end_date, revision.title, revision.description, revision.location, revision.project_id, revision.assignee_id, revision.superseded_at, revision.cutoff_after, revision.changed_by, revision.created_at, (now() AT TIME ZONE revision.timezone)::date AS local_today
+    SELECT revision.id, revision.blueprint_id, revision.user_id, revision.revision, revision.effective_from, revision.recurrence_anchor_date, revision.local_start, revision.local_end, revision.all_day, revision.timezone, revision.frequency, revision.interval_count, revision.weekdays, revision.end_date, revision.title, revision.description, revision.location, revision.project_id, revision.assignee_id, revision.superseded_at, revision.cutoff_after, revision.changed_by, revision.created_at, (now() AT TIME ZONE revision.timezone)::date AS local_today
     FROM schedule_blueprint_revisions revision
     JOIN schedule_blueprints blueprint ON blueprint.id = revision.blueprint_id AND blueprint.deleted_at IS NULL
     WHERE revision.superseded_at IS NULL
 ), current_ranked AS (
-    SELECT active.id, active.blueprint_id, active.user_id, active.revision, active.effective_from, active.recurrence_anchor_date, active.local_start, active.local_end, active.timezone, active.frequency, active.interval_count, active.weekdays, active.end_date, active.title, active.description, active.location, active.project_id, active.assignee_id, active.superseded_at, active.cutoff_after, active.changed_by, active.created_at, active.local_today, row_number() OVER (PARTITION BY active.blueprint_id ORDER BY active.effective_from DESC, active.revision DESC) AS position
+    SELECT active.id, active.blueprint_id, active.user_id, active.revision, active.effective_from, active.recurrence_anchor_date, active.local_start, active.local_end, active.all_day, active.timezone, active.frequency, active.interval_count, active.weekdays, active.end_date, active.title, active.description, active.location, active.project_id, active.assignee_id, active.superseded_at, active.cutoff_after, active.changed_by, active.created_at, active.local_today, row_number() OVER (PARTITION BY active.blueprint_id ORDER BY active.effective_from DESC, active.revision DESC) AS position
     FROM active WHERE active.effective_from <= active.local_today
 ), candidates AS (
     SELECT current_ranked.id AS source_revision_id, current_ranked.blueprint_id,

@@ -44,9 +44,34 @@ ORDER BY s.blueprint_id, s.occurrence_date;
 SELECT s.*
 FROM schedules s
 WHERE s.deleted_at IS NULL
+  AND (sqlc.arg(include_skipped)::boolean OR s.skipped_at IS NULL)
   AND s.start_at < sqlc.arg(to_at)::timestamptz AND s.end_at > sqlc.arg(from_at)::timestamptz
   AND schedule_has_permission(s.id, sqlc.arg(actor_id)::text, 'schedule', 'read')
 ORDER BY s.start_at, s.blueprint_id, s.occurrence_date;
+
+-- name: ListScheduleOccurrenceCapabilities :many
+WITH requested AS (
+    SELECT ids.blueprint_id::text AS blueprint_id, dates.occurrence_date::date AS occurrence_date
+    FROM unnest(sqlc.arg(blueprint_ids)::text[]) WITH ORDINALITY AS ids(blueprint_id, position)
+    JOIN unnest(sqlc.arg(occurrence_dates)::text[]) WITH ORDINALITY AS dates(occurrence_date, position)
+      USING (position)
+)
+SELECT requested.blueprint_id, requested.occurrence_date,
+    CASE WHEN s.id IS NOT NULL THEN schedule_occurrence_has_permission(s.id, sqlc.arg(actor_id)::text, 'schedule', 'update')
+         ELSE schedule_blueprint_has_permission_at(b.id, requested.occurrence_date, sqlc.arg(actor_id)::text, 'schedule', 'update') END::boolean AS can_update,
+    CASE WHEN s.id IS NOT NULL THEN schedule_occurrence_has_permission(s.id, sqlc.arg(actor_id)::text, 'schedule', 'delete')
+         ELSE schedule_blueprint_has_permission_at(b.id, requested.occurrence_date, sqlc.arg(actor_id)::text, 'schedule', 'delete') END::boolean AS can_delete,
+    CASE WHEN s.id IS NOT NULL THEN schedule_occurrence_has_permission(s.id, sqlc.arg(actor_id)::text, 'occurrence', 'update')
+         ELSE schedule_blueprint_has_permission_at(b.id, requested.occurrence_date, sqlc.arg(actor_id)::text, 'occurrence', 'update') END::boolean AS can_skip,
+    CASE WHEN s.id IS NOT NULL THEN schedule_occurrence_has_permission(s.id, sqlc.arg(actor_id)::text, 'schedule_assignment', 'update')
+         ELSE schedule_blueprint_has_permission_at(b.id, requested.occurrence_date, sqlc.arg(actor_id)::text, 'schedule_assignment', 'update') END::boolean AS can_assign,
+    schedule_blueprint_has_permission_at(b.id, requested.occurrence_date, sqlc.arg(actor_id)::text, 'schedule', 'update') AS can_update_following,
+    schedule_blueprint_has_permission_at(b.id, requested.occurrence_date, sqlc.arg(actor_id)::text, 'schedule', 'delete') AS can_delete_following
+FROM requested
+JOIN schedule_blueprints b ON b.id = requested.blueprint_id AND b.deleted_at IS NULL
+LEFT JOIN schedules s ON s.blueprint_id = requested.blueprint_id AND s.occurrence_date = requested.occurrence_date
+WHERE s.id IS NOT NULL OR schedule_blueprint_has_permission_at(b.id, requested.occurrence_date,
+      sqlc.arg(actor_id)::text, 'schedule', 'read');
 
 -- name: ListSchedulePauseIntervalsByActor :many
 SELECT pauses.project_id, pauses.paused_at, pauses.resumed_at

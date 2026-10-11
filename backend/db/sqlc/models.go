@@ -246,6 +246,7 @@ type Schedule struct {
 	OccurrenceDate   pgtype.Date
 	StartAt          pgtype.Timestamptz
 	EndAt            pgtype.Timestamptz
+	AllDay           bool
 	Title            string
 	Description      pgtype.Text
 	Location         pgtype.Text
@@ -284,6 +285,7 @@ type ScheduleBlueprintRevision struct {
 	RecurrenceAnchorDate pgtype.Date
 	LocalStart           pgtype.Timestamp
 	LocalEnd             pgtype.Timestamp
+	AllDay               bool
 	Timezone             string
 	Frequency            string
 	IntervalCount        int32
@@ -317,6 +319,7 @@ type ScheduleRevision struct {
 	OccurrenceDate   pgtype.Date
 	StartAt          pgtype.Timestamptz
 	EndAt            pgtype.Timestamptz
+	AllDay           bool
 	Title            string
 	Description      pgtype.Text
 	Location         pgtype.Text

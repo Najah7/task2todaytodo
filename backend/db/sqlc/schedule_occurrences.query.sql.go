@@ -12,7 +12,7 @@ import (
 )
 
 const getScheduleOccurrenceByActor = `-- name: GetScheduleOccurrenceByActor :one
-SELECT s.id, s.blueprint_id, s.source_revision_id, s.user_id, s.occurrence_date, s.start_at, s.end_at, s.title, s.description, s.location, s.project_id, s.assignee_id, s.timezone, s.completed, s.skipped_at, s.deleted_at, s.is_override, s.revision, s.changed_by, s.created_at, s.updated_at
+SELECT s.id, s.blueprint_id, s.source_revision_id, s.user_id, s.occurrence_date, s.start_at, s.end_at, s.all_day, s.title, s.description, s.location, s.project_id, s.assignee_id, s.timezone, s.completed, s.skipped_at, s.deleted_at, s.is_override, s.revision, s.changed_by, s.created_at, s.updated_at
 FROM schedules s
 WHERE s.blueprint_id = $1::text
   AND s.occurrence_date = $2::date
@@ -36,6 +36,7 @@ func (q *Queries) GetScheduleOccurrenceByActor(ctx context.Context, arg GetSched
 		&i.OccurrenceDate,
 		&i.StartAt,
 		&i.EndAt,
+		&i.AllDay,
 		&i.Title,
 		&i.Description,
 		&i.Location,
@@ -55,7 +56,7 @@ func (q *Queries) GetScheduleOccurrenceByActor(ctx context.Context, arg GetSched
 }
 
 const getScheduleOccurrenceForHistoryByActor = `-- name: GetScheduleOccurrenceForHistoryByActor :one
-SELECT s.id, s.blueprint_id, s.source_revision_id, s.user_id, s.occurrence_date, s.start_at, s.end_at, s.title, s.description, s.location, s.project_id, s.assignee_id, s.timezone, s.completed, s.skipped_at, s.deleted_at, s.is_override, s.revision, s.changed_by, s.created_at, s.updated_at
+SELECT s.id, s.blueprint_id, s.source_revision_id, s.user_id, s.occurrence_date, s.start_at, s.end_at, s.all_day, s.title, s.description, s.location, s.project_id, s.assignee_id, s.timezone, s.completed, s.skipped_at, s.deleted_at, s.is_override, s.revision, s.changed_by, s.created_at, s.updated_at
 FROM schedules s
 JOIN schedule_blueprints b ON b.id = s.blueprint_id AND b.deleted_at IS NULL
 WHERE s.blueprint_id = $1::text
@@ -83,6 +84,7 @@ func (q *Queries) GetScheduleOccurrenceForHistoryByActor(ctx context.Context, ar
 		&i.OccurrenceDate,
 		&i.StartAt,
 		&i.EndAt,
+		&i.AllDay,
 		&i.Title,
 		&i.Description,
 		&i.Location,
@@ -102,7 +104,7 @@ func (q *Queries) GetScheduleOccurrenceForHistoryByActor(ctx context.Context, ar
 }
 
 const getScheduleOccurrenceForMutation = `-- name: GetScheduleOccurrenceForMutation :one
-SELECT s.id, s.blueprint_id, s.source_revision_id, s.user_id, s.occurrence_date, s.start_at, s.end_at, s.title, s.description, s.location, s.project_id, s.assignee_id, s.timezone, s.completed, s.skipped_at, s.deleted_at, s.is_override, s.revision, s.changed_by, s.created_at, s.updated_at
+SELECT s.id, s.blueprint_id, s.source_revision_id, s.user_id, s.occurrence_date, s.start_at, s.end_at, s.all_day, s.title, s.description, s.location, s.project_id, s.assignee_id, s.timezone, s.completed, s.skipped_at, s.deleted_at, s.is_override, s.revision, s.changed_by, s.created_at, s.updated_at
 FROM schedules s
 WHERE s.blueprint_id = $1::text
   AND s.occurrence_date = $2::date
@@ -134,6 +136,7 @@ func (q *Queries) GetScheduleOccurrenceForMutation(ctx context.Context, arg GetS
 		&i.OccurrenceDate,
 		&i.StartAt,
 		&i.EndAt,
+		&i.AllDay,
 		&i.Title,
 		&i.Description,
 		&i.Location,
@@ -150,6 +153,77 @@ func (q *Queries) GetScheduleOccurrenceForMutation(ctx context.Context, arg GetS
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listScheduleOccurrenceCapabilities = `-- name: ListScheduleOccurrenceCapabilities :many
+WITH requested AS (
+    SELECT ids.blueprint_id::text AS blueprint_id, dates.occurrence_date::date AS occurrence_date
+    FROM unnest($2::text[]) WITH ORDINALITY AS ids(blueprint_id, position)
+    JOIN unnest($3::text[]) WITH ORDINALITY AS dates(occurrence_date, position)
+      USING (position)
+)
+SELECT requested.blueprint_id, requested.occurrence_date,
+    CASE WHEN s.id IS NOT NULL THEN schedule_occurrence_has_permission(s.id, $1::text, 'schedule', 'update')
+         ELSE schedule_blueprint_has_permission_at(b.id, requested.occurrence_date, $1::text, 'schedule', 'update') END::boolean AS can_update,
+    CASE WHEN s.id IS NOT NULL THEN schedule_occurrence_has_permission(s.id, $1::text, 'schedule', 'delete')
+         ELSE schedule_blueprint_has_permission_at(b.id, requested.occurrence_date, $1::text, 'schedule', 'delete') END::boolean AS can_delete,
+    CASE WHEN s.id IS NOT NULL THEN schedule_occurrence_has_permission(s.id, $1::text, 'occurrence', 'update')
+         ELSE schedule_blueprint_has_permission_at(b.id, requested.occurrence_date, $1::text, 'occurrence', 'update') END::boolean AS can_skip,
+    CASE WHEN s.id IS NOT NULL THEN schedule_occurrence_has_permission(s.id, $1::text, 'schedule_assignment', 'update')
+         ELSE schedule_blueprint_has_permission_at(b.id, requested.occurrence_date, $1::text, 'schedule_assignment', 'update') END::boolean AS can_assign,
+    schedule_blueprint_has_permission_at(b.id, requested.occurrence_date, $1::text, 'schedule', 'update') AS can_update_following,
+    schedule_blueprint_has_permission_at(b.id, requested.occurrence_date, $1::text, 'schedule', 'delete') AS can_delete_following
+FROM requested
+JOIN schedule_blueprints b ON b.id = requested.blueprint_id AND b.deleted_at IS NULL
+LEFT JOIN schedules s ON s.blueprint_id = requested.blueprint_id AND s.occurrence_date = requested.occurrence_date
+WHERE s.id IS NOT NULL OR schedule_blueprint_has_permission_at(b.id, requested.occurrence_date,
+      $1::text, 'schedule', 'read')
+`
+
+type ListScheduleOccurrenceCapabilitiesParams struct {
+	ActorID         string
+	BlueprintIds    []string
+	OccurrenceDates []string
+}
+
+type ListScheduleOccurrenceCapabilitiesRow struct {
+	BlueprintID        string
+	OccurrenceDate     pgtype.Date
+	CanUpdate          bool
+	CanDelete          bool
+	CanSkip            bool
+	CanAssign          bool
+	CanUpdateFollowing bool
+	CanDeleteFollowing bool
+}
+
+func (q *Queries) ListScheduleOccurrenceCapabilities(ctx context.Context, arg ListScheduleOccurrenceCapabilitiesParams) ([]ListScheduleOccurrenceCapabilitiesRow, error) {
+	rows, err := q.db.Query(ctx, listScheduleOccurrenceCapabilities, arg.ActorID, arg.BlueprintIds, arg.OccurrenceDates)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListScheduleOccurrenceCapabilitiesRow
+	for rows.Next() {
+		var i ListScheduleOccurrenceCapabilitiesRow
+		if err := rows.Scan(
+			&i.BlueprintID,
+			&i.OccurrenceDate,
+			&i.CanUpdate,
+			&i.CanDelete,
+			&i.CanSkip,
+			&i.CanAssign,
+			&i.CanUpdateFollowing,
+			&i.CanDeleteFollowing,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listScheduleOccurrenceOriginsForRangeByActor = `-- name: ListScheduleOccurrenceOriginsForRangeByActor :many
@@ -202,22 +276,29 @@ func (q *Queries) ListScheduleOccurrenceOriginsForRangeByActor(ctx context.Conte
 }
 
 const listScheduleOccurrencesForRangeByActor = `-- name: ListScheduleOccurrencesForRangeByActor :many
-SELECT s.id, s.blueprint_id, s.source_revision_id, s.user_id, s.occurrence_date, s.start_at, s.end_at, s.title, s.description, s.location, s.project_id, s.assignee_id, s.timezone, s.completed, s.skipped_at, s.deleted_at, s.is_override, s.revision, s.changed_by, s.created_at, s.updated_at
+SELECT s.id, s.blueprint_id, s.source_revision_id, s.user_id, s.occurrence_date, s.start_at, s.end_at, s.all_day, s.title, s.description, s.location, s.project_id, s.assignee_id, s.timezone, s.completed, s.skipped_at, s.deleted_at, s.is_override, s.revision, s.changed_by, s.created_at, s.updated_at
 FROM schedules s
 WHERE s.deleted_at IS NULL
-  AND s.start_at < $1::timestamptz AND s.end_at > $2::timestamptz
-  AND schedule_has_permission(s.id, $3::text, 'schedule', 'read')
+  AND ($1::boolean OR s.skipped_at IS NULL)
+  AND s.start_at < $2::timestamptz AND s.end_at > $3::timestamptz
+  AND schedule_has_permission(s.id, $4::text, 'schedule', 'read')
 ORDER BY s.start_at, s.blueprint_id, s.occurrence_date
 `
 
 type ListScheduleOccurrencesForRangeByActorParams struct {
-	ToAt    pgtype.Timestamptz
-	FromAt  pgtype.Timestamptz
-	ActorID string
+	IncludeSkipped bool
+	ToAt           pgtype.Timestamptz
+	FromAt         pgtype.Timestamptz
+	ActorID        string
 }
 
 func (q *Queries) ListScheduleOccurrencesForRangeByActor(ctx context.Context, arg ListScheduleOccurrencesForRangeByActorParams) ([]Schedule, error) {
-	rows, err := q.db.Query(ctx, listScheduleOccurrencesForRangeByActor, arg.ToAt, arg.FromAt, arg.ActorID)
+	rows, err := q.db.Query(ctx, listScheduleOccurrencesForRangeByActor,
+		arg.IncludeSkipped,
+		arg.ToAt,
+		arg.FromAt,
+		arg.ActorID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -233,6 +314,7 @@ func (q *Queries) ListScheduleOccurrencesForRangeByActor(ctx context.Context, ar
 			&i.OccurrenceDate,
 			&i.StartAt,
 			&i.EndAt,
+			&i.AllDay,
 			&i.Title,
 			&i.Description,
 			&i.Location,

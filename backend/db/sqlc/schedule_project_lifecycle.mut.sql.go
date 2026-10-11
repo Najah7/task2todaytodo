@@ -13,7 +13,7 @@ import (
 
 const pauseScheduleBlueprintsForProject = `-- name: PauseScheduleBlueprintsForProject :exec
 WITH current_or_planned_revisions AS (
-    SELECT revision.id, revision.blueprint_id, revision.user_id, revision.revision, revision.effective_from, revision.recurrence_anchor_date, revision.local_start, revision.local_end, revision.timezone, revision.frequency, revision.interval_count, revision.weekdays, revision.end_date, revision.title, revision.description, revision.location, revision.project_id, revision.assignee_id, revision.superseded_at, revision.cutoff_after, revision.changed_by, revision.created_at
+    SELECT revision.id, revision.blueprint_id, revision.user_id, revision.revision, revision.effective_from, revision.recurrence_anchor_date, revision.local_start, revision.local_end, revision.all_day, revision.timezone, revision.frequency, revision.interval_count, revision.weekdays, revision.end_date, revision.title, revision.description, revision.location, revision.project_id, revision.assignee_id, revision.superseded_at, revision.cutoff_after, revision.changed_by, revision.created_at
     FROM schedule_blueprint_revisions revision
     JOIN schedule_blueprints blueprint ON blueprint.id = revision.blueprint_id
     WHERE revision.superseded_at IS NULL

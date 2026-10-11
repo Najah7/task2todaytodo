@@ -15,6 +15,7 @@ CREATE TABLE schedule_blueprint_revisions (
     recurrence_anchor_date date NOT NULL,
     local_start timestamp NOT NULL,
     local_end timestamp NOT NULL,
+    all_day boolean NOT NULL DEFAULT false,
     timezone text NOT NULL REFERENCES timezone_master(timezone) ON DELETE RESTRICT,
     frequency text NOT NULL CHECK (frequency IN ('once', 'daily', 'weekly', 'monthly', 'yearly')),
     interval_count integer NOT NULL CHECK ((frequency = 'once' AND interval_count = 0) OR (frequency <> 'once' AND interval_count > 0)),
@@ -36,6 +37,9 @@ CREATE TABLE schedule_blueprint_revisions (
     CONSTRAINT schedule_blueprint_revisions_key UNIQUE (blueprint_id, revision),
     CONSTRAINT schedule_blueprint_revisions_source_key UNIQUE (id, blueprint_id, user_id),
     CONSTRAINT schedule_blueprint_revisions_local_interval CHECK (local_end > local_start),
+    CONSTRAINT schedule_blueprint_revisions_all_day_midnight CHECK (
+        NOT all_day OR (local_start::time = TIME '00:00' AND local_end::time = TIME '00:00')
+    ),
     CONSTRAINT schedule_blueprint_revisions_end_date CHECK (end_date IS NULL OR end_date >= effective_from),
     CONSTRAINT schedule_blueprint_revisions_once_end CHECK (frequency <> 'once' OR end_date IS NULL),
     CONSTRAINT schedule_blueprint_revisions_weekdays CHECK (
@@ -58,6 +62,7 @@ CREATE TABLE schedules (
     occurrence_date date NOT NULL,
     start_at timestamptz NOT NULL,
     end_at timestamptz NOT NULL,
+    all_day boolean NOT NULL DEFAULT false,
     title text NOT NULL CHECK (btrim(title) <> ''),
     description text,
     location text,
@@ -80,6 +85,12 @@ CREATE TABLE schedules (
         REFERENCES projects(id, user_id) ON DELETE RESTRICT,
     CONSTRAINT schedules_blueprint_occurrence_key UNIQUE (blueprint_id, occurrence_date),
     CONSTRAINT schedules_end_after_start CHECK (end_at > start_at),
+    CONSTRAINT schedules_all_day_midnight CHECK (
+        NOT all_day OR (
+            start_at AT TIME ZONE timezone = date_trunc('day', start_at AT TIME ZONE timezone)
+            AND end_at AT TIME ZONE timezone = date_trunc('day', end_at AT TIME ZONE timezone)
+        )
+    ),
     CONSTRAINT schedules_id_blueprint_key UNIQUE (id, blueprint_id)
 );
 CREATE INDEX idx_schedules_user_assignee_start_id_live
@@ -97,6 +108,7 @@ CREATE TABLE schedule_revisions (
     occurrence_date date NOT NULL,
     start_at timestamptz NOT NULL,
     end_at timestamptz NOT NULL,
+    all_day boolean NOT NULL DEFAULT false,
     title text NOT NULL,
     description text,
     location text,
@@ -129,11 +141,11 @@ BEGIN
     INSERT INTO schedule_revisions (
         schedule_id, revision, source_revision_id, user_id, occurrence_date,
         start_at, end_at, title, description, location, project_id, assignee_id,
-        timezone, completed, skipped_at, deleted_at, is_override, changed_by, changed_at
+        timezone, all_day, completed, skipped_at, deleted_at, is_override, changed_by, changed_at
     ) VALUES (
         NEW.id, NEW.revision, NEW.source_revision_id, NEW.user_id, NEW.occurrence_date,
         NEW.start_at, NEW.end_at, NEW.title, NEW.description, NEW.location, NEW.project_id,
-        NEW.assignee_id, NEW.timezone, NEW.completed, NEW.skipped_at, NEW.deleted_at,
+        NEW.assignee_id, NEW.timezone, NEW.all_day, NEW.completed, NEW.skipped_at, NEW.deleted_at,
         NEW.is_override, NEW.changed_by, NEW.updated_at
     );
     RETURN NEW;

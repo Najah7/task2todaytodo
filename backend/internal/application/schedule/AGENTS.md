@@ -9,8 +9,7 @@ approved decisions.
 - Follow Google Calendar's user-facing Schedule behavior wherever possible.
   Explicit product decisions below take precedence. Clarify material differences
   before implementing them; do not assume Google's API matches its UI behavior.
-- Keep recurrence rules in the backend. All-day support is outside the current
-  backend redesign scope.
+- Keep recurrence rules and all-day boundary rules in the backend.
 
 ## Blueprints and schedules
 
@@ -101,6 +100,23 @@ approved decisions.
   the job starts.
 - Give Projects the same status action endpoints as Tasks: `:start`, `:hold`,
   `:wait`, `:complete`, and `:reopen` under `/projects/{id}`.
+
+## All-day occurrences and calendar filters
+
+- `all_day` defaults to `false`. All-day blueprint boundaries are local midnight
+  timestamps; `local_end` is the exclusive local date. Resolve each boundary in
+  the blueprint timezone so multi-day spans retain calendar-day length across
+  daylight-saving changes. Concrete occurrences keep UTC instants and their
+  timezone, and revisions copy `all_day`.
+- Individual occurrence updates may toggle `all_day`; timezone remains
+  read-only. Explicit all-day boundaries must be local midnight.
+- Schedule list routes accept `include_skipped` (default `false`). Deleted
+  occurrences remain hidden; restore only clears the skipped state. Bind this
+  filter into cursor scope.
+- Occurrence responses expose server-computed per-occurrence edit, delete, skip,
+  assignment, and following capabilities. Following capabilities use the
+  effective blueprint's original start for the occurrence date and are
+  available only before that start.
 
 ## Backfill job
 

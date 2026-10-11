@@ -128,6 +128,8 @@ func scheduleUseCaseError(err error) (int, ErrDetail) {
 		return http.StatusBadRequest, scheduleField("weekdays", "invalid_weekdays", "Weekdays must match the selected frequency")
 	case errors.Is(err, domain.ErrBlueprintDateRange):
 		return http.StatusBadRequest, scheduleField("end_date", "invalid_date_range", "End date must be on or after the first occurrence")
+	case errors.Is(err, domain.ErrBlueprintAllDayTime):
+		return http.StatusBadRequest, scheduleField("all_day", "invalid_boundaries", "All-day local start and end must be midnight")
 	case errors.Is(err, domain.ErrBlueprintTimeRange), errors.Is(err, scheduleusecase.ErrOccurrenceTimeInvalid):
 		return http.StatusBadRequest, scheduleField("end_at", "invalid_time_range", "End time must be after start time")
 	case errors.Is(err, scheduleusecase.ErrInvalidSchedulePage):

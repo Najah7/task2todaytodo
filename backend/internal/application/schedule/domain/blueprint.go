@@ -23,6 +23,7 @@ var (
 	ErrBlueprintWeekdays      = errors.New("weekly schedule blueprint needs valid weekdays")
 	ErrBlueprintDateRange     = errors.New("schedule blueprint date range is invalid")
 	ErrBlueprintTimeRange     = errors.New("schedule blueprint end must be after start")
+	ErrBlueprintAllDayTime    = errors.New("all-day schedule boundaries must be local midnight")
 )
 
 type BlueprintID string
@@ -38,6 +39,7 @@ type BlueprintDefinition struct {
 	AssigneeID  string
 	LocalStart  time.Time
 	LocalEnd    time.Time
+	AllDay      bool
 	Timezone    string
 	Frequency   string
 	Interval    int
@@ -55,6 +57,9 @@ func NewBlueprintDefinition(definition BlueprintDefinition) (BlueprintDefinition
 	}
 	if definition.LocalStart.IsZero() || definition.LocalEnd.IsZero() || !definition.LocalEnd.After(definition.LocalStart) {
 		return BlueprintDefinition{}, ErrBlueprintTimeRange
+	}
+	if definition.AllDay && (!isLocalMidnight(definition.LocalStart) || !isLocalMidnight(definition.LocalEnd)) {
+		return BlueprintDefinition{}, ErrBlueprintAllDayTime
 	}
 	switch definition.Frequency {
 	case FrequencyOnce:
@@ -94,6 +99,10 @@ func NewBlueprintDefinition(definition BlueprintDefinition) (BlueprintDefinition
 		definition.EndDate = &endDate
 	}
 	return definition, nil
+}
+
+func isLocalMidnight(value time.Time) bool {
+	return value.Hour() == 0 && value.Minute() == 0 && value.Second() == 0 && value.Nanosecond() == 0
 }
 
 func NewBlueprintID(value string) (BlueprintID, error) {

@@ -61,22 +61,22 @@ func (q *Queries) CreateScheduleBlueprintByActor(ctx context.Context, arg Create
 const createScheduleBlueprintRevisionByActor = `-- name: CreateScheduleBlueprintRevisionByActor :one
 INSERT INTO schedule_blueprint_revisions (
     id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
-    local_start, local_end, timezone, frequency, interval_count, weekdays, end_date,
+    local_start, local_end, all_day, timezone, frequency, interval_count, weekdays, end_date,
     title, description, location, project_id, assignee_id, changed_by
 )
 SELECT $1::text, b.id, b.user_id, 1, $2::date,
        $3::date, $4::timestamp,
-       $5::timestamp, $6::text, $7::text,
-       $8::integer, $9::text[], $10::date,
-       $11::text, $12::text, $13::text,
-       $14::text, COALESCE(NULLIF($15::text, ''), b.user_id), $16::text
+       $5::timestamp, $6::boolean, $7::text, $8::text,
+       $9::integer, $10::text[], $11::date,
+       $12::text, $13::text, $14::text,
+       $15::text, COALESCE(NULLIF($16::text, ''), b.user_id), $17::text
 FROM schedule_blueprints b
-WHERE b.id = $17::text
-  AND (b.user_id = $16::text OR (
-      $14::text IS NOT NULL
-      AND project_has_permission($14::text, $16::text, 'schedule', 'create')
+WHERE b.id = $18::text
+  AND (b.user_id = $17::text OR (
+      $15::text IS NOT NULL
+      AND project_has_permission($15::text, $17::text, 'schedule', 'create')
   ))
-RETURNING id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date, local_start, local_end, timezone, frequency, interval_count, weekdays, end_date, title, description, location, project_id, assignee_id, superseded_at, cutoff_after, changed_by, created_at
+RETURNING id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date, local_start, local_end, all_day, timezone, frequency, interval_count, weekdays, end_date, title, description, location, project_id, assignee_id, superseded_at, cutoff_after, changed_by, created_at
 `
 
 type CreateScheduleBlueprintRevisionByActorParams struct {
@@ -85,6 +85,7 @@ type CreateScheduleBlueprintRevisionByActorParams struct {
 	RecurrenceAnchorDate pgtype.Date
 	LocalStart           pgtype.Timestamp
 	LocalEnd             pgtype.Timestamp
+	AllDay               bool
 	Timezone             string
 	Frequency            string
 	IntervalCount        int32
@@ -106,6 +107,7 @@ func (q *Queries) CreateScheduleBlueprintRevisionByActor(ctx context.Context, ar
 		arg.RecurrenceAnchorDate,
 		arg.LocalStart,
 		arg.LocalEnd,
+		arg.AllDay,
 		arg.Timezone,
 		arg.Frequency,
 		arg.IntervalCount,
@@ -129,6 +131,7 @@ func (q *Queries) CreateScheduleBlueprintRevisionByActor(ctx context.Context, ar
 		&i.RecurrenceAnchorDate,
 		&i.LocalStart,
 		&i.LocalEnd,
+		&i.AllDay,
 		&i.Timezone,
 		&i.Frequency,
 		&i.IntervalCount,
@@ -184,14 +187,14 @@ WITH locked AS (
 ), cancellation AS (
     INSERT INTO schedule_blueprint_revisions (
         id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
-        local_start, local_end, timezone, frequency, interval_count, weekdays, end_date,
+        local_start, local_end, all_day, timezone, frequency, interval_count, weekdays, end_date,
         title, description, location, project_id, assignee_id, superseded_at, cutoff_after, changed_by
     )
     SELECT $5::text, source.blueprint_id, source.user_id,
            (SELECT COALESCE(MAX(all_revisions.revision), 0) + 1 FROM schedule_blueprint_revisions all_revisions
             WHERE all_revisions.blueprint_id = source.blueprint_id),
            $2::date, source.recurrence_anchor_date,
-           source.local_start, source.local_end, source.timezone, source.frequency,
+           source.local_start, source.local_end, source.all_day, source.timezone, source.frequency,
            source.interval_count, source.weekdays, source.end_date, source.title,
            source.description, source.location, source.project_id, source.assignee_id,
            now(), $2::date - 1, $3::text
@@ -241,10 +244,10 @@ const publishScheduleBlueprintRevisionByActor = `-- name: PublishScheduleBluepri
 WITH locked AS (
     SELECT b.id, b.user_id
     FROM schedule_blueprints b
-    WHERE b.id = $18::text
+    WHERE b.id = $19::text
       AND schedule_blueprint_has_permission_at(b.id, $2::date,
-          $17::text, $19::text, $20::action)
-      AND (SELECT COALESCE(MAX(revision), 0) FROM schedule_blueprint_revisions WHERE blueprint_id = b.id) = $21::integer
+          $18::text, $20::text, $21::action)
+      AND (SELECT COALESCE(MAX(revision), 0) FROM schedule_blueprint_revisions WHERE blueprint_id = b.id) = $22::integer
     FOR UPDATE
 ), superseded AS (
     UPDATE schedule_blueprint_revisions old
@@ -260,19 +263,19 @@ WITH locked AS (
 )
 INSERT INTO schedule_blueprint_revisions (
     id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
-    local_start, local_end, timezone, frequency, interval_count, weekdays, end_date, cutoff_after,
+    local_start, local_end, all_day, timezone, frequency, interval_count, weekdays, end_date, cutoff_after,
     title, description, location, project_id, assignee_id, changed_by
 )
 SELECT $1::text, locked.id, locked.user_id, next_revision.revision,
        $2::date, $3::date,
-       $4::timestamp, $5::timestamp, $6::text,
-       $7::text, $8::integer, $9::text[],
-       $10::date, $11::date, $12::text, $13::text,
-       $14::text, $15::text, $16::text,
-       $17::text
+       $4::timestamp, $5::timestamp, $6::boolean, $7::text,
+       $8::text, $9::integer, $10::text[],
+       $11::date, $12::date, $13::text, $14::text,
+       $15::text, $16::text, $17::text,
+       $18::text
 FROM locked, next_revision
 WHERE next_revision.superseded_count >= 0
-RETURNING id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date, local_start, local_end, timezone, frequency, interval_count, weekdays, end_date, title, description, location, project_id, assignee_id, superseded_at, cutoff_after, changed_by, created_at
+RETURNING id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date, local_start, local_end, all_day, timezone, frequency, interval_count, weekdays, end_date, title, description, location, project_id, assignee_id, superseded_at, cutoff_after, changed_by, created_at
 `
 
 type PublishScheduleBlueprintRevisionByActorParams struct {
@@ -281,6 +284,7 @@ type PublishScheduleBlueprintRevisionByActorParams struct {
 	RecurrenceAnchorDate pgtype.Date
 	LocalStart           pgtype.Timestamp
 	LocalEnd             pgtype.Timestamp
+	AllDay               bool
 	Timezone             string
 	Frequency            string
 	IntervalCount        int32
@@ -306,6 +310,7 @@ func (q *Queries) PublishScheduleBlueprintRevisionByActor(ctx context.Context, a
 		arg.RecurrenceAnchorDate,
 		arg.LocalStart,
 		arg.LocalEnd,
+		arg.AllDay,
 		arg.Timezone,
 		arg.Frequency,
 		arg.IntervalCount,
@@ -333,6 +338,7 @@ func (q *Queries) PublishScheduleBlueprintRevisionByActor(ctx context.Context, a
 		&i.RecurrenceAnchorDate,
 		&i.LocalStart,
 		&i.LocalEnd,
+		&i.AllDay,
 		&i.Timezone,
 		&i.Frequency,
 		&i.IntervalCount,

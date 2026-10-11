@@ -10,6 +10,7 @@ type Blueprint struct {
 	RecurrenceAnchorDate string
 	LocalStart           string
 	LocalEnd             string
+	AllDay               bool
 	Timezone             string
 	Frequency            string
 	Interval             int
@@ -54,6 +55,7 @@ type ScheduleOccurrenceRevision struct {
 	ProjectID        string
 	AssigneeID       string
 	Timezone         string
+	AllDay           bool
 	Completed        bool
 	SkippedAt        *int64
 	DeletedAt        *int64
@@ -70,24 +72,40 @@ type ScheduleOccurrenceOrigin struct {
 // ScheduleOccurrence represents a persisted row or virtual projection. A nil
 // ID means no occurrence row exists yet; it is never a magic identifier.
 type ScheduleOccurrence struct {
-	ID               *string
-	BlueprintID      string
-	OccurrenceDate   string
-	SourceRevisionID string
-	UserID           string
-	ProjectID        string
-	AssigneeID       string
-	Title            string
-	Description      string
-	Location         string
-	Timezone         string
-	StartAt          int64
-	EndAt            int64
-	Completed        bool
-	Skipped          bool
-	Deleted          bool
-	IsOverride       bool
-	Revision         int32
-	CreatedAt        int64
-	UpdatedAt        int64
+	ID                 *string
+	BlueprintID        string
+	OccurrenceDate     string
+	SourceRevisionID   string
+	UserID             string
+	ProjectID          string
+	AssigneeID         string
+	Title              string
+	Description        string
+	Location           string
+	Timezone           string
+	AllDay             bool
+	StartAt            int64
+	EndAt              int64
+	Completed          bool
+	Skipped            bool
+	Deleted            bool
+	IsOverride         bool
+	Revision           int32
+	CreatedAt          int64
+	UpdatedAt          int64
+	CanUpdate          bool
+	CanDelete          bool
+	CanSkip            bool
+	CanAssign          bool
+	CanUpdateFollowing bool
+	CanDeleteFollowing bool
+}
+
+type OccurrenceCapabilities struct {
+	CanUpdate          bool
+	CanDelete          bool
+	CanSkip            bool
+	CanAssign          bool
+	CanUpdateFollowing bool
+	CanDeleteFollowing bool
 }

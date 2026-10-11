@@ -24,6 +24,26 @@ func TestScheduleBlueprintRequestPreservesLocalWallTimes(t *testing.T) {
 	}
 }
 
+func TestScheduleRequestsCarryAllDayToggle(t *testing.T) {
+	create, err := (ScheduleBlueprintCreateRequest{
+		Title: "Holiday", Timezone: "UTC", LocalStart: "2026-12-24T00:00:00",
+		LocalEnd: "2026-12-27T00:00:00", AllDay: true, Frequency: "once",
+	}).input()
+	if err != nil || !create.AllDay {
+		t.Fatalf("create input all_day=%v err=%v", create.AllDay, err)
+	}
+	update := ScheduleBlueprintUpdateRequest{AllDay: optionalJSON[bool]{Present: true, Value: ptr(true)}}
+	blueprintPatch, err := update.input()
+	if err != nil || blueprintPatch.AllDay == nil || !*blueprintPatch.AllDay {
+		t.Fatalf("blueprint update all_day=%v err=%v", blueprintPatch.AllDay, err)
+	}
+	occurrencePatch := ScheduleOccurrenceUpdateRequest{AllDay: optionalJSON[bool]{Present: true, Value: ptr(true)}}
+	occurrence, err := occurrencePatch.input()
+	if err != nil || occurrence.AllDay == nil || !*occurrence.AllDay {
+		t.Fatalf("occurrence update all_day=%v err=%v", occurrence.AllDay, err)
+	}
+}
+
 func TestScheduleBlueprintRequestReportsInvalidField(t *testing.T) {
 	request := ScheduleBlueprintCreateRequest{LocalStart: "2026-10-11T09:30:00", LocalEnd: "invalid", EndDate: ptr("not-a-date")}
 	_, err := request.input()
@@ -47,7 +67,7 @@ func TestScheduleBlueprintRequestReportsInvalidField(t *testing.T) {
 func TestScheduleBlueprintResponseUsesRoundTrippableLocalTimestamp(t *testing.T) {
 	cutoff := "2026-10-12"
 	response := scheduleBlueprintResponse(dao.Blueprint{
-		LocalStart: "2026-10-11 09:30:00.123456", LocalEnd: "2026-10-11 10:15:00.123456",
+		LocalStart: "2026-10-11 09:30:00.123456", LocalEnd: "2026-10-11 10:15:00.123456", AllDay: true,
 		CutoffAfter: &cutoff,
 	})
 	if response.LocalStart != "2026-10-11T09:30:00.123456" || response.LocalEnd != "2026-10-11T10:15:00.123456" {
@@ -55,6 +75,9 @@ func TestScheduleBlueprintResponseUsesRoundTrippableLocalTimestamp(t *testing.T)
 	}
 	if response.CutoffAfter == nil || *response.CutoffAfter != cutoff {
 		t.Fatalf("response cutoff_after=%v, want %q", response.CutoffAfter, cutoff)
+	}
+	if !response.AllDay {
+		t.Fatal("response omitted all_day=true")
 	}
 	parsed, err := parseBlueprintLocal(response.LocalStart)
 	if err != nil || parsed.Hour() != 9 || parsed.Minute() != 30 {

@@ -13,11 +13,11 @@ import (
 
 const getEffectiveScheduleBlueprintRevisionForDate = `-- name: GetEffectiveScheduleBlueprintRevisionForDate :one
 WITH active_revisions AS (
-    SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, LEAD(r.effective_from) OVER (PARTITION BY r.blueprint_id ORDER BY r.effective_from, r.revision) AS next_effective_from
+    SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.all_day, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, LEAD(r.effective_from) OVER (PARTITION BY r.blueprint_id ORDER BY r.effective_from, r.revision) AS next_effective_from
     FROM schedule_blueprint_revisions r
     WHERE r.blueprint_id = $5::text AND r.superseded_at IS NULL
 ), effective AS (
-    SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, r.next_effective_from,
+    SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.all_day, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, r.next_effective_from,
            CASE WHEN r.cutoff_after IS NULL THEN r.next_effective_from - 1
                 WHEN r.next_effective_from IS NULL THEN r.cutoff_after
                 ELSE LEAST(r.cutoff_after, r.next_effective_from - 1) END AS effective_until
@@ -25,7 +25,7 @@ WITH active_revisions AS (
     WHERE r.effective_from <= $1::date
     ORDER BY r.effective_from DESC, r.revision DESC LIMIT 1
 )
-SELECT effective.id, effective.blueprint_id, effective.user_id, effective.revision, effective.effective_from, effective.recurrence_anchor_date, effective.local_start, effective.local_end, effective.timezone, effective.frequency, effective.interval_count, effective.weekdays, effective.end_date, effective.title, effective.description, effective.location, effective.project_id, effective.assignee_id, effective.superseded_at, effective.cutoff_after, effective.changed_by, effective.created_at, effective.next_effective_from, effective.effective_until
+SELECT effective.id, effective.blueprint_id, effective.user_id, effective.revision, effective.effective_from, effective.recurrence_anchor_date, effective.local_start, effective.local_end, effective.all_day, effective.timezone, effective.frequency, effective.interval_count, effective.weekdays, effective.end_date, effective.title, effective.description, effective.location, effective.project_id, effective.assignee_id, effective.superseded_at, effective.cutoff_after, effective.changed_by, effective.created_at, effective.next_effective_from, effective.effective_until
 FROM effective
 JOIN schedule_blueprints b ON b.id = effective.blueprint_id AND b.deleted_at IS NULL
 WHERE schedule_blueprint_has_permission_at(b.id, $1::date,
@@ -50,6 +50,7 @@ type GetEffectiveScheduleBlueprintRevisionForDateRow struct {
 	RecurrenceAnchorDate pgtype.Date
 	LocalStart           pgtype.Timestamp
 	LocalEnd             pgtype.Timestamp
+	AllDay               bool
 	Timezone             string
 	Frequency            string
 	IntervalCount        int32
@@ -86,6 +87,7 @@ func (q *Queries) GetEffectiveScheduleBlueprintRevisionForDate(ctx context.Conte
 		&i.RecurrenceAnchorDate,
 		&i.LocalStart,
 		&i.LocalEnd,
+		&i.AllDay,
 		&i.Timezone,
 		&i.Frequency,
 		&i.IntervalCount,
@@ -110,11 +112,12 @@ const getScheduleBlueprintByActor = `-- name: GetScheduleBlueprintByActor :one
 SELECT b.id, b.user_id, b.deleted_at IS NOT NULL AS deleted, b.created_at,
        r.id AS revision_id, (SELECT MAX(all_revisions.revision)::integer FROM schedule_blueprint_revisions all_revisions WHERE all_revisions.blueprint_id = b.id) AS revision, r.effective_from, r.recurrence_anchor_date,
        r.local_start, r.local_end, r.timezone, r.frequency, r.interval_count,
+       r.all_day,
        r.weekdays, r.end_date, r.cutoff_after, r.title, r.description, r.location,
        r.project_id, r.assignee_id, r.changed_by, r.created_at AS revision_created_at
 FROM schedule_blueprints b
 JOIN LATERAL (
-    SELECT revision.id, revision.blueprint_id, revision.user_id, revision.revision, revision.effective_from, revision.recurrence_anchor_date, revision.local_start, revision.local_end, revision.timezone, revision.frequency, revision.interval_count, revision.weekdays, revision.end_date, revision.title, revision.description, revision.location, revision.project_id, revision.assignee_id, revision.superseded_at, revision.cutoff_after, revision.changed_by, revision.created_at FROM schedule_blueprint_revisions revision
+    SELECT revision.id, revision.blueprint_id, revision.user_id, revision.revision, revision.effective_from, revision.recurrence_anchor_date, revision.local_start, revision.local_end, revision.all_day, revision.timezone, revision.frequency, revision.interval_count, revision.weekdays, revision.end_date, revision.title, revision.description, revision.location, revision.project_id, revision.assignee_id, revision.superseded_at, revision.cutoff_after, revision.changed_by, revision.created_at FROM schedule_blueprint_revisions revision
     WHERE revision.blueprint_id = b.id
     ORDER BY
       CASE WHEN revision.superseded_at IS NULL THEN 0 ELSE 1 END,
@@ -146,6 +149,7 @@ type GetScheduleBlueprintByActorRow struct {
 	Timezone             string
 	Frequency            string
 	IntervalCount        int32
+	AllDay               bool
 	Weekdays             []string
 	EndDate              pgtype.Date
 	CutoffAfter          pgtype.Date
@@ -175,6 +179,7 @@ func (q *Queries) GetScheduleBlueprintByActor(ctx context.Context, arg GetSchedu
 		&i.Timezone,
 		&i.Frequency,
 		&i.IntervalCount,
+		&i.AllDay,
 		&i.Weekdays,
 		&i.EndDate,
 		&i.CutoffAfter,
@@ -249,7 +254,7 @@ func (q *Queries) IsScheduleBlueprintAssigneeEligible(ctx context.Context, arg I
 
 const listEligibleScheduleBlueprintAssignees = `-- name: ListEligibleScheduleBlueprintAssignees :many
 WITH current_revision AS (
-    SELECT revision.id, revision.blueprint_id, revision.user_id, revision.revision, revision.effective_from, revision.recurrence_anchor_date, revision.local_start, revision.local_end, revision.timezone, revision.frequency, revision.interval_count, revision.weekdays, revision.end_date, revision.title, revision.description, revision.location, revision.project_id, revision.assignee_id, revision.superseded_at, revision.cutoff_after, revision.changed_by, revision.created_at FROM schedule_blueprint_revisions revision
+    SELECT revision.id, revision.blueprint_id, revision.user_id, revision.revision, revision.effective_from, revision.recurrence_anchor_date, revision.local_start, revision.local_end, revision.all_day, revision.timezone, revision.frequency, revision.interval_count, revision.weekdays, revision.end_date, revision.title, revision.description, revision.location, revision.project_id, revision.assignee_id, revision.superseded_at, revision.cutoff_after, revision.changed_by, revision.created_at FROM schedule_blueprint_revisions revision
     WHERE revision.blueprint_id = $1::text
       AND revision.superseded_at IS NULL
       AND (revision.cutoff_after IS NULL OR revision.cutoff_after >= revision.effective_from)
@@ -315,9 +320,20 @@ func (q *Queries) ListEligibleScheduleBlueprintAssignees(ctx context.Context, ar
 }
 
 const listScheduleBlueprintRevisionsByActor = `-- name: ListScheduleBlueprintRevisionsByActor :many
-SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, b.deleted_at IS NOT NULL AS blueprint_deleted
+WITH active_boundaries AS (
+    SELECT id,
+           LEAD(effective_from) OVER (PARTITION BY blueprint_id ORDER BY effective_from, revision) AS next_effective_from
+    FROM schedule_blueprint_revisions
+    WHERE blueprint_id = $1::text AND superseded_at IS NULL
+)
+SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.all_day, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, b.deleted_at IS NOT NULL AS blueprint_deleted,
+       CASE WHEN r.superseded_at IS NOT NULL THEN NULL
+            WHEN r.cutoff_after IS NULL THEN active.next_effective_from - 1
+            WHEN active.next_effective_from IS NULL THEN r.cutoff_after
+            ELSE LEAST(r.cutoff_after, active.next_effective_from - 1) END AS effective_until
 FROM schedule_blueprint_revisions r
 JOIN schedule_blueprints b ON b.id = r.blueprint_id
+LEFT JOIN active_boundaries active ON active.id = r.id
 WHERE r.blueprint_id = $1::text
   AND schedule_blueprint_has_permission(b.id, $2::text, 'schedule', 'read')
   AND ($3::integer IS NULL OR r.revision < $3::integer)
@@ -341,6 +357,7 @@ type ListScheduleBlueprintRevisionsByActorRow struct {
 	RecurrenceAnchorDate pgtype.Date
 	LocalStart           pgtype.Timestamp
 	LocalEnd             pgtype.Timestamp
+	AllDay               bool
 	Timezone             string
 	Frequency            string
 	IntervalCount        int32
@@ -356,6 +373,7 @@ type ListScheduleBlueprintRevisionsByActorRow struct {
 	ChangedBy            string
 	CreatedAt            pgtype.Timestamptz
 	BlueprintDeleted     interface{}
+	EffectiveUntil       interface{}
 }
 
 func (q *Queries) ListScheduleBlueprintRevisionsByActor(ctx context.Context, arg ListScheduleBlueprintRevisionsByActorParams) ([]ListScheduleBlueprintRevisionsByActorRow, error) {
@@ -381,6 +399,7 @@ func (q *Queries) ListScheduleBlueprintRevisionsByActor(ctx context.Context, arg
 			&i.RecurrenceAnchorDate,
 			&i.LocalStart,
 			&i.LocalEnd,
+			&i.AllDay,
 			&i.Timezone,
 			&i.Frequency,
 			&i.IntervalCount,
@@ -396,6 +415,7 @@ func (q *Queries) ListScheduleBlueprintRevisionsByActor(ctx context.Context, arg
 			&i.ChangedBy,
 			&i.CreatedAt,
 			&i.BlueprintDeleted,
+			&i.EffectiveUntil,
 		); err != nil {
 			return nil, err
 		}
@@ -409,12 +429,12 @@ func (q *Queries) ListScheduleBlueprintRevisionsByActor(ctx context.Context, arg
 
 const listScheduleBlueprintRevisionsForBackfill = `-- name: ListScheduleBlueprintRevisionsForBackfill :many
 WITH active_revisions AS (
-    SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, LEAD(r.effective_from) OVER (PARTITION BY r.blueprint_id ORDER BY r.effective_from, r.revision) AS next_effective_from
+    SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.all_day, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, LEAD(r.effective_from) OVER (PARTITION BY r.blueprint_id ORDER BY r.effective_from, r.revision) AS next_effective_from
     FROM schedule_blueprint_revisions r
     JOIN schedule_blueprints b ON b.id = r.blueprint_id AND b.deleted_at IS NULL
     WHERE r.superseded_at IS NULL
 )
-SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, r.next_effective_from, CASE WHEN r.cutoff_after IS NULL THEN r.next_effective_from - 1
+SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.all_day, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, r.next_effective_from, CASE WHEN r.cutoff_after IS NULL THEN r.next_effective_from - 1
                  WHEN r.next_effective_from IS NULL THEN r.cutoff_after
                  ELSE LEAST(r.cutoff_after, r.next_effective_from - 1) END AS effective_until
 FROM active_revisions r
@@ -433,6 +453,7 @@ type ListScheduleBlueprintRevisionsForBackfillRow struct {
 	RecurrenceAnchorDate pgtype.Date
 	LocalStart           pgtype.Timestamp
 	LocalEnd             pgtype.Timestamp
+	AllDay               bool
 	Timezone             string
 	Frequency            string
 	IntervalCount        int32
@@ -469,6 +490,7 @@ func (q *Queries) ListScheduleBlueprintRevisionsForBackfill(ctx context.Context)
 			&i.RecurrenceAnchorDate,
 			&i.LocalStart,
 			&i.LocalEnd,
+			&i.AllDay,
 			&i.Timezone,
 			&i.Frequency,
 			&i.IntervalCount,
@@ -498,12 +520,12 @@ func (q *Queries) ListScheduleBlueprintRevisionsForBackfill(ctx context.Context)
 
 const listScheduleBlueprintRevisionsForBackfillByBlueprint = `-- name: ListScheduleBlueprintRevisionsForBackfillByBlueprint :many
 WITH active_revisions AS (
-    SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, LEAD(r.effective_from) OVER (PARTITION BY r.blueprint_id ORDER BY r.effective_from, r.revision) AS next_effective_from
+    SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.all_day, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, LEAD(r.effective_from) OVER (PARTITION BY r.blueprint_id ORDER BY r.effective_from, r.revision) AS next_effective_from
     FROM schedule_blueprint_revisions r
     JOIN schedule_blueprints b ON b.id = r.blueprint_id AND b.deleted_at IS NULL
     WHERE r.blueprint_id = $1::text AND r.superseded_at IS NULL
 )
-SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, r.next_effective_from, CASE WHEN r.cutoff_after IS NULL THEN r.next_effective_from - 1
+SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.all_day, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, r.next_effective_from, CASE WHEN r.cutoff_after IS NULL THEN r.next_effective_from - 1
                  WHEN r.next_effective_from IS NULL THEN r.cutoff_after
                  ELSE LEAST(r.cutoff_after, r.next_effective_from - 1) END AS effective_until
 FROM active_revisions r
@@ -522,6 +544,7 @@ type ListScheduleBlueprintRevisionsForBackfillByBlueprintRow struct {
 	RecurrenceAnchorDate pgtype.Date
 	LocalStart           pgtype.Timestamp
 	LocalEnd             pgtype.Timestamp
+	AllDay               bool
 	Timezone             string
 	Frequency            string
 	IntervalCount        int32
@@ -558,6 +581,7 @@ func (q *Queries) ListScheduleBlueprintRevisionsForBackfillByBlueprint(ctx conte
 			&i.RecurrenceAnchorDate,
 			&i.LocalStart,
 			&i.LocalEnd,
+			&i.AllDay,
 			&i.Timezone,
 			&i.Frequency,
 			&i.IntervalCount,
@@ -587,13 +611,13 @@ func (q *Queries) ListScheduleBlueprintRevisionsForBackfillByBlueprint(ctx conte
 
 const listScheduleBlueprintRevisionsForRangeByActor = `-- name: ListScheduleBlueprintRevisionsForRangeByActor :many
 WITH active_revisions AS (
-    SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at,
+    SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.all_day, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at,
            LEAD(r.effective_from) OVER (PARTITION BY r.blueprint_id ORDER BY r.effective_from, r.revision) AS next_effective_from
     FROM schedule_blueprint_revisions r
     JOIN schedule_blueprints b ON b.id = r.blueprint_id AND b.deleted_at IS NULL
     WHERE r.superseded_at IS NULL
 )
-SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, r.next_effective_from,
+SELECT r.id, r.blueprint_id, r.user_id, r.revision, r.effective_from, r.recurrence_anchor_date, r.local_start, r.local_end, r.all_day, r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.title, r.description, r.location, r.project_id, r.assignee_id, r.superseded_at, r.cutoff_after, r.changed_by, r.created_at, r.next_effective_from,
        CASE WHEN r.cutoff_after IS NULL THEN r.next_effective_from - 1
             WHEN r.next_effective_from IS NULL THEN r.cutoff_after
             ELSE LEAST(r.cutoff_after, r.next_effective_from - 1) END AS effective_until
@@ -626,6 +650,7 @@ type ListScheduleBlueprintRevisionsForRangeByActorRow struct {
 	RecurrenceAnchorDate pgtype.Date
 	LocalStart           pgtype.Timestamp
 	LocalEnd             pgtype.Timestamp
+	AllDay               bool
 	Timezone             string
 	Frequency            string
 	IntervalCount        int32
@@ -662,6 +687,7 @@ func (q *Queries) ListScheduleBlueprintRevisionsForRangeByActor(ctx context.Cont
 			&i.RecurrenceAnchorDate,
 			&i.LocalStart,
 			&i.LocalEnd,
+			&i.AllDay,
 			&i.Timezone,
 			&i.Frequency,
 			&i.IntervalCount,

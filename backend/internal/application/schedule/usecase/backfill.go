@@ -187,7 +187,7 @@ func (uc *BackfillUseCase) backfillRevision(ctx context.Context, repos Repositor
 			ID: &id, BlueprintID: revision.ID, OccurrenceDate: occurrence.Date.Format("2006-01-02"),
 			SourceRevisionID: revision.RevisionID, UserID: revision.UserID, ProjectID: revision.ProjectID,
 			AssigneeID: revision.AssigneeID, Title: revision.Title, Description: revision.Description,
-			Location: revision.Location, Timezone: revision.Timezone,
+			Location: revision.Location, Timezone: revision.Timezone, AllDay: revision.AllDay,
 			StartAt: occurrence.StartAt.Unix(), EndAt: occurrence.EndAt.Unix(),
 		}
 		inserted, err := repos.Blueprints().BackfillOccurrence(ctx, actorID, row)

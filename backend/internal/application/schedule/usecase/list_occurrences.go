@@ -43,7 +43,7 @@ func (uc *ListOccurrencesUseCase) ExecutePage(ctx context.Context, actorID strin
 		if err != nil {
 			return err
 		}
-		saved, err = repos.Blueprints().ListPersistedOccurrences(ctx, actorID, request.From, request.To)
+		saved, err = repos.Blueprints().ListPersistedOccurrences(ctx, actorID, request.From, request.To, request.IncludeSkipped)
 		if err != nil {
 			return err
 		}
@@ -70,7 +70,7 @@ func (uc *ListOccurrencesUseCase) ExecutePage(ctx context.Context, actorID strin
 	}); err != nil {
 		return CursorPage[dao.ScheduleOccurrence]{}, err
 	}
-	items, err := projectOccurrences(revisions, saved, origins, request.From, request.To)
+	items, err := projectOccurrences(revisions, saved, origins, request.From, request.To, request.IncludeSkipped)
 	if err != nil {
 		return CursorPage[dao.ScheduleOccurrence]{}, err
 	}
@@ -85,6 +85,27 @@ func (uc *ListOccurrencesUseCase) ExecutePage(ctx context.Context, actorID strin
 		}
 	}
 	pageItems, more := pagination.Window(filtered, request.Size)
+	now := time.Now().UTC()
+	if err := uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
+		capabilitiesByOccurrence, err := repos.Blueprints().ListOccurrenceCapabilities(ctx, actorID, pageItems)
+		if err != nil {
+			return err
+		}
+		for i := range pageItems {
+			capabilities := capabilitiesByOccurrence[pageItems[i].BlueprintID+"/"+pageItems[i].OccurrenceDate]
+			pageItems[i].CanUpdate = capabilities.CanUpdate
+			pageItems[i].CanDelete = capabilities.CanDelete
+			pageItems[i].CanSkip = capabilities.CanSkip
+			pageItems[i].CanAssign = capabilities.CanAssign
+			if followingAllowed(activeOccurrenceStart(revisions, pageItems[i]), now) {
+				pageItems[i].CanUpdateFollowing = capabilities.CanUpdateFollowing
+				pageItems[i].CanDeleteFollowing = capabilities.CanDeleteFollowing
+			}
+		}
+		return nil
+	}); err != nil {
+		return CursorPage[dao.ScheduleOccurrence]{}, err
+	}
 	page := CursorPage[dao.ScheduleOccurrence]{Items: pageItems}
 	if more && len(pageItems) > 0 {
 		last := pageItems[len(pageItems)-1]
@@ -96,7 +117,61 @@ func (uc *ListOccurrencesUseCase) ExecutePage(ctx context.Context, actorID strin
 	return page, nil
 }
 
-func projectOccurrences(revisions []dao.BlueprintRevision, saved []dao.ScheduleOccurrence, origins []dao.ScheduleOccurrenceOrigin, from, to time.Time) ([]dao.ScheduleOccurrence, error) {
+func followingAllowed(scheduledStart, now time.Time) bool {
+	return !scheduledStart.IsZero() && scheduledStart.After(now)
+}
+
+func activeOccurrenceStart(revisions []dao.BlueprintRevision, occurrence dao.ScheduleOccurrence) time.Time {
+	date, err := time.Parse("2006-01-02", occurrence.OccurrenceDate)
+	if err != nil {
+		return time.Time{}
+	}
+	var active *dao.BlueprintRevision
+	for i := range revisions {
+		revision := &revisions[i]
+		if revision.ID != occurrence.BlueprintID || revision.EffectiveFrom > occurrence.OccurrenceDate ||
+			(revision.EffectiveUntil != nil && *revision.EffectiveUntil < occurrence.OccurrenceDate) {
+			continue
+		}
+		if active == nil || revision.EffectiveFrom > active.EffectiveFrom ||
+			(revision.EffectiveFrom == active.EffectiveFrom && revision.Revision > active.Revision) {
+			active = revision
+		}
+	}
+	if active == nil {
+		return time.Time{}
+	}
+	start, end := parseLocalTimestamp(active.LocalStart), parseLocalTimestamp(active.LocalEnd)
+	if start.IsZero() || end.IsZero() {
+		return time.Time{}
+	}
+	phase := localCalendarDate(start)
+	if effective, parseErr := time.Parse("2006-01-02", active.EffectiveFrom); parseErr == nil && effective.After(phase) {
+		phase = effective
+	}
+	anchor := phase
+	if active.RecurrenceAnchorDate != "" {
+		if parsed, parseErr := time.Parse("2006-01-02", active.RecurrenceAnchorDate); parseErr == nil {
+			anchor = parsed
+		}
+	}
+	var recurrenceEnd *time.Time
+	if active.EndDate != nil {
+		if parsed, parseErr := time.Parse("2006-01-02", *active.EndDate); parseErr == nil {
+			recurrenceEnd = &parsed
+		}
+	}
+	occurrences, err := domain.GenerateBlueprintOccurrences(domain.BlueprintRule{
+		Start: start, End: end, AnchorDate: anchor, Timezone: active.Timezone,
+		Frequency: active.Frequency, Interval: active.Interval, Weekdays: mustParseWeekdays(active.Weekdays), EndDate: recurrenceEnd,
+	}, date, date)
+	if err != nil || len(occurrences) != 1 {
+		return time.Time{}
+	}
+	return occurrences[0].StartAt
+}
+
+func projectOccurrences(revisions []dao.BlueprintRevision, saved []dao.ScheduleOccurrence, origins []dao.ScheduleOccurrenceOrigin, from, to time.Time, includeSkipped bool) ([]dao.ScheduleOccurrence, error) {
 	savedByKey := make(map[string]dao.ScheduleOccurrence, len(saved))
 	existingByKey := make(map[string]struct{}, len(origins)+len(saved))
 	rows := make([]dao.ScheduleOccurrence, 0, len(saved))
@@ -106,7 +181,7 @@ func projectOccurrences(revisions []dao.BlueprintRevision, saved []dao.ScheduleO
 	for _, row := range saved {
 		savedByKey[row.BlueprintID+"/"+row.OccurrenceDate] = row
 		existingByKey[row.BlueprintID+"/"+row.OccurrenceDate] = struct{}{}
-		if !row.Deleted && !row.Skipped && overlaps(row.StartAt, row.EndAt, from, to) {
+		if !row.Deleted && (includeSkipped || !row.Skipped) && overlaps(row.StartAt, row.EndAt, from, to) {
 			rows = append(rows, row)
 		}
 	}
@@ -215,7 +290,7 @@ func projectOccurrences(revisions []dao.BlueprintRevision, saved []dao.ScheduleO
 					BlueprintID: blueprintID, OccurrenceDate: date, SourceRevisionID: rule.RevisionID,
 					UserID: rule.UserID, ProjectID: rule.ProjectID, AssigneeID: rule.AssigneeID,
 					Title: rule.Title, Description: rule.Description, Location: rule.Location,
-					Timezone: rule.Timezone, StartAt: occurrence.StartAt.Unix(), EndAt: occurrence.EndAt.Unix(),
+					Timezone: rule.Timezone, AllDay: rule.AllDay, StartAt: occurrence.StartAt.Unix(), EndAt: occurrence.EndAt.Unix(),
 				})
 			}
 		}

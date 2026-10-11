@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
@@ -35,14 +36,15 @@ type listEnvelope[T any] struct {
 }
 
 type listRequest struct {
-	Size     int
-	Mask     *fieldmask.Mask
-	Anchor   *listAnchor
-	Scope    pagination.Scope
-	FromDate string
-	From     time.Time
-	To       time.Time
-	AsOf     time.Time
+	Size           int
+	Mask           *fieldmask.Mask
+	Anchor         *listAnchor
+	Scope          pagination.Scope
+	FromDate       string
+	From           time.Time
+	To             time.Time
+	IncludeSkipped bool
+	AsOf           time.Time
 }
 
 var errInvalidListRequest = errors.New("invalid list request")
@@ -80,7 +82,7 @@ func parseListRequestScoped(r *http.Request, codec *pagination.Codec, userID, li
 		queryKeys = append(queryKeys, "from_date")
 	}
 	if requireRange {
-		queryKeys = append(queryKeys, "from", "to")
+		queryKeys = append(queryKeys, "from", "to", "include_skipped")
 	}
 	for _, key := range queryKeys {
 		if len(q[key]) > 1 {
@@ -113,6 +115,7 @@ func parseListRequestScoped(r *http.Request, codec *pagination.Codec, userID, li
 		fromDate = parsed.Format("2006-01-02")
 	}
 	var from, to time.Time
+	includeSkipped := false
 	if requireRange {
 		if !q.Has("from") {
 			return listRequest{}, invalidListRequestError{field: "from"}
@@ -128,16 +131,22 @@ func parseListRequestScoped(r *http.Request, codec *pagination.Codec, userID, li
 		if err != nil || !to.After(from) {
 			return listRequest{}, invalidListRequestError{field: "to"}
 		}
+		if q.Has("include_skipped") {
+			includeSkipped, err = strconv.ParseBool(q.Get("include_skipped"))
+			if err != nil {
+				return listRequest{}, invalidListRequestError{field: "include_skipped"}
+			}
+		}
 	}
 	scopedOrder := order
 	if allowFromDate {
 		scopedOrder += "|from_date=" + fromDate
 	}
 	if requireRange {
-		scopedOrder += "|from=" + from.Format(time.RFC3339Nano) + "|to=" + to.Format(time.RFC3339Nano)
+		scopedOrder += "|from=" + from.Format(time.RFC3339Nano) + "|to=" + to.Format(time.RFC3339Nano) + "|include_skipped=" + strconv.FormatBool(includeSkipped)
 	}
 	scope := pagination.Scope{UserID: userID, List: list, Parent: parent, Order: scopedOrder, Fields: mask.Canonical()}
-	request := listRequest{Size: size, Mask: mask, Scope: scope, FromDate: fromDate, From: from, To: to}
+	request := listRequest{Size: size, Mask: mask, Scope: scope, FromDate: fromDate, From: from, To: to, IncludeSkipped: includeSkipped}
 	if q.Has("page_token") {
 		anchor, err := pagination.Decode[listAnchor](codec, q.Get("page_token"), scope)
 		if err != nil {

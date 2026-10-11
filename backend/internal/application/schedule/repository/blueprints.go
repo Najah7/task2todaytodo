@@ -29,6 +29,7 @@ func (r *ScheduleRepository) GetBlueprint(ctx context.Context, actorID, blueprin
 		row.IntervalCount, row.Weekdays, row.EndDate, row.Title, row.Description, row.Location, row.ProjectID,
 		row.AssigneeID)
 	blueprint.CutoffAfter = nullableDateValue(row.CutoffAfter)
+	blueprint.AllDay = row.AllDay
 	return blueprint, nil
 }
 
@@ -48,6 +49,7 @@ func (r *ScheduleRepository) GetEffectiveRevisionForDate(ctx context.Context, ac
 		row.IntervalCount, row.Weekdays, row.EndDate, row.Title, row.Description, row.Location, row.ProjectID,
 		row.AssigneeID)
 	definition.CutoffAfter = nullableDateValue(row.CutoffAfter)
+	definition.AllDay = row.AllDay
 	return dao.BlueprintRevision{Blueprint: definition, RevisionID: row.ID,
 		EffectiveUntil: nullableDateValue(row.EffectiveUntil),
 		ChangedBy:      row.ChangedBy, ChangedAt: unix(row.CreatedAt)}, nil
@@ -117,8 +119,9 @@ func (r *ScheduleRepository) ListBlueprintRevisions(ctx context.Context, actorID
 			row.IntervalCount, row.Weekdays, row.EndDate, row.Title, row.Description, row.Location, row.ProjectID,
 			row.AssigneeID)
 		definition.CutoffAfter = nullableDateValue(row.CutoffAfter)
+		definition.AllDay = row.AllDay
 		out = append(out, dao.BlueprintRevision{Blueprint: definition, RevisionID: row.ID, Superseded: row.SupersededAt.Valid,
-			ChangedBy: row.ChangedBy, ChangedAt: unix(row.CreatedAt)})
+			EffectiveUntil: nullableDateValue(row.EffectiveUntil), ChangedBy: row.ChangedBy, ChangedAt: unix(row.CreatedAt)})
 	}
 	return out, nil
 }
@@ -148,7 +151,7 @@ func (r *ScheduleRepository) ListOccurrenceRevisions(ctx context.Context, actorI
 		}
 		out = append(out, dao.ScheduleOccurrenceRevision{
 			Revision: row.Revision, SourceRevisionID: row.SourceRevisionID, UserID: row.UserID,
-			OccurrenceDate: dateString(row.OccurrenceDate), StartAt: unix(row.StartAt), EndAt: unix(row.EndAt),
+			OccurrenceDate: dateString(row.OccurrenceDate), StartAt: unix(row.StartAt), EndAt: unix(row.EndAt), AllDay: row.AllDay,
 			Title: row.Title, Description: nullableText(row.Description), Location: nullableText(row.Location),
 			ProjectID: nullableText(row.ProjectID), AssigneeID: row.AssigneeID, Timezone: row.Timezone,
 			Completed: row.Completed, SkippedAt: skippedAt, DeletedAt: deletedAt,
@@ -172,6 +175,7 @@ func (r *ScheduleRepository) ListBlueprintRevisionsForRange(ctx context.Context,
 			row.IntervalCount, row.Weekdays, row.EndDate, row.Title, row.Description, row.Location, row.ProjectID,
 			row.AssigneeID)
 		definition.CutoffAfter = nullableDateValue(row.CutoffAfter)
+		definition.AllDay = row.AllDay
 		effectiveUntil := nullableDateValue(row.EffectiveUntil)
 		out = append(out, dao.BlueprintRevision{Blueprint: definition, RevisionID: row.ID, EffectiveUntil: effectiveUntil,
 			ChangedBy: row.ChangedBy, ChangedAt: unix(row.CreatedAt)})
@@ -179,8 +183,8 @@ func (r *ScheduleRepository) ListBlueprintRevisionsForRange(ctx context.Context,
 	return out, nil
 }
 
-func (r *ScheduleRepository) ListPersistedOccurrences(ctx context.Context, actorID string, from, to time.Time) ([]dao.ScheduleOccurrence, error) {
-	rows, err := r.queries.ListScheduleOccurrencesForRangeByActor(ctx, sqlc.ListScheduleOccurrencesForRangeByActorParams{FromAt: pgTime(from), ToAt: pgTime(to), ActorID: actorID})
+func (r *ScheduleRepository) ListPersistedOccurrences(ctx context.Context, actorID string, from, to time.Time, includeSkipped bool) ([]dao.ScheduleOccurrence, error) {
+	rows, err := r.queries.ListScheduleOccurrencesForRangeByActor(ctx, sqlc.ListScheduleOccurrencesForRangeByActorParams{FromAt: pgTime(from), ToAt: pgTime(to), ActorID: actorID, IncludeSkipped: includeSkipped})
 	if err != nil {
 		return nil, err
 	}
@@ -189,6 +193,32 @@ func (r *ScheduleRepository) ListPersistedOccurrences(ctx context.Context, actor
 		out = append(out, occurrenceFromRow(row))
 	}
 	return out, nil
+}
+
+func (r *ScheduleRepository) ListOccurrenceCapabilities(ctx context.Context, actorID string, occurrences []dao.ScheduleOccurrence) (map[string]dao.OccurrenceCapabilities, error) {
+	if len(occurrences) == 0 {
+		return map[string]dao.OccurrenceCapabilities{}, nil
+	}
+	blueprintIDs := make([]string, len(occurrences))
+	occurrenceDates := make([]string, len(occurrences))
+	for i, occurrence := range occurrences {
+		blueprintIDs[i] = occurrence.BlueprintID
+		occurrenceDates[i] = occurrence.OccurrenceDate
+	}
+	rows, err := r.queries.ListScheduleOccurrenceCapabilities(ctx, sqlc.ListScheduleOccurrenceCapabilitiesParams{
+		ActorID: actorID, BlueprintIds: blueprintIDs, OccurrenceDates: occurrenceDates,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]dao.OccurrenceCapabilities, len(rows))
+	for _, row := range rows {
+		result[row.BlueprintID+"/"+dateString(row.OccurrenceDate)] = dao.OccurrenceCapabilities{
+			CanUpdate: row.CanUpdate, CanDelete: row.CanDelete, CanSkip: row.CanSkip, CanAssign: row.CanAssign,
+			CanUpdateFollowing: row.CanUpdateFollowing, CanDeleteFollowing: row.CanDeleteFollowing,
+		}
+	}
+	return result, nil
 }
 
 func (r *ScheduleRepository) ListOccurrenceOrigins(ctx context.Context, _ string, blueprintIDs []string, from, to time.Time) ([]dao.ScheduleOccurrenceOrigin, error) {
@@ -286,7 +316,7 @@ func (r *ScheduleRepository) MaterializeOccurrence(ctx context.Context, actorID 
 	row, err := r.queries.MaterializeScheduleOccurrenceByActor(ctx, sqlc.MaterializeScheduleOccurrenceByActorParams{
 		ID: derefID(occurrence.ID), OccurrenceDate: pgDate(parseDate(occurrence.OccurrenceDate)),
 		StartAt: pgTime(time.Unix(occurrence.StartAt, 0).UTC()), EndAt: pgTime(time.Unix(occurrence.EndAt, 0).UTC()),
-		Title: occurrence.Title, Description: pgText(occurrence.Description), Location: pgText(occurrence.Location),
+		AllDay: occurrence.AllDay, Title: occurrence.Title, Description: pgText(occurrence.Description), Location: pgText(occurrence.Location),
 		ProjectID: pgText(occurrence.ProjectID), AssigneeID: occurrence.AssigneeID, Timezone: occurrence.Timezone,
 		Completed: occurrence.Completed, SkippedAt: optionalUnix(occurrence.Skipped, occurrence.UpdatedAt),
 		DeletedAt: optionalUnix(occurrence.Deleted, occurrence.UpdatedAt), IsOverride: occurrence.IsOverride,
@@ -308,7 +338,7 @@ func (r *ScheduleRepository) MaterializeOccurrence(ctx context.Context, actorID 
 func (r *ScheduleRepository) UpdatePersistedOccurrence(ctx context.Context, actorID string, occurrence dao.ScheduleOccurrence, expectedRevision int32, capability shared.Capability) (dao.ScheduleOccurrence, error) {
 	row, err := r.queries.UpdatePersistedScheduleOccurrenceByActor(ctx, sqlc.UpdatePersistedScheduleOccurrenceByActorParams{
 		SourceRevisionID: occurrence.SourceRevisionID, StartAt: pgTime(time.Unix(occurrence.StartAt, 0).UTC()),
-		EndAt: pgTime(time.Unix(occurrence.EndAt, 0).UTC()), Title: occurrence.Title,
+		EndAt: pgTime(time.Unix(occurrence.EndAt, 0).UTC()), AllDay: occurrence.AllDay, Title: occurrence.Title,
 		Description: pgText(occurrence.Description), Location: pgText(occurrence.Location), ProjectID: pgText(occurrence.ProjectID),
 		AssigneeID: occurrence.AssigneeID, Timezone: occurrence.Timezone, Completed: occurrence.Completed,
 		SkippedAt: optionalUnix(occurrence.Skipped, occurrence.UpdatedAt), DeletedAt: optionalUnix(occurrence.Deleted, occurrence.UpdatedAt),
@@ -337,7 +367,7 @@ func (r *ScheduleRepository) PersistOccurrence(ctx context.Context, actorID stri
 		ID: derefID(occurrence.ID), BlueprintID: occurrence.BlueprintID, SourceRevisionID: occurrence.SourceRevisionID,
 		UserID: occurrence.UserID, OccurrenceDate: pgDate(parseDate(occurrence.OccurrenceDate)),
 		StartAt: pgTime(time.Unix(occurrence.StartAt, 0).UTC()), EndAt: pgTime(time.Unix(occurrence.EndAt, 0).UTC()),
-		Title: occurrence.Title, Description: pgText(occurrence.Description), Location: pgText(occurrence.Location),
+		Title: occurrence.Title, Description: pgText(occurrence.Description), Location: pgText(occurrence.Location), AllDay: occurrence.AllDay,
 		ProjectID: pgText(occurrence.ProjectID), AssigneeID: occurrence.AssigneeID, Timezone: occurrence.Timezone,
 		Completed: occurrence.Completed, SkippedAt: optionalUnix(occurrence.Skipped, occurrence.StartAt),
 		DeletedAt: optionalUnix(occurrence.Deleted, occurrence.UpdatedAt), IsOverride: occurrence.IsOverride,
@@ -431,7 +461,7 @@ func (r *ScheduleRepository) ListRevisionsForBackfill(ctx context.Context) ([]da
 	for _, row := range rows {
 		out = append(out, backfillRevisionFromValues(row.ID, row.BlueprintID, row.UserID, row.Revision,
 			row.EffectiveFrom, row.RecurrenceAnchorDate, row.LocalStart, row.LocalEnd, row.Timezone, row.Frequency,
-			row.IntervalCount, row.Weekdays, row.EndDate, row.Title, row.Description, row.Location, row.ProjectID,
+			row.IntervalCount, row.Weekdays, row.EndDate, row.AllDay, row.Title, row.Description, row.Location, row.ProjectID,
 			row.AssigneeID, row.ChangedBy, row.CreatedAt, row.EffectiveUntil))
 	}
 	return out, nil
@@ -446,7 +476,7 @@ func (r *ScheduleRepository) ListRevisionsForBlueprintBackfill(ctx context.Conte
 	for _, row := range rows {
 		out = append(out, backfillRevisionFromValues(row.ID, row.BlueprintID, row.UserID, row.Revision,
 			row.EffectiveFrom, row.RecurrenceAnchorDate, row.LocalStart, row.LocalEnd, row.Timezone, row.Frequency,
-			row.IntervalCount, row.Weekdays, row.EndDate, row.Title, row.Description, row.Location, row.ProjectID,
+			row.IntervalCount, row.Weekdays, row.EndDate, row.AllDay, row.Title, row.Description, row.Location, row.ProjectID,
 			row.AssigneeID, row.ChangedBy, row.CreatedAt, row.EffectiveUntil))
 	}
 	return out, nil
@@ -492,7 +522,7 @@ func revisionParams(revision dao.BlueprintRevision, actorID string) sqlc.CreateS
 	return sqlc.CreateScheduleBlueprintRevisionByActorParams{
 		RevisionID: revision.RevisionID, EffectiveFrom: pgDate(parseDate(definition.EffectiveFrom)),
 		RecurrenceAnchorDate: pgDate(parseDate(definition.RecurrenceAnchorDate)), LocalStart: pgLocal(definition.LocalStart),
-		LocalEnd: pgLocal(definition.LocalEnd), Timezone: definition.Timezone, Frequency: definition.Frequency,
+		LocalEnd: pgLocal(definition.LocalEnd), AllDay: definition.AllDay, Timezone: definition.Timezone, Frequency: definition.Frequency,
 		IntervalCount: int32(definition.Interval), Weekdays: append([]string{}, definition.Weekdays...), EndDate: optionalDate(definition.EndDate),
 		Title: definition.Title, Description: pgText(definition.Description), Location: pgText(definition.Location),
 		ProjectID: pgText(definition.ProjectID), AssigneeID: definition.AssigneeID, ActorID: actorID, BlueprintID: definition.ID,
@@ -504,7 +534,7 @@ func publishRevisionParams(revision dao.BlueprintRevision, actorID, blueprintID 
 	return sqlc.PublishScheduleBlueprintRevisionByActorParams{
 		RevisionID: revision.RevisionID, EffectiveFrom: pgDate(parseDate(definition.EffectiveFrom)),
 		RecurrenceAnchorDate: pgDate(parseDate(definition.RecurrenceAnchorDate)), LocalStart: pgLocal(definition.LocalStart),
-		LocalEnd: pgLocal(definition.LocalEnd), Timezone: definition.Timezone, Frequency: definition.Frequency,
+		LocalEnd: pgLocal(definition.LocalEnd), AllDay: definition.AllDay, Timezone: definition.Timezone, Frequency: definition.Frequency,
 		IntervalCount: int32(definition.Interval), Weekdays: append([]string{}, definition.Weekdays...), EndDate: optionalDate(definition.EndDate),
 		Title: definition.Title, Description: pgText(definition.Description), Location: pgText(definition.Location),
 		ProjectID: pgText(definition.ProjectID), AssigneeID: definition.AssigneeID, ActorID: actorID, BlueprintID: blueprintID,
@@ -518,15 +548,17 @@ func blueprintFromRevision(row sqlc.ScheduleBlueprintRevision, deleted bool, cre
 		row.IntervalCount, row.Weekdays, row.EndDate, row.Title, row.Description, row.Location, row.ProjectID,
 		row.AssigneeID)
 	blueprint.CutoffAfter = nullableDateValue(row.CutoffAfter)
+	blueprint.AllDay = row.AllDay
 	return blueprint
 }
 
 func backfillRevisionFromValues(id, blueprintID, userID string, revision int32, effective, anchor pgtype.Date,
 	localStart, localEnd pgtype.Timestamp, timezone, frequency string, interval int32, weekdays []string,
-	endDate pgtype.Date, title string, description, location, project pgtype.Text, assignee, changedBy string,
+	endDate pgtype.Date, allDay bool, title string, description, location, project pgtype.Text, assignee, changedBy string,
 	createdAt pgtype.Timestamptz, effectiveUntil interface{}) dao.BlueprintRevision {
 	definition := blueprintFromValues(blueprintID, userID, false, 0, revision, effective, anchor, localStart, localEnd,
 		timezone, frequency, interval, weekdays, endDate, title, description, location, project, assignee)
+	definition.AllDay = allDay
 	return dao.BlueprintRevision{Blueprint: definition, RevisionID: id, EffectiveUntil: nullableDateValue(effectiveUntil),
 		ChangedBy: changedBy, ChangedAt: unix(createdAt)}
 }
@@ -559,7 +591,7 @@ func occurrenceFromRow(row sqlc.Schedule) dao.ScheduleOccurrence {
 	return dao.ScheduleOccurrence{ID: &id, BlueprintID: row.BlueprintID, OccurrenceDate: dateString(row.OccurrenceDate),
 		SourceRevisionID: row.SourceRevisionID, UserID: row.UserID, ProjectID: nullableText(row.ProjectID),
 		AssigneeID: row.AssigneeID, Title: row.Title, Description: nullableText(row.Description), Location: nullableText(row.Location),
-		Timezone: row.Timezone, StartAt: unix(row.StartAt), EndAt: unix(row.EndAt), Completed: row.Completed,
+		Timezone: row.Timezone, AllDay: row.AllDay, StartAt: unix(row.StartAt), EndAt: unix(row.EndAt), Completed: row.Completed,
 		Skipped: skipped, Deleted: deleted, IsOverride: row.IsOverride, Revision: row.Revision,
 		CreatedAt: unix(row.CreatedAt), UpdatedAt: unix(row.UpdatedAt)}
 }

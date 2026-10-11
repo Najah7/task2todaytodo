@@ -38,7 +38,7 @@ func (uc *UpdateBlueprintUseCase) Execute(ctx context.Context, actorID, blueprin
 		repo := repos.Blueprints()
 		assignmentOnly := input.AssigneeID != nil && input.Title == nil && input.Description == nil && input.Location == nil &&
 			input.ProjectID == nil && input.Timezone == nil && input.LocalStart == nil && input.LocalEnd == nil &&
-			input.Frequency == nil && input.Interval == nil && input.Weekdays == nil && input.EndDate == nil
+			input.AllDay == nil && input.Frequency == nil && input.Interval == nil && input.Weekdays == nil && input.EndDate == nil
 		writeCapability := shared.ScheduleUpdate()
 		if assignmentOnly {
 			writeCapability = shared.ScheduleAssignmentUpdate()
@@ -76,15 +76,35 @@ func (uc *UpdateBlueprintUseCase) Execute(ctx context.Context, actorID, blueprin
 			return ErrOccurrenceInactive
 		}
 		applyBlueprintPatch(&definition, input)
+		if input.AllDay != nil && *input.AllDay && !base.AllDay {
+			if definition.LocalEnd.Hour() != 0 || definition.LocalEnd.Minute() != 0 || definition.LocalEnd.Second() != 0 || definition.LocalEnd.Nanosecond() != 0 {
+				dayOffset++
+			}
+			if dayOffset == 0 {
+				dayOffset = 1
+			}
+		}
 		startDate := selectedDate
 		if input.LocalStart != nil && localCalendarDate(*input.LocalStart) != selectedDate {
 			return ErrRescheduleDateMismatch
 		}
 		definition.LocalStart = wallTimeOnDate(definition.LocalStart, startDate)
 		if input.LocalEnd == nil {
-			definition.LocalEnd = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), definition.LocalEnd.Hour(), definition.LocalEnd.Minute(), definition.LocalEnd.Second(), definition.LocalEnd.Nanosecond(), time.UTC).AddDate(0, 0, dayOffset)
+			endHour, endMinute, endSecond, endNanosecond := definition.LocalEnd.Hour(), definition.LocalEnd.Minute(), definition.LocalEnd.Second(), definition.LocalEnd.Nanosecond()
+			if definition.AllDay {
+				endHour, endMinute, endSecond, endNanosecond = 0, 0, 0, 0
+			}
+			definition.LocalEnd = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), endHour, endMinute, endSecond, endNanosecond, time.UTC).AddDate(0, 0, dayOffset)
 		} else if int((localCalendarDate(definition.LocalEnd).Unix()-localCalendarDate(definition.LocalStart).Unix())/86400) < 0 {
 			return domain.ErrBlueprintTimeRange
+		}
+		if definition.AllDay {
+			if input.AllDay != nil && *input.AllDay && input.LocalStart == nil {
+				definition.LocalStart = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
+			}
+			if input.LocalEnd == nil {
+				definition.LocalEnd = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, dayOffset)
+			}
 		}
 		if input.Frequency != nil && *input.Frequency != base.Frequency {
 			definition.RecurrenceAnchorDate = selectedDate
@@ -105,7 +125,7 @@ func (uc *UpdateBlueprintUseCase) Execute(ctx context.Context, actorID, blueprin
 		validated, err := domain.NewBlueprintDefinition(domain.BlueprintDefinition{
 			Title: definition.Title, Description: definition.Description, Location: definition.Location,
 			ProjectID: definition.ProjectID, AssigneeID: definition.AssigneeID,
-			LocalStart: definition.LocalStart, LocalEnd: definition.LocalEnd, Timezone: definition.Timezone,
+			LocalStart: definition.LocalStart, LocalEnd: definition.LocalEnd, Timezone: definition.Timezone, AllDay: definition.AllDay,
 			Frequency: definition.Frequency, Interval: definition.Interval, Weekdays: mustParseWeekdays(definition.Weekdays), EndDate: definition.EndDate,
 		})
 		if err != nil {
@@ -172,7 +192,7 @@ func (uc *UpdateBlueprintUseCase) Execute(ctx context.Context, actorID, blueprin
 		newRevision := dao.BlueprintRevision{Blueprint: dao.Blueprint{
 			ID: blueprintID, UserID: base.UserID, Revision: latestRevision + 1,
 			EffectiveFrom: occurrenceDate, RecurrenceAnchorDate: anchor.Format("2006-01-02"),
-			LocalStart: localStart, LocalEnd: localEnd, Timezone: validated.Timezone,
+			LocalStart: localStart, LocalEnd: localEnd, Timezone: validated.Timezone, AllDay: validated.AllDay,
 			Frequency: validated.Frequency, Interval: validated.Interval, Weekdays: weekdays,
 			EndDate: formatOptionalDate(validated.EndDate), CutoffAfter: cutoffAfter, Title: validated.Title,
 			Description: validated.Description, Location: validated.Location, ProjectID: validated.ProjectID, AssigneeID: validated.AssigneeID,
@@ -254,7 +274,7 @@ func (uc *UpdateBlueprintUseCase) Execute(ctx context.Context, actorID, blueprin
 			row := dao.ScheduleOccurrence{ID: currentOccurrence.ID, BlueprintID: blueprintID, OccurrenceDate: occurrenceDate,
 				SourceRevisionID: newRevision.RevisionID, UserID: base.UserID, ProjectID: validated.ProjectID,
 				AssigneeID: validated.AssigneeID, Title: validated.Title, Description: validated.Description,
-				Location: validated.Location, Timezone: validated.Timezone, StartAt: occurrences[0].StartAt.Unix(),
+				Location: validated.Location, Timezone: validated.Timezone, AllDay: validated.AllDay, StartAt: occurrences[0].StartAt.Unix(),
 				EndAt: occurrences[0].EndAt.Unix(), Revision: currentOccurrence.Revision}
 			if _, err := repo.UpdatePersistedOccurrence(ctx, actorID, row, currentOccurrence.Revision, writeCapability); err != nil {
 				return err
@@ -284,7 +304,8 @@ func (uc *UpdateBlueprintUseCase) Execute(ctx context.Context, actorID, blueprin
 			row := dao.ScheduleOccurrence{ID: &id, BlueprintID: blueprintID, OccurrenceDate: occurrenceDate,
 				SourceRevisionID: newRevision.RevisionID, UserID: base.UserID, ProjectID: validated.ProjectID,
 				AssigneeID: validated.AssigneeID, Title: validated.Title, Description: validated.Description,
-				Location: validated.Location, Timezone: validated.Timezone, StartAt: occurrences[0].StartAt.Unix(), EndAt: occurrences[0].EndAt.Unix()}
+				Location: validated.Location, Timezone: validated.Timezone, AllDay: validated.AllDay,
+				StartAt: occurrences[0].StartAt.Unix(), EndAt: occurrences[0].EndAt.Unix()}
 			if _, err := repo.MaterializeOccurrence(ctx, actorID, row, writeCapability); err != nil {
 				return err
 			}
@@ -317,6 +338,7 @@ type blueprintDefinition struct {
 	Weekdays                                                    []string
 	EndDate                                                     *time.Time
 	LocalStart, LocalEnd, RecurrenceAnchorDate                  time.Time
+	AllDay                                                      bool
 }
 
 func definitionFromRevision(row dao.BlueprintRevision) blueprintDefinition {
@@ -326,7 +348,7 @@ func definitionFromRevision(row dao.BlueprintRevision) blueprintDefinition {
 	return blueprintDefinition{UserID: row.UserID, Title: row.Title, Description: row.Description, Location: row.Location,
 		ProjectID: row.ProjectID, AssigneeID: row.AssigneeID, Timezone: row.Timezone, Frequency: row.Frequency,
 		Interval: row.Interval, Weekdays: append([]string{}, row.Weekdays...), EndDate: parseEndDate(row.EndDate),
-		LocalStart: start, LocalEnd: end, RecurrenceAnchorDate: anchor}
+		LocalStart: start, LocalEnd: end, RecurrenceAnchorDate: anchor, AllDay: row.AllDay}
 }
 
 func applyBlueprintPatch(definition *blueprintDefinition, patch UpdateBlueprintInput) {
@@ -353,6 +375,9 @@ func applyBlueprintPatch(definition *blueprintDefinition, patch UpdateBlueprintI
 	}
 	if patch.LocalEnd != nil {
 		definition.LocalEnd = *patch.LocalEnd
+	}
+	if patch.AllDay != nil {
+		definition.AllDay = *patch.AllDay
 	}
 	if patch.Frequency != nil {
 		definition.Frequency = *patch.Frequency

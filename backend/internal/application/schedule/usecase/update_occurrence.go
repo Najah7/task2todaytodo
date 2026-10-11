@@ -66,6 +66,14 @@ func (uc *UpdateOccurrenceUseCase) execute(ctx context.Context, actorID, bluepri
 		}
 		updated := current.value
 		applyOccurrencePatch(&updated, input)
+		if input.AllDay != nil {
+			updated.AllDay = *input.AllDay
+		}
+		if updated.AllDay {
+			if err := normalizeOccurrenceAllDayBounds(&updated, input); err != nil {
+				return err
+			}
+		}
 		updated.AssigneeID, err = occurrenceTargetAssignee(ctx, repos, current.value, input)
 		if err != nil {
 			return err
@@ -103,7 +111,7 @@ func (uc *UpdateOccurrenceUseCase) execute(ctx context.Context, actorID, bluepri
 }
 
 func occurrenceUpdateCapability(input UpdateScheduleInput) shared.Capability {
-	contentChange := input.Title != nil || input.Description != nil || input.Location != nil || input.ProjectID != nil || input.StartAt != nil || input.EndAt != nil
+	contentChange := input.Title != nil || input.Description != nil || input.Location != nil || input.ProjectID != nil || input.StartAt != nil || input.EndAt != nil || input.AllDay != nil
 	if contentChange || input.AssigneeID == nil {
 		return shared.ScheduleUpdate()
 	}
@@ -204,7 +212,35 @@ func occurrenceTargetAssignee(ctx context.Context, repos Repositories, current d
 func occurrencePatchChanges(before, after dao.ScheduleOccurrence) bool {
 	return before.Title != after.Title || before.Description != after.Description || before.Location != after.Location ||
 		before.ProjectID != after.ProjectID || before.AssigneeID != after.AssigneeID ||
-		before.StartAt != after.StartAt || before.EndAt != after.EndAt
+		before.StartAt != after.StartAt || before.EndAt != after.EndAt || before.AllDay != after.AllDay
+}
+
+func normalizeOccurrenceAllDayBounds(occurrence *dao.ScheduleOccurrence, input UpdateScheduleInput) error {
+	location, err := time.LoadLocation(occurrence.Timezone)
+	if err != nil {
+		return domain.ErrRecurrenceTimezoneInvalid
+	}
+	start := time.Unix(occurrence.StartAt, 0).In(location)
+	end := time.Unix(occurrence.EndAt, 0).In(location)
+	if input.StartAt != nil && !isMidnight(start) || input.EndAt != nil && !isMidnight(end) {
+		return domain.ErrBlueprintAllDayTime
+	}
+	startDate := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, location)
+	endDate := time.Date(end.Year(), end.Month(), end.Day(), 0, 0, 0, 0, location)
+	if input.EndAt == nil && !isMidnight(end) {
+		endDate = endDate.AddDate(0, 0, 1)
+	}
+	if startDate.Year() != start.Year() || startDate.Month() != start.Month() || startDate.Day() != start.Day() ||
+		!isMidnight(endDate) || !endDate.After(startDate) {
+		return ErrOccurrenceTimeInvalid
+	}
+	occurrence.StartAt = startDate.UTC().Unix()
+	occurrence.EndAt = endDate.UTC().Unix()
+	return nil
+}
+
+func isMidnight(value time.Time) bool {
+	return value.Hour() == 0 && value.Minute() == 0 && value.Second() == 0 && value.Nanosecond() == 0
 }
 
 func applyOccurrencePatch(current *dao.ScheduleOccurrence, input UpdateScheduleInput) {

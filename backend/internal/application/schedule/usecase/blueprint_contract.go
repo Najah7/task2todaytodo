@@ -17,6 +17,7 @@ type CreateBlueprintInput struct {
 	Timezone    string
 	LocalStart  time.Time
 	LocalEnd    time.Time
+	AllDay      bool
 	Frequency   string
 	Interval    int
 	Weekdays    []string
@@ -32,6 +33,7 @@ type UpdateBlueprintInput struct {
 	Timezone    *string
 	LocalStart  *time.Time
 	LocalEnd    *time.Time
+	AllDay      *bool
 	Frequency   *string
 	Interval    *int
 	Weekdays    *[]string
@@ -46,6 +48,7 @@ type UpdateScheduleInput struct {
 	AssigneeID  *string
 	StartAt     *time.Time
 	EndAt       *time.Time
+	AllDay      *bool
 }
 
 type ProjectBlueprintLifecycle interface {
@@ -68,7 +71,8 @@ type BlueprintRepository interface {
 	ListBlueprintRevisions(ctx context.Context, actorID, blueprintID string, limit int, beforeRevision int32) ([]dao.BlueprintRevision, error)
 	ListOccurrenceRevisions(ctx context.Context, actorID, blueprintID, occurrenceDate string, limit int, beforeRevision int32) ([]dao.ScheduleOccurrenceRevision, error)
 	ListBlueprintRevisionsForRange(ctx context.Context, actorID string, from, to time.Time) ([]dao.BlueprintRevision, error)
-	ListPersistedOccurrences(ctx context.Context, actorID string, from, to time.Time) ([]dao.ScheduleOccurrence, error)
+	ListPersistedOccurrences(ctx context.Context, actorID string, from, to time.Time, includeSkipped bool) ([]dao.ScheduleOccurrence, error)
+	ListOccurrenceCapabilities(ctx context.Context, actorID string, occurrences []dao.ScheduleOccurrence) (map[string]dao.OccurrenceCapabilities, error)
 	ListOccurrenceOrigins(ctx context.Context, actorID string, blueprintIDs []string, from, to time.Time) ([]dao.ScheduleOccurrenceOrigin, error)
 	ListPauseIntervals(ctx context.Context, actorID, blueprintID string) ([]dao.ProjectPauseInterval, error)
 	PauseProjectBlueprints(ctx context.Context, actorID, projectID string, at time.Time) error

@@ -23,11 +23,12 @@ type ScheduleOccurrenceListResponse struct {
 //	@Tags		Schedules
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		from		query		string	true	"Inclusive UTC range start"
-//	@Param		to			query		string	true	"Exclusive UTC range end"
-//	@Param		page_size	query		int		false	"Items per page"
-//	@Param		page_token	query		string	false	"Opaque page token"
-//	@Success	200			{object}	ScheduleOccurrenceListResponse
+//	@Param		from			query		string	true	"Inclusive UTC range start"
+//	@Param		to				query		string	true	"Exclusive UTC range end"
+//	@Param		include_skipped	query		bool	false	"Include skipped occurrences"
+//	@Param		page_size		query		int		false	"Items per page"
+//	@Param		page_token		query		string	false	"Opaque page token"
+//	@Success	200				{object}	ScheduleOccurrenceListResponse
 //	@Router		/schedules [get]
 func (h *ScheduleHandler) ListOccurrences(w http.ResponseWriter, r *http.Request) {
 	h.listOccurrences(w, r, "")
@@ -39,10 +40,13 @@ func (h *ScheduleHandler) ListOccurrences(w http.ResponseWriter, r *http.Request
 //	@Tags		Schedules
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		id		path		string	true	"Project ID"
-//	@Param		from	query		string	true	"Inclusive UTC range start"
-//	@Param		to		query		string	true	"Exclusive UTC range end"
-//	@Success	200		{object}	ScheduleOccurrenceListResponse
+//	@Param		id				path		string	true	"Project ID"
+//	@Param		from			query		string	true	"Inclusive UTC range start"
+//	@Param		to				query		string	true	"Exclusive UTC range end"
+//	@Param		include_skipped	query		bool	false	"Include skipped occurrences"
+//	@Success	200				{object}	ScheduleOccurrenceListResponse
+//	@Param		page_size		query		int		false	"Items per page"
+//	@Param		page_token		query		string	false	"Opaque page token"
 //	@Router		/projects/{id}/schedules [get]
 func (h *ScheduleHandler) ListProjectOccurrences(w http.ResponseWriter, r *http.Request) {
 	projectID := chi.URLParam(r, "id")
@@ -66,7 +70,8 @@ func (h *ScheduleHandler) listOccurrences(w http.ResponseWriter, r *http.Request
 	}
 	page, err := h.schedules.ListOccurrences.ExecutePage(r.Context(), string(actor), scheduleusecase.CursorPageRequest{
 		Size: request.Size, From: request.From, To: request.To, ProjectID: projectID,
-		Anchor: occurrenceCursorAnchor(request.Anchor),
+		IncludeSkipped: request.IncludeSkipped,
+		Anchor:         occurrenceCursorAnchor(request.Anchor),
 	})
 	if err != nil {
 		writeScheduleUseCaseError(w, scheduleOccurrenceListFailure, err)
@@ -127,6 +132,7 @@ type ScheduleOccurrenceRevisionResponse struct {
 	OccurrenceDate   string `json:"occurrence_date"`
 	StartAt          string `json:"start_at"`
 	EndAt            string `json:"end_at"`
+	AllDay           bool   `json:"all_day"`
 	Title            string `json:"title"`
 	Description      string `json:"description"`
 	Location         string `json:"location"`
@@ -181,7 +187,7 @@ func (h *ScheduleHandler) ListOccurrenceRevisions(w http.ResponseWriter, r *http
 		items = append(items, ScheduleOccurrenceRevisionResponse{
 			Revision: row.Revision, SourceRevisionID: row.SourceRevisionID, UserID: row.UserID,
 			OccurrenceDate: row.OccurrenceDate, StartAt: time.Unix(row.StartAt, 0).UTC().Format(time.RFC3339),
-			EndAt: time.Unix(row.EndAt, 0).UTC().Format(time.RFC3339), Title: row.Title, Description: row.Description,
+			EndAt: time.Unix(row.EndAt, 0).UTC().Format(time.RFC3339), AllDay: row.AllDay, Title: row.Title, Description: row.Description,
 			Location: row.Location, ProjectID: row.ProjectID, AssigneeID: row.AssigneeID, Timezone: row.Timezone,
 			Completed: row.Completed, SkippedAt: row.SkippedAt, DeletedAt: row.DeletedAt, IsOverride: row.IsOverride,
 			ChangedBy: row.ChangedBy, ChangedAt: row.ChangedAt,
@@ -421,6 +427,7 @@ func (request ScheduleOccurrenceUpdateRequest) input() (scheduleusecase.UpdateSc
 		{"assignee_id", request.AssigneeID.Present, request.AssigneeID.Value == nil},
 		{"start_at", request.StartAt.Present, request.StartAt.Value == nil},
 		{"end_at", request.EndAt.Present, request.EndAt.Value == nil},
+		{"all_day", request.AllDay.Present, request.AllDay.Value == nil},
 	} {
 		if field.present && field.isNull {
 			return input, scheduleRequestFieldError{field: field.name, code: "null_not_allowed", message: "Field cannot be null"}
@@ -457,6 +464,9 @@ func (request ScheduleOccurrenceUpdateRequest) input() (scheduleusecase.UpdateSc
 		}
 		input.EndAt = &value
 	}
+	if request.AllDay.Present {
+		input.AllDay = request.AllDay.Value
+	}
 	return input, nil
 }
 
@@ -466,8 +476,10 @@ func scheduleOccurrenceResponse(row dao.ScheduleOccurrence) ScheduleOccurrenceRe
 		OccurrenceDate: row.OccurrenceDate, SourceRevisionID: row.SourceRevisionID,
 		UserID: row.UserID, ProjectID: row.ProjectID, AssigneeID: row.AssigneeID,
 		Title: row.Title, Description: row.Description, Location: row.Location, Timezone: row.Timezone,
-		StartAt: time.Unix(row.StartAt, 0).UTC().Format(time.RFC3339), EndAt: time.Unix(row.EndAt, 0).UTC().Format(time.RFC3339),
+		StartAt: time.Unix(row.StartAt, 0).UTC().Format(time.RFC3339), EndAt: time.Unix(row.EndAt, 0).UTC().Format(time.RFC3339), AllDay: row.AllDay,
 		Completed: row.Completed, Skipped: row.Skipped, Deleted: row.Deleted, IsOverride: row.IsOverride,
+		CanUpdate: row.CanUpdate, CanDelete: row.CanDelete, CanSkip: row.CanSkip, CanAssign: row.CanAssign,
+		CanUpdateFollowing: row.CanUpdateFollowing, CanDeleteFollowing: row.CanDeleteFollowing,
 		Revision: row.Revision, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 }

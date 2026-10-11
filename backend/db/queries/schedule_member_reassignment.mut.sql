@@ -46,13 +46,13 @@ WITH active AS (
 ), inserted AS (
     INSERT INTO schedule_blueprint_revisions (
         id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
-        local_start, local_end, timezone, frequency, interval_count, weekdays, end_date,
+        local_start, local_end, all_day, timezone, frequency, interval_count, weekdays, end_date,
         cutoff_after, title, description, location, project_id, assignee_id, changed_by
     )
     SELECT provided_ids.revision_id, numbered.blueprint_id, numbered.user_id,
            numbered.max_revision + numbered.blueprint_ordinal, numbered.target_effective_from,
            numbered.recurrence_anchor_date, numbered.local_start, numbered.local_end,
-           numbered.timezone, numbered.frequency, numbered.interval_count, numbered.weekdays,
+           numbered.all_day, numbered.timezone, numbered.frequency, numbered.interval_count, numbered.weekdays,
            numbered.end_date, numbered.cutoff_after, numbered.title, numbered.description,
            numbered.location, numbered.project_id, owner.user_id, sqlc.arg(actor_id)::text
     FROM numbered JOIN provided_ids USING (ordinal)

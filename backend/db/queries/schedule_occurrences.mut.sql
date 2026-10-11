@@ -7,10 +7,10 @@ SET through_date = GREATEST(schedule_backfill_checkpoints.through_date, EXCLUDED
 -- name: BackfillScheduleOccurrence :execrows
 INSERT INTO schedules (
     id, blueprint_id, source_revision_id, user_id, occurrence_date, start_at, end_at,
-    title, description, location, project_id, assignee_id, timezone, changed_by
+    all_day, title, description, location, project_id, assignee_id, timezone, changed_by
 )
 SELECT sqlc.arg(id)::text, r.blueprint_id, r.id, b.user_id, sqlc.arg(occurrence_date)::date,
-       sqlc.arg(start_at)::timestamptz, sqlc.arg(end_at)::timestamptz,
+       sqlc.arg(start_at)::timestamptz, sqlc.arg(end_at)::timestamptz, r.all_day,
        r.title, r.description, r.location, r.project_id, r.assignee_id, r.timezone, sqlc.arg(actor_id)::text
 FROM schedule_blueprint_revisions r
 JOIN schedule_blueprints b ON b.id = r.blueprint_id
@@ -38,10 +38,10 @@ ON CONFLICT (blueprint_id, occurrence_date) DO NOTHING;
 -- name: CreateScheduleOccurrence :one
 INSERT INTO schedules (
     id, blueprint_id, source_revision_id, user_id, occurrence_date, start_at, end_at,
-    title, description, location, project_id, assignee_id, timezone, changed_by
+    all_day, title, description, location, project_id, assignee_id, timezone, changed_by
 )
 SELECT sqlc.arg(id)::text, r.blueprint_id, r.id, r.user_id, sqlc.arg(occurrence_date)::date,
-       sqlc.arg(start_at)::timestamptz, sqlc.arg(end_at)::timestamptz,
+       sqlc.arg(start_at)::timestamptz, sqlc.arg(end_at)::timestamptz, r.all_day,
        r.title, r.description, r.location, r.project_id, r.assignee_id, r.timezone, sqlc.arg(actor_id)::text
 FROM schedule_blueprint_revisions r
 WHERE r.id = sqlc.arg(source_revision_id)::text
@@ -107,12 +107,12 @@ SELECT id FROM locked WHERE (SELECT count(*) FROM saved) >= 0;
 -- name: MaterializeScheduleOccurrenceByActor :one
 INSERT INTO schedules (
     id, blueprint_id, source_revision_id, user_id, occurrence_date, start_at, end_at,
-    title, description, location, project_id, assignee_id, timezone, completed,
+    all_day, title, description, location, project_id, assignee_id, timezone, completed,
     skipped_at, deleted_at, is_override, changed_by
 )
 SELECT sqlc.arg(id)::text, r.blueprint_id, r.id, r.user_id, sqlc.arg(occurrence_date)::date,
-       sqlc.arg(start_at)::timestamptz, sqlc.arg(end_at)::timestamptz, sqlc.arg(title)::text,
-       sqlc.narg(description)::text, sqlc.narg(location)::text, sqlc.narg(project_id)::text,
+       sqlc.arg(start_at)::timestamptz, sqlc.arg(end_at)::timestamptz, sqlc.arg(all_day)::boolean,
+       sqlc.arg(title)::text, sqlc.narg(description)::text, sqlc.narg(location)::text, sqlc.narg(project_id)::text,
        sqlc.arg(assignee_id)::text, sqlc.arg(timezone)::text, sqlc.arg(completed)::boolean,
        sqlc.narg(skipped_at)::timestamptz, sqlc.narg(deleted_at)::timestamptz,
        sqlc.arg(is_override)::boolean, sqlc.arg(actor_id)::text
@@ -135,6 +135,7 @@ WHERE s.project_id = p.id AND p.id = sqlc.arg(project_id)::text
 UPDATE schedules s
 SET source_revision_id = sqlc.arg(source_revision_id)::text,
     start_at = sqlc.arg(start_at)::timestamptz, end_at = sqlc.arg(end_at)::timestamptz,
+    all_day = sqlc.arg(all_day)::boolean,
     title = sqlc.arg(title)::text, description = sqlc.narg(description)::text,
     location = sqlc.narg(location)::text, project_id = sqlc.narg(project_id)::text,
     assignee_id = sqlc.arg(assignee_id)::text, timezone = sqlc.arg(timezone)::text,
@@ -151,12 +152,12 @@ RETURNING s.*;
 -- name: UpsertScheduleOccurrenceByActor :one
 INSERT INTO schedules (
     id, blueprint_id, source_revision_id, user_id, occurrence_date, start_at, end_at,
-    title, description, location, project_id, assignee_id, timezone, completed,
+    all_day, title, description, location, project_id, assignee_id, timezone, completed,
     skipped_at, deleted_at, is_override, changed_by
 )
 SELECT sqlc.arg(id)::text, sqlc.arg(blueprint_id)::text, sqlc.arg(source_revision_id)::text,
        sqlc.arg(user_id)::text, sqlc.arg(occurrence_date)::date, sqlc.arg(start_at)::timestamptz,
-       sqlc.arg(end_at)::timestamptz, sqlc.arg(title)::text, sqlc.narg(description)::text,
+       sqlc.arg(end_at)::timestamptz, sqlc.arg(all_day)::boolean, sqlc.arg(title)::text, sqlc.narg(description)::text,
        sqlc.narg(location)::text, sqlc.narg(project_id)::text, sqlc.arg(assignee_id)::text,
        sqlc.arg(timezone)::text, sqlc.arg(completed)::boolean, sqlc.narg(skipped_at)::timestamptz,
        sqlc.narg(deleted_at)::timestamptz, sqlc.arg(is_override)::boolean, sqlc.arg(actor_id)::text
@@ -164,6 +165,7 @@ WHERE schedule_blueprint_has_permission_at(sqlc.arg(blueprint_id)::text, sqlc.ar
 ON CONFLICT (blueprint_id, occurrence_date) DO UPDATE
 SET source_revision_id = EXCLUDED.source_revision_id,
     start_at = EXCLUDED.start_at, end_at = EXCLUDED.end_at,
+    all_day = EXCLUDED.all_day,
     title = EXCLUDED.title, description = EXCLUDED.description, location = EXCLUDED.location,
     project_id = EXCLUDED.project_id, assignee_id = EXCLUDED.assignee_id, timezone = EXCLUDED.timezone,
     completed = EXCLUDED.completed, skipped_at = EXCLUDED.skipped_at, deleted_at = EXCLUDED.deleted_at,

@@ -22,12 +22,12 @@ RETURNING id, user_id, created_at;
 -- name: CreateScheduleBlueprintRevisionByActor :one
 INSERT INTO schedule_blueprint_revisions (
     id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
-    local_start, local_end, timezone, frequency, interval_count, weekdays, end_date,
+    local_start, local_end, all_day, timezone, frequency, interval_count, weekdays, end_date,
     title, description, location, project_id, assignee_id, changed_by
 )
 SELECT sqlc.arg(revision_id)::text, b.id, b.user_id, 1, sqlc.arg(effective_from)::date,
        sqlc.arg(recurrence_anchor_date)::date, sqlc.arg(local_start)::timestamp,
-       sqlc.arg(local_end)::timestamp, sqlc.arg(timezone)::text, sqlc.arg(frequency)::text,
+       sqlc.arg(local_end)::timestamp, sqlc.arg(all_day)::boolean, sqlc.arg(timezone)::text, sqlc.arg(frequency)::text,
        sqlc.arg(interval_count)::integer, sqlc.arg(weekdays)::text[], sqlc.narg(end_date)::date,
        sqlc.arg(title)::text, sqlc.narg(description)::text, sqlc.narg(location)::text,
        sqlc.narg(project_id)::text, COALESCE(NULLIF(sqlc.arg(assignee_id)::text, ''), b.user_id), sqlc.arg(actor_id)::text
@@ -76,14 +76,14 @@ WITH locked AS (
 ), cancellation AS (
     INSERT INTO schedule_blueprint_revisions (
         id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
-        local_start, local_end, timezone, frequency, interval_count, weekdays, end_date,
+        local_start, local_end, all_day, timezone, frequency, interval_count, weekdays, end_date,
         title, description, location, project_id, assignee_id, superseded_at, cutoff_after, changed_by
     )
     SELECT sqlc.arg(revision_id)::text, source.blueprint_id, source.user_id,
            (SELECT COALESCE(MAX(all_revisions.revision), 0) + 1 FROM schedule_blueprint_revisions all_revisions
             WHERE all_revisions.blueprint_id = source.blueprint_id),
            sqlc.arg(occurrence_date)::date, source.recurrence_anchor_date,
-           source.local_start, source.local_end, source.timezone, source.frequency,
+           source.local_start, source.local_end, source.all_day, source.timezone, source.frequency,
            source.interval_count, source.weekdays, source.end_date, source.title,
            source.description, source.location, source.project_id, source.assignee_id,
            now(), sqlc.arg(occurrence_date)::date - 1, sqlc.arg(actor_id)::text
@@ -129,12 +129,12 @@ WITH locked AS (
 )
 INSERT INTO schedule_blueprint_revisions (
     id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
-    local_start, local_end, timezone, frequency, interval_count, weekdays, end_date, cutoff_after,
+    local_start, local_end, all_day, timezone, frequency, interval_count, weekdays, end_date, cutoff_after,
     title, description, location, project_id, assignee_id, changed_by
 )
 SELECT sqlc.arg(revision_id)::text, locked.id, locked.user_id, next_revision.revision,
        sqlc.arg(effective_from)::date, sqlc.arg(recurrence_anchor_date)::date,
-       sqlc.arg(local_start)::timestamp, sqlc.arg(local_end)::timestamp, sqlc.arg(timezone)::text,
+       sqlc.arg(local_start)::timestamp, sqlc.arg(local_end)::timestamp, sqlc.arg(all_day)::boolean, sqlc.arg(timezone)::text,
        sqlc.arg(frequency)::text, sqlc.arg(interval_count)::integer, sqlc.arg(weekdays)::text[],
        sqlc.narg(end_date)::date, sqlc.narg(cutoff_after)::date, sqlc.arg(title)::text, sqlc.narg(description)::text,
        sqlc.narg(location)::text, sqlc.narg(project_id)::text, sqlc.arg(assignee_id)::text,
