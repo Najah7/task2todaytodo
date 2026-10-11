@@ -9,6 +9,7 @@ import (
 type CursorAnchor struct {
 	At             string
 	ID             string
+	BlueprintID    string
 	Revision       int32
 	Date           string
 	OccurrenceDate string
@@ -17,10 +18,13 @@ type CursorAnchor struct {
 }
 
 type CursorPageRequest struct {
-	Size     int
-	FromDate string
-	AsOf     time.Time
-	Anchor   *CursorAnchor
+	Size      int
+	From      time.Time
+	To        time.Time
+	ProjectID string
+	FromDate  string
+	AsOf      time.Time
+	Anchor    *CursorAnchor
 }
 
 type CursorPage[T any] struct {

@@ -13,15 +13,12 @@ import (
 
 const listScheduleTagsByScheduleAndUserID = `-- name: ListScheduleTagsByScheduleAndUserID :many
 SELECT t.id, t.user_id, t.name, t.created_at, t.updated_at
-FROM schedule_tag_assignments AS sta
-JOIN tags AS t ON t.id = sta.tag_id
-JOIN schedules AS s ON s.id = sta.schedule_id
-JOIN schedules AS requested ON requested.series_id = s.id
-WHERE requested.id = $1::text
-  AND requested.deleted_at IS NULL
-  AND requested.series_id = sta.schedule_id
-  AND schedule_has_permission(requested.id, $2::text, 'schedule', 'read')
-  AND t.user_id = requested.user_id
+FROM schedule_tag_assignments assignment
+JOIN tags t ON t.id = assignment.tag_id
+JOIN schedule_blueprints blueprint ON blueprint.id = assignment.blueprint_id
+WHERE assignment.blueprint_id = $1::text
+  AND schedule_blueprint_has_permission(blueprint.id, $2::text, 'schedule', 'read')
+  AND t.user_id = blueprint.user_id
 ORDER BY t.name, t.id
 `
 
@@ -57,18 +54,13 @@ func (q *Queries) ListScheduleTagsByScheduleAndUserID(ctx context.Context, arg L
 }
 
 const listScheduleTagsByScheduleIDsAndUserID = `-- name: ListScheduleTagsByScheduleIDsAndUserID :many
-WITH requested AS (
-    SELECT DISTINCT s.id AS schedule_id, s.series_id, s.user_id
-    FROM schedules AS s
-    WHERE s.id = ANY($1::text[])
-      AND s.deleted_at IS NULL
-      AND schedule_has_permission(s.id, $2::text, 'schedule', 'read')
-)
-SELECT requested.schedule_id, t.id, t.user_id, t.name, t.created_at, t.updated_at
-FROM requested
-JOIN schedule_tag_assignments AS sta ON sta.schedule_id = requested.series_id
-JOIN tags AS t ON t.id = sta.tag_id AND t.user_id = requested.user_id
-ORDER BY requested.schedule_id, t.name, t.id
+SELECT assignment.blueprint_id AS schedule_id, t.id, t.user_id, t.name, t.created_at, t.updated_at
+FROM schedule_tag_assignments assignment
+JOIN schedule_blueprints blueprint ON blueprint.id = assignment.blueprint_id
+JOIN tags t ON t.id = assignment.tag_id AND t.user_id = blueprint.user_id
+WHERE assignment.blueprint_id = ANY($1::text[])
+  AND schedule_blueprint_has_permission(blueprint.id, $2::text, 'schedule', 'read')
+ORDER BY assignment.blueprint_id, t.name, t.id
 `
 
 type ListScheduleTagsByScheduleIDsAndUserIDParams struct {

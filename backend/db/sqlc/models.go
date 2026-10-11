@@ -18,6 +18,7 @@ const (
 	ActionRead   Action = "read"
 	ActionUpdate Action = "update"
 	ActionDelete Action = "delete"
+	ActionRun    Action = "run"
 )
 
 func (e *Action) Scan(src interface{}) error {
@@ -110,6 +111,25 @@ type ActionItem struct {
 	DeletedAt        pgtype.Timestamptz
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
+}
+
+type AdminOperation struct {
+	ID                  string
+	JobName             string
+	State               string
+	RequestedBy         string
+	Cutoff              pgtype.Timestamptz
+	StartedAt           pgtype.Timestamptz
+	FinishedAt          pgtype.Timestamptz
+	HeartbeatAt         pgtype.Timestamptz
+	LeaseExpiresAt      pgtype.Timestamptz
+	LeaseToken          string
+	ProcessedBlueprints int64
+	GeneratedSchedules  int64
+	Response            []byte
+	ErrorCode           pgtype.Text
+	ErrorMessage        pgtype.Text
+	CreatedAt           pgtype.Timestamptz
 }
 
 type FrequencyMaster struct {
@@ -219,69 +239,102 @@ type RolePermission struct {
 }
 
 type Schedule struct {
-	ID                  string
-	UserID              string
-	ProjectID           pgtype.Text
-	AssigneeID          string
-	Title               string
-	Description         pgtype.Text
-	Location            pgtype.Text
-	StartAt             pgtype.Timestamptz
-	EndAt               pgtype.Timestamptz
-	SeriesID            string
-	OccurrenceDate      pgtype.Date
-	Timezone            string
-	IsException         bool
-	RepeatState         pgtype.Text
-	FrequencyAnchorDate pgtype.Date
-	IntervalWeeks       int32
-	Completed           bool
-	DeletedAt           pgtype.Timestamptz
-	SkippedAt           pgtype.Timestamptz
-	Revision            int32
-	ChangedBy           string
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
+	ID               string
+	BlueprintID      string
+	SourceRevisionID string
+	UserID           string
+	OccurrenceDate   pgtype.Date
+	StartAt          pgtype.Timestamptz
+	EndAt            pgtype.Timestamptz
+	Title            string
+	Description      pgtype.Text
+	Location         pgtype.Text
+	ProjectID        pgtype.Text
+	AssigneeID       string
+	Timezone         string
+	Completed        bool
+	SkippedAt        pgtype.Timestamptz
+	DeletedAt        pgtype.Timestamptz
+	IsOverride       bool
+	Revision         int32
+	ChangedBy        string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
-type ScheduleFrequency struct {
-	ScheduleID string
-	Frequency  string
-	CreatedAt  pgtype.Timestamptz
+type ScheduleBackfillCheckpoint struct {
+	RevisionID  string
+	ThroughDate pgtype.Date
+	UpdatedAt   pgtype.Timestamptz
+}
+
+type ScheduleBlueprint struct {
+	ID        string
+	UserID    string
+	DeletedAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
+type ScheduleBlueprintRevision struct {
+	ID                   string
+	BlueprintID          string
+	UserID               string
+	Revision             int32
+	EffectiveFrom        pgtype.Date
+	RecurrenceAnchorDate pgtype.Date
+	LocalStart           pgtype.Timestamp
+	LocalEnd             pgtype.Timestamp
+	Timezone             string
+	Frequency            string
+	IntervalCount        int32
+	Weekdays             []string
+	EndDate              pgtype.Date
+	Title                string
+	Description          pgtype.Text
+	Location             pgtype.Text
+	ProjectID            pgtype.Text
+	AssigneeID           string
+	SupersededAt         pgtype.Timestamptz
+	CutoffAfter          pgtype.Date
+	ChangedBy            string
+	CreatedAt            pgtype.Timestamptz
+}
+
+type ScheduleProjectPauseInterval struct {
+	ProjectID   string
+	BlueprintID string
+	PausedAt    pgtype.Timestamptz
+	ResumedAt   pgtype.Timestamptz
+	PausedBy    string
+	ResumedBy   pgtype.Text
 }
 
 type ScheduleRevision struct {
-	ID                  string
-	Revision            int32
-	UserID              string
-	ProjectID           pgtype.Text
-	AssigneeID          string
-	Title               string
-	Description         pgtype.Text
-	Location            pgtype.Text
-	StartAt             pgtype.Timestamptz
-	EndAt               pgtype.Timestamptz
-	SeriesID            string
-	OccurrenceDate      pgtype.Date
-	Timezone            string
-	IsException         bool
-	RepeatState         pgtype.Text
-	FrequencyAnchorDate pgtype.Date
-	IntervalWeeks       int32
-	Completed           bool
-	DeletedAt           pgtype.Timestamptz
-	SkippedAt           pgtype.Timestamptz
-	Frequencies         []string
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
-	ChangedBy           string
-	ChangedAt           pgtype.Timestamptz
+	ScheduleID       string
+	Revision         int32
+	SourceRevisionID string
+	UserID           string
+	OccurrenceDate   pgtype.Date
+	StartAt          pgtype.Timestamptz
+	EndAt            pgtype.Timestamptz
+	Title            string
+	Description      pgtype.Text
+	Location         pgtype.Text
+	ProjectID        pgtype.Text
+	AssigneeID       string
+	Timezone         string
+	Completed        bool
+	SkippedAt        pgtype.Timestamptz
+	DeletedAt        pgtype.Timestamptz
+	IsOverride       bool
+	ChangedBy        string
+	ChangedAt        pgtype.Timestamptz
 }
 
 type ScheduleTagAssignment struct {
-	ScheduleID string
-	TagID      string
-	CreatedAt  pgtype.Timestamptz
+	BlueprintID string
+	TagID       string
+	CreatedAt   pgtype.Timestamptz
 }
 
 type StatusMaster struct {
@@ -290,6 +343,12 @@ type StatusMaster struct {
 	LabelJp   string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+}
+
+type SystemUserRole struct {
+	UserID    string
+	RoleID    string
+	CreatedAt pgtype.Timestamptz
 }
 
 type Tag struct {
@@ -343,6 +402,10 @@ type TaskTagAssignment struct {
 	TaskID    string
 	TagID     string
 	CreatedAt pgtype.Timestamptz
+}
+
+type TimezoneMaster struct {
+	Timezone string
 }
 
 type TodoList struct {

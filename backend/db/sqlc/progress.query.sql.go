@@ -12,24 +12,12 @@ import (
 )
 
 const readProjectScheduleProgressCounts = `-- name: ReadProjectScheduleProgressCounts :many
-WITH requested AS (
-    SELECT s.id, s.project_id, s.series_id, s.occurrence_date,
-           s.completed, s.deleted_at, s.skipped_at
-    FROM schedules s
-    WHERE s.project_id = ANY($1::text[])
-), schedule_occurrences AS (
-    SELECT DISTINCT ON (s.project_id, s.series_id, s.occurrence_date)
-        s.project_id, s.completed, s.deleted_at, s.skipped_at
-    FROM requested s
-    ORDER BY s.project_id, s.series_id, s.occurrence_date,
-             (s.deleted_at IS NOT NULL AND s.skipped_at IS NOT NULL) ASC,
-             (s.id <> s.series_id) DESC
-)
-SELECT project_id,
-       COUNT(*) FILTER (WHERE deleted_at IS NULL AND skipped_at IS NULL)::bigint AS total,
-       COUNT(*) FILTER (WHERE deleted_at IS NULL AND skipped_at IS NULL AND completed)::bigint AS completed
-FROM schedule_occurrences
-GROUP BY project_id
+SELECT s.project_id,
+       COUNT(*) FILTER (WHERE s.deleted_at IS NULL AND s.skipped_at IS NULL)::bigint AS total,
+       COUNT(*) FILTER (WHERE s.deleted_at IS NULL AND s.skipped_at IS NULL AND s.completed)::bigint AS completed
+FROM schedules s
+WHERE s.project_id = ANY($1::text[])
+GROUP BY s.project_id
 `
 
 type ReadProjectScheduleProgressCountsRow struct {
@@ -59,48 +47,70 @@ func (q *Queries) ReadProjectScheduleProgressCounts(ctx context.Context, project
 }
 
 const readProjectScheduleProgressRoots = `-- name: ReadProjectScheduleProgressRoots :many
-SELECT root.project_id,
+WITH effective AS (
+    SELECT DISTINCT ON (b.id)
+           r.project_id, b.id AS blueprint_id, r.recurrence_anchor_date,
+           r.local_start, r.local_end,
+           r.timezone, r.frequency, r.interval_count, r.weekdays, r.end_date, r.cutoff_after,
+           ($2::timestamptz AT TIME ZONE r.timezone)::date AS occurrence_date
+    FROM schedule_blueprints b
+    JOIN schedule_blueprint_revisions r ON r.blueprint_id = b.id
+    WHERE b.deleted_at IS NULL
+      AND b.id IN (
+          SELECT history.blueprint_id
+          FROM schedule_blueprint_revisions history
+          WHERE history.project_id = ANY($1::text[])
+      )
+      AND r.superseded_at IS NULL
+      AND r.effective_from <= ($2::timestamptz AT TIME ZONE r.timezone)::date
+    ORDER BY b.id, r.effective_from DESC, r.revision DESC
+)
+SELECT root.project_id, root.blueprint_id, root.recurrence_anchor_date::text AS recurrence_anchor_date,
+       root.local_start, root.local_end,
+       root.timezone, root.frequency, root.interval_count, root.weekdays,
+       CAST(COALESCE(root.end_date::text, ''::text) AS varchar) AS end_date,
        root.occurrence_date::text AS occurrence_date,
-       root.timezone, root.interval_weeks,
-       COALESCE(root.frequency_anchor_date, root.occurrence_date) AS frequency_anchor_date,
-       ARRAY(
-           SELECT f.frequency FROM schedule_frequencies f
-           WHERE f.schedule_id = root.id ORDER BY f.frequency
-       )::text[] AS frequencies,
-       root.start_at, root.end_at,
-       (root.occurrence_date = ($1::timestamptz AT TIME ZONE root.timezone)::date
-        OR EXISTS (
-            SELECT 1 FROM schedules child
-            WHERE child.series_id = root.id AND child.id <> root.id
-              AND (child.deleted_at IS NULL OR child.is_exception)
-              AND child.occurrence_date = ($1::timestamptz AT TIME ZONE root.timezone)::date
-        )) AS occurrence_saved_today
-FROM schedules root
-WHERE root.project_id = ANY($2::text[])
-  AND root.id = root.series_id
-  AND root.deleted_at IS NULL
-  AND root.repeat_state = 'active'
+       CAST(COALESCE(root.cutoff_after::text, ''::text) AS varchar) AS cutoff_after,
+       EXISTS (
+           SELECT 1 FROM schedules saved
+           WHERE saved.blueprint_id = root.blueprint_id
+             AND saved.occurrence_date = root.occurrence_date
+       ) AS occurrence_saved_today,
+       pauses.paused_at AS pause_started_at, pauses.resumed_at AS pause_ended_at
+FROM effective root
+LEFT JOIN schedule_project_pause_intervals pauses
+  ON pauses.blueprint_id = root.blueprint_id AND pauses.project_id = root.project_id
+WHERE root.frequency <> 'once'
+  AND root.project_id = ANY($1::text[])
+  AND (root.end_date IS NULL OR root.end_date >= root.occurrence_date)
+  AND (root.cutoff_after IS NULL OR root.cutoff_after >= root.occurrence_date)
 `
 
 type ReadProjectScheduleProgressRootsParams struct {
-	AsOf       pgtype.Timestamptz
 	ProjectIds []string
+	AsOf       pgtype.Timestamptz
 }
 
 type ReadProjectScheduleProgressRootsRow struct {
 	ProjectID            pgtype.Text
-	OccurrenceDate       string
+	BlueprintID          string
+	RecurrenceAnchorDate string
+	LocalStart           pgtype.Timestamp
+	LocalEnd             pgtype.Timestamp
 	Timezone             string
-	IntervalWeeks        int32
-	FrequencyAnchorDate  pgtype.Date
-	Frequencies          []string
-	StartAt              pgtype.Timestamptz
-	EndAt                pgtype.Timestamptz
-	OccurrenceSavedToday pgtype.Bool
+	Frequency            string
+	IntervalCount        int32
+	Weekdays             []string
+	EndDate              string
+	OccurrenceDate       string
+	CutoffAfter          string
+	OccurrenceSavedToday bool
+	PauseStartedAt       pgtype.Timestamptz
+	PauseEndedAt         pgtype.Timestamptz
 }
 
 func (q *Queries) ReadProjectScheduleProgressRoots(ctx context.Context, arg ReadProjectScheduleProgressRootsParams) ([]ReadProjectScheduleProgressRootsRow, error) {
-	rows, err := q.db.Query(ctx, readProjectScheduleProgressRoots, arg.AsOf, arg.ProjectIds)
+	rows, err := q.db.Query(ctx, readProjectScheduleProgressRoots, arg.ProjectIds, arg.AsOf)
 	if err != nil {
 		return nil, err
 	}
@@ -110,14 +120,20 @@ func (q *Queries) ReadProjectScheduleProgressRoots(ctx context.Context, arg Read
 		var i ReadProjectScheduleProgressRootsRow
 		if err := rows.Scan(
 			&i.ProjectID,
-			&i.OccurrenceDate,
+			&i.BlueprintID,
+			&i.RecurrenceAnchorDate,
+			&i.LocalStart,
+			&i.LocalEnd,
 			&i.Timezone,
-			&i.IntervalWeeks,
-			&i.FrequencyAnchorDate,
-			&i.Frequencies,
-			&i.StartAt,
-			&i.EndAt,
+			&i.Frequency,
+			&i.IntervalCount,
+			&i.Weekdays,
+			&i.EndDate,
+			&i.OccurrenceDate,
+			&i.CutoffAfter,
 			&i.OccurrenceSavedToday,
+			&i.PauseStartedAt,
+			&i.PauseEndedAt,
 		); err != nil {
 			return nil, err
 		}

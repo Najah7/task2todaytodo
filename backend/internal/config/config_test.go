@@ -17,17 +17,17 @@ func TestLoadFromEnvUsesDefaultsAndEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadFromEnv() error = %v", err)
 	}
-	if cfg.ServerAddr != "127.0.0.1:9090" {
-		t.Errorf("ServerAddr = %q, want custom address", cfg.ServerAddr)
+	if cfg.Server.Addr != "127.0.0.1:9090" {
+		t.Errorf("Server.Addr = %q, want custom address", cfg.Server.Addr)
 	}
-	if cfg.ServiceName != defaultServiceName || cfg.Environment != defaultEnvironment || cfg.AppVersion != defaultAppVersion || cfg.LogLevel != slog.LevelInfo {
-		t.Errorf("runtime metadata = %q/%q/%q level %v, want defaults and INFO", cfg.ServiceName, cfg.Environment, cfg.AppVersion, cfg.LogLevel)
+	if cfg.Application.Service != defaultService || cfg.Application.Environment != defaultEnvironment || cfg.Application.Version != defaultAppVersion || cfg.Application.LogLevel != slog.LevelInfo {
+		t.Errorf("runtime metadata = %q/%q/%q level %v, want defaults and INFO", cfg.Application.Service, cfg.Application.Environment, cfg.Application.Version, cfg.Application.LogLevel)
 	}
 	if cfg.Database.User != "alice" || cfg.Database.Password != "changeme" || cfg.Database.Host != "localhost" || cfg.Database.Port != "5432" || cfg.Database.Name != "task2todaytodo" || cfg.Database.SSLMode != "disable" {
 		t.Errorf("Database = %+v, want configured user and existing defaults", cfg.Database)
 	}
-	if string(cfg.PageTokenKey) != "01234567890123456789012345678901" {
-		t.Errorf("PageTokenKey decoded incorrectly")
+	if string(cfg.Secrets.PageTokenKey) != "01234567890123456789012345678901" {
+		t.Errorf("Secrets.PageTokenKey decoded incorrectly")
 	}
 }
 
@@ -44,8 +44,8 @@ func TestLoadFromEnvReadsRuntimeMetadataAndLogLevel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadFromEnv() error = %v", err)
 	}
-	if cfg.ServiceName != "worker-api" || cfg.Environment != "staging" || cfg.AppVersion != "2.3.4" || cfg.LogLevel != slog.LevelWarn {
-		t.Errorf("runtime metadata = %q/%q/%q level %v", cfg.ServiceName, cfg.Environment, cfg.AppVersion, cfg.LogLevel)
+	if cfg.Application.Service != "worker-api" || cfg.Application.Environment != "staging" || cfg.Application.Version != "2.3.4" || cfg.Application.LogLevel != slog.LevelWarn {
+		t.Errorf("runtime metadata = %q/%q/%q level %v", cfg.Application.Service, cfg.Application.Environment, cfg.Application.Version, cfg.Application.LogLevel)
 	}
 }
 
@@ -75,8 +75,8 @@ func TestLoadFromEnvDefaultServerAddress(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadFromEnv() error = %v", err)
 	}
-	if cfg.ServerAddr != defaultServerAddr {
-		t.Errorf("ServerAddr = %q, want %q", cfg.ServerAddr, defaultServerAddr)
+	if cfg.Server.Addr != defaultServerAddr {
+		t.Errorf("Server.Addr = %q, want %q", cfg.Server.Addr, defaultServerAddr)
 	}
 }
 

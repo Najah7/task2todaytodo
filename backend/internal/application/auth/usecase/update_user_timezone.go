@@ -32,6 +32,14 @@ func (uc *UpdateUserTimezoneUseCase) Execute(ctx context.Context, userID domain.
 	if err != nil {
 		return dao.User{}, err
 	}
+	allowed, err := uc.repo.TimezoneExists(ctx, timezone)
+	if err != nil {
+		logUnexpectedFailure(uc.logger, ctx, "user.update_timezone.validate", err)
+		return dao.User{}, err
+	}
+	if !allowed {
+		return dao.User{}, domain.ErrInvalidUserTimezone
+	}
 	updatedUser := user.UpdateTimezone(newTimezone)
 	if err := uc.repo.UpdateTimezone(ctx, userID, updatedUser.Timezone); err != nil {
 		logUnexpectedFailure(uc.logger, ctx, "user.update_timezone.persist", err)

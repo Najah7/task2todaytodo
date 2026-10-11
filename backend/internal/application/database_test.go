@@ -3,10 +3,12 @@ package application
 import (
 	"net/url"
 	"testing"
+
+	"github.com/Najah7/task2todaytodo/internal/config"
 )
 
 func TestPostgresConnectionStringEscapesCredentialsAndDatabaseName(t *testing.T) {
-	database := DatabaseConfig{
+	database := config.DatabaseConfig{
 		User:     "user name",
 		Password: "p@ss:/?word",
 		Host:     "localhost",
@@ -31,7 +33,7 @@ func TestPostgresConnectionStringEscapesCredentialsAndDatabaseName(t *testing.T)
 }
 
 func TestPostgresPoolConfigSetsConnectionLimits(t *testing.T) {
-	cfg, err := postgresPoolConfig(DatabaseConfig{
+	cfg, err := postgresPoolConfig(config.DatabaseConfig{
 		User: "user", Password: "secret", Host: "localhost", Port: "5432", Name: "db", SSLMode: "disable",
 	})
 	if err != nil {

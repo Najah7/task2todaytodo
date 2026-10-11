@@ -1,12 +1,5 @@
 erDiagram
-    %% External entities are reference-only: users/projects/tags are in auth/project/task diagrams;
-    %% frequency_master is defined in task.mmd and list links in todolist.mmd.
-    %% Composite unique key: schedules(id, user_id).
-    %% Composite FKs: schedules(project_id, user_id) -> projects(id, user_id);
-    %% schedules(series_id, user_id) -> schedules(id, user_id).
-    %% Composite unique key: schedules(id, user_id).
-    %% Partial unique index: schedules(series_id, occurrence_date), only when id <> series_id.
-
+    %% users, projects and tags are reference-only entities owned by other diagrams.
     users {
         text id PK "NOT NULL"
     }
@@ -16,35 +9,65 @@ erDiagram
         text user_id "NOT NULL"
     }
 
-    frequency_master {
-        text frequency PK "NOT NULL"
-    }
-
     tags {
         text id PK "NOT NULL"
+        text user_id "NOT NULL"
+    }
+
+    timezone_master {
+        text timezone PK "NOT NULL"
+    }
+
+    schedule_blueprints {
+        text id PK "NOT NULL"
         text user_id FK "NOT NULL"
+        timestamptz deleted_at "NULL"
+        timestamptz created_at "NOT NULL"
+    }
+
+    schedule_blueprint_revisions {
+        text id PK "NOT NULL"
+        text blueprint_id FK "NOT NULL"
+        text user_id FK "NOT NULL"
+        integer revision "NOT NULL"
+        date effective_from "NOT NULL"
+        date recurrence_anchor_date "NOT NULL"
+        timestamp local_start "NOT NULL"
+        timestamp local_end "NOT NULL"
+        text timezone FK "NOT NULL"
+        text frequency "NOT NULL"
+        integer interval_count "NOT NULL"
+        text_array weekdays "NOT NULL"
+        date end_date "NULL"
+        date cutoff_after "NULL"
+        text title "NOT NULL"
+        text description "NULL"
+        text location "NULL"
+        text project_id FK "NULL"
+        text assignee_id FK "NOT NULL"
+        timestamptz superseded_at "NULL"
+        text changed_by FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
     }
 
     schedules {
         text id PK "NOT NULL"
+        text blueprint_id FK "NOT NULL"
+        text source_revision_id FK "NOT NULL"
         text user_id FK "NOT NULL"
-        text project_id FK "NULL"
-        text assignee_id FK "NOT NULL"
+        date occurrence_date "NOT NULL"
+        timestamptz start_at "NOT NULL"
+        timestamptz end_at "NOT NULL"
         text title "NOT NULL"
         text description "NULL"
         text location "NULL"
-        timestamptz start_at "NOT NULL"
-        timestamptz end_at "NOT NULL"
-        text series_id FK "NOT NULL"
-        date occurrence_date "NOT NULL"
-        text timezone "NOT NULL"
-        boolean is_exception "NOT NULL"
-        text repeat_state "NULL"
-        date frequency_anchor_date "NULL"
-        integer interval_weeks "NOT NULL"
+        text project_id FK "NULL"
+        text assignee_id FK "NOT NULL"
+        text timezone FK "NOT NULL"
         boolean completed "NOT NULL"
-        timestamptz deleted_at "NULL"
         timestamptz skipped_at "NULL"
+        timestamptz deleted_at "NULL"
+        boolean is_override "NOT NULL"
         integer revision "NOT NULL"
         text changed_by FK "NOT NULL"
         timestamptz created_at "NOT NULL"
@@ -52,53 +75,63 @@ erDiagram
     }
 
     schedule_revisions {
-        text id PK, FK "NOT NULL"
+        text schedule_id PK, FK "NOT NULL"
         integer revision PK "NOT NULL"
+        text source_revision_id FK "NOT NULL"
         text user_id FK "NOT NULL"
-        text project_id "NULL"
-        text assignee_id FK "NOT NULL"
+        date occurrence_date "NOT NULL"
+        timestamptz start_at "NOT NULL"
+        timestamptz end_at "NOT NULL"
         text title "NOT NULL"
         text description "NULL"
         text location "NULL"
-        timestamptz start_at "NOT NULL"
-        timestamptz end_at "NOT NULL"
-        text series_id "NOT NULL"
-        date occurrence_date "NOT NULL"
-        text timezone "NOT NULL"
-        boolean is_exception "NOT NULL"
-        text repeat_state "NULL"
-        date frequency_anchor_date "NULL"
-        integer interval_weeks "NOT NULL"
+        text project_id "NULL"
+        text assignee_id FK "NOT NULL"
+        text timezone FK "NOT NULL"
         boolean completed "NOT NULL"
-        timestamptz deleted_at "NULL"
         timestamptz skipped_at "NULL"
-        text[] frequencies "NOT NULL"
-        timestamptz created_at "NOT NULL"
-        timestamptz updated_at "NOT NULL"
+        timestamptz deleted_at "NULL"
+        boolean is_override "NOT NULL"
         text changed_by FK "NOT NULL"
         timestamptz changed_at "NOT NULL"
     }
 
-    schedule_frequencies {
-        text schedule_id PK, FK "NOT NULL"
-        text frequency PK, FK "NOT NULL"
-        timestamptz created_at "NOT NULL"
+    schedule_project_pause_intervals {
+        text project_id PK, FK "NOT NULL"
+        text blueprint_id PK, FK "NOT NULL"
+        timestamptz paused_at PK "NOT NULL"
+        timestamptz resumed_at "NULL"
+        text paused_by FK "NOT NULL"
+        text resumed_by FK "NULL"
+    }
+
+    schedule_backfill_checkpoints {
+        text revision_id PK, FK "NOT NULL"
+        date through_date "NOT NULL"
+        timestamptz updated_at "NOT NULL"
     }
 
     schedule_tag_assignments {
-        text schedule_id PK, FK "NOT NULL"
+        text blueprint_id PK, FK "NOT NULL"
         text tag_id PK, FK "NOT NULL"
         timestamptz created_at "NOT NULL"
     }
 
-    users ||..o{ schedules : owns
-    users ||..o{ schedules : assignee
-    users ||..o{ schedules : changed_by
-    projects |o..o{ schedules : optional_project_owner_pair
-    schedules ||..o{ schedules : series_parent_same_owner
-    schedules ||--o{ schedule_frequencies : repeats_on
-    frequency_master ||--o{ schedule_frequencies : used_by_schedule
-    schedules ||--o{ schedule_revisions : has_revisions
-    users ||..o{ schedule_revisions : changed_by
-    schedules ||--o{ schedule_tag_assignments : has_tags
-    tags ||--o{ schedule_tag_assignments : assigned_to_schedules
+    users ||--o{ schedule_blueprints : owns
+    schedule_blueprints ||--o{ schedule_blueprint_revisions : defines
+    users ||--o{ schedule_blueprint_revisions : owns
+    projects |o--o{ schedule_blueprint_revisions : assigned_project
+    timezone_master ||--o{ schedule_blueprint_revisions : local_time_zone
+    users ||--o{ schedule_blueprint_revisions : assignee
+    schedule_blueprints ||--o{ schedules : generates
+    schedule_blueprint_revisions ||--o{ schedules : source_definition
+    projects |o--o{ schedules : assigned_project
+    timezone_master ||--o{ schedules : snapshot_time_zone
+    users ||--o{ schedules : assignee
+    schedules ||--o{ schedule_revisions : audit
+    timezone_master ||--o{ schedule_revisions : audited_time_zone
+    schedule_blueprints ||--o{ schedule_project_pause_intervals : paused_in_project
+    projects ||--o{ schedule_project_pause_intervals : pauses
+    schedule_blueprint_revisions ||--o| schedule_backfill_checkpoints : backfill_checkpoint
+    schedule_blueprints ||--o{ schedule_tag_assignments : tagged
+    tags ||--o{ schedule_tag_assignments : assigned_tag

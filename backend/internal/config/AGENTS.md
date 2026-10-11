@@ -9,8 +9,8 @@ guide when changing runtime configuration in any of those areas.
 - `internal/config` owns process environment loading and validation. Pass
   database settings into `internal/application`; application code must not read
   process environment.
-- `cmd/api/main.go` creates the REST cursor-token codec from the validated
-  `PAGE_TOKEN_KEY` and passes it to handlers.
+- `cmd/api/main.go` passes the validated `PAGE_TOKEN_KEY` to `rest.NewHandler`,
+  which creates the shared REST cursor-token codec.
 - Keep database settings consistent in the application, migration command, and
   container configuration.
 - Health check names must explicitly identify the target service or resource;

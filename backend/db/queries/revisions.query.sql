@@ -14,21 +14,22 @@ WHERE pr.id = sqlc.arg(id)::text
 ORDER BY pr.revision DESC
 LIMIT sqlc.arg(page_limit)::integer;
 
--- name: ListScheduleRevisionsByActor :many
-SELECT sr.*
-FROM schedule_revisions AS sr
-JOIN schedules AS s ON s.id = sr.id
-LEFT JOIN projects AS p ON p.id = s.project_id
-WHERE sr.id = sqlc.arg(id)::text
+-- name: ListScheduleOccurrenceRevisionsByActor :many
+SELECT history.*
+FROM schedule_revisions history
+JOIN schedules occurrence ON occurrence.id = history.schedule_id
+JOIN schedule_blueprints blueprint ON blueprint.id = occurrence.blueprint_id AND blueprint.deleted_at IS NULL
+WHERE occurrence.blueprint_id = sqlc.arg(blueprint_id)::text
+  AND occurrence.occurrence_date = sqlc.arg(occurrence_date)::date
   AND (
-      (s.deleted_at IS NULL AND (p.id IS NULL OR p.deleted_at IS NULL)
-       AND schedule_has_permission(s.id, sqlc.arg(actor_id)::text, 'schedule', 'read'))
-      OR ((s.deleted_at IS NOT NULL OR p.deleted_at IS NOT NULL)
-       AND (s.user_id = sqlc.arg(actor_id)::text
-            OR (p.id IS NOT NULL AND project_has_permission(p.id, sqlc.arg(actor_id)::text, 'deleted_history', 'read'))))
+      (occurrence.deleted_at IS NOT NULL AND occurrence.user_id = sqlc.arg(actor_id)::text)
+      OR (occurrence.deleted_at IS NULL AND schedule_has_permission(occurrence.id, sqlc.arg(actor_id)::text, 'schedule', 'read'))
   )
-  AND (sqlc.narg(cursor_revision)::integer IS NULL OR sr.revision < sqlc.narg(cursor_revision)::integer)
-ORDER BY sr.revision DESC
+  AND (sqlc.narg(cursor_revision)::integer IS NULL OR history.revision < sqlc.narg(cursor_revision)::integer)
+  AND (occurrence.project_id IS NULL OR EXISTS (
+      SELECT 1 FROM projects parent WHERE parent.id = occurrence.project_id AND parent.deleted_at IS NULL
+  ))
+ORDER BY history.revision DESC
 LIMIT sqlc.arg(page_limit)::integer;
 
 -- name: ListTaskRevisionsByActor :many

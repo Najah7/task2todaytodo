@@ -19,6 +19,7 @@ type listAnchor struct {
 	Name           string `json:"name,omitempty"`
 	Position       int    `json:"position,omitempty"`
 	SeriesID       string `json:"series_id,omitempty"`
+	BlueprintID    string `json:"blueprint_id,omitempty"`
 	OccurrenceDate string `json:"occurrence_date,omitempty"`
 	AsOf           string `json:"as_of,omitempty"`
 	Direction      string `json:"direction,omitempty"`
@@ -39,6 +40,8 @@ type listRequest struct {
 	Anchor   *listAnchor
 	Scope    pagination.Scope
 	FromDate string
+	From     time.Time
+	To       time.Time
 	AsOf     time.Time
 }
 
@@ -63,10 +66,21 @@ func parseListRequest(r *http.Request, codec *pagination.Codec, userID, list, pa
 }
 
 func parseListRequestWithFromDate(r *http.Request, codec *pagination.Codec, userID, list, parent, order string, schema any, allowFromDate bool) (listRequest, error) {
+	return parseListRequestScoped(r, codec, userID, list, parent, order, schema, allowFromDate, false)
+}
+
+func parseListRequestWithRange(r *http.Request, codec *pagination.Codec, userID, list, parent, order string, schema any) (listRequest, error) {
+	return parseListRequestScoped(r, codec, userID, list, parent, order, schema, false, true)
+}
+
+func parseListRequestScoped(r *http.Request, codec *pagination.Codec, userID, list, parent, order string, schema any, allowFromDate, requireRange bool) (listRequest, error) {
 	q := r.URL.Query()
 	queryKeys := []string{"page_size", "page_token", "fields"}
 	if allowFromDate {
 		queryKeys = append(queryKeys, "from_date")
+	}
+	if requireRange {
+		queryKeys = append(queryKeys, "from", "to")
 	}
 	for _, key := range queryKeys {
 		if len(q[key]) > 1 {
@@ -98,12 +112,32 @@ func parseListRequestWithFromDate(r *http.Request, codec *pagination.Codec, user
 		}
 		fromDate = parsed.Format("2006-01-02")
 	}
+	var from, to time.Time
+	if requireRange {
+		if !q.Has("from") {
+			return listRequest{}, invalidListRequestError{field: "from"}
+		}
+		if !q.Has("to") {
+			return listRequest{}, invalidListRequestError{field: "to"}
+		}
+		from, err = parseUTCRangeInstant(q.Get("from"))
+		if err != nil {
+			return listRequest{}, invalidListRequestError{field: "from"}
+		}
+		to, err = parseUTCRangeInstant(q.Get("to"))
+		if err != nil || !to.After(from) {
+			return listRequest{}, invalidListRequestError{field: "to"}
+		}
+	}
 	scopedOrder := order
 	if allowFromDate {
 		scopedOrder += "|from_date=" + fromDate
 	}
+	if requireRange {
+		scopedOrder += "|from=" + from.Format(time.RFC3339Nano) + "|to=" + to.Format(time.RFC3339Nano)
+	}
 	scope := pagination.Scope{UserID: userID, List: list, Parent: parent, Order: scopedOrder, Fields: mask.Canonical()}
-	request := listRequest{Size: size, Mask: mask, Scope: scope, FromDate: fromDate}
+	request := listRequest{Size: size, Mask: mask, Scope: scope, FromDate: fromDate, From: from, To: to}
 	if q.Has("page_token") {
 		anchor, err := pagination.Decode[listAnchor](codec, q.Get("page_token"), scope)
 		if err != nil {
@@ -118,6 +152,18 @@ func parseListRequestWithFromDate(r *http.Request, codec *pagination.Codec, user
 		}
 	}
 	return request, nil
+}
+
+func parseUTCRangeInstant(value string) (time.Time, error) {
+	parsed, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil {
+		return time.Time{}, err
+	}
+	_, offset := parsed.Zone()
+	if offset != 0 {
+		return time.Time{}, errInvalidListRequest
+	}
+	return parsed.UTC(), nil
 }
 
 func parseProjectListRequest(r *http.Request, codec *pagination.Codec, userID string) (listRequest, projectusecase.ProjectListRequest, error) {

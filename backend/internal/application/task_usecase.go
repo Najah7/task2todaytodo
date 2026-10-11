@@ -32,29 +32,28 @@ func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthSto
 	}
 }
 
-func NewScheduleUseCases(scheduleStore ScheduleStore, scheduleUOW scheduleusecase.UOW, authStore AuthStore, ID shared.ID, logger logging.Logger) scheduleusecase.ScheduleUseCases {
+func NewScheduleUseCases(scheduleUOW scheduleusecase.UOW, authStore AuthStore, ID shared.ID, logger logging.Logger) scheduleusecase.ScheduleUseCases {
 	return scheduleusecase.ScheduleUseCases{
-		Create:               scheduleusecase.NewCreateScheduleUseCase(scheduleUOW, authStore.Users, logger),
-		List:                 scheduleusecase.NewListSchedulesUseCase(scheduleUOW, logger),
-		ListProject:          scheduleusecase.NewListProjectSchedulesUseCase(scheduleUOW, logger),
-		Get:                  scheduleusecase.NewGetScheduleUseCase(scheduleUOW, logger),
-		Update:               scheduleusecase.NewUpdateScheduleUseCase(scheduleUOW, logger, ID),
-		Delete:               scheduleusecase.NewDeleteScheduleUseCase(scheduleUOW, logger),
-		Complete:             scheduleusecase.NewCompleteScheduleUseCase(scheduleUOW, logger, ID),
-		Reopen:               scheduleusecase.NewReopenScheduleUseCase(scheduleUOW, logger),
-		Skip:                 scheduleusecase.NewSkipScheduleUseCase(scheduleUOW, logger),
-		Restore:              scheduleusecase.NewRestoreScheduleUseCase(scheduleUOW, logger),
-		Reschedule:           scheduleusecase.NewRescheduleScheduleUseCase(scheduleUOW, logger, ID),
-		UpdateFrequency:      scheduleusecase.NewUpdateScheduleFrequencyUseCase(scheduleUOW, logger),
-		SetProject:           scheduleusecase.NewSetScheduleProjectUseCase(scheduleUOW, logger),
-		RemoveFromProject:    scheduleusecase.NewRemoveScheduleFromProjectUseCase(scheduleUOW, logger),
-		Assign:               scheduleusecase.NewAssignScheduleUseCase(scheduleUOW, logger),
-		ListAssignees:        scheduleusecase.NewListScheduleAssigneesUseCase(scheduleUOW, logger),
-		ListTags:             scheduleusecase.NewListScheduleTagsUseCase(scheduleUOW, logger),
-		ListTagsForSchedules: scheduleusecase.NewListScheduleTagsForSchedulesUseCase(scheduleUOW, logger),
-		AddTag:               scheduleusecase.NewAddTagToScheduleUseCase(scheduleUOW, logger),
-		RemoveTag:            scheduleusecase.NewRemoveTagFromScheduleUseCase(scheduleUOW, logger),
-		Revisions:            scheduleusecase.NewListScheduleRevisionsUseCase(scheduleStore.Schedules, logger),
+		CreateBlueprint:          scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, ID, authStore.Users, logger),
+		GetBlueprint:             scheduleusecase.NewGetBlueprintUseCase(scheduleUOW),
+		ListBlueprintRevisions:   scheduleusecase.NewListBlueprintRevisionsUseCase(scheduleUOW),
+		UpdateBlueprint:          scheduleusecase.NewUpdateBlueprintUseCase(scheduleUOW, ID, authStore.Users),
+		DeleteBlueprintFollowing: scheduleusecase.NewDeleteBlueprintFollowingUseCase(scheduleUOW, ID),
+		ListOccurrences:          scheduleusecase.NewListOccurrencesUseCase(scheduleUOW),
+		GetOccurrence:            scheduleusecase.NewGetOccurrenceUseCase(scheduleUOW, logger),
+		OccurrenceRevisions:      scheduleusecase.NewListOccurrenceRevisionsUseCase(scheduleUOW),
+		UpdateOccurrence:         scheduleusecase.NewUpdateOccurrenceUseCase(scheduleUOW, logger, ID),
+		CompleteOccurrence:       scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "complete", logger, ID),
+		ReopenOccurrence:         scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "reopen", logger, ID),
+		SkipOccurrence:           scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "skip", logger, ID),
+		RestoreOccurrence:        scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "restore", logger, ID),
+		DeleteOccurrence:         scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "delete", logger, ID),
+		RescheduleOccurrence:     scheduleusecase.NewRescheduleOccurrenceUseCase(scheduleUOW, logger, ID),
+		Backfill:                 scheduleusecase.NewBackfillUseCase(scheduleUOW, ID),
+		ListBlueprintTags:        scheduleusecase.NewListBlueprintTagsUseCase(scheduleUOW, logger),
+		AddTagToBlueprint:        scheduleusecase.NewAddTagToBlueprintUseCase(scheduleUOW, logger),
+		RemoveTagFromBlueprint:   scheduleusecase.NewRemoveTagFromBlueprintUseCase(scheduleUOW, logger),
+		ListAssignees:            scheduleusecase.NewListScheduleAssigneesUseCase(scheduleUOW, logger),
 	}
 }
 

@@ -78,6 +78,8 @@ type ProjectChildrenDeleter interface {
 	DeleteProjectSchedules(context.Context, string, string) error
 	ReassignTasksAfterProjectMemberRemoval(context.Context, string, string, string) error
 	ReassignSchedulesAfterProjectMemberRemoval(context.Context, string, string, string) error
+	PauseProjectBlueprints(context.Context, string, string, time.Time) error
+	ResumeProjectBlueprints(context.Context, string, string, time.Time) error
 }
 type UnitOfWork interface {
 	Do(context.Context, func(context.Context, Repository, ProjectChildrenDeleter) error) error

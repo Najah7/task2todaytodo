@@ -1,25 +1,25 @@
 package usecase
 
 type ScheduleUseCases struct {
-	Revisions            *ListScheduleRevisionsUseCase
-	Create               *CreateScheduleUseCase
-	List                 *ListSchedulesUseCase
-	ListProject          *ListProjectSchedulesUseCase
-	Get                  *GetScheduleUseCase
-	Update               *UpdateScheduleUseCase
-	Delete               *DeleteScheduleUseCase
-	Complete             *CompleteScheduleUseCase
-	Reopen               *ReopenScheduleUseCase
-	Skip                 *SkipScheduleUseCase
-	Restore              *RestoreScheduleUseCase
-	Reschedule           *RescheduleScheduleUseCase
-	UpdateFrequency      *UpdateScheduleFrequencyUseCase
-	SetProject           *SetScheduleProjectUseCase
-	RemoveFromProject    *RemoveScheduleFromProjectUseCase
-	Assign               *AssignScheduleUseCase
-	ListAssignees        *ListScheduleAssigneesUseCase
-	ListTags             *ListScheduleTagsUseCase
-	ListTagsForSchedules *ListScheduleTagsForSchedulesUseCase
-	AddTag               *AddTagToScheduleUseCase
-	RemoveTag            *RemoveTagFromScheduleUseCase
+	CreateBlueprint           *CreateBlueprintUseCase
+	GetBlueprint              *GetBlueprintUseCase
+	ListBlueprintRevisions    *ListBlueprintRevisionsUseCase
+	OccurrenceRevisions       *ListOccurrenceRevisionsUseCase
+	UpdateBlueprint           *UpdateBlueprintUseCase
+	DeleteBlueprintFollowing  *DeleteBlueprintFollowingUseCase
+	ListOccurrences           *ListOccurrencesUseCase
+	GetOccurrence             *GetOccurrenceUseCase
+	UpdateOccurrence          *UpdateOccurrenceUseCase
+	CompleteOccurrence        *SetOccurrenceStateUseCase
+	ReopenOccurrence          *SetOccurrenceStateUseCase
+	SkipOccurrence            *SetOccurrenceStateUseCase
+	RestoreOccurrence         *SetOccurrenceStateUseCase
+	DeleteOccurrence          *SetOccurrenceStateUseCase
+	RescheduleOccurrence      *RescheduleOccurrenceUseCase
+	Backfill                  ScheduleBackfill
+	ProjectBlueprintLifecycle ProjectBlueprintLifecycle
+	ListAssignees             *ListScheduleAssigneesUseCase
+	ListBlueprintTags         *ListBlueprintTagsUseCase
+	AddTagToBlueprint         *AddTagToBlueprintUseCase
+	RemoveTagFromBlueprint    *RemoveTagFromBlueprintUseCase
 }

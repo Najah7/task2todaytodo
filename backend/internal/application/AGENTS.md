@@ -14,7 +14,7 @@ internal/application/shared/              Cross-context contracts and pure polic
 internal/application/                      Composition root and transaction wiring
 ```
 
-`<context>` is `auth`, `project`, `task`, `schedule`, or `tag`. Keep each
+`<context>` is `auth`, `project`, `task`, `schedule`, `tag`, or `admin`. Keep each
 context's domain, DAO, usecase, and repository within that context. Context
 code may depend on its own layers and on `application/shared`, as shown in the
 [backend layer map](../../AGENTS.md#layer-rule).
@@ -32,6 +32,13 @@ own their Tag-assignment operations and use primitive owner checks. Define
 cross-context reads and writes at the consuming usecase boundary, then inject
 their implementations through root wiring. Keep HTTP query parsing, field
 masks, cursor tokens, and response types in `port/rest`.
+
+Construct context stores and use cases through `NewStore` and `NewUseCase`,
+with per-context wiring in the application root factory files. `Application`
+contains only `Store`, `UseCase`, and `UOW`. `application.New` returns a
+context-aware cleanup callback that stops owned use-case work before closing
+the database pool; `application.Close` supplies its 10-second timeout. Direct
+`NewUseCase` callers must run the returned cleanup callback when finished.
 
 ## Domain
 
@@ -135,10 +142,6 @@ READ:  Repository -> DAO -> UseCase/REST handler
   callback, perform every database write, and every database read that enforces
   transaction invariants, through the transaction-bound repositories or ports
   in `repos`. Do not use non-transaction repositories for those operations.
-- Schedule currently reads the user's timezone inside the UOW callback
-  through a non-transaction-bound scalar reader. This returns a committed-value
-  snapshot; it does not guarantee transaction invariants. Do not generalize
-  this exception to non-transactional writes or other invariant reads.
 
 ## Repository
 

@@ -49,7 +49,8 @@ func newTaskEditAPI(t *testing.T) *taskEditAPI {
 	ids := taskEditIDs{}
 	store := application.NewStore(pool)
 	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
-	usecases := application.NewUseCase(store.Auth, store.Project, store.Task, store.Schedule, store.Tag, uow.Project, uow.Task, uow.Schedule, ids, nil)
+	usecases, stopUseCases := application.NewUseCase(store.Auth, store.Project, store.Task, store.Tag, store.Admin, uow.Project, uow.Task, uow.Schedule, ids, nil)
+	testdb.RegisterShutdown(t, stopUseCases)
 	pageTokens, err := pagination.NewCodec([]byte(strings.Repeat("e", 32)))
 	if err != nil {
 		t.Fatal(err)

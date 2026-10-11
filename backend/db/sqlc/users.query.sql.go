@@ -9,6 +9,30 @@ import (
 	"context"
 )
 
+const getTimezoneChoices = `-- name: GetTimezoneChoices :many
+SELECT timezone FROM timezone_master ORDER BY timezone
+`
+
+func (q *Queries) GetTimezoneChoices(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, getTimezoneChoices)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var timezone string
+		if err := rows.Scan(&timezone); err != nil {
+			return nil, err
+		}
+		items = append(items, timezone)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, first_name, last_name, email, password, created_at, updated_at, timezone
 FROM users
@@ -64,4 +88,15 @@ func (q *Queries) GetUserTimezone(ctx context.Context, id string) (string, error
 	var timezone string
 	err := row.Scan(&timezone)
 	return timezone, err
+}
+
+const isTimezoneAllowed = `-- name: IsTimezoneAllowed :one
+SELECT EXISTS (SELECT 1 FROM timezone_master WHERE timezone = $1::text)
+`
+
+func (q *Queries) IsTimezoneAllowed(ctx context.Context, timezone string) (bool, error) {
+	row := q.db.QueryRow(ctx, isTimezoneAllowed, timezone)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }

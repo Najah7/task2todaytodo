@@ -14,21 +14,14 @@ import (
 	projectdomain "github.com/Najah7/task2todaytodo/internal/application/project/domain"
 	projectrepo "github.com/Najah7/task2todaytodo/internal/application/project/repository"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
-	scheduledomain "github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
-	sharedprogress "github.com/Najah7/task2todaytodo/internal/application/shared/progress"
+	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
 	taskdomain "github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
 	"github.com/Najah7/task2todaytodo/tests/integration/internal/testdb"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/oklog/ulid/v2"
 )
-
-type projectAuditTimezoneReader struct{}
-
-func (projectAuditTimezoneReader) GetTimezone(context.Context, string) (string, error) {
-	return "UTC", nil
-}
 
 func TestProjectScheduleAndTaskCreateUseProjectOwnerAndRecordMemberActor(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
@@ -45,12 +38,11 @@ func TestProjectScheduleAndTaskCreateUseProjectOwnerAndRecordMemberActor(t *test
 	if _, err := pool.Exec(ctx, `INSERT INTO project_members(project_id,user_id,role_id,added_by) VALUES($1,$2,'editor',$3)`, projectID, actorID, ownerID); err != nil {
 		t.Fatal(err)
 	}
-	taskID, scheduleID := ulid.Make().String(), ulid.Make().String()
+	taskID, blueprintID := ulid.Make().String(), ""
 	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_revisions WHERE id=$1`, scheduleID)
+		_ = testdb.DeleteScheduleFixture(context.Background(), pool, blueprintID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM task_revisions WHERE id=$1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_revisions WHERE id=$1`, projectID)
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedules WHERE id=$1`, scheduleID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM tasks WHERE id=$1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_members WHERE project_id=$1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM projects WHERE id=$1`, projectID)
@@ -58,7 +50,7 @@ func TestProjectScheduleAndTaskCreateUseProjectOwnerAndRecordMemberActor(t *test
 	})
 
 	store := application.NewStore(pool)
-	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project)
+	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project, store.Schedule)
 	task, err := taskusecase.NewCreateTaskInProjectUseCase(taskUOW, nil).Execute(ctx, taskusecase.CreateTaskInProjectInput{
 		ID: taskdomain.TaskID(taskID), UserID: taskdomain.UserID(actorID), ProjectID: taskdomain.ProjectID(projectID), Title: "Created by editor",
 	})
@@ -67,19 +59,24 @@ func TestProjectScheduleAndTaskCreateUseProjectOwnerAndRecordMemberActor(t *test
 	}
 	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task)
 	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
-	schedule, err := scheduleusecase.NewCreateScheduleUseCase(scheduleUOW, projectAuditTimezoneReader{}, nil).Execute(ctx, scheduleusecase.CreateScheduleInput{
-		ID: scheduledomain.ScheduleID(scheduleID), UserID: scheduledomain.UserID(actorID), ProjectID: scheduledomain.ProjectID(projectID),
-		Title: "Created by editor", StartAt: start, EndAt: start.Add(time.Hour),
+	schedule, err := scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, projectActionItemID{}, store.Auth.Users, nil).Execute(ctx, actorID, scheduleusecase.CreateBlueprintInput{
+		Title: "Created by editor", ProjectID: projectID, Timezone: "UTC", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "once",
 	})
 	if err != nil {
 		t.Fatalf("create shared Schedule: %v", err)
+	}
+	blueprintID = schedule.ID
+	var scheduleAssignee, scheduleActor string
+	var scheduleRevision int32
+	if err := pool.QueryRow(ctx, `SELECT assignee_id,changed_by,revision FROM schedules WHERE blueprint_id=$1`, schedule.ID).Scan(&scheduleAssignee, &scheduleActor, &scheduleRevision); err != nil {
+		t.Fatalf("read created Schedule occurrence: %v", err)
 	}
 	for _, got := range []struct {
 		name, owner, assignee, actor string
 		revision                     int32
 	}{
 		{"Task", task.UserID, task.AssigneeID, task.ChangedBy, task.Revision},
-		{"Schedule", schedule.UserID, schedule.AssigneeID, schedule.ChangedBy, schedule.Revision},
+		{"Schedule", schedule.UserID, scheduleAssignee, scheduleActor, scheduleRevision},
 	} {
 		if got.owner != ownerID || got.assignee != ownerID || got.actor != actorID || got.revision != 1 {
 			t.Errorf("shared %s create owner=%q assignee=%q actor=%q revision=%d; want project owner, owner, editor, 1", got.name, got.owner, got.assignee, got.actor, got.revision)
@@ -146,6 +143,7 @@ func TestProjectMemberRemovalReassignsTaskAndScheduleRowsAtomically(t *testing.T
 	ctx := t.Context()
 	ownerID, memberID, projectID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	taskID, rootID, childID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
+	rootBlueprintID, childBlueprintID := ulid.Make().String(), ulid.Make().String()
 	for _, id := range []string{ownerID, memberID} {
 		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Member',$2,'unused','UTC')`, id, id+"@project-flow.test"); err != nil {
 			t.Fatal(err)
@@ -161,11 +159,13 @@ func TestProjectMemberRemovalReassignsTaskAndScheduleRowsAtomically(t *testing.T
 	if _, err := pool.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,changed_by) VALUES($1,$2,$3,$4,'Member task',$2)`, taskID, ownerID, projectID, memberID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO schedules(id,user_id,project_id,assignee_id,title,start_at,end_at,series_id,occurrence_date,timezone,repeat_state,changed_by) VALUES($1,$2,$3,$4,'Member schedule',$5,$6,$1,'2026-10-07','UTC','one_off',$2)`, rootID, ownerID, projectID, memberID, start, start.Add(time.Hour)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `INSERT INTO schedules(id,user_id,project_id,assignee_id,title,start_at,end_at,series_id,occurrence_date,timezone,is_exception,repeat_state,deleted_at,changed_by) VALUES($1,$2,$3,$4,'Saved deleted override',$5,$6,$7,'2026-10-08','UTC',true,NULL,now(),$2)`, childID, ownerID, projectID, memberID, start.AddDate(0, 0, 1), start.AddDate(0, 0, 1).Add(time.Hour), rootID); err != nil {
-		t.Fatal(err)
+	for _, fixture := range []testdb.ScheduleFixture{
+		{BlueprintID: rootBlueprintID, ScheduleID: rootID, UserID: ownerID, ProjectID: projectID, AssigneeID: memberID, Title: "Member schedule", Timezone: "UTC", StartAt: start, EndAt: start.Add(time.Hour), OccurrenceDate: "2026-10-07"},
+		{BlueprintID: childBlueprintID, ScheduleID: childID, UserID: ownerID, ProjectID: projectID, AssigneeID: memberID, Title: "Saved deleted occurrence", Timezone: "UTC", StartAt: start.AddDate(0, 0, 1), EndAt: start.AddDate(0, 0, 1).Add(time.Hour), OccurrenceDate: "2026-10-08", Deleted: true},
+	} {
+		if err := testdb.InsertScheduleFixture(ctx, pool, fixture); err != nil {
+			t.Fatalf("insert Schedule fixture: %v", err)
+		}
 	}
 	triggerName := "fail_member_schedule_reassignment_" + strings.ToLower(rootID)
 	functionName := "fail_member_schedule_reassignment_fn_" + strings.ToLower(rootID)
@@ -175,10 +175,10 @@ func TestProjectMemberRemovalReassignsTaskAndScheduleRowsAtomically(t *testing.T
 			_, _ = pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON schedules`, triggerName))
 			_, _ = pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
 		}
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_revisions WHERE id=ANY($1::text[])`, []string{rootID, childID})
+		_ = testdb.DeleteScheduleFixture(context.Background(), pool, rootBlueprintID)
+		_ = testdb.DeleteScheduleFixture(context.Background(), pool, childBlueprintID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM task_revisions WHERE id=$1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_revisions WHERE id=$1`, projectID)
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedules WHERE id=ANY($1::text[])`, []string{rootID, childID})
 		_, _ = pool.Exec(context.Background(), `DELETE FROM tasks WHERE id=$1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_members WHERE project_id=$1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM projects WHERE id=$1`, projectID)
@@ -242,7 +242,7 @@ func TestProjectMemberRemovalRacesCannotLeaveRemovedAssignee(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, memberID, projectID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
-	taskID, scheduleID := ulid.Make().String(), ulid.Make().String()
+	taskID, scheduleID, blueprintID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	for _, id := range []string{ownerID, memberID} {
 		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Member race',$2,'unused','UTC')`, id, id+"@project-flow.test"); err != nil {
 			t.Fatal(err)
@@ -257,22 +257,22 @@ func TestProjectMemberRemovalRacesCannotLeaveRemovedAssignee(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,changed_by) VALUES($1,$2,$3,$2,'Race task',$2)`, taskID, ownerID, projectID); err != nil {
 		t.Fatal(err)
 	}
-	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
-	if _, err := pool.Exec(ctx, `INSERT INTO schedules(id,user_id,project_id,assignee_id,title,start_at,end_at,series_id,occurrence_date,timezone,repeat_state,changed_by) VALUES($1,$2,$3,$2,'Race schedule',$4,$5,$1,'2026-10-07','UTC','one_off',$2)`, scheduleID, ownerID, projectID, start, start.Add(time.Hour)); err != nil {
-		t.Fatal(err)
+	start := time.Now().UTC().AddDate(0, 0, 2).Truncate(time.Hour)
+	occurrenceDate := start.Format("2006-01-02")
+	if err := testdb.InsertScheduleFixture(ctx, pool, testdb.ScheduleFixture{BlueprintID: blueprintID, ScheduleID: scheduleID, UserID: ownerID, ProjectID: projectID, Title: "Race schedule", StartAt: start, EndAt: start.Add(time.Hour), OccurrenceDate: occurrenceDate}); err != nil {
+		t.Fatalf("insert Schedule fixture: %v", err)
 	}
 	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_revisions WHERE id=$1`, scheduleID)
+		_ = testdb.DeleteScheduleFixture(context.Background(), pool, blueprintID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM task_revisions WHERE id=$1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_revisions WHERE id=$1`, projectID)
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedules WHERE id=$1`, scheduleID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM tasks WHERE id=$1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_members WHERE project_id=$1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM projects WHERE id=$1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=ANY($1::text[])`, []string{ownerID, memberID})
 	})
 	store := application.NewStore(pool)
-	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project)
+	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project, store.Schedule)
 	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task)
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
 	raceCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -288,7 +288,9 @@ func TestProjectMemberRemovalRacesCannotLeaveRemovedAssignee(t *testing.T) {
 	}()
 	go func() {
 		<-startGate
-		assignSchedule <- scheduleusecase.NewAssignScheduleUseCase(scheduleUOW, nil).Execute(raceCtx, scheduledomain.UserID(ownerID), scheduledomain.ScheduleID(scheduleID), scheduledomain.UserID(memberID))
+		member := memberID
+		_, err := scheduleusecase.NewUpdateOccurrenceUseCase(scheduleUOW, nil, projectActionItemID{}).Execute(raceCtx, ownerID, blueprintID, occurrenceDate, scheduleusecase.UpdateScheduleInput{AssigneeID: &member}, 1)
+		assignSchedule <- err
 	}()
 	go func() {
 		<-startGate
@@ -311,7 +313,7 @@ func TestProjectMemberRemovalRacesCannotLeaveRemovedAssignee(t *testing.T) {
 	if taskErr != nil && !errors.Is(taskErr, taskusecase.ErrPermissionDenied) {
 		t.Fatalf("Task assignment race error = %v; want success or permission denied", taskErr)
 	}
-	if scheduleErr != nil && !errors.Is(scheduleErr, scheduleusecase.ErrScheduleAssigneeNotEligible) && !errors.Is(scheduleErr, scheduleusecase.ErrPermissionDenied) && !errors.Is(scheduleErr, scheduledomain.ErrScheduleNotFound) {
+	if scheduleErr != nil && !errors.Is(scheduleErr, scheduleusecase.ErrScheduleAssigneeNotEligible) && !errors.Is(scheduleErr, scheduleusecase.ErrPermissionDenied) && !errors.Is(scheduleErr, scheduleusecase.ErrOccurrenceNotFound) && !errors.Is(scheduleErr, scheduleusecase.ErrOccurrenceRevisionMismatch) {
 		t.Fatalf("Schedule assignment race error = %v; want success or not eligible/permission denied", scheduleErr)
 	}
 	var taskAssignee, scheduleAssignee string
@@ -335,6 +337,7 @@ func TestProjectDeletionLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 	ctx := t.Context()
 	ownerID, projectID := ulid.Make().String(), ulid.Make().String()
 	taskID, actionItemID, scheduleID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
+	blueprintID := ulid.Make().String()
 	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Delete',$2,'unused','UTC')`, ownerID, ownerID+"@project-flow.test"); err != nil {
 		t.Fatal(err)
 	}
@@ -348,14 +351,13 @@ func TestProjectDeletionLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 		t.Fatal(err)
 	}
 	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
-	if _, err := pool.Exec(ctx, `INSERT INTO schedules(id,user_id,project_id,assignee_id,title,start_at,end_at,series_id,occurrence_date,timezone,repeat_state,changed_by) VALUES($1,$2,$3,$2,'Child schedule',$4,$5,$1,'2026-10-07','UTC','one_off',$2)`, scheduleID, ownerID, projectID, start, start.Add(time.Hour)); err != nil {
+	if err := testdb.InsertScheduleFixture(ctx, pool, testdb.ScheduleFixture{BlueprintID: blueprintID, ScheduleID: scheduleID, UserID: ownerID, ProjectID: projectID, Title: "Child schedule", OccurrenceDate: "2026-10-07", StartAt: start, EndAt: start.Add(time.Hour)}); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_revisions WHERE id=$1`, scheduleID)
+		_ = testdb.DeleteScheduleFixture(context.Background(), pool, blueprintID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM task_revisions WHERE id=$1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_revisions WHERE id=$1`, projectID)
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedules WHERE id=$1`, scheduleID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM tasks WHERE id=$1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM projects WHERE id=$1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, ownerID)
@@ -399,7 +401,7 @@ func TestProjectProgressCombinesPerTaskFloorsAndScheduleOccurrencesFromDB(t *tes
 	ctx := t.Context()
 	ownerID, projectID := ulid.Make().String(), ulid.Make().String()
 	taskIDs := []string{ulid.Make().String(), ulid.Make().String()}
-	scheduleID := ulid.Make().String()
+	scheduleID, blueprintID := ulid.Make().String(), ulid.Make().String()
 	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Progress',$2,'unused','UTC')`, ownerID, ownerID+"@project-flow.test"); err != nil {
 		t.Fatal(err)
 	}
@@ -423,20 +425,19 @@ func TestProjectProgressCombinesPerTaskFloorsAndScheduleOccurrencesFromDB(t *tes
 	insertActionItem(ulid.Make().String(), taskIDs[1], 0, true)
 	insertActionItem(ulid.Make().String(), taskIDs[1], 1, false)
 	start := time.Now().UTC().Truncate(time.Minute)
-	if _, err := pool.Exec(ctx, `INSERT INTO schedules(id,user_id,project_id,assignee_id,title,start_at,end_at,series_id,occurrence_date,timezone,repeat_state,completed,changed_by) VALUES($1,$2,$3,$2,'Completed occurrence',$4,$5,$1,$6::date,'UTC','one_off',true,$2)`, scheduleID, ownerID, projectID, start, start.Add(time.Hour), start.Format("2006-01-02")); err != nil {
+	if err := testdb.InsertScheduleFixture(ctx, pool, testdb.ScheduleFixture{BlueprintID: blueprintID, ScheduleID: scheduleID, UserID: ownerID, ProjectID: projectID, Title: "Completed occurrence", OccurrenceDate: start.Format("2006-01-02"), StartAt: start, EndAt: start.Add(time.Hour), Completed: true}); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_revisions WHERE id=$1`, scheduleID)
+		_ = testdb.DeleteScheduleFixture(context.Background(), pool, blueprintID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM task_revisions WHERE id=ANY($1::text[])`, taskIDs)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_revisions WHERE id=$1`, projectID)
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedules WHERE id=$1`, scheduleID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM tasks WHERE id=ANY($1::text[])`, taskIDs)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM projects WHERE id=$1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, ownerID)
 	})
 	store := application.NewStore(pool)
-	getProject := newProjectUseCases(pool, store).Get
+	getProject := newProjectUseCases(t, pool, store).Get
 	got, err := getProject.Execute(ctx, projectdomain.UserID(ownerID), projectdomain.ProjectID(projectID))
 	if err != nil {
 		t.Fatalf("get Project with derived progress: %v", err)
@@ -449,7 +450,7 @@ func TestProjectProgressCombinesPerTaskFloorsAndScheduleOccurrencesFromDB(t *tes
 func TestProjectProgressUsesScheduleWallTimeAcrossDSTGap(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
-	ownerID, projectID, scheduleID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
+	ownerID, projectID, scheduleID, blueprintID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','DST',$2,'unused','America/New_York')`, ownerID, ownerID+"@project-dst.test"); err != nil {
 		t.Fatal(err)
 	}
@@ -457,15 +458,12 @@ func TestProjectProgressUsesScheduleWallTimeAcrossDSTGap(t *testing.T) {
 		t.Fatal(err)
 	}
 	start := time.Date(2026, 3, 1, 2, 30, 0, 0, time.FixedZone("EST", -5*60*60))
-	if _, err := pool.Exec(ctx, `INSERT INTO schedules(id,user_id,project_id,assignee_id,title,start_at,end_at,series_id,occurrence_date,timezone,repeat_state,frequency_anchor_date,interval_weeks,completed,changed_by) VALUES($1,$2,$3,$2,'Sunday at 2:30',$4,$5,$1,'2026-03-01','America/New_York','active','2026-03-01',1,true,$2)`, scheduleID, ownerID, projectID, start, start.Add(time.Hour)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `INSERT INTO schedule_frequencies(schedule_id,frequency) VALUES($1,'sun')`, scheduleID); err != nil {
+	end := start.Add(time.Hour)
+	if err := testdb.InsertScheduleFixture(ctx, pool, testdb.ScheduleFixture{BlueprintID: blueprintID, ScheduleID: scheduleID, UserID: ownerID, ProjectID: projectID, Title: "Sunday at 2:30", Timezone: "America/New_York", Frequency: "weekly", Interval: 1, Weekdays: []string{"sun"}, AnchorDate: "2026-03-01", OccurrenceDate: "2026-03-01", StartAt: start, EndAt: end, Completed: true}); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_revisions WHERE id=$1`, scheduleID)
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedules WHERE id=$1`, scheduleID)
+		_ = testdb.DeleteScheduleFixture(context.Background(), pool, blueprintID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_revisions WHERE id=$1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM projects WHERE id=$1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, ownerID)
@@ -480,11 +478,54 @@ func TestProjectProgressUsesScheduleWallTimeAcrossDSTGap(t *testing.T) {
 		schedule := sources.Schedules[0]
 		facts := projectdomain.ScheduleProgressFacts{Total: schedule.Total, Completed: schedule.Completed}
 		for _, root := range schedule.Roots {
-			facts.Roots = append(facts.Roots, sharedprogress.RecurrenceRule{
-				OccurrenceDate: root.OccurrenceDate, Timezone: root.Timezone, IntervalWeeks: root.IntervalWeeks,
-				FrequencyAnchorDate: root.FrequencyAnchorDate, Frequencies: root.Frequencies,
-				OccurrenceSavedToday: root.OccurrenceSavedToday, StartAt: root.StartAt, EndAt: root.EndAt,
-			})
+			startLocal, err := time.Parse("2006-01-02 15:04:05", root.LocalStart)
+			if err != nil {
+				t.Fatalf("parse recurrence local start: %v", err)
+			}
+			endLocal, err := time.Parse("2006-01-02 15:04:05", root.LocalEnd)
+			if err != nil {
+				t.Fatalf("parse recurrence local end: %v", err)
+			}
+			anchor, err := time.Parse("2006-01-02", root.RecurrenceAnchorDate)
+			if err != nil {
+				t.Fatalf("parse recurrence anchor date: %v", err)
+			}
+			rule := recurrence.BlueprintRule{Start: startLocal, End: endLocal, AnchorDate: anchor, Timezone: root.Timezone, Frequency: root.Frequency, Interval: root.Interval}
+			for _, weekday := range root.Weekdays {
+				switch weekday {
+				case "sun":
+					rule.Weekdays = append(rule.Weekdays, time.Sunday)
+				case "mon":
+					rule.Weekdays = append(rule.Weekdays, time.Monday)
+				case "tue":
+					rule.Weekdays = append(rule.Weekdays, time.Tuesday)
+				case "wed":
+					rule.Weekdays = append(rule.Weekdays, time.Wednesday)
+				case "thu":
+					rule.Weekdays = append(rule.Weekdays, time.Thursday)
+				case "fri":
+					rule.Weekdays = append(rule.Weekdays, time.Friday)
+				case "sat":
+					rule.Weekdays = append(rule.Weekdays, time.Saturday)
+				}
+			}
+			if root.EndDate != nil {
+				endDate, err := time.Parse("2006-01-02", *root.EndDate)
+				if err != nil {
+					t.Fatalf("parse recurrence end date: %v", err)
+				}
+				rule.EndDate = &endDate
+			}
+			if root.CutoffAfter != nil {
+				cutoff, err := time.Parse("2006-01-02", *root.CutoffAfter)
+				if err != nil {
+					t.Fatalf("parse recurrence cutoff: %v", err)
+				}
+				if rule.EndDate == nil || cutoff.Before(*rule.EndDate) {
+					rule.EndDate = &cutoff
+				}
+			}
+			facts.Roots = append(facts.Roots, projectdomain.ScheduleProgressRule{Rule: rule, OccurrenceSavedToday: root.OccurrenceSavedToday})
 		}
 		progress, err := projectdomain.CalculateProjectProgress(nil, []projectdomain.ScheduleProgressFacts{facts}, asOf)
 		if err != nil {
@@ -515,23 +556,22 @@ func TestProjectTaskAndScheduleCreationRaceWithParentOnlyDeletion(t *testing.T) 
 	if _, err := pool.Exec(ctx, `INSERT INTO project_members(project_id,user_id,role_id,added_by) VALUES($1,$2,'editor',$3)`, projectID, editorID, ownerID); err != nil {
 		t.Fatal(err)
 	}
-	taskID, scheduleID := ulid.Make().String(), ulid.Make().String()
+	taskID, scheduleBlueprintID := ulid.Make().String(), ""
 	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_revisions WHERE id=$1`, scheduleID)
+		_ = testdb.DeleteScheduleFixture(context.Background(), pool, scheduleBlueprintID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM task_revisions WHERE id=$1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_revisions WHERE id=$1`, projectID)
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedules WHERE id=$1`, scheduleID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM tasks WHERE id=$1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_members WHERE project_id=$1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM projects WHERE id=$1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=ANY($1::text[])`, []string{ownerID, editorID})
 	})
 	store := application.NewStore(pool)
-	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project)
+	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project, store.Schedule)
 	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task)
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
-	taskIDValue, scheduleIDValue := taskdomain.TaskID(taskID), scheduledomain.ScheduleID(scheduleID)
-	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
+	taskIDValue := taskdomain.TaskID(taskID)
+	start := time.Now().UTC().AddDate(0, 0, 2).Truncate(time.Hour)
 	raceCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	startGate := make(chan struct{})
@@ -545,7 +585,10 @@ func TestProjectTaskAndScheduleCreationRaceWithParentOnlyDeletion(t *testing.T) 
 	}()
 	go func() {
 		<-startGate
-		_, err := scheduleusecase.NewCreateScheduleUseCase(scheduleUOW, projectAuditTimezoneReader{}, nil).Execute(raceCtx, scheduleusecase.CreateScheduleInput{ID: scheduleIDValue, UserID: scheduledomain.UserID(editorID), ProjectID: scheduledomain.ProjectID(projectID), Title: "Racing Schedule", StartAt: start, EndAt: start.Add(time.Hour)})
+		created, err := scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, projectActionItemID{}, store.Auth.Users, nil).Execute(raceCtx, editorID, scheduleusecase.CreateBlueprintInput{Title: "Racing Schedule", ProjectID: projectID, Timezone: "UTC", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "once"})
+		if err == nil {
+			scheduleBlueprintID = created.ID
+		}
 		createSchedule <- err
 	}()
 	go func() {
@@ -668,7 +711,7 @@ func TestProjectDeletionLeavesActionItemCreatedBeforeParentLockUntouched(t *test
 	childPool := projectRaceNamedPool(t, childApp)
 	deletePool := projectRaceNamedPool(t, deleteApp)
 	childStore, deleteStore := application.NewStore(childPool), application.NewStore(deletePool)
-	create := taskusecase.NewCreateActionItemUseCase(application.NewTaskUOW(childPool, childStore.Task, childStore.Project), nil)
+	create := taskusecase.NewCreateActionItemUseCase(application.NewTaskUOW(childPool, childStore.Task, childStore.Project, childStore.Schedule), nil)
 	remove := projectusecase.NewDeleteProjectUseCase(application.NewProjectUOW(deletePool, deleteStore.Project, deleteStore.Task, deleteStore.Schedule), nil)
 	raceCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()

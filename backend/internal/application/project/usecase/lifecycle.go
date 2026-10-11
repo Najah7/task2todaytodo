@@ -8,7 +8,6 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	sharedprogress "github.com/Najah7/task2todaytodo/internal/application/shared/progress"
 )
 
 type projectLifecycleRepository interface {
@@ -21,12 +20,18 @@ type projectLifecycleRepository interface {
 // child operation. It runs inside the child operation's transaction, after
 // the caller has locked the parent Project row.
 type ProjectLifecycleUseCase struct {
-	repo     projectLifecycleRepository
-	progress ProjectProgressReader
+	repo      projectLifecycleRepository
+	progress  ProjectProgressReader
+	schedules ProjectScheduleLifecycle
 }
 
-func NewProjectLifecycleUseCase(repo projectLifecycleRepository, progress ProjectProgressReader) *ProjectLifecycleUseCase {
-	return &ProjectLifecycleUseCase{repo: repo, progress: progress}
+type ProjectScheduleLifecycle interface {
+	PauseProjectBlueprints(context.Context, string, string, time.Time) error
+	ResumeProjectBlueprints(context.Context, string, string, time.Time) error
+}
+
+func NewProjectLifecycleUseCase(repo projectLifecycleRepository, progress ProjectProgressReader, schedules ProjectScheduleLifecycle) *ProjectLifecycleUseCase {
+	return &ProjectLifecycleUseCase{repo: repo, progress: progress, schedules: schedules}
 }
 
 func (uc *ProjectLifecycleUseCase) LockParent(ctx context.Context, projectID string) error {
@@ -75,7 +80,23 @@ func (uc *ProjectLifecycleUseCase) ReconcileWorkState(ctx context.Context, actor
 	if status == after.Status {
 		return nil
 	}
-	return uc.repo.SetStatusForLifecycle(ctx, domain.UserID(actorID), domain.ProjectID(projectID), status)
+	if err := uc.repo.SetStatusForLifecycle(ctx, domain.UserID(actorID), domain.ProjectID(projectID), status); err != nil {
+		return err
+	}
+	return transitionProjectSchedules(ctx, uc.schedules, actorID, projectID, after.Status, status, asOf)
+}
+
+func transitionProjectSchedules(ctx context.Context, schedules ProjectScheduleLifecycle, actorID, projectID, from, to string, at time.Time) error {
+	if from == to {
+		return nil
+	}
+	if to == "done" {
+		return schedules.PauseProjectBlueprints(ctx, actorID, projectID, at)
+	}
+	if from == "done" {
+		return schedules.ResumeProjectBlueprints(ctx, actorID, projectID, at)
+	}
+	return nil
 }
 
 func projectWorkState(status string, sources dao.ProjectProgressSources, asOf time.Time) (shared.ProjectWorkState, error) {
@@ -90,7 +111,11 @@ func projectWorkState(status string, sources dao.ProjectProgressSources, asOf ti
 		state.Eligible += schedule.Total
 		state.Completed += schedule.Completed
 		for _, root := range schedule.Roots {
-			eligible, err := sharedprogress.VirtualOccurrenceOccursToday(progressRule(root), asOf)
+			rule, err := projectProgressRule(root)
+			if err != nil {
+				return shared.ProjectWorkState{}, err
+			}
+			eligible, err := domain.VirtualScheduleOccurrenceOccursToday(rule, asOf)
 			if err != nil {
 				return shared.ProjectWorkState{}, err
 			}
@@ -100,12 +125,4 @@ func projectWorkState(status string, sources dao.ProjectProgressSources, asOf ti
 		}
 	}
 	return state, nil
-}
-
-func progressRule(root dao.ProjectProgressRecurrence) sharedprogress.RecurrenceRule {
-	return sharedprogress.RecurrenceRule{
-		OccurrenceDate: root.OccurrenceDate, Timezone: root.Timezone, IntervalWeeks: root.IntervalWeeks,
-		FrequencyAnchorDate: root.FrequencyAnchorDate, Frequencies: root.Frequencies,
-		OccurrenceSavedToday: root.OccurrenceSavedToday, StartAt: root.StartAt, EndAt: root.EndAt,
-	}
 }

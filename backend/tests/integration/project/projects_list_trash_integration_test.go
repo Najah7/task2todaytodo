@@ -15,10 +15,10 @@ import (
 	projectdomain "github.com/Najah7/task2todaytodo/internal/application/project/domain"
 	projectrepo "github.com/Najah7/task2todaytodo/internal/application/project/repository"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
-	scheduledomain "github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
 	taskdomain "github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
+	"github.com/Najah7/task2todaytodo/tests/integration/internal/testdb"
 	"github.com/jackc/pgx/v5"
 	"github.com/oklog/ulid/v2"
 )
@@ -269,6 +269,7 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 	taskIDs := []string{ulid.Make().String(), ulid.Make().String()}
 	actionItemIDs := []string{ulid.Make().String(), ulid.Make().String()}
 	scheduleIDs := []string{ulid.Make().String(), ulid.Make().String()}
+	blueprintIDs := []string{ulid.Make().String(), ulid.Make().String()}
 	start := time.Date(2026, 10, 8, 9, 0, 0, 0, time.UTC)
 	for i, taskID := range taskIDs {
 		if _, err := fixture.tx.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,status,changed_by) VALUES($1,$2,$3,$2,$4,'open',$2)`, taskID, fixture.ownerID, fixture.projectID, []string{"Individually deleted Task", "Live Task"}[i]); err != nil {
@@ -279,27 +280,27 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 		}
 	}
 	for i, scheduleID := range scheduleIDs {
-		if _, err := fixture.tx.Exec(ctx, `INSERT INTO schedules(id,user_id,project_id,assignee_id,title,start_at,end_at,series_id,occurrence_date,timezone,repeat_state,changed_by)
-			VALUES($1,$2,$3,$2,$4,$5,$6,$1,'2026-10-08','UTC','one_off',$2)`, scheduleID, fixture.ownerID, fixture.projectID, []string{"Individually deleted Schedule", "Live Schedule"}[i], start.Add(time.Duration(i)*2*time.Hour), start.Add(time.Duration(i)*2*time.Hour+time.Hour)); err != nil {
+		if err := testdb.InsertScheduleFixture(ctx, fixture.tx, testdb.ScheduleFixture{BlueprintID: blueprintIDs[i], ScheduleID: scheduleID, UserID: fixture.ownerID, ProjectID: fixture.projectID, Title: []string{"Individually deleted Schedule", "Live Schedule"}[i], OccurrenceDate: "2026-10-08", StartAt: start.Add(time.Duration(i) * 2 * time.Hour), EndAt: start.Add(time.Duration(i)*2*time.Hour + time.Hour)}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM action_items WHERE id=ANY($1::text[])`, actionItemIDs)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM task_revisions WHERE id=ANY($1::text[])`, taskIDs)
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_revisions WHERE id=ANY($1::text[])`, scheduleIDs)
-		_, _ = pool.Exec(context.Background(), `DELETE FROM schedules WHERE id=ANY($1::text[])`, scheduleIDs)
+		_ = testdb.DeleteScheduleFixture(context.Background(), pool, blueprintIDs[0])
+		_ = testdb.DeleteScheduleFixture(context.Background(), pool, blueprintIDs[1])
 		_, _ = pool.Exec(context.Background(), `DELETE FROM tasks WHERE id=ANY($1::text[])`, taskIDs)
 	})
 	fixture.commit(t)
 
 	store := application.NewStore(pool)
-	taskDelete := taskusecase.NewDeleteTaskUseCase(application.NewTaskUOW(pool, store.Task, store.Project), nil)
+	taskDelete := taskusecase.NewDeleteTaskUseCase(application.NewTaskUOW(pool, store.Task, store.Project, store.Schedule), nil)
 	if err := taskDelete.Execute(ctx, taskdomain.UserID(fixture.ownerID), taskdomain.TaskID(taskIDs[0]), 1); err != nil {
 		t.Fatalf("individually delete Task: %v", err)
 	}
-	scheduleDelete := scheduleusecase.NewDeleteScheduleUseCase(application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task), nil)
-	if err := scheduleDelete.Execute(ctx, scheduledomain.UserID(fixture.ownerID), scheduledomain.ScheduleID(scheduleIDs[0])); err != nil {
+	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project, store.Task)
+	scheduleDelete := scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "delete", nil, projectActionItemID{})
+	if err := scheduleDelete.Execute(ctx, fixture.ownerID, blueprintIDs[0], "2026-10-08", 1); err != nil {
 		t.Fatalf("individually delete Schedule: %v", err)
 	}
 

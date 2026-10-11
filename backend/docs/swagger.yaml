@@ -70,6 +70,15 @@ definitions:
       title:
         type: string
     type: object
+  rest.AdminOperationListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/rest.OperationResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
   rest.Err:
     properties:
       code:
@@ -113,6 +122,46 @@ definitions:
     properties:
       message:
         type: string
+    type: object
+  rest.OperationError:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    type: object
+  rest.OperationMetadata:
+    properties:
+      created_at:
+        type: string
+      cutoff:
+        type: string
+      finished_at:
+        type: string
+      generated_schedules:
+        type: integer
+      processed_blueprints:
+        type: integer
+      started_at:
+        type: string
+      state:
+        type: string
+    type: object
+  rest.OperationResponse:
+    properties:
+      done:
+        type: boolean
+      error:
+        $ref: '#/definitions/rest.OperationError'
+      metadata:
+        $ref: '#/definitions/rest.OperationMetadata'
+      name:
+        type: string
+      response:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
     type: object
   rest.PermissionListResponse:
     properties:
@@ -557,11 +606,6 @@ definitions:
           $ref: '#/definitions/rest.ScheduleAssigneeResponse'
         type: array
     type: object
-  rest.ScheduleAssigneeRequest:
-    properties:
-      assignee_id:
-        type: string
-    type: object
   rest.ScheduleAssigneeResponse:
     properties:
       email:
@@ -575,115 +619,232 @@ definitions:
       last_name:
         type: string
     type: object
-  rest.ScheduleCreateRequest:
+  rest.ScheduleBlueprintCreateRequest:
     properties:
+      assignee_id:
+        type: string
       description:
         type: string
-      end_at:
+      end_date:
         type: string
-      frequencies:
-        items:
-          type: string
-        type: array
-      interval_weeks:
+      frequency:
+        type: string
+      interval:
         type: integer
+      local_end:
+        type: string
+      local_start:
+        type: string
       location:
         type: string
       project_id:
         type: string
-      start_at:
+      timezone:
         type: string
       title:
         type: string
-    type: object
-  rest.ScheduleFrequencyRequest:
-    properties:
-      frequencies:
+      weekdays:
         items:
           type: string
         type: array
-      interval_weeks:
-        type: integer
     type: object
-  rest.ScheduleFrequencyResponse:
+  rest.ScheduleBlueprintResponse:
     properties:
-      label:
+      assignee_id:
         type: string
-      label_jp:
+      created_at:
+        type: integer
+      cutoff_after:
         type: string
-      value:
+      deleted:
+        type: boolean
+      description:
+        type: string
+      effective_from:
+        type: string
+      end_date:
+        type: string
+      frequency:
+        type: string
+      id:
+        type: string
+      interval:
+        type: integer
+      local_end:
+        type: string
+      local_start:
+        type: string
+      location:
+        type: string
+      project_id:
+        type: string
+      recurrence_anchor_date:
+        type: string
+      revision:
+        type: integer
+      timezone:
+        type: string
+      title:
+        type: string
+      user_id:
+        type: string
+      weekdays:
+        items:
+          type: string
+        type: array
+    type: object
+  rest.ScheduleBlueprintRevisionResponse:
+    properties:
+      assignee_id:
+        type: string
+      changed_at:
+        type: integer
+      changed_by:
+        type: string
+      created_at:
+        type: integer
+      cutoff_after:
+        type: string
+      deleted:
+        type: boolean
+      description:
+        type: string
+      effective_from:
+        type: string
+      effective_until:
+        type: string
+      end_date:
+        type: string
+      frequency:
+        type: string
+      id:
+        type: string
+      interval:
+        type: integer
+      local_end:
+        type: string
+      local_start:
+        type: string
+      location:
+        type: string
+      project_id:
+        type: string
+      recurrence_anchor_date:
+        type: string
+      revision:
+        type: integer
+      revision_id:
+        type: string
+      superseded:
+        type: boolean
+      timezone:
+        type: string
+      title:
+        type: string
+      user_id:
+        type: string
+      weekdays:
+        items:
+          type: string
+        type: array
+    type: object
+  rest.ScheduleBlueprintTagRequest:
+    properties:
+      tag_id:
         type: string
     type: object
-  rest.ScheduleListResponse:
+  rest.ScheduleBlueprintTagsResponse:
     properties:
       items:
         items:
-          $ref: '#/definitions/rest.ScheduleResponse'
+          $ref: '#/definitions/rest.ScheduleTagResponse'
+        type: array
+    type: object
+  rest.ScheduleBlueprintUpdateRequest:
+    properties:
+      assignee_id:
+        type: string
+      description:
+        type: string
+      end_date:
+        type: string
+      frequency:
+        type: string
+      interval:
+        type: integer
+      local_end:
+        type: string
+      local_start:
+        type: string
+      location:
+        type: string
+      occurrence_date:
+        type: string
+      project_id:
+        type: string
+      scope:
+        type: string
+      timezone:
+        type: string
+      title:
+        type: string
+      weekdays:
+        items:
+          type: string
+        type: array
+    type: object
+  rest.ScheduleOccurrenceListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/rest.ScheduleOccurrenceResponse'
         type: array
       next_page_token:
         type: string
     type: object
-  rest.ScheduleOccurrenceRequest:
-    properties:
-      occurrence_date:
-        type: string
-    type: object
-  rest.ScheduleProjectAssignmentRequest:
-    properties:
-      schedule_id:
-        type: string
-    type: object
-  rest.ScheduleRescheduleRequest:
+  rest.ScheduleOccurrenceRescheduleRequest:
     properties:
       end_at:
-        type: string
-      occurrence_date:
-        type: string
-      scope:
         type: string
       start_at:
         type: string
     type: object
-  rest.ScheduleResponse:
+  rest.ScheduleOccurrenceResponse:
     properties:
       assignee_id:
+        type: string
+      blueprint_id:
         type: string
       completed:
         type: boolean
       created_at:
         type: integer
+      deleted:
+        type: boolean
       description:
         type: string
       end_at:
         type: string
-      frequencies:
-        items:
-          $ref: '#/definitions/rest.ScheduleFrequencyResponse'
-        type: array
-      frequency_anchor_date:
-        type: string
       id:
         type: string
-      interval_weeks:
-        type: integer
-      is_exception:
+      is_override:
         type: boolean
       location:
         type: string
       occurrence_date:
         type: string
+      persisted:
+        type: boolean
       project_id:
         type: string
-      repeat_state:
-        type: string
-      series_id:
+      revision:
+        type: integer
+      skipped:
+        type: boolean
+      source_revision_id:
         type: string
       start_at:
         type: string
-      tags:
-        items:
-          $ref: '#/definitions/rest.ScheduleTagResponse'
-        type: array
       timezone:
         type: string
       title:
@@ -693,16 +854,7 @@ definitions:
       user_id:
         type: string
     type: object
-  rest.ScheduleRevisionListResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/rest.ScheduleRevisionResponse'
-        type: array
-      next_page_token:
-        type: string
-    type: object
-  rest.ScheduleRevisionResponse:
+  rest.ScheduleOccurrenceRevisionResponse:
     properties:
       assignee_id:
         type: string
@@ -712,25 +864,13 @@ definitions:
         type: string
       completed:
         type: boolean
-      created_at:
-        type: integer
       deleted_at:
         type: integer
       description:
         type: string
       end_at:
         type: string
-      frequencies:
-        items:
-          $ref: '#/definitions/rest.ScheduleFrequencyResponse'
-        type: array
-      frequency_anchor_date:
-        type: string
-      id:
-        type: string
-      interval_weeks:
-        type: integer
-      is_exception:
+      is_override:
         type: boolean
       location:
         type: string
@@ -738,11 +878,11 @@ definitions:
         type: string
       project_id:
         type: string
-      repeat_state:
-        type: string
       revision:
         type: integer
-      series_id:
+      skipped_at:
+        type: integer
+      source_revision_id:
         type: string
       start_at:
         type: string
@@ -750,14 +890,24 @@ definitions:
         type: string
       title:
         type: string
-      updated_at:
-        type: integer
       user_id:
         type: string
     type: object
-  rest.ScheduleTagAssignmentRequest:
+  rest.ScheduleOccurrenceUpdateRequest:
     properties:
-      tag_id:
+      assignee_id:
+        type: string
+      description:
+        type: string
+      end_at:
+        type: string
+      location:
+        type: string
+      project_id:
+        type: string
+      start_at:
+        type: string
+      title:
         type: string
     type: object
   rest.ScheduleTagResponse:
@@ -770,19 +920,6 @@ definitions:
         type: string
       updated_at:
         type: integer
-    type: object
-  rest.ScheduleUpdateRequest:
-    properties:
-      description:
-        type: string
-      location:
-        type: string
-      occurrence_date:
-        type: string
-      scope:
-        type: string
-      title:
-        type: string
     type: object
   rest.SignupRequest:
     properties:
@@ -1059,6 +1196,13 @@ definitions:
       title:
         type: string
     type: object
+  rest.TimezoneListResponse:
+    properties:
+      items:
+        items:
+          type: string
+        type: array
+    type: object
   rest.UserInfoUpdateRequest:
     properties:
       first_name:
@@ -1087,12 +1231,119 @@ definitions:
       timezone:
         type: string
     type: object
+  rest.listEnvelope-rest_ScheduleBlueprintRevisionResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/rest.ScheduleBlueprintRevisionResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
+  rest.listEnvelope-rest_ScheduleOccurrenceRevisionResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/rest.ScheduleOccurrenceRevisionResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
 info:
   contact: {}
   description: Task scheduling API server.
   title: task2todaytodo API
   version: "1.0"
 paths:
+  /admin/jobs/backfill-schedules:run:
+    post:
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/rest.OperationResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Run schedule backfill
+      tags:
+      - Admin
+  /admin/operations:
+    get:
+      parameters:
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - description: Next page token
+        in: query
+        name: page_token
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.AdminOperationListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: List admin operations
+      tags:
+      - Admin
+  /admin/operations/{id}:
+    get:
+      parameters:
+      - description: Operation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.OperationResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Get admin operation
+      tags:
+      - Admin
   /login:
     post:
       consumes:
@@ -1636,21 +1887,15 @@ paths:
         name: id
         required: true
         type: string
-      - description: Items per page
+      - description: Inclusive UTC range start
         in: query
-        name: page_size
-        type: integer
-      - description: Opaque next page token
-        in: query
-        name: page_token
+        name: from
+        required: true
         type: string
-      - description: First occurrence date (YYYY-MM-DD)
+      - description: Exclusive UTC range end
         in: query
-        name: from_date
-        type: string
-      - description: Response field mask
-        in: query
-        name: fields
+        name: to
+        required: true
         type: string
       produces:
       - application/json
@@ -1658,26 +1903,10 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rest.ScheduleListResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
+            $ref: '#/definitions/rest.ScheduleOccurrenceListResponse'
       security:
       - BearerAuth: []
-      summary: List Project schedules
+      summary: List Project schedule occurrences
       tags:
       - Schedules
     post:
@@ -1689,110 +1918,22 @@ paths:
         name: id
         required: true
         type: string
-      - description: Schedule
+      - description: Schedule definition
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.ScheduleCreateRequest'
+          $ref: '#/definitions/rest.ScheduleBlueprintCreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/rest.ScheduleResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
+            $ref: '#/definitions/rest.ScheduleBlueprintResponse'
       security:
       - BearerAuth: []
-      summary: Create Project schedule
-      tags:
-      - Schedules
-  /projects/{id}/schedules:add:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Project ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Schedule ID
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.ScheduleProjectAssignmentRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Add schedule to Project
-      tags:
-      - Schedules
-  /projects/{id}/schedules:remove:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Project ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Schedule ID
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.ScheduleProjectAssignmentRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Remove schedule from Project
+      summary: Create Project schedule blueprint
       tags:
       - Schedules
   /projects/{id}/status:
@@ -2062,6 +2203,211 @@ paths:
       summary: Remove task from project
       tags:
       - Tasks
+  /projects/{id}:complete:
+    post:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Current project ETag
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.ProjectResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "428":
+          description: Precondition Required
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Complete project
+      tags:
+      - Projects
+  /projects/{id}:hold:
+    post:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Current project ETag
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.ProjectResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "428":
+          description: Precondition Required
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Hold project
+      tags:
+      - Projects
+  /projects/{id}:reopen:
+    post:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Current project ETag
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.ProjectResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "428":
+          description: Precondition Required
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Reopen project
+      tags:
+      - Projects
+  /projects/{id}:start:
+    post:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Current project ETag
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.ProjectResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "428":
+          description: Precondition Required
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Start project
+      tags:
+      - Projects
+  /projects/{id}:wait:
+    post:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Current project ETag
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.ProjectResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "428":
+          description: Precondition Required
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Wait on project
+      tags:
+      - Projects
   /projects/options:
     get:
       produces:
@@ -2102,130 +2448,33 @@ paths:
       summary: List roles
       tags:
       - Authorization
-  /schedules:
-    get:
-      parameters:
-      - description: Items per page
-        in: query
-        name: page_size
-        type: integer
-      - description: Opaque next page token
-        in: query
-        name: page_token
-        type: string
-      - description: First occurrence date (YYYY-MM-DD)
-        in: query
-        name: from_date
-        type: string
-      - description: Response field mask
-        in: query
-        name: fields
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.ScheduleListResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: List schedules
-      tags:
-      - Schedules
+  /schedule-blueprints:
     post:
       consumes:
       - application/json
       parameters:
-      - description: Schedule
+      - description: Schedule definition
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.ScheduleCreateRequest'
+          $ref: '#/definitions/rest.ScheduleBlueprintCreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/rest.ScheduleResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
+            $ref: '#/definitions/rest.ScheduleBlueprintResponse'
       security:
       - BearerAuth: []
-      summary: Create schedule
+      summary: Create schedule blueprint
       tags:
       - Schedules
-  /schedules/{id}:
-    delete:
-      parameters:
-      - description: Schedule ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Occurrence date (YYYY-MM-DD)
-        in: query
-        name: occurrence_date
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete schedule
-      tags:
-      - Schedules
+  /schedule-blueprints/{id}:
     get:
       parameters:
-      - description: Schedule ID
+      - description: Blueprint ID
         in: path
         name: id
         required: true
@@ -2236,71 +2485,48 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rest.ScheduleResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
+            $ref: '#/definitions/rest.ScheduleBlueprintResponse'
       security:
       - BearerAuth: []
-      summary: Get schedule
+      summary: Get schedule blueprint
       tags:
       - Schedules
     patch:
       consumes:
       - application/json
       parameters:
-      - description: Schedule ID
+      - description: Blueprint ID
         in: path
         name: id
         required: true
         type: string
-      - description: Schedule changes
+      - description: Current blueprint revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Following definition changes
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.ScheduleUpdateRequest'
+          $ref: '#/definitions/rest.ScheduleBlueprintUpdateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rest.ScheduleResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
+            $ref: '#/definitions/rest.ScheduleBlueprintResponse'
       security:
       - BearerAuth: []
-      summary: Update schedule
+      summary: Update schedule blueprint
       tags:
       - Schedules
-  /schedules/{id}/assignees:
+  /schedule-blueprints/{id}/assignees:
     get:
       parameters:
-      - description: Schedule ID
+      - description: Blueprint ID
         in: path
         name: id
         required: true
@@ -2312,117 +2538,269 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/rest.ScheduleAssigneeListResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
       security:
       - BearerAuth: []
       summary: List schedule assignees
       tags:
       - Schedules
-    patch:
-      consumes:
-      - application/json
+  /schedule-blueprints/{id}/following/{occurrence_date}:
+    delete:
       parameters:
-      - description: Schedule ID
+      - description: Blueprint ID
         in: path
         name: id
         required: true
         type: string
-      - description: Assignee
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.ScheduleAssigneeRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Assign schedule
-      tags:
-      - Schedules
-  /schedules/{id}/frequency:
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: Schedule ID
+      - description: Original local occurrence date
         in: path
-        name: id
+        name: occurrence_date
         required: true
         type: string
-      - description: Recurrence rule
-        in: body
-        name: request
+      - description: Current blueprint revision
+        in: header
+        name: If-Match
         required: true
-        schema:
-          $ref: '#/definitions/rest.ScheduleFrequencyRequest'
-      produces:
-      - application/json
+        type: string
       responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
+        "204":
+          description: No Content
       security:
       - BearerAuth: []
-      summary: Update schedule frequency
+      summary: Delete following schedule occurrences
       tags:
       - Schedules
-  /schedules/{id}/revisions:
+  /schedule-blueprints/{id}/revisions:
     get:
       parameters:
-      - description: Schedule ID
+      - description: Blueprint ID
         in: path
         name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.listEnvelope-rest_ScheduleBlueprintRevisionResponse'
+      security:
+      - BearerAuth: []
+      summary: List schedule blueprint revisions
+      tags:
+      - Schedules
+  /schedule-blueprints/{id}/tags:
+    get:
+      parameters:
+      - description: Blueprint ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.ScheduleBlueprintTagsResponse'
+      security:
+      - BearerAuth: []
+      summary: List schedule blueprint tags
+      tags:
+      - Schedules
+  /schedule-blueprints/{id}/tags:add:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Blueprint ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tag ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.ScheduleBlueprintTagRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.MessageResponse'
+      security:
+      - BearerAuth: []
+      summary: Add tag to schedule blueprint
+      tags:
+      - Schedules
+  /schedule-blueprints/{id}/tags:remove:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Blueprint ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tag ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.ScheduleBlueprintTagRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.MessageResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove tag from schedule blueprint
+      tags:
+      - Schedules
+  /schedules:
+    get:
+      parameters:
+      - description: Inclusive UTC range start
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: Exclusive UTC range end
+        in: query
+        name: to
         required: true
         type: string
       - description: Items per page
         in: query
         name: page_size
         type: integer
-      - description: Opaque next page token
+      - description: Opaque page token
         in: query
         name: page_token
         type: string
-      - description: Response field mask
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.ScheduleOccurrenceListResponse'
+      security:
+      - BearerAuth: []
+      summary: List schedule occurrences
+      tags:
+      - Schedules
+  /schedules/{blueprint_id}/{occurrence_date}:
+    delete:
+      parameters:
+      - description: Blueprint ID
+        in: path
+        name: blueprint_id
+        required: true
+        type: string
+      - description: Original local occurrence date
+        in: path
+        name: occurrence_date
+        required: true
+        type: string
+      - description: Current occurrence revision, or 0 for a virtual occurrence
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Delete schedule occurrence
+      tags:
+      - Schedules
+    get:
+      parameters:
+      - description: Blueprint ID
+        in: path
+        name: blueprint_id
+        required: true
+        type: string
+      - description: Original local occurrence date
+        in: path
+        name: occurrence_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.ScheduleOccurrenceResponse'
+      security:
+      - BearerAuth: []
+      summary: Get schedule occurrence
+      tags:
+      - Schedules
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Blueprint ID
+        in: path
+        name: blueprint_id
+        required: true
+        type: string
+      - description: Original local occurrence date
+        in: path
+        name: occurrence_date
+        required: true
+        type: string
+      - description: Current occurrence revision, or 0 for a virtual occurrence
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Occurrence fields
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.ScheduleOccurrenceUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.ScheduleOccurrenceResponse'
+      security:
+      - BearerAuth: []
+      summary: Update schedule occurrence
+      tags:
+      - Schedules
+  /schedules/{blueprint_id}/{occurrence_date}/revisions:
+    get:
+      parameters:
+      - description: Blueprint ID
+        in: path
+        name: blueprint_id
+        required: true
+        type: string
+      - description: Original local occurrence date
+        in: path
+        name: occurrence_date
+        required: true
+        type: string
+      - description: Items per page
         in: query
-        name: fields
+        name: page_size
+        type: integer
+      - description: Opaque page token
+        in: query
+        name: page_token
         type: string
       produces:
       - application/json
@@ -2430,281 +2808,149 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rest.ScheduleRevisionListResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
+            $ref: '#/definitions/rest.listEnvelope-rest_ScheduleOccurrenceRevisionResponse'
       security:
       - BearerAuth: []
-      summary: List schedule revisions
+      summary: List schedule occurrence revisions
       tags:
       - Schedules
-  /schedules/{id}/tags:add:
+  /schedules/{blueprint_id}/{occurrence_date}:complete:
+    post:
+      parameters:
+      - description: Blueprint ID
+        in: path
+        name: blueprint_id
+        required: true
+        type: string
+      - description: Original local occurrence date
+        in: path
+        name: occurrence_date
+        required: true
+        type: string
+      - description: Current occurrence revision, or 0 for a virtual occurrence
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Complete schedule occurrence
+      tags:
+      - Schedules
+  /schedules/{blueprint_id}/{occurrence_date}:reopen:
+    post:
+      parameters:
+      - description: Blueprint ID
+        in: path
+        name: blueprint_id
+        required: true
+        type: string
+      - description: Original local occurrence date
+        in: path
+        name: occurrence_date
+        required: true
+        type: string
+      - description: Current occurrence revision, or 0 for a virtual occurrence
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Reopen schedule occurrence
+      tags:
+      - Schedules
+  /schedules/{blueprint_id}/{occurrence_date}:reschedule:
     post:
       consumes:
       - application/json
       parameters:
-      - description: Schedule ID
+      - description: Blueprint ID
         in: path
-        name: id
+        name: blueprint_id
         required: true
         type: string
-      - description: Tag ID
+      - description: Original local occurrence date
+        in: path
+        name: occurrence_date
+        required: true
+        type: string
+      - description: Current occurrence revision, or 0 for a virtual occurrence
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: New interval
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.ScheduleTagAssignmentRequest'
+          $ref: '#/definitions/rest.ScheduleOccurrenceRescheduleRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Add a tag to a schedule
-      tags:
-      - Schedules
-  /schedules/{id}/tags:remove:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Schedule ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Tag ID
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.ScheduleTagAssignmentRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Remove a tag from a schedule
-      tags:
-      - Schedules
-  /schedules/{id}:complete:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Schedule ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Occurrence date
-        in: body
-        name: request
-        schema:
-          $ref: '#/definitions/rest.ScheduleOccurrenceRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Complete schedule
-      tags:
-      - Schedules
-  /schedules/{id}:reopen:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Schedule ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Occurrence date
-        in: body
-        name: request
-        schema:
-          $ref: '#/definitions/rest.ScheduleOccurrenceRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Reopen schedule
-      tags:
-      - Schedules
-  /schedules/{id}:reschedule:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Schedule ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: New occurrence time
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.ScheduleRescheduleRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.ScheduleResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
+            $ref: '#/definitions/rest.ScheduleOccurrenceResponse'
       security:
       - BearerAuth: []
       summary: Reschedule occurrence
       tags:
       - Schedules
-  /schedules/{id}:restore:
+  /schedules/{blueprint_id}/{occurrence_date}:restore:
     post:
-      consumes:
-      - application/json
       parameters:
-      - description: Schedule ID
+      - description: Blueprint ID
         in: path
-        name: id
+        name: blueprint_id
         required: true
         type: string
-      - description: Occurrence date
-        in: body
-        name: request
+      - description: Original local occurrence date
+        in: path
+        name: occurrence_date
         required: true
-        schema:
-          $ref: '#/definitions/rest.ScheduleOccurrenceRequest'
-      produces:
-      - application/json
+        type: string
+      - description: Current occurrence revision, or 0 for a virtual occurrence
+        in: header
+        name: If-Match
+        required: true
+        type: string
       responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
+        "204":
+          description: No Content
       security:
       - BearerAuth: []
       summary: Restore schedule occurrence
       tags:
       - Schedules
-  /schedules/{id}:skip:
+  /schedules/{blueprint_id}/{occurrence_date}:skip:
     post:
-      consumes:
-      - application/json
       parameters:
-      - description: Schedule ID
+      - description: Blueprint ID
         in: path
-        name: id
+        name: blueprint_id
         required: true
         type: string
-      - description: Occurrence date
-        in: body
-        name: request
+      - description: Original local occurrence date
+        in: path
+        name: occurrence_date
         required: true
-        schema:
-          $ref: '#/definitions/rest.ScheduleOccurrenceRequest'
-      produces:
-      - application/json
+        type: string
+      - description: Current occurrence revision, or 0 for a virtual occurrence
+        in: header
+        name: If-Match
+        required: true
+        type: string
       responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
+        "204":
+          description: No Content
       security:
       - BearerAuth: []
       summary: Skip schedule occurrence
@@ -3924,6 +4170,28 @@ paths:
       summary: Reorder action item
       tags:
       - ActionItems
+  /timezones:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.TimezoneListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: List timezones
+      tags:
+      - Authorization
   /users/me:
     get:
       description: Returns the authenticated user's profile.

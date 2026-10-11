@@ -47,6 +47,19 @@ func TestUpdateUserTimezoneUseCaseRejectsInvalidTimezone(t *testing.T) {
 	}
 }
 
+func TestUpdateUserTimezoneRequiresTimezoneMasterMembership(t *testing.T) {
+	user := existingUser(t)
+	repo := &timezoneUpdateRepository{stubUserRepository: &stubUserRepository{user: user}}
+	// Valid Go zoneinfo identifier that is deliberately absent from timezone_master.
+	_, err := NewUpdateUserTimezoneUseCase(repo, nil).Execute(context.Background(), user.ID, "Etc/GMT+1")
+	if err != domain.ErrInvalidUserTimezone {
+		t.Errorf("Execute() error = %v, want %v", err, domain.ErrInvalidUserTimezone)
+	}
+	if repo.updatedTimezone != "" {
+		t.Errorf("UpdateTimezone() called with %q for disallowed timezone", repo.updatedTimezone)
+	}
+}
+
 func TestUpdateUserTimezoneUseCasePropagatesRepositoryErrors(t *testing.T) {
 	user := existingUser(t)
 	repo := &timezoneUpdateRepository{stubUserRepository: &stubUserRepository{user: user}, updateErr: errUpdateUser}

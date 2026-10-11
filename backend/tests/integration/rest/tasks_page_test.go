@@ -51,7 +51,8 @@ func newTasksPageREST(t *testing.T) *tasksPageREST {
 	ids := tasksPageIDs{}
 	store := application.NewStore(pool)
 	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
-	usecases := application.NewUseCase(store.Auth, store.Project, store.Task, store.Schedule, store.Tag, uow.Project, uow.Task, uow.Schedule, ids, nil)
+	usecases, stopUseCases := application.NewUseCase(store.Auth, store.Project, store.Task, store.Tag, store.Admin, uow.Project, uow.Task, uow.Schedule, ids, nil)
+	testdb.RegisterShutdown(t, stopUseCases)
 	pageTokens, err := pagination.NewCodec([]byte(strings.Repeat("t", 32)))
 	if err != nil {
 		t.Fatal(err)
@@ -283,7 +284,7 @@ func TestRESTTaskListFiltersSummaryAcrossCursorPagesAndReflectsCompletion(t *tes
 	if err := json.Unmarshal(actionItemsResponse.Body.Bytes(), &actionItems); err != nil || len(actionItems.Items) != 2 {
 		t.Fatalf("decode Alpha ActionItems: err=%v body=%s", err, actionItemsResponse.Body.String())
 	}
-	completeFirst := api.request(http.MethodPost, fmt.Sprintf("/tasks/%s/action-items/%s:complete", alpha.ID, actionItems.Items[0].ID), `{}`)
+	completeFirst := api.request(http.MethodPost, fmt.Sprintf("/tasks/%s/action-items/%s:complete", alpha.ID, actionItems.Items[0].ID), "")
 	if completeFirst.Code != http.StatusOK {
 		t.Fatalf("complete first ActionItem status/body=%d/%s", completeFirst.Code, completeFirst.Body.String())
 	}
@@ -328,7 +329,7 @@ func TestRESTTaskListFiltersSummaryAcrossCursorPagesAndReflectsCompletion(t *tes
 		t.Fatalf("status filter or status counts=%+v; want 2 open rows and counts excluding status filter", open)
 	}
 
-	completeSecond := api.request(http.MethodPost, fmt.Sprintf("/tasks/%s/action-items/%s:complete", alpha.ID, actionItems.Items[1].ID), `{}`)
+	completeSecond := api.request(http.MethodPost, fmt.Sprintf("/tasks/%s/action-items/%s:complete", alpha.ID, actionItems.Items[1].ID), "")
 	if completeSecond.Code != http.StatusOK {
 		t.Fatalf("complete second ActionItem status/body=%d/%s", completeSecond.Code, completeSecond.Body.String())
 	}

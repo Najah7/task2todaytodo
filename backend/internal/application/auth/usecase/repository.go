@@ -13,6 +13,11 @@ type UserRepository interface {
 	Create(ctx context.Context, user domain.User) (dao.User, error)
 	Update(ctx context.Context, user domain.User) (dao.User, error)
 	UpdateTimezone(ctx context.Context, id domain.UserID, timezone domain.UserTimezone) error
+	TimezoneExists(ctx context.Context, timezone string) (bool, error)
+}
+
+type TimezoneRepository interface {
+	ListTimezones(context.Context) ([]string, error)
 }
 
 type PersonalAccessTokenRepository interface {

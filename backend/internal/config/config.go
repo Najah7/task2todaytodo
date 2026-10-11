@@ -6,26 +6,21 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-
-	"github.com/Najah7/task2todaytodo/internal/application"
 )
 
 const defaultServerAddr = ":8080"
 const (
-	defaultServiceName = "api"
+	defaultService     = "api"
 	defaultEnvironment = "development"
 	defaultAppVersion  = "1.0.0"
 )
 
 // Config contains validated process settings required to start the API.
 type Config struct {
-	ServerAddr   string
-	Database     application.DatabaseConfig
-	PageTokenKey []byte
-	ServiceName  string
-	Environment  string
-	AppVersion   string
-	LogLevel     slog.Level
+	Server      ServerConfig
+	Database    DatabaseConfig
+	Secrets     Secrets
+	Application ApplicationConfig
 }
 
 // Load reads and validates API settings from the process environment.
@@ -53,8 +48,10 @@ func LoadFromEnv(getenv func(string) string) (Config, error) {
 	}
 
 	return Config{
-		ServerAddr: value("SERVER_ADDR", defaultServerAddr),
-		Database: application.DatabaseConfig{
+		Server: ServerConfig{
+			Addr: value("SERVER_ADDR", defaultServerAddr),
+		},
+		Database: DatabaseConfig{
 			User:     value("POSTGRES_USER", "changeme"),
 			Password: value("POSTGRES_PASSWORD", "changeme"),
 			Host:     value("POSTGRES_HOST", "localhost"),
@@ -62,11 +59,15 @@ func LoadFromEnv(getenv func(string) string) (Config, error) {
 			Name:     value("POSTGRES_DB", "task2todaytodo"),
 			SSLMode:  value("POSTGRES_SSLMODE", "disable"),
 		},
-		PageTokenKey: key,
-		ServiceName:  value("OTEL_SERVICE_NAME", defaultServiceName),
-		Environment:  value("ENVIRONMENT", defaultEnvironment),
-		AppVersion:   value("APP_VERSION", defaultAppVersion),
-		LogLevel:     level,
+		Secrets: Secrets{
+			PageTokenKey: key,
+		},
+		Application: ApplicationConfig{
+			Service:     value("OTEL_SERVICE_NAME", defaultService),
+			Environment: value("ENVIRONMENT", defaultEnvironment),
+			Version:     value("APP_VERSION", defaultAppVersion),
+			LogLevel:    level,
+		},
 	}, nil
 }
 

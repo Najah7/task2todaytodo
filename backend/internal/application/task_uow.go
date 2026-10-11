@@ -13,15 +13,14 @@ import (
 )
 
 type TaskUOW struct {
-	pool     *pgxpool.Pool
-	store    TaskStore
-	projects ProjectStore
+	pool      *pgxpool.Pool
+	store     TaskStore
+	projects  ProjectStore
+	schedules ScheduleStore
 }
 
-func NewTaskUOW(pool *pgxpool.Pool, store TaskStore, projects ProjectStore) usecase.UOW {
-	return &TaskUOW{
-		pool: pool, store: store, projects: projects,
-	}
+func NewTaskUOW(pool *pgxpool.Pool, store TaskStore, projects ProjectStore, schedules ScheduleStore) usecase.UOW {
+	return &TaskUOW{pool: pool, store: store, projects: projects, schedules: schedules}
 }
 
 func (u *TaskUOW) Do(
@@ -31,9 +30,10 @@ func (u *TaskUOW) Do(
 	return RunInTx(ctx, u.pool, func(tx pgx.Tx) error {
 		projects := u.projects.WithTx(tx).Projects
 		store := u.store.WithTx(tx)
+		scheduleBlueprints := u.schedules.WithTx(tx).Schedules
 		return fn(ctx, taskRepositories{
 			store:     store,
-			lifecycle: projectusecase.NewProjectLifecycleUseCase(projects, newTaskProjectProgressReader(projects, store.ActionItems)),
+			lifecycle: projectusecase.NewProjectLifecycleUseCase(projects, newTaskProjectProgressReader(projects, store.ActionItems), scheduleBlueprints),
 		})
 	})
 }

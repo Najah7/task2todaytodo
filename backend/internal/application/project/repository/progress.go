@@ -45,18 +45,40 @@ func (r *ProjectRepository) ReadProjectProgressSources(ctx context.Context, proj
 		return dao.ProjectProgressSources{}, err
 	}
 	for _, row := range scheduleRoots {
-		index, ok := scheduleIndexes[row.ProjectID.String]
+		rootKey := row.ProjectID.String + "/" + row.BlueprintID + "/" + row.OccurrenceDate
+		index, ok := scheduleIndexes[rootKey]
 		if !ok {
-			sources.Schedules = append(sources.Schedules, dao.ProjectScheduleProgress{ProjectID: row.ProjectID.String})
-			index = len(sources.Schedules) - 1
-			scheduleIndexes[row.ProjectID.String] = index
+			index, ok = scheduleIndexes[row.ProjectID.String]
+			if !ok {
+				sources.Schedules = append(sources.Schedules, dao.ProjectScheduleProgress{ProjectID: row.ProjectID.String})
+				index = len(sources.Schedules) - 1
+				scheduleIndexes[row.ProjectID.String] = index
+			}
+			recurrence := dao.ProjectProgressRecurrence{
+				BlueprintID: row.BlueprintID, RecurrenceAnchorDate: row.RecurrenceAnchorDate,
+				LocalStart: row.LocalStart.Time.Format("2006-01-02 15:04:05"), LocalEnd: row.LocalEnd.Time.Format("2006-01-02 15:04:05"),
+				Timezone: row.Timezone, Frequency: row.Frequency, Interval: int(row.IntervalCount),
+				Weekdays: row.Weekdays, OccurrenceDate: row.OccurrenceDate,
+				OccurrenceSavedToday: row.OccurrenceSavedToday,
+			}
+			if row.CutoffAfter != "" {
+				recurrence.CutoffAfter = &row.CutoffAfter
+			}
+			if row.EndDate != "" {
+				recurrence.EndDate = &row.EndDate
+			}
+			sources.Schedules[index].Roots = append(sources.Schedules[index].Roots, recurrence)
+			scheduleIndexes[rootKey] = len(sources.Schedules[index].Roots) - 1
 		}
-		sources.Schedules[index].Roots = append(sources.Schedules[index].Roots, dao.ProjectProgressRecurrence{
-			OccurrenceDate: row.OccurrenceDate, Timezone: row.Timezone, IntervalWeeks: int(row.IntervalWeeks),
-			FrequencyAnchorDate: row.FrequencyAnchorDate.Time.Format("2006-01-02"), Frequencies: row.Frequencies,
-			OccurrenceSavedToday: row.OccurrenceSavedToday.Bool,
-			StartAt:              row.StartAt.Time.UTC().Format(time.RFC3339Nano), EndAt: row.EndAt.Time.UTC().Format(time.RFC3339Nano),
-		})
+		rootIndex := scheduleIndexes[rootKey]
+		if row.PauseStartedAt.Valid {
+			pause := dao.ProjectSchedulePauseInterval{PausedAt: row.PauseStartedAt.Time.UTC().Format(time.RFC3339Nano)}
+			if row.PauseEndedAt.Valid {
+				resumed := row.PauseEndedAt.Time.UTC().Format(time.RFC3339Nano)
+				pause.ResumedAt = &resumed
+			}
+			sources.Schedules[index].Roots[rootIndex].PauseIntervals = append(sources.Schedules[index].Roots[rootIndex].PauseIntervals, pause)
+		}
 	}
 	return sources, nil
 }

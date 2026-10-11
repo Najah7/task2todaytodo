@@ -9,6 +9,38 @@ import (
 	"context"
 )
 
+const hasGlobalPermission = `-- name: HasGlobalPermission :one
+SELECT EXISTS (
+    SELECT 1
+    FROM system_user_roles AS ur
+    JOIN role_permissions AS rp ON rp.role_id = ur.role_id
+    JOIN permissions AS p ON p.permission_id = rp.permission_id
+    WHERE ur.user_id = $1::text
+      AND p.resource_id = $2::text
+      AND p.action = $3::action
+      AND p.effect = 'allow'
+      AND NOT EXISTS (
+          SELECT 1 FROM role_permissions AS deny_grant
+          JOIN permissions AS deny ON deny.permission_id = deny_grant.permission_id
+          WHERE deny_grant.role_id = ur.role_id AND deny.resource_id = p.resource_id
+            AND deny.action = p.action AND deny.effect = 'deny'
+      )
+)
+`
+
+type HasGlobalPermissionParams struct {
+	UserID     string
+	ResourceID string
+	Action     Action
+}
+
+func (q *Queries) HasGlobalPermission(ctx context.Context, arg HasGlobalPermissionParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasGlobalPermission, arg.UserID, arg.ResourceID, arg.Action)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const hasProjectPermission = `-- name: HasProjectPermission :one
 SELECT project_has_permission(
     p.id,

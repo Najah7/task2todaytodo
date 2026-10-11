@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Najah7/task2todaytodo/db/sqlc"
+	"github.com/Najah7/task2todaytodo/internal/application"
 	projectrepo "github.com/Najah7/task2todaytodo/internal/application/project/repository"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
@@ -876,7 +877,8 @@ func (uow sharingTestUOW) Do(ctx context.Context, run func(context.Context, usec
 		taskProjects: sharingTestTaskProjects{queries: sqlc.New(tx)},
 	}
 	projectStore := projectrepo.NewProjectRepository(tx)
-	repositories.lifecycle = projectusecase.NewProjectLifecycleUseCase(projectStore, projectStore)
+	scheduleStore := application.NewStore(uow.pool).Schedule.WithTx(tx)
+	repositories.lifecycle = projectusecase.NewProjectLifecycleUseCase(projectStore, projectStore, scheduleStore.Schedules)
 	if err := run(ctx, repositories); err != nil {
 		return err
 	}

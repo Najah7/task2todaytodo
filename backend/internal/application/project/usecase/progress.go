@@ -33,7 +33,11 @@ func applyProjectProgress(ctx context.Context, reader ProjectProgressReader, pro
 	for _, schedule := range sources.Schedules {
 		facts := domain.ScheduleProgressFacts{Total: schedule.Total, Completed: schedule.Completed}
 		for _, root := range schedule.Roots {
-			facts.Roots = append(facts.Roots, progressRule(root))
+			rule, err := projectProgressRule(root)
+			if err != nil {
+				return nil, err
+			}
+			facts.Roots = append(facts.Roots, rule)
 		}
 		schedulesByProject[schedule.ProjectID] = append(schedulesByProject[schedule.ProjectID], facts)
 	}

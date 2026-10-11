@@ -18,7 +18,7 @@ func NewUpsertProjectMemberUseCase(uow UOW, logger logging.Logger) *UpsertProjec
 
 func (uc *UpsertProjectMemberUseCase) Execute(ctx context.Context, actor domain.UserID, project domain.ProjectID, member domain.UserID, role string) (err error) {
 	defer func() { logProjectMemberFailure(uc.logger, ctx, "UpsertProjectMemberUseCase.Execute", err) }()
-	if !validProjectMemberInput(string(actor), string(project), string(member), role) {
+	if !validProjectMemberInput(string(actor), string(project), string(member), role) || role == "sysadmin" {
 		return ErrProjectMemberInvalidInput
 	}
 

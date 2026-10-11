@@ -27,7 +27,7 @@ func (uc *ChangeProjectStatusUseCase) Execute(ctx context.Context, actor domain.
 		return dao.Project{}, err
 	}
 	var project dao.Project
-	err = uc.uow.Do(ctx, func(ctx context.Context, repo Repository, _ ProjectChildrenDeleter) error {
+	err = uc.uow.Do(ctx, func(ctx context.Context, repo Repository, children ProjectChildrenDeleter) error {
 		current, err := repo.LockByUserIDWithPermission(ctx, actor, id, shared.ProjectUpdate())
 		if err != nil {
 			return err
@@ -55,6 +55,9 @@ func (uc *ChangeProjectStatusUseCase) Execute(ctx context.Context, actor domain.
 		}
 		project, err = repo.SetStatusByUserID(ctx, actor, id, entity.Status.String(), expected)
 		if err != nil {
+			return err
+		}
+		if err := transitionProjectSchedules(ctx, children, string(actor), string(id), currentStatus.String(), statusValue.String(), time.Now()); err != nil {
 			return err
 		}
 		project.CanUpdate = true

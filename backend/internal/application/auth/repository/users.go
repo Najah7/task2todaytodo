@@ -36,6 +36,16 @@ func (r UserRepository) GetTimezone(ctx context.Context, userID string) (string,
 	return r.queries.GetUserTimezone(ctx, userID)
 }
 
+func (r UserRepository) TimezoneExists(ctx context.Context, timezone string) (bool, error) {
+	return r.queries.IsTimezoneAllowed(ctx, timezone)
+}
+
+func (r UserRepository) ListTimezones(ctx context.Context) ([]string, error) {
+	return r.queries.GetTimezoneChoices(ctx)
+}
+
+var _ usecase.TimezoneRepository = UserRepository{}
+
 func recordToUserDAO(record sqlc.User) dao.User {
 	return dao.User{
 		ID:        record.ID,

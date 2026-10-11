@@ -14,6 +14,8 @@ const (
 	ResourceUsers                = "users"
 	ResourceRoles                = "roles"
 	ResourcePermissions          = "permissions"
+	ResourceAdmin                = "admin"
+	ResourceTimezones            = "timezones"
 
 	ActionAuthenticate              = "authenticate"
 	ActionCreate                    = "create"
@@ -27,6 +29,7 @@ const (
 	ActionUpdateBasicInfo           = "update_basic_info"
 	ActionUpdateTimezone            = "update_timezone"
 	ActionUpdatePassword            = "update_password"
+	ActionRun                       = "run"
 	ResultFailed                    = "failed"
 	DetailInvalidBodyCode           = "invalid_request_body"
 	DetailInvalidBodyMsg            = "Invalid request body"
@@ -70,6 +73,10 @@ var (
 	ErrSpecUsersUpdateBasicInfoFailed         = NewFailureErrSpec(ResourceUsers, ActionUpdateBasicInfo, "Failed to update user")
 	ErrSpecUsersUpdateTimezoneFailed          = NewFailureErrSpec(ResourceUsers, ActionUpdateTimezone, "Failed to update user timezone")
 	ErrSpecUsersUpdatePasswordFailed          = NewFailureErrSpec(ResourceUsers, ActionUpdatePassword, "Failed to update password")
+	ErrSpecAdminRunFailed                     = NewFailureErrSpec(ResourceAdmin, ActionRun, "Failed to run administrative job")
+	ErrSpecAdminListFailed                    = NewFailureErrSpec(ResourceAdmin, ActionList, "Failed to list operations")
+	ErrSpecAdminGetFailed                     = NewFailureErrSpec(ResourceAdmin, ActionGet, "Failed to get operation")
+	ErrSpecTimezonesListFailed                = NewFailureErrSpec(ResourceTimezones, ActionList, "Failed to list timezones")
 
 	ErrDetailInvalidRequestBody                  = NewErrDetail("", DetailInvalidBodyCode, DetailInvalidBodyMsg)
 	ErrDetailInvalidCredentials                  = NewErrDetail("", DetailInvalidCredCode, DetailInvalidCredMsg)
@@ -79,6 +86,8 @@ var (
 	ErrDetailFailedUserLookup                    = NewErrDetail("", DetailUserLookupCode, DetailUserLookupMsg)
 	ErrDetailMissingOrInvalidPersonalAccessToken = NewErrDetail("", DetailMissingTokenCode, DetailMissingTokenMsg)
 	ErrDetailInternalServerError                 = NewErrDetail("", DetailInternalErrorCode, DetailInternalErrorMsg)
+	ErrDetailForbidden                           = NewErrDetail("", "forbidden", "Permission denied")
+	ErrDetailNotFound                            = NewErrDetail("", "not_found", "Resource not found")
 )
 
 type ErrSpec struct {

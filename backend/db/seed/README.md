@@ -7,7 +7,8 @@ Run it only against the local development database.
 The seed is repeatable and uses dates relative to the database's current date
 in `Asia/Tokyo`. It creates two users so authenticated list endpoints can be
 checked for user scoping. The full seed contains 20 projects, 45 tasks, 20 tags,
-35 ActionItems, 25 schedules, and 15 TodoLists.
+35 ActionItems, 22 concrete Schedule occurrences, one recurring Schedule
+blueprint with two effective revisions, and 15 TodoLists.
 
 ## Swagger walkthrough
 
@@ -34,12 +35,16 @@ Open `http://localhost:8080/swagger/index.html`.
 | `GET /api/tasks?page_size=2` | Project and inbox tasks with different statuses and priorities |
 | `GET /api/tasks/00000000000000000000000201` | Task details and assigned tags |
 | `GET /api/tasks/00000000000000000000000201/action-items?page_size=2` | Ordered completed and incomplete ActionItems |
-| `GET /api/tasks/00000000000000000000000204/action-items` | Weekly recurring ActionItem occurrences and frequencies |
 | `GET /api/tasks/00000000000000000000000220/action-items` | ActionItem for generated task; use `page_size=1` to inspect pagination |
-| `GET /api/schedules?page_size=2` | Weekly schedule series, changed occurrence, and timezone |
-| `GET /api/projects/00000000000000000000000101/schedules` | Project-scoped schedules, including recurring and one-off work |
-| `GET /api/schedules` | Personal schedules, filtered by assignee |
+| `GET /api/schedules?from=<UTC-RFC3339>&to=<UTC-RFC3339>&page_size=2` | Concrete and virtual occurrences in a UTC time range |
+| `GET /api/projects/00000000000000000000000101/schedules?from=<UTC-RFC3339>&to=<UTC-RFC3339>&page_size=2` | Project-scoped concrete and virtual occurrences |
+| `GET /api/schedules?from=<UTC-RFC3339>&to=<UTC-RFC3339>&page_size=2` | Occurrences visible to the authenticated user, including personal schedules |
 | `GET /api/task-tags?page_size=2` | User-owned tags |
+
+Schedule list endpoints require UTC RFC3339 `from` and `to` query values. Replace
+the placeholders with a range covering dates in the demo seed, for example
+`from=2026-10-11T00:00:00Z&to=2026-10-18T00:00:00Z`; the seed's Schedule dates
+are relative to the database date, so adjust this example as needed.
 
 List requests also accept a `fields` mask. For example, try
 `fields=items(id,title,status),next_page_token` on `GET /api/tasks`.

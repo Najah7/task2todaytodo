@@ -77,34 +77,37 @@ func (q *Queries) ListProjectRevisionsByActor(ctx context.Context, arg ListProje
 	return items, nil
 }
 
-const listScheduleRevisionsByActor = `-- name: ListScheduleRevisionsByActor :many
-SELECT sr.id, sr.revision, sr.user_id, sr.project_id, sr.assignee_id, sr.title, sr.description, sr.location, sr.start_at, sr.end_at, sr.series_id, sr.occurrence_date, sr.timezone, sr.is_exception, sr.repeat_state, sr.frequency_anchor_date, sr.interval_weeks, sr.completed, sr.deleted_at, sr.skipped_at, sr.frequencies, sr.created_at, sr.updated_at, sr.changed_by, sr.changed_at
-FROM schedule_revisions AS sr
-JOIN schedules AS s ON s.id = sr.id
-LEFT JOIN projects AS p ON p.id = s.project_id
-WHERE sr.id = $1::text
+const listScheduleOccurrenceRevisionsByActor = `-- name: ListScheduleOccurrenceRevisionsByActor :many
+SELECT history.schedule_id, history.revision, history.source_revision_id, history.user_id, history.occurrence_date, history.start_at, history.end_at, history.title, history.description, history.location, history.project_id, history.assignee_id, history.timezone, history.completed, history.skipped_at, history.deleted_at, history.is_override, history.changed_by, history.changed_at
+FROM schedule_revisions history
+JOIN schedules occurrence ON occurrence.id = history.schedule_id
+JOIN schedule_blueprints blueprint ON blueprint.id = occurrence.blueprint_id AND blueprint.deleted_at IS NULL
+WHERE occurrence.blueprint_id = $1::text
+  AND occurrence.occurrence_date = $2::date
   AND (
-      (s.deleted_at IS NULL AND (p.id IS NULL OR p.deleted_at IS NULL)
-       AND schedule_has_permission(s.id, $2::text, 'schedule', 'read'))
-      OR ((s.deleted_at IS NOT NULL OR p.deleted_at IS NOT NULL)
-       AND (s.user_id = $2::text
-            OR (p.id IS NOT NULL AND project_has_permission(p.id, $2::text, 'deleted_history', 'read'))))
+      (occurrence.deleted_at IS NOT NULL AND occurrence.user_id = $3::text)
+      OR (occurrence.deleted_at IS NULL AND schedule_has_permission(occurrence.id, $3::text, 'schedule', 'read'))
   )
-  AND ($3::integer IS NULL OR sr.revision < $3::integer)
-ORDER BY sr.revision DESC
-LIMIT $4::integer
+  AND ($4::integer IS NULL OR history.revision < $4::integer)
+  AND (occurrence.project_id IS NULL OR EXISTS (
+      SELECT 1 FROM projects parent WHERE parent.id = occurrence.project_id AND parent.deleted_at IS NULL
+  ))
+ORDER BY history.revision DESC
+LIMIT $5::integer
 `
 
-type ListScheduleRevisionsByActorParams struct {
-	ID             string
+type ListScheduleOccurrenceRevisionsByActorParams struct {
+	BlueprintID    string
+	OccurrenceDate pgtype.Date
 	ActorID        string
 	CursorRevision pgtype.Int4
 	PageLimit      int32
 }
 
-func (q *Queries) ListScheduleRevisionsByActor(ctx context.Context, arg ListScheduleRevisionsByActorParams) ([]ScheduleRevision, error) {
-	rows, err := q.db.Query(ctx, listScheduleRevisionsByActor,
-		arg.ID,
+func (q *Queries) ListScheduleOccurrenceRevisionsByActor(ctx context.Context, arg ListScheduleOccurrenceRevisionsByActorParams) ([]ScheduleRevision, error) {
+	rows, err := q.db.Query(ctx, listScheduleOccurrenceRevisionsByActor,
+		arg.BlueprintID,
+		arg.OccurrenceDate,
 		arg.ActorID,
 		arg.CursorRevision,
 		arg.PageLimit,
@@ -117,29 +120,23 @@ func (q *Queries) ListScheduleRevisionsByActor(ctx context.Context, arg ListSche
 	for rows.Next() {
 		var i ScheduleRevision
 		if err := rows.Scan(
-			&i.ID,
+			&i.ScheduleID,
 			&i.Revision,
+			&i.SourceRevisionID,
 			&i.UserID,
-			&i.ProjectID,
-			&i.AssigneeID,
+			&i.OccurrenceDate,
+			&i.StartAt,
+			&i.EndAt,
 			&i.Title,
 			&i.Description,
 			&i.Location,
-			&i.StartAt,
-			&i.EndAt,
-			&i.SeriesID,
-			&i.OccurrenceDate,
+			&i.ProjectID,
+			&i.AssigneeID,
 			&i.Timezone,
-			&i.IsException,
-			&i.RepeatState,
-			&i.FrequencyAnchorDate,
-			&i.IntervalWeeks,
 			&i.Completed,
-			&i.DeletedAt,
 			&i.SkippedAt,
-			&i.Frequencies,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.IsOverride,
 			&i.ChangedBy,
 			&i.ChangedAt,
 		); err != nil {

@@ -70,6 +70,15 @@ func (r *stubUserRepository) UpdateTimezone(_ context.Context, _ domain.UserID, 
 	return r.updateTimezoneErr
 }
 
+func (*stubUserRepository) TimezoneExists(_ context.Context, timezone string) (bool, error) {
+	switch timezone {
+	case "UTC", "Asia/Tokyo", "America/Los_Angeles":
+		return true, nil
+	default:
+		return false, nil
+	}
+}
+
 var _ PersonalAccessTokenRepository = (*stubPersonalAccessTokenRepository)(nil)
 
 type stubPersonalAccessTokenRepository struct {

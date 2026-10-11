@@ -509,6 +509,119 @@ func (h *ProjectHandler) ChangeStatus(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, projectResponse(project))
 }
 
+// Start moves a Project to in progress.
+//
+//	@Summary	Start project
+//	@Tags		Projects
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		id			path		string	true	"Project ID"
+//	@Param		If-Match	header		string	true	"Current project ETag"
+//	@Success	200			{object}	ProjectResponse
+//	@Failure	401			{object}	ErrResponse
+//	@Failure	404			{object}	ErrResponse
+//	@Failure	409			{object}	ErrResponse
+//	@Failure	428			{object}	ErrResponse
+//	@Router		/projects/{id}:start [post]
+func (h *ProjectHandler) Start(w http.ResponseWriter, r *http.Request) {
+	h.changeStatusAction(w, r, "in_progress")
+}
+
+// Hold moves a Project to pending.
+//
+//	@Summary	Hold project
+//	@Tags		Projects
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		id			path		string	true	"Project ID"
+//	@Param		If-Match	header		string	true	"Current project ETag"
+//	@Success	200			{object}	ProjectResponse
+//	@Failure	401			{object}	ErrResponse
+//	@Failure	404			{object}	ErrResponse
+//	@Failure	409			{object}	ErrResponse
+//	@Failure	428			{object}	ErrResponse
+//	@Router		/projects/{id}:hold [post]
+func (h *ProjectHandler) Hold(w http.ResponseWriter, r *http.Request) {
+	h.changeStatusAction(w, r, "pending")
+}
+
+// Wait marks a Project as waiting on others.
+//
+//	@Summary	Wait on project
+//	@Tags		Projects
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		id			path		string	true	"Project ID"
+//	@Param		If-Match	header		string	true	"Current project ETag"
+//	@Success	200			{object}	ProjectResponse
+//	@Failure	401			{object}	ErrResponse
+//	@Failure	404			{object}	ErrResponse
+//	@Failure	409			{object}	ErrResponse
+//	@Failure	428			{object}	ErrResponse
+//	@Router		/projects/{id}:wait [post]
+func (h *ProjectHandler) Wait(w http.ResponseWriter, r *http.Request) {
+	h.changeStatusAction(w, r, "waiting_on_others")
+}
+
+// Complete marks a Project done.
+//
+//	@Summary	Complete project
+//	@Tags		Projects
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		id			path		string	true	"Project ID"
+//	@Param		If-Match	header		string	true	"Current project ETag"
+//	@Success	200			{object}	ProjectResponse
+//	@Failure	401			{object}	ErrResponse
+//	@Failure	404			{object}	ErrResponse
+//	@Failure	409			{object}	ErrResponse
+//	@Failure	428			{object}	ErrResponse
+//	@Router		/projects/{id}:complete [post]
+func (h *ProjectHandler) Complete(w http.ResponseWriter, r *http.Request) {
+	h.changeStatusAction(w, r, "done")
+}
+
+// Reopen moves a completed Project to open.
+//
+//	@Summary	Reopen project
+//	@Tags		Projects
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		id			path		string	true	"Project ID"
+//	@Param		If-Match	header		string	true	"Current project ETag"
+//	@Success	200			{object}	ProjectResponse
+//	@Failure	401			{object}	ErrResponse
+//	@Failure	404			{object}	ErrResponse
+//	@Failure	409			{object}	ErrResponse
+//	@Failure	428			{object}	ErrResponse
+//	@Router		/projects/{id}:reopen [post]
+func (h *ProjectHandler) Reopen(w http.ResponseWriter, r *http.Request) {
+	h.changeStatusAction(w, r, "open")
+}
+
+func (h *ProjectHandler) changeStatusAction(w http.ResponseWriter, r *http.Request, status string) {
+	userID, ok := projectUserID(r.Context())
+	if !ok {
+		writeProjectError(w, http.StatusUnauthorized, projectStatusFailure, ErrDetailUnauthorized)
+		return
+	}
+	projectID, ok := projectPathID(w, r, projectStatusFailure)
+	if !ok {
+		return
+	}
+	expected, ok := expectedRevision(w, r, projectStatusFailure)
+	if !ok {
+		return
+	}
+	project, err := h.projects.ChangeStatus.Execute(r.Context(), userID, projectID, expected, status)
+	if err != nil {
+		writeProjectUseCaseError(w, projectStatusFailure, err)
+		return
+	}
+	setResourceETag(w, project.Revision)
+	WriteJSON(w, http.StatusOK, projectResponse(project))
+}
+
 // Restore clears a Project's tombstone while preserving the Project and descendants.
 //
 //	@Summary	Restore project

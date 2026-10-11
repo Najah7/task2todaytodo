@@ -46,7 +46,7 @@ CREATE TABLE projects (
 CREATE TABLE project_members (
     project_id text NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
     user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_id text NOT NULL REFERENCES roles(role_id) ON DELETE RESTRICT,
+    role_id text NOT NULL REFERENCES roles(role_id) ON DELETE RESTRICT CHECK (role_id <> 'sysadmin'),
     added_by text NOT NULL REFERENCES users(id),
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),

@@ -5,9 +5,11 @@
 package testdb
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -48,4 +50,17 @@ func OpenWithApplicationName(t testing.TB, applicationName string) *pgxpool.Pool
 	}
 	t.Cleanup(pool.Close)
 	return pool
+}
+
+// RegisterShutdown runs an application cleanup before the database pool cleanup
+// registered by Open, using a bounded context so integration tests cannot hang.
+func RegisterShutdown(t testing.TB, shutdown func(context.Context) error) {
+	t.Helper()
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := shutdown(ctx); err != nil {
+			t.Errorf("shutdown application: %v", err)
+		}
+	})
 }

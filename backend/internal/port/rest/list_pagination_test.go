@@ -62,7 +62,7 @@ func TestParseListRequestBindsTokenToListScopeAndMask(t *testing.T) {
 
 func TestParseListRequestBindsFromDateAndCarriesFrozenAsOf(t *testing.T) {
 	codec := listTestCodec()
-	schema := listEnvelope[ScheduleResponse]{}
+	schema := listEnvelope[ScheduleOccurrenceResponse]{}
 	first := httptest.NewRequest("GET", "/schedules?from_date=2026-10-04", nil)
 	parsed, err := parseListRequestWithFromDate(first, codec, "user-1", "schedules", "", "start_at_asc_series_id_asc_occurrence_date_asc", schema, true)
 	if err != nil || parsed.FromDate != "2026-10-04" {
@@ -81,6 +81,40 @@ func TestParseListRequestBindsFromDateAndCarriesFrozenAsOf(t *testing.T) {
 	changedDate := httptest.NewRequest("GET", "/schedules?from_date=2026-10-05&page_token="+token, nil)
 	if _, err := parseListRequestWithFromDate(changedDate, codec, "user-1", "schedules", "", "start_at_asc_series_id_asc_occurrence_date_asc", schema, true); err == nil {
 		t.Error("token accepted a different from_date")
+	}
+}
+
+func TestParseListRequestRequiresAndBindsUTCOverlapRange(t *testing.T) {
+	codec := listTestCodec()
+	schema := listEnvelope[ScheduleOccurrenceResponse]{}
+	first := httptest.NewRequest("GET", "/schedules?from=2026-10-04T00:00:00Z&to=2026-10-05T00:00:00Z", nil)
+	parsed, err := parseListRequestWithRange(first, codec, "user-1", "schedule_occurrences", "", "start_at_asc_blueprint_id_asc_occurrence_date_asc", schema)
+	if err != nil || parsed.From.IsZero() || parsed.To.IsZero() {
+		t.Fatalf("first page=%+v err=%v", parsed, err)
+	}
+	anchor := listAnchor{At: "2026-10-04T10:00:00Z", BlueprintID: "bp-1", OccurrenceDate: "2026-10-04"}
+	token, err := pagination.Encode(codec, parsed.Scope, anchor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	continued := httptest.NewRequest("GET", "/schedules?from=2026-10-04T00:00:00Z&to=2026-10-05T00:00:00Z&page_token="+token, nil)
+	request, err := parseListRequestWithRange(continued, codec, "user-1", "schedule_occurrences", "", "start_at_asc_blueprint_id_asc_occurrence_date_asc", schema)
+	if err != nil || request.Anchor == nil || request.Anchor.BlueprintID != "bp-1" {
+		t.Fatalf("continuation=%+v err=%v", request, err)
+	}
+	for _, uri := range []string{
+		"/schedules?from=2026-10-04T00:00:00Z",
+		"/schedules?to=2026-10-05T00:00:00Z",
+		"/schedules?from=2026-10-05T00:00:00Z&to=2026-10-04T00:00:00Z",
+		"/schedules?from=2026-10-04T00:00:00%2B09:00&to=2026-10-05T00:00:00Z",
+	} {
+		if _, err := parseListRequestWithRange(httptest.NewRequest("GET", uri, nil), codec, "user-1", "schedule_occurrences", "", "start_at_asc_blueprint_id_asc_occurrence_date_asc", schema); err == nil {
+			t.Errorf("accepted invalid range %s", uri)
+		}
+	}
+	changedRange := httptest.NewRequest("GET", "/schedules?from=2026-10-04T00:00:00Z&to=2026-10-06T00:00:00Z&page_token="+token, nil)
+	if _, err := parseListRequestWithRange(changedRange, codec, "user-1", "schedule_occurrences", "", "start_at_asc_blueprint_id_asc_occurrence_date_asc", schema); err == nil {
+		t.Error("token accepted a different UTC range")
 	}
 }
 

@@ -44,7 +44,7 @@ func TestSetupUsesResolvedMetadataInResource(t *testing.T) {
 	}
 }
 
-func TestResourceServiceNameOverridesApplicationDefault(t *testing.T) {
+func TestResourceServiceOverridesApplicationDefault(t *testing.T) {
 	t.Setenv("OTEL_SERVICE_NAME", "")
 	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=worker")
 	identity, metadata, err := newResource(context.Background(), Metadata{Service: "api"})

@@ -25,8 +25,8 @@ policies.
   tokens. `internal/port/rest/fieldmask` owns response field selection.
   `internal/port/rest/list_pagination.go` applies these shared HTTP behaviors.
 - `internal/config` loads process settings, including validated
-  `PAGE_TOKEN_KEY`. `cmd/api/main.go` creates the REST token codec and passes it
-  to handlers.
+  `PAGE_TOKEN_KEY`. `cmd/api/main.go` passes the validated key to
+  `rest.NewHandler`, which creates the shared REST token codec.
 - Do not put REST token or response types in application usecases. List
   usecases own page requests and cursor boundaries; repositories own
   resource-specific keyset ordering, ownership conditions, and SQL. See the

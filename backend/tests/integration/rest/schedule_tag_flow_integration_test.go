@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -22,17 +21,13 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-func scheduleTagFlowPool(t *testing.T) *pgxpool.Pool {
-	return testdb.Open(t)
-}
+func scheduleTagFlowPool(t *testing.T) *pgxpool.Pool { return testdb.Open(t) }
 
 type scheduleTagFlowIDs struct{}
 
 func (scheduleTagFlowIDs) Generate() string { return ulid.Make().String() }
 
-const scheduleVirtualOccurrenceID = "TASK2TODAYTODO000000000000"
-
-func TestRESTProjectScheduleTagHistoryAndPermissionFlow(t *testing.T) {
+func TestRESTProjectScheduleBlueprintTagAndOccurrenceHistoryFlow(t *testing.T) {
 	pool := scheduleTagFlowPool(t)
 	ctx := t.Context()
 	ownerID, outsiderID := ulid.Make().String(), ulid.Make().String()
@@ -41,12 +36,15 @@ func TestRESTProjectScheduleTagHistoryAndPermissionFlow(t *testing.T) {
 			t.Fatalf("insert user: %v", err)
 		}
 	}
-	var projectID, tagID, scheduleID, overrideID string
+	var projectID, tagID, blueprintID, occurrenceID string
 	t.Cleanup(func() {
-		if scheduleID != "" || overrideID != "" {
-			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_revisions WHERE id = ANY($1::text[])`, []string{scheduleID, overrideID})
-			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_tag_assignments WHERE schedule_id = ANY($1::text[])`, []string{scheduleID, overrideID})
-			_, _ = pool.Exec(context.Background(), `DELETE FROM schedules WHERE id = ANY($1::text[])`, []string{scheduleID, overrideID})
+		if blueprintID != "" {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_revisions WHERE schedule_id IN (SELECT id FROM schedules WHERE blueprint_id=$1)`, blueprintID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM schedules WHERE blueprint_id=$1`, blueprintID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_backfill_checkpoints WHERE revision_id IN (SELECT id FROM schedule_blueprint_revisions WHERE blueprint_id=$1)`, blueprintID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_project_pause_intervals WHERE blueprint_id=$1`, blueprintID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_blueprint_revisions WHERE blueprint_id=$1`, blueprintID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_blueprints WHERE id=$1`, blueprintID)
 		}
 		if tagID != "" {
 			_, _ = pool.Exec(context.Background(), `DELETE FROM tags WHERE id=$1`, tagID)
@@ -61,32 +59,38 @@ func TestRESTProjectScheduleTagHistoryAndPermissionFlow(t *testing.T) {
 	ids := scheduleTagFlowIDs{}
 	store := application.NewStore(pool)
 	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
-	usecases := application.NewUseCase(store.Auth, store.Project, store.Task, store.Schedule, store.Tag, uow.Project, uow.Task, uow.Schedule, ids, nil)
+	usecases, stopUseCases := application.NewUseCase(store.Auth, store.Project, store.Task, store.Tag, store.Admin, uow.Project, uow.Task, uow.Schedule, ids, nil)
+	testdb.RegisterShutdown(t, stopUseCases)
 	pageTokens, err := pagination.NewCodec([]byte(strings.Repeat("x", 32)))
 	if err != nil {
 		t.Fatal(err)
 	}
 	projectHandler := restapi.NewProjectHandler(usecases.Project, usecases.Task, ids, pageTokens)
 	tagHandler := restapi.NewTagHandler(usecases.Tag, ids, pageTokens)
-	scheduleHandler := restapi.NewScheduleHandler(usecases.Schedule, ids, pageTokens)
+	scheduleHandler := restapi.NewScheduleHandler(usecases.Schedule, pageTokens)
 	router := chi.NewRouter()
 	router.Post("/projects", projectHandler.Create)
 	router.Post("/tags", tagHandler.Create)
-	router.Post("/projects/{id}/schedules", scheduleHandler.CreateForProject)
-	router.Get("/projects/{id}/schedules", scheduleHandler.ListProject)
-	router.Get("/schedules", scheduleHandler.List)
-	router.Get("/schedules/{id}", scheduleHandler.Get)
-	router.Patch("/schedules/{id}", scheduleHandler.Update)
-	router.Get("/schedules/{id}/revisions", scheduleHandler.ListRevisions)
-	router.Post("/schedules/{id}/tags:add", scheduleHandler.AddTag)
-	router.Post("/schedules/{id}/tags:remove", scheduleHandler.RemoveTag)
-	request := func(method, path, body, actor string) *httptest.ResponseRecorder {
+	router.Post("/projects/{id}/schedules", scheduleHandler.CreateProjectBlueprint)
+	router.Get("/projects/{id}/schedules", scheduleHandler.ListProjectOccurrences)
+	router.Get("/schedule-blueprints/{id}/tags", scheduleHandler.ListBlueprintTags)
+	router.Post("/schedule-blueprints/{id}/tags:add", scheduleHandler.AddTagToBlueprint)
+	router.Post("/schedule-blueprints/{id}/tags:remove", scheduleHandler.RemoveTagFromBlueprint)
+	router.Get("/schedules", scheduleHandler.ListOccurrences)
+	router.Get("/schedules/{blueprint_id}/{occurrence_date}", scheduleHandler.GetOccurrence)
+	router.Get("/schedules/{blueprint_id}/{occurrence_date}/revisions", scheduleHandler.ListOccurrenceRevisions)
+	router.Patch("/schedules/{blueprint_id}/{occurrence_date}", scheduleHandler.UpdateOccurrence)
+	request := func(method, path, body, actor string, headers ...[2]string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(method, path, strings.NewReader(body))
 		req = req.WithContext(context.WithValue(req.Context(), restapi.UserIDContextKey, actor))
+		for _, header := range headers {
+			req.Header.Set(header[0], header[1])
+		}
 		recorder := httptest.NewRecorder()
 		router.ServeHTTP(recorder, req)
 		return recorder
 	}
+
 	projectResponse := request(http.MethodPost, "/projects", `{"title":"REST Schedule Project"}`, ownerID)
 	if projectResponse.Code != http.StatusCreated {
 		t.Fatalf("POST /projects status/body=%d/%s", projectResponse.Code, projectResponse.Body.String())
@@ -105,108 +109,83 @@ func TestRESTProjectScheduleTagHistoryAndPermissionFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	tagID = tag.ID
+
 	location, err := time.LoadLocation("Asia/Tokyo")
 	if err != nil {
 		t.Fatal(err)
 	}
-	firstDate := time.Now().In(location).Truncate(24 * time.Hour)
-	start := firstDate.Add(9 * time.Hour)
+	firstDate := time.Now().In(location).AddDate(0, 0, 1)
+	start := time.Date(firstDate.Year(), firstDate.Month(), firstDate.Day(), 9, 0, 0, 0, location)
 	weekdayCodes := [...]string{"sun", "mon", "tue", "wed", "thu", "fri", "sat"}
-	createScheduleBody, _ := json.Marshal(restapi.ScheduleCreateRequest{
-		Title: "Project Schedule", StartAt: stringPointer(start.Format(time.RFC3339)), EndAt: stringPointer(start.Add(time.Hour).Format(time.RFC3339)),
-		IntervalWeeks: 1, Frequencies: []string{weekdayCodes[start.Weekday()]},
-	})
-	scheduleResponse := request(http.MethodPost, "/projects/"+projectID+"/schedules", string(createScheduleBody), ownerID)
-	if scheduleResponse.Code != http.StatusCreated {
-		t.Fatalf("POST /projects/{id}/schedules status/body=%d/%s", scheduleResponse.Code, scheduleResponse.Body.String())
+	createBody := fmt.Sprintf(`{"title":"Project Schedule","timezone":"Asia/Tokyo","local_start":%q,"local_end":%q,"frequency":"weekly","interval":1,"weekdays":[%q]}`,
+		start.Format("2006-01-02T15:04:05"), start.Add(time.Hour).Format("2006-01-02T15:04:05"), weekdayCodes[start.Weekday()])
+	blueprintResponse := request(http.MethodPost, "/projects/"+projectID+"/schedules", createBody, ownerID)
+	if blueprintResponse.Code != http.StatusCreated {
+		t.Fatalf("POST /projects/{id}/schedules status/body=%d/%s", blueprintResponse.Code, blueprintResponse.Body.String())
 	}
-	var schedule restapi.ScheduleResponse
-	if err := json.Unmarshal(scheduleResponse.Body.Bytes(), &schedule); err != nil {
+	var blueprint restapi.ScheduleBlueprintResponse
+	if err := json.Unmarshal(blueprintResponse.Body.Bytes(), &blueprint); err != nil {
 		t.Fatal(err)
 	}
-	scheduleID = schedule.ID
-	addResponse := request(http.MethodPost, "/schedules/"+scheduleID+"/tags:add", fmt.Sprintf(`{"tag_id":%q}`, tagID), ownerID)
+	blueprintID = blueprint.ID
+	addResponse := request(http.MethodPost, "/schedule-blueprints/"+blueprintID+"/tags:add", fmt.Sprintf(`{"tag_id":%q}`, tagID), ownerID)
 	if addResponse.Code != http.StatusOK {
-		t.Fatalf("POST /schedules/{id}/tags:add status/body=%d/%s", addResponse.Code, addResponse.Body.String())
+		t.Fatalf("POST blueprint tags:add status/body=%d/%s", addResponse.Code, addResponse.Body.String())
 	}
-	occurrenceDate := firstDate.AddDate(0, 0, 7).Format("2006-01-02")
-	updateResponse := request(http.MethodPatch, "/schedules/"+scheduleID, fmt.Sprintf(`{"occurrence_date":%q,"title":"Saved occurrence"}`, occurrenceDate), ownerID)
+	tagsResponse := request(http.MethodGet, "/schedule-blueprints/"+blueprintID+"/tags", "", ownerID)
+	var tags restapi.ScheduleBlueprintTagsResponse
+	if tagsResponse.Code != http.StatusOK || json.Unmarshal(tagsResponse.Body.Bytes(), &tags) != nil || len(tags.Items) != 1 || tags.Items[0].ID != tagID {
+		t.Fatalf("GET blueprint tags status/body=%d/%s", tagsResponse.Code, tagsResponse.Body.String())
+	}
+
+	occurrenceDate := start.Format("2006-01-02")
+	updatePath := "/schedules/" + blueprintID + "/" + occurrenceDate
+	updateResponse := request(http.MethodPatch, updatePath, `{"title":"Saved occurrence"}`, ownerID, [2]string{"If-Match", `"0"`})
 	if updateResponse.Code != http.StatusOK {
-		t.Fatalf("PATCH /schedules/{id} occurrence status/body=%d/%s", updateResponse.Code, updateResponse.Body.String())
+		t.Fatalf("PATCH occurrence status/body=%d/%s", updateResponse.Code, updateResponse.Body.String())
 	}
-	var override restapi.ScheduleResponse
-	if err := json.Unmarshal(updateResponse.Body.Bytes(), &override); err != nil {
+	var occurrence restapi.ScheduleOccurrenceResponse
+	if err := json.Unmarshal(updateResponse.Body.Bytes(), &occurrence); err != nil {
 		t.Fatal(err)
 	}
-	if !override.IsException || override.ID == scheduleID || override.SeriesID != scheduleID {
-		t.Fatalf("PATCH occurrence response=%+v; want saved override in series %q", override, scheduleID)
+	if occurrence.ID == nil || !occurrence.Persisted || !occurrence.IsOverride || occurrence.BlueprintID != blueprintID {
+		t.Fatalf("saved occurrence response=%+v", occurrence)
 	}
-	overrideID = override.ID
-	removeViaOverride := request(http.MethodPost, "/schedules/"+overrideID+"/tags:remove", fmt.Sprintf(`{"tag_id":%q}`, tagID), ownerID)
-	if removeViaOverride.Code != http.StatusOK {
-		t.Fatalf("POST /schedules/{override}/tags:remove status/body=%d/%s", removeViaOverride.Code, removeViaOverride.Body.String())
+	occurrenceID = *occurrence.ID
+
+	revisionResponse := request(http.MethodGet, updatePath+"/revisions", "", ownerID)
+	var revisions struct {
+		Items         []restapi.ScheduleOccurrenceRevisionResponse `json:"items"`
+		NextPageToken string                                       `json:"next_page_token"`
 	}
-	addViaOverride := request(http.MethodPost, "/schedules/"+overrideID+"/tags:add", fmt.Sprintf(`{"tag_id":%q}`, tagID), ownerID)
-	if addViaOverride.Code != http.StatusOK {
-		t.Fatalf("POST /schedules/{override}/tags:add status/body=%d/%s", addViaOverride.Code, addViaOverride.Body.String())
+	if revisionResponse.Code != http.StatusOK || json.Unmarshal(revisionResponse.Body.Bytes(), &revisions) != nil || len(revisions.Items) != 1 || revisions.Items[0].Title != "Saved occurrence" {
+		t.Fatalf("GET occurrence revisions status/body=%d/%s", revisionResponse.Code, revisionResponse.Body.String())
 	}
-	getResponse := request(http.MethodGet, "/schedules/"+scheduleID, "", ownerID)
-	var tagged restapi.ScheduleResponse
-	if getResponse.Code != http.StatusOK || json.Unmarshal(getResponse.Body.Bytes(), &tagged) != nil || len(tagged.Tags) != 1 || tagged.Tags[0].ID != tagID {
-		t.Fatalf("GET schedule after tag add status/body=%d/%s", getResponse.Code, getResponse.Body.String())
+
+	from := time.Date(firstDate.Year(), firstDate.Month(), firstDate.Day(), 0, 0, 0, 0, time.UTC)
+	to := from.AddDate(0, 0, 8)
+	listPath := fmt.Sprintf("/schedules?from=%s&to=%s&page_size=10", from.Format(time.RFC3339), to.Format(time.RFC3339))
+	listResponse := request(http.MethodGet, listPath, "", ownerID)
+	var page restapi.ScheduleOccurrenceListResponse
+	if listResponse.Code != http.StatusOK || json.Unmarshal(listResponse.Body.Bytes(), &page) != nil {
+		t.Fatalf("GET schedules status/body=%d/%s", listResponse.Code, listResponse.Body.String())
 	}
-	getOverrideResponse := request(http.MethodGet, "/schedules/"+overrideID, "", ownerID)
-	var taggedOverride restapi.ScheduleResponse
-	if getOverrideResponse.Code != http.StatusOK || json.Unmarshal(getOverrideResponse.Body.Bytes(), &taggedOverride) != nil || len(taggedOverride.Tags) != 1 || taggedOverride.Tags[0].ID != tagID {
-		t.Fatalf("GET saved override tags status/body=%d/%s", getOverrideResponse.Code, getOverrideResponse.Body.String())
-	}
-	fromDate := url.QueryEscape(firstDate.Format("2006-01-02"))
-	for _, listPath := range []string{"/schedules?from_date=" + fromDate + "&page_size=10", "/projects/" + projectID + "/schedules?from_date=" + fromDate + "&page_size=10"} {
-		listResponse := request(http.MethodGet, listPath, "", ownerID)
-		var page restapi.ScheduleListResponse
-		if listResponse.Code != http.StatusOK || json.Unmarshal(listResponse.Body.Bytes(), &page) != nil {
-			t.Fatalf("GET %s status/body=%d/%s", listPath, listResponse.Code, listResponse.Body.String())
-		}
-		foundOverride, foundVirtual := false, false
-		for _, item := range page.Items {
-			if item.SeriesID != scheduleID {
-				continue
-			}
-			if len(item.Tags) != 1 || item.Tags[0].ID != tagID {
-				t.Errorf("GET %s Schedule row %s (%s) tags=%+v; want series tag", listPath, item.ID, item.OccurrenceDate, item.Tags)
-			}
-			foundOverride = foundOverride || item.IsException
-			foundVirtual = foundVirtual || item.ID == scheduleVirtualOccurrenceID
-		}
-		if !foundOverride || !foundVirtual {
-			t.Errorf("GET %s rows=%+v; want tagged saved override and virtual occurrence", listPath, page.Items)
+	foundSaved := false
+	for _, item := range page.Items {
+		if item.BlueprintID == blueprintID && item.OccurrenceDate == occurrenceDate {
+			foundSaved = item.ID != nil && *item.ID == occurrenceID && item.Title == "Saved occurrence"
 		}
 	}
-	if _, err := pool.Exec(ctx, `UPDATE schedules SET deleted_at = now(), changed_by = $2 WHERE id = $1`, scheduleID, ownerID); err != nil {
-		t.Fatalf("soft-delete series root while retaining override: %v", err)
+	if !foundSaved {
+		t.Fatalf("schedule list did not return the saved occurrence: %+v", page.Items)
 	}
-	getLiveOverrideResponse := request(http.MethodGet, "/schedules/"+overrideID, "", ownerID)
-	var liveOverride restapi.ScheduleResponse
-	if getLiveOverrideResponse.Code != http.StatusOK || json.Unmarshal(getLiveOverrideResponse.Body.Bytes(), &liveOverride) != nil || len(liveOverride.Tags) != 1 || liveOverride.Tags[0].ID != tagID {
-		t.Fatalf("GET override after root deletion status/body=%d/%s; want live override with series tags", getLiveOverrideResponse.Code, getLiveOverrideResponse.Body.String())
-	}
-	revisionResponse := request(http.MethodGet, "/schedules/"+scheduleID+"/revisions", "", ownerID)
-	var revisions restapi.ScheduleRevisionListResponse
-	if revisionResponse.Code != http.StatusOK || json.Unmarshal(revisionResponse.Body.Bytes(), &revisions) != nil || len(revisions.Items) != 2 {
-		t.Fatalf("GET Schedule revisions after tag add status/body=%d/%s; want the two pre-tag Schedule revisions unchanged", revisionResponse.Code, revisionResponse.Body.String())
-	}
-	removeResponse := request(http.MethodPost, "/schedules/"+overrideID+"/tags:remove", fmt.Sprintf(`{"tag_id":%q}`, tagID), ownerID)
+
+	removeResponse := request(http.MethodPost, "/schedule-blueprints/"+blueprintID+"/tags:remove", fmt.Sprintf(`{"tag_id":%q}`, tagID), ownerID)
 	if removeResponse.Code != http.StatusOK {
-		t.Fatalf("POST /schedules/{override}/tags:remove after root deletion status/body=%d/%s", removeResponse.Code, removeResponse.Body.String())
+		t.Fatalf("POST blueprint tags:remove status/body=%d/%s", removeResponse.Code, removeResponse.Body.String())
 	}
-	outsiderResponse := request(http.MethodGet, "/schedules/"+scheduleID, "", outsiderID)
+	outsiderResponse := request(http.MethodGet, updatePath, "", outsiderID)
 	if outsiderResponse.Code != http.StatusNotFound {
-		t.Fatalf("outsider GET Schedule status/body=%d/%s; want safe 404", outsiderResponse.Code, outsiderResponse.Body.String())
-	}
-	outsiderAddResponse := request(http.MethodPost, "/schedules/"+scheduleID+"/tags:add", fmt.Sprintf(`{"tag_id":%q}`, tagID), outsiderID)
-	if outsiderAddResponse.Code != http.StatusNotFound {
-		t.Fatalf("outsider add Tag status/body=%d/%s; want safe 404", outsiderAddResponse.Code, outsiderAddResponse.Body.String())
+		t.Fatalf("outsider GET occurrence status/body=%d/%s; want safe 404", outsiderResponse.Code, outsiderResponse.Body.String())
 	}
 }
-
-func stringPointer(value string) *string { return &value }

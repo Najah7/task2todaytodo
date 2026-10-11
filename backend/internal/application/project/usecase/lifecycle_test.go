@@ -37,9 +37,35 @@ func (f projectLifecycleProgressFake) ReadProjectProgressSources(context.Context
 	return f.sources, nil
 }
 
+type projectLifecycleScheduleFake struct {
+	paused, resumed int
+	actor, project  string
+	at              time.Time
+}
+
+func (f *projectLifecycleScheduleFake) PauseProjectBlueprints(_ context.Context, actor, project string, at time.Time) error {
+	f.paused++
+	f.actor, f.project, f.at = actor, project, at
+	return nil
+}
+func (f *projectLifecycleScheduleFake) ResumeProjectBlueprints(_ context.Context, actor, project string, at time.Time) error {
+	f.resumed++
+	f.actor, f.project, f.at = actor, project, at
+	return nil
+}
+
+type projectLifecycleScheduleNoop struct{}
+
+func (projectLifecycleScheduleNoop) PauseProjectBlueprints(context.Context, string, string, time.Time) error {
+	return nil
+}
+func (projectLifecycleScheduleNoop) ResumeProjectBlueprints(context.Context, string, string, time.Time) error {
+	return nil
+}
+
 func TestProjectLifecycleLockParentTranslatesMissingProject(t *testing.T) {
 	repo := &projectLifecycleRepositoryFake{lockErr: domain.ErrProjectNotFound}
-	uc := NewProjectLifecycleUseCase(repo, projectLifecycleProgressFake{})
+	uc := NewProjectLifecycleUseCase(repo, projectLifecycleProgressFake{}, projectLifecycleScheduleNoop{})
 	if err := uc.LockParent(context.Background(), "project-1"); !errors.Is(err, shared.ErrProjectUnavailable) {
 		t.Fatalf("LockParent error = %v, want shared unavailable sentinel", err)
 	}
@@ -47,7 +73,7 @@ func TestProjectLifecycleLockParentTranslatesMissingProject(t *testing.T) {
 
 func TestProjectLifecycleReadStatusUsesStatusOnlyPortAndTranslatesMissingProject(t *testing.T) {
 	repo := &projectLifecycleRepositoryFake{status: "done", statusErr: domain.ErrProjectNotFound}
-	uc := NewProjectLifecycleUseCase(repo, projectLifecycleProgressFake{})
+	uc := NewProjectLifecycleUseCase(repo, projectLifecycleProgressFake{}, projectLifecycleScheduleNoop{})
 	if _, err := uc.ReadStatus(context.Background(), "project-1"); !errors.Is(err, shared.ErrProjectUnavailable) {
 		t.Fatalf("ReadStatus error = %v, want shared unavailable sentinel", err)
 	}
@@ -94,7 +120,7 @@ func TestProjectLifecycleReconcilesCountsOnlyOnEligibleTransitions(t *testing.T)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &projectLifecycleRepositoryFake{status: tt.status}
-			uc := NewProjectLifecycleUseCase(repo, projectLifecycleProgressFake{sources: tt.after})
+			uc := NewProjectLifecycleUseCase(repo, projectLifecycleProgressFake{sources: tt.after}, projectLifecycleScheduleNoop{})
 			if err := uc.ReconcileWorkState(context.Background(), "actor", "project-1", tt.before, time.Now()); err != nil {
 				t.Fatalf("ReconcileWorkState: %v", err)
 			}
@@ -104,6 +130,87 @@ func TestProjectLifecycleReconcilesCountsOnlyOnEligibleTransitions(t *testing.T)
 		})
 	}
 }
+
+func TestProjectLifecyclePausesAndResumesBlueprintsWithAutomaticStatus(t *testing.T) {
+	tests := []struct {
+		name       string
+		status     string
+		before     shared.ProjectWorkState
+		after      dao.ProjectProgressSources
+		wantStatus string
+		wantPause  int
+		wantResume int
+	}{
+		{name: "completion pauses", status: "open", before: shared.ProjectWorkState{Status: "open", Eligible: 1}, after: dao.ProjectProgressSources{Tasks: []dao.ProjectTaskProgress{{Done: true}}}, wantStatus: "done", wantPause: 1},
+		{name: "reopening resumes", status: "done", before: shared.ProjectWorkState{Status: "done", Eligible: 1, Completed: 1}, after: dao.ProjectProgressSources{Tasks: []dao.ProjectTaskProgress{{Done: false}}}, wantStatus: "open", wantResume: 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &projectLifecycleRepositoryFake{status: tt.status}
+			schedules := &projectLifecycleScheduleFake{}
+			at := time.Date(2026, 10, 11, 1, 0, 0, 0, time.UTC)
+			uc := NewProjectLifecycleUseCase(repo, projectLifecycleProgressFake{sources: tt.after}, schedules)
+			if err := uc.ReconcileWorkState(context.Background(), "actor-1", "project-1", tt.before, at); err != nil {
+				t.Fatalf("ReconcileWorkState: %v", err)
+			}
+			if repo.setTo != tt.wantStatus || schedules.paused != tt.wantPause || schedules.resumed != tt.wantResume {
+				t.Fatalf("status=%q pause=%d resume=%d; want status=%q pause=%d resume=%d", repo.setTo, schedules.paused, schedules.resumed, tt.wantStatus, tt.wantPause, tt.wantResume)
+			}
+			if (tt.wantPause+tt.wantResume) > 0 && (schedules.actor != "actor-1" || schedules.project != "project-1" || !schedules.at.Equal(at)) {
+				t.Fatalf("schedule lifecycle args = (%q,%q,%v), want actor/project/time", schedules.actor, schedules.project, schedules.at)
+			}
+		})
+	}
+}
+
+func TestVirtualScheduleOccursTodayUsesBlueprintRuleAndPauseIntervals(t *testing.T) {
+	today := time.Date(2026, 10, 11, 0, 0, 0, 0, time.UTC)
+	asOf := time.Date(2026, 10, 11, 0, 30, 0, 0, time.UTC)
+	root := dao.ProjectProgressRecurrence{
+		RecurrenceAnchorDate: "2026-10-01",
+		LocalStart:           "2026-10-01 10:00:00", LocalEnd: "2026-10-01 11:00:00", Timezone: "Asia/Tokyo",
+		Frequency: "daily", Interval: 1,
+	}
+	rule, err := projectProgressRule(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := domain.VirtualScheduleOccurrenceOccursToday(rule, asOf)
+	if err != nil || !got {
+		t.Fatalf("occurrence due today = (%v, %v), want true", got, err)
+	}
+	rule, err = projectProgressRule(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err = domain.VirtualScheduleOccurrenceOccursToday(rule, asOf.Add(2*time.Hour))
+	if err != nil || !got {
+		t.Fatalf("unsaved occurrence later today = (%v, %v), want true", got, err)
+	}
+	root.OccurrenceSavedToday = true
+	rule, err = projectProgressRule(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err = domain.VirtualScheduleOccurrenceOccursToday(rule, asOf)
+	if err != nil || got {
+		t.Fatalf("saved occurrence virtual result = (%v, %v), want false", got, err)
+	}
+	root.OccurrenceSavedToday = false
+	pausedAt := today.Add(time.Hour) // 10:00 in Tokyo.
+	resumedAt := pausedAt.Add(2 * time.Hour)
+	root.PauseIntervals = []dao.ProjectSchedulePauseInterval{{PausedAt: pausedAt.Format(time.RFC3339Nano), ResumedAt: projectScheduleStringPointer(resumedAt.Format(time.RFC3339Nano))}}
+	rule, err = projectProgressRule(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err = domain.VirtualScheduleOccurrenceOccursToday(rule, asOf)
+	if err != nil || got {
+		t.Fatalf("paused occurrence virtual result = (%v, %v), want false", got, err)
+	}
+}
+
+func projectScheduleStringPointer(value string) *string { return &value }
 
 func boolInt(value bool) int {
 	if value {

@@ -387,8 +387,8 @@ func (h *ActionItemHandler) changeCompleted(w http.ResponseWriter, r *http.Reque
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			taskId	path		string						true	"Task ID"
-//	@Param			id		path		string						true	"ActionItem ID"
+//	@Param			taskId	path		string	true	"Task ID"
+//	@Param			id		path		string	true	"ActionItem ID"
 //	@Success		200		{object}	MessageResponse
 //	@Failure		400		{object}	ErrResponse
 //	@Failure		401		{object}	ErrResponse
@@ -408,8 +408,8 @@ func (h *ActionItemHandler) Complete(w http.ResponseWriter, r *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			taskId	path		string						true	"Task ID"
-//	@Param			id		path		string						true	"ActionItem ID"
+//	@Param			taskId	path		string	true	"Task ID"
+//	@Param			id		path		string	true	"ActionItem ID"
 //	@Success		200		{object}	MessageResponse
 //	@Failure		400		{object}	ErrResponse
 //	@Failure		401		{object}	ErrResponse

@@ -67,6 +67,7 @@ FROM roles AS r
 LEFT JOIN role_permissions AS rp ON rp.role_id = r.role_id
 LEFT JOIN permissions AS p ON p.permission_id = rp.permission_id
 LEFT JOIN managed_resources AS mr ON mr.resource_id = p.resource_id
+WHERE r.role_id <> 'sysadmin'
 ORDER BY r.role_id, p.resource_id, p.action, p.effect
 `
 

@@ -23,17 +23,27 @@ type ProjectScheduleProgress struct {
 	Roots     []ProjectProgressRecurrence
 }
 
+type ProjectSchedulePauseInterval struct {
+	PausedAt  string
+	ResumedAt *string
+}
+
 // ProjectProgressRecurrence contains recurrence facts read from storage. It
 // deliberately carries no progress or eligibility result.
 type ProjectProgressRecurrence struct {
-	OccurrenceDate       string
+	BlueprintID          string
+	RecurrenceAnchorDate string
+	LocalStart           string
+	LocalEnd             string
 	Timezone             string
-	IntervalWeeks        int
-	FrequencyAnchorDate  string
-	Frequencies          []string
+	Frequency            string
+	Interval             int
+	Weekdays             []string
+	EndDate              *string
+	CutoffAfter          *string
+	OccurrenceDate       string
 	OccurrenceSavedToday bool
-	StartAt              string
-	EndAt                string
+	PauseIntervals       []ProjectSchedulePauseInterval
 }
 
 type Project struct {

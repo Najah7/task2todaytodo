@@ -15,6 +15,149 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/jobs/backfill-schedules:run": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Run schedule backfill",
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/rest.OperationResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/operations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "List admin operations",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Next page token",
+                        "name": "page_token",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.AdminOperationListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/operations/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get admin operation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Operation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.OperationResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "description": "Authenticates a user and generates an access token.",
@@ -889,7 +1032,7 @@ const docTemplate = `{
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "List Project schedules",
+                "summary": "List Project schedule occurrences",
                 "parameters": [
                     {
                         "type": "string",
@@ -899,59 +1042,25 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "integer",
-                        "description": "Items per page",
-                        "name": "page_size",
-                        "in": "query"
+                        "type": "string",
+                        "description": "Inclusive UTC range start",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "type": "string",
-                        "description": "Opaque next page token",
-                        "name": "page_token",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "First occurrence date (YYYY-MM-DD)",
-                        "name": "from_date",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Response field mask",
-                        "name": "fields",
-                        "in": "query"
+                        "description": "Exclusive UTC range end",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleListResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ScheduleOccurrenceListResponse"
                         }
                     }
                 }
@@ -971,7 +1080,7 @@ const docTemplate = `{
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "Create Project schedule",
+                "summary": "Create Project schedule blueprint",
                 "parameters": [
                     {
                         "type": "string",
@@ -981,12 +1090,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Schedule",
+                        "description": "Schedule definition",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleCreateRequest"
+                            "$ref": "#/definitions/rest.ScheduleBlueprintCreateRequest"
                         }
                     }
                 ],
@@ -994,145 +1103,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/projects/{id}/schedules:add": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Schedules"
-                ],
-                "summary": "Add schedule to Project",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Schedule ID",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/rest.ScheduleProjectAssignmentRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/projects/{id}/schedules:remove": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Schedules"
-                ],
-                "summary": "Remove schedule from Project",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Schedule ID",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/rest.ScheduleProjectAssignmentRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ScheduleBlueprintResponse"
                         }
                     }
                 }
@@ -1550,6 +1521,326 @@ const docTemplate = `{
                 }
             }
         },
+        "/projects/{id}:complete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Complete project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current project ETag",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "Precondition Required",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}:hold": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Hold project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current project ETag",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "Precondition Required",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}:reopen": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Reopen project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current project ETag",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "Precondition Required",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}:start": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Start project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current project ETag",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "Precondition Required",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}:wait": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Wait on project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current project ETag",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "Precondition Required",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/roles": {
             "get": {
                 "security": [
@@ -1580,73 +1871,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedules": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Schedules"
-                ],
-                "summary": "List schedules",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Items per page",
-                        "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Opaque next page token",
-                        "name": "page_token",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "First occurrence date (YYYY-MM-DD)",
-                        "name": "from_date",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Response field mask",
-                        "name": "fields",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ScheduleListResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    }
-                }
-            },
+        "/schedule-blueprints": {
             "post": {
                 "security": [
                     {
@@ -1662,15 +1887,15 @@ const docTemplate = `{
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "Create schedule",
+                "summary": "Create schedule blueprint",
                 "parameters": [
                     {
-                        "description": "Schedule",
+                        "description": "Schedule definition",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleCreateRequest"
+                            "$ref": "#/definitions/rest.ScheduleBlueprintCreateRequest"
                         }
                     }
                 ],
@@ -1678,43 +1903,13 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ScheduleBlueprintResponse"
                         }
                     }
                 }
             }
         },
-        "/schedules/{id}": {
+        "/schedule-blueprints/{id}": {
             "get": {
                 "security": [
                     {
@@ -1727,11 +1922,11 @@ const docTemplate = `{
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "Get schedule",
+                "summary": "Get schedule blueprint",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Schedule ID",
+                        "description": "Blueprint ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -1741,80 +1936,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Schedules"
-                ],
-                "summary": "Delete schedule",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Schedule ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Occurrence date (YYYY-MM-DD)",
-                        "name": "occurrence_date",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ScheduleBlueprintResponse"
                         }
                     }
                 }
@@ -1834,22 +1956,29 @@ const docTemplate = `{
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "Update schedule",
+                "summary": "Update schedule blueprint",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Schedule ID",
+                        "description": "Blueprint ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Schedule changes",
+                        "type": "string",
+                        "description": "Current blueprint revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Following definition changes",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleUpdateRequest"
+                            "$ref": "#/definitions/rest.ScheduleBlueprintUpdateRequest"
                         }
                     }
                 ],
@@ -1857,37 +1986,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ScheduleBlueprintResponse"
                         }
                     }
                 }
             }
         },
-        "/schedules/{id}/assignees": {
+        "/schedule-blueprints/{id}/assignees": {
             "get": {
                 "security": [
                     {
@@ -1904,7 +2009,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Schedule ID",
+                        "description": "Blueprint ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -1916,18 +2021,328 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/rest.ScheduleAssigneeListResponse"
                         }
+                    }
+                }
+            }
+        },
+        "/schedule-blueprints/{id}/following/{occurrence_date}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Delete following schedule occurrences",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Blueprint ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
+                    {
+                        "type": "string",
+                        "description": "Original local occurrence date",
+                        "name": "occurrence_date",
+                        "in": "path",
+                        "required": true
                     },
-                    "404": {
-                        "description": "Not Found",
+                    {
+                        "type": "string",
+                        "description": "Current blueprint revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/schedule-blueprints/{id}/revisions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "List schedule blueprint revisions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Blueprint ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
+                            "$ref": "#/definitions/rest.listEnvelope-rest_ScheduleBlueprintRevisionResponse"
                         }
+                    }
+                }
+            }
+        },
+        "/schedule-blueprints/{id}/tags": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "List schedule blueprint tags",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Blueprint ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleBlueprintTagsResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedule-blueprints/{id}/tags:add": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Add tag to schedule blueprint",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Blueprint ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tag ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleBlueprintTagRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedule-blueprints/{id}/tags:remove": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Remove tag from schedule blueprint",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Blueprint ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tag ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleBlueprintTagRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.MessageResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "List schedule occurrences",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Inclusive UTC range start",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exclusive UTC range end",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque page token",
+                        "name": "page_token",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleOccurrenceListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{blueprint_id}/{occurrence_date}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Get schedule occurrence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Blueprint ID",
+                        "name": "blueprint_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Original local occurrence date",
+                        "name": "occurrence_date",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ScheduleOccurrenceResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Delete schedule occurrence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Blueprint ID",
+                        "name": "blueprint_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Original local occurrence date",
+                        "name": "occurrence_date",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current occurrence revision, or 0 for a virtual occurrence",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             },
@@ -1946,22 +2361,36 @@ const docTemplate = `{
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "Assign schedule",
+                "summary": "Update schedule occurrence",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Schedule ID",
-                        "name": "id",
+                        "description": "Blueprint ID",
+                        "name": "blueprint_id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Assignee",
+                        "type": "string",
+                        "description": "Original local occurrence date",
+                        "name": "occurrence_date",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current occurrence revision, or 0 for a virtual occurrence",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Occurrence fields",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleAssigneeRequest"
+                            "$ref": "#/definitions/rest.ScheduleOccurrenceUpdateRequest"
                         }
                     }
                 ],
@@ -1969,94 +2398,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ScheduleOccurrenceResponse"
                         }
                     }
                 }
             }
         },
-        "/schedules/{id}/frequency": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Schedules"
-                ],
-                "summary": "Update schedule frequency",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Schedule ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Recurrence rule",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/rest.ScheduleFrequencyRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/schedules/{id}/revisions": {
+        "/schedules/{blueprint_id}/{occurrence_date}/revisions": {
             "get": {
                 "security": [
                     {
@@ -2069,12 +2417,19 @@ const docTemplate = `{
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "List schedule revisions",
+                "summary": "List schedule occurrence revisions",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Schedule ID",
-                        "name": "id",
+                        "description": "Blueprint ID",
+                        "name": "blueprint_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Original local occurrence date",
+                        "name": "occurrence_date",
                         "in": "path",
                         "required": true
                     },
@@ -2086,284 +2441,104 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Opaque next page token",
+                        "description": "Opaque page token",
                         "name": "page_token",
                         "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Response field mask",
-                        "name": "fields",
-                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleRevisionListResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
+                            "$ref": "#/definitions/rest.listEnvelope-rest_ScheduleOccurrenceRevisionResponse"
                         }
                     }
                 }
             }
         },
-        "/schedules/{id}/tags:add": {
+        "/schedules/{blueprint_id}/{occurrence_date}:complete": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "Add a tag to a schedule",
+                "summary": "Complete schedule occurrence",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Schedule ID",
-                        "name": "id",
+                        "description": "Blueprint ID",
+                        "name": "blueprint_id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Tag ID",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/rest.ScheduleTagAssignmentRequest"
-                        }
+                        "type": "string",
+                        "description": "Original local occurrence date",
+                        "name": "occurrence_date",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current occurrence revision, or 0 for a virtual occurrence",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
         },
-        "/schedules/{id}/tags:remove": {
+        "/schedules/{blueprint_id}/{occurrence_date}:reopen": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "Remove a tag from a schedule",
+                "summary": "Reopen schedule occurrence",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Schedule ID",
-                        "name": "id",
+                        "description": "Blueprint ID",
+                        "name": "blueprint_id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Tag ID",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/rest.ScheduleTagAssignmentRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/schedules/{id}:complete": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Schedules"
-                ],
-                "summary": "Complete schedule",
-                "parameters": [
-                    {
                         "type": "string",
-                        "description": "Schedule ID",
-                        "name": "id",
+                        "description": "Original local occurrence date",
+                        "name": "occurrence_date",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Occurrence date",
-                        "name": "request",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ScheduleOccurrenceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/schedules/{id}:reopen": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Schedules"
-                ],
-                "summary": "Reopen schedule",
-                "parameters": [
-                    {
                         "type": "string",
-                        "description": "Schedule ID",
-                        "name": "id",
-                        "in": "path",
+                        "description": "Current occurrence revision, or 0 for a virtual occurrence",
+                        "name": "If-Match",
+                        "in": "header",
                         "required": true
-                    },
-                    {
-                        "description": "Occurrence date",
-                        "name": "request",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ScheduleOccurrenceRequest"
-                        }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
         },
-        "/schedules/{id}:reschedule": {
+        "/schedules/{blueprint_id}/{occurrence_date}:reschedule": {
             "post": {
                 "security": [
                     {
@@ -2383,18 +2558,32 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Schedule ID",
-                        "name": "id",
+                        "description": "Blueprint ID",
+                        "name": "blueprint_id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "New occurrence time",
+                        "type": "string",
+                        "description": "Original local occurrence date",
+                        "name": "occurrence_date",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current occurrence revision, or 0 for a virtual occurrence",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "New interval",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleRescheduleRequest"
+                            "$ref": "#/definitions/rest.ScheduleOccurrenceRescheduleRequest"
                         }
                     }
                 ],
@@ -2402,42 +2591,18 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
+                            "$ref": "#/definitions/rest.ScheduleOccurrenceResponse"
                         }
                     }
                 }
             }
         },
-        "/schedules/{id}:restore": {
+        "/schedules/{blueprint_id}/{occurrence_date}:restore": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
                 ],
                 "tags": [
                     "Schedules"
@@ -2446,55 +2611,39 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Schedule ID",
-                        "name": "id",
+                        "description": "Blueprint ID",
+                        "name": "blueprint_id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Occurrence date",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/rest.ScheduleOccurrenceRequest"
-                        }
+                        "type": "string",
+                        "description": "Original local occurrence date",
+                        "name": "occurrence_date",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current occurrence revision, or 0 for a virtual occurrence",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
         },
-        "/schedules/{id}:skip": {
+        "/schedules/{blueprint_id}/{occurrence_date}:skip": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
                 ],
                 "tags": [
                     "Schedules"
@@ -2503,39 +2652,29 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Schedule ID",
-                        "name": "id",
+                        "description": "Blueprint ID",
+                        "name": "blueprint_id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Occurrence date",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/rest.ScheduleOccurrenceRequest"
-                        }
+                        "type": "string",
+                        "description": "Original local occurrence date",
+                        "name": "occurrence_date",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current occurrence revision, or 0 for a virtual occurrence",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
@@ -4415,6 +4554,42 @@ const docTemplate = `{
                 }
             }
         },
+        "/timezones": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authorization"
+                ],
+                "summary": "List timezones",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TimezoneListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users/me": {
             "get": {
                 "security": [
@@ -4726,6 +4901,20 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.AdminOperationListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.OperationResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
         "rest.Err": {
             "type": "object",
             "properties": {
@@ -4792,6 +4981,67 @@ const docTemplate = `{
             "properties": {
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "rest.OperationError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.OperationMetadata": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "cutoff": {
+                    "type": "string"
+                },
+                "finished_at": {
+                    "type": "string"
+                },
+                "generated_schedules": {
+                    "type": "integer"
+                },
+                "processed_blueprints": {
+                    "type": "integer"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.OperationResponse": {
+            "type": "object",
+            "properties": {
+                "done": {
+                    "type": "boolean"
+                },
+                "error": {
+                    "$ref": "#/definitions/rest.OperationError"
+                },
+                "metadata": {
+                    "$ref": "#/definitions/rest.OperationMetadata"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "response": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
                 }
             }
         },
@@ -5445,14 +5695,6 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.ScheduleAssigneeRequest": {
-            "type": "object",
-            "properties": {
-                "assignee_id": {
-                    "type": "string"
-                }
-            }
-        },
         "rest.ScheduleAssigneeResponse": {
             "type": "object",
             "properties": {
@@ -5473,23 +5715,29 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.ScheduleCreateRequest": {
+        "rest.ScheduleBlueprintCreateRequest": {
             "type": "object",
             "properties": {
+                "assignee_id": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
-                "end_at": {
+                "end_date": {
                     "type": "string"
                 },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                "frequency": {
+                    "type": "string"
                 },
-                "interval_weeks": {
+                "interval": {
                     "type": "integer"
+                },
+                "local_end": {
+                    "type": "string"
+                },
+                "local_start": {
+                    "type": "string"
                 },
                 "location": {
                     "type": "string"
@@ -5497,49 +5745,247 @@ const docTemplate = `{
                 "project_id": {
                     "type": "string"
                 },
-                "start_at": {
+                "timezone": {
                     "type": "string"
                 },
                 "title": {
                     "type": "string"
-                }
-            }
-        },
-        "rest.ScheduleFrequencyRequest": {
-            "type": "object",
-            "properties": {
-                "frequencies": {
+                },
+                "weekdays": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
-                },
-                "interval_weeks": {
-                    "type": "integer"
                 }
             }
         },
-        "rest.ScheduleFrequencyResponse": {
+        "rest.ScheduleBlueprintResponse": {
             "type": "object",
             "properties": {
-                "label": {
+                "assignee_id": {
                     "type": "string"
                 },
-                "label_jp": {
+                "created_at": {
+                    "type": "integer"
+                },
+                "cutoff_after": {
                     "type": "string"
                 },
-                "value": {
+                "deleted": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "effective_from": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "frequency": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "interval": {
+                    "type": "integer"
+                },
+                "local_end": {
+                    "type": "string"
+                },
+                "local_start": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "recurrence_anchor_date": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "weekdays": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "rest.ScheduleBlueprintRevisionResponse": {
+            "type": "object",
+            "properties": {
+                "assignee_id": {
+                    "type": "string"
+                },
+                "changed_at": {
+                    "type": "integer"
+                },
+                "changed_by": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "cutoff_after": {
+                    "type": "string"
+                },
+                "deleted": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "effective_from": {
+                    "type": "string"
+                },
+                "effective_until": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "frequency": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "interval": {
+                    "type": "integer"
+                },
+                "local_end": {
+                    "type": "string"
+                },
+                "local_start": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "recurrence_anchor_date": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "revision_id": {
+                    "type": "string"
+                },
+                "superseded": {
+                    "type": "boolean"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "weekdays": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "rest.ScheduleBlueprintTagRequest": {
+            "type": "object",
+            "properties": {
+                "tag_id": {
                     "type": "string"
                 }
             }
         },
-        "rest.ScheduleListResponse": {
+        "rest.ScheduleBlueprintTagsResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/rest.ScheduleResponse"
+                        "$ref": "#/definitions/rest.ScheduleTagResponse"
+                    }
+                }
+            }
+        },
+        "rest.ScheduleBlueprintUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "assignee_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "frequency": {
+                    "type": "string"
+                },
+                "interval": {
+                    "type": "integer"
+                },
+                "local_end": {
+                    "type": "string"
+                },
+                "local_start": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "weekdays": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "rest.ScheduleOccurrenceListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ScheduleOccurrenceResponse"
                     }
                 },
                 "next_page_token": {
@@ -5547,32 +5993,10 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.ScheduleOccurrenceRequest": {
-            "type": "object",
-            "properties": {
-                "occurrence_date": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.ScheduleProjectAssignmentRequest": {
-            "type": "object",
-            "properties": {
-                "schedule_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.ScheduleRescheduleRequest": {
+        "rest.ScheduleOccurrenceRescheduleRequest": {
             "type": "object",
             "properties": {
                 "end_at": {
-                    "type": "string"
-                },
-                "occurrence_date": {
-                    "type": "string"
-                },
-                "scope": {
                     "type": "string"
                 },
                 "start_at": {
@@ -5580,10 +6004,13 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.ScheduleResponse": {
+        "rest.ScheduleOccurrenceResponse": {
             "type": "object",
             "properties": {
                 "assignee_id": {
+                    "type": "string"
+                },
+                "blueprint_id": {
                     "type": "string"
                 },
                 "completed": {
@@ -5592,28 +6019,19 @@ const docTemplate = `{
                 "created_at": {
                     "type": "integer"
                 },
+                "deleted": {
+                    "type": "boolean"
+                },
                 "description": {
                     "type": "string"
                 },
                 "end_at": {
                     "type": "string"
                 },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/rest.ScheduleFrequencyResponse"
-                    }
-                },
-                "frequency_anchor_date": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
                 },
-                "interval_weeks": {
-                    "type": "integer"
-                },
-                "is_exception": {
+                "is_override": {
                     "type": "boolean"
                 },
                 "location": {
@@ -5622,23 +6040,23 @@ const docTemplate = `{
                 "occurrence_date": {
                     "type": "string"
                 },
+                "persisted": {
+                    "type": "boolean"
+                },
                 "project_id": {
                     "type": "string"
                 },
-                "repeat_state": {
-                    "type": "string"
+                "revision": {
+                    "type": "integer"
                 },
-                "series_id": {
+                "skipped": {
+                    "type": "boolean"
+                },
+                "source_revision_id": {
                     "type": "string"
                 },
                 "start_at": {
                     "type": "string"
-                },
-                "tags": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/rest.ScheduleTagResponse"
-                    }
                 },
                 "timezone": {
                     "type": "string"
@@ -5654,21 +6072,7 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.ScheduleRevisionListResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/rest.ScheduleRevisionResponse"
-                    }
-                },
-                "next_page_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.ScheduleRevisionResponse": {
+        "rest.ScheduleOccurrenceRevisionResponse": {
             "type": "object",
             "properties": {
                 "assignee_id": {
@@ -5683,9 +6087,6 @@ const docTemplate = `{
                 "completed": {
                     "type": "boolean"
                 },
-                "created_at": {
-                    "type": "integer"
-                },
                 "deleted_at": {
                     "type": "integer"
                 },
@@ -5695,22 +6096,7 @@ const docTemplate = `{
                 "end_at": {
                     "type": "string"
                 },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/rest.ScheduleFrequencyResponse"
-                    }
-                },
-                "frequency_anchor_date": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                },
-                "is_exception": {
+                "is_override": {
                     "type": "boolean"
                 },
                 "location": {
@@ -5722,13 +6108,13 @@ const docTemplate = `{
                 "project_id": {
                     "type": "string"
                 },
-                "repeat_state": {
-                    "type": "string"
-                },
                 "revision": {
                     "type": "integer"
                 },
-                "series_id": {
+                "skipped_at": {
+                    "type": "integer"
+                },
+                "source_revision_id": {
                     "type": "string"
                 },
                 "start_at": {
@@ -5740,18 +6126,33 @@ const docTemplate = `{
                 "title": {
                     "type": "string"
                 },
-                "updated_at": {
-                    "type": "integer"
-                },
                 "user_id": {
                     "type": "string"
                 }
             }
         },
-        "rest.ScheduleTagAssignmentRequest": {
+        "rest.ScheduleOccurrenceUpdateRequest": {
             "type": "object",
             "properties": {
-                "tag_id": {
+                "assignee_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "title": {
                     "type": "string"
                 }
             }
@@ -5770,26 +6171,6 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "integer"
-                }
-            }
-        },
-        "rest.ScheduleUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "occurrence_date": {
-                    "type": "string"
-                },
-                "scope": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
                 }
             }
         },
@@ -6193,6 +6574,17 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.TimezoneListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "rest.UserInfoUpdateRequest": {
             "type": "object",
             "properties": {
@@ -6233,6 +6625,34 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.listEnvelope-rest_ScheduleBlueprintRevisionResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ScheduleBlueprintRevisionResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.listEnvelope-rest_ScheduleOccurrenceRevisionResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ScheduleOccurrenceRevisionResponse"
+                    }
+                },
+                "next_page_token": {
                     "type": "string"
                 }
             }

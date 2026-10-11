@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	scheduleDomain "github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
@@ -51,6 +52,14 @@ func (adapter projectChildrenAdapter) ReassignTasksAfterProjectMemberRemoval(ctx
 
 func (adapter projectChildrenAdapter) ReassignSchedulesAfterProjectMemberRemoval(ctx context.Context, actorID, projectID, memberID string) error {
 	return adapter.schedules.ReassignProjectMemberSchedules(ctx, scheduleDomain.UserID(actorID), scheduleDomain.ProjectID(projectID), scheduleDomain.UserID(memberID))
+}
+
+func (adapter projectChildrenAdapter) PauseProjectBlueprints(ctx context.Context, actorID, projectID string, at time.Time) error {
+	return adapter.schedules.PauseProjectBlueprints(ctx, actorID, projectID, at)
+}
+
+func (adapter projectChildrenAdapter) ResumeProjectBlueprints(ctx context.Context, actorID, projectID string, at time.Time) error {
+	return adapter.schedules.ResumeProjectBlueprints(ctx, actorID, projectID, at)
 }
 
 var _ projectusecase.UnitOfWork = (*ProjectUOW)(nil)

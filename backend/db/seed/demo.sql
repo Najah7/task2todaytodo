@@ -6,12 +6,17 @@ BEGIN;
 
 TRUNCATE TABLE
     personal_access_tokens,
+    admin_operations,
     todo_list_schedules,
     todo_list_items,
     todo_lists,
     schedule_tag_assignments,
-    schedule_frequencies,
+    schedule_revisions,
+    schedule_backfill_checkpoints,
+    schedule_project_pause_intervals,
     schedules,
+    schedule_blueprint_revisions,
+    schedule_blueprints,
     action_items,
     task_tag_assignments,
     tags,
@@ -118,52 +123,147 @@ SELECT
     0
 FROM generate_series(0, 27) AS series(n);
 
--- Fixed appointments, a weekly recurring series, and one edited occurrence.
-INSERT INTO schedules (id, user_id, project_id, assignee_id, title, description, location, start_at, end_at, series_id, occurrence_date, timezone, is_exception, repeat_state, frequency_anchor_date, interval_weeks)
-SELECT x.id, t.user_id, t.project_id, t.assignee_id, x.title, x.description, x.location, x.start_at, x.end_at, x.series_id, x.occurrence_date, x.timezone, x.is_exception, x.repeat_state, x.frequency_anchor_date, x.interval_weeks
-FROM (VALUES
-    ('00000000000000000000000501', '00000000000000000000000201', '改善チーム朝会', '進捗と今日の優先事項を共有', 'オンライン', (date_trunc('week', CURRENT_DATE)::date + time '09:30') AT TIME ZONE 'Asia/Tokyo', (date_trunc('week', CURRENT_DATE)::date + time '10:00') AT TIME ZONE 'Asia/Tokyo', '00000000000000000000000501', date_trunc('week', CURRENT_DATE)::date, 'Asia/Tokyo', false, 'active', date_trunc('week', CURRENT_DATE)::date, 1),
-    ('00000000000000000000000503', '00000000000000000000000201', '改善チーム朝会（時間変更）', '今週のみ時間を変更', 'オンライン', (date_trunc('week', CURRENT_DATE)::date + 14 + time '10:00') AT TIME ZONE 'Asia/Tokyo', (date_trunc('week', CURRENT_DATE)::date + 14 + time '10:30') AT TIME ZONE 'Asia/Tokyo', '00000000000000000000000501', date_trunc('week', CURRENT_DATE)::date + 14, 'Asia/Tokyo', true, NULL, NULL, 0),
-    ('00000000000000000000000504', '00000000000000000000000207', '郵便局に立ち寄る', '郵便を出してから帰宅', '駅前郵便局', (CURRENT_DATE + time '16:00') AT TIME ZONE 'Asia/Tokyo', (CURRENT_DATE + time '16:20') AT TIME ZONE 'Asia/Tokyo', '00000000000000000000000504', CURRENT_DATE, 'Asia/Tokyo', false, 'one_off', NULL, 0),
-    ('00000000000000000000000505', '00000000000000000000000205', '英語オンラインレッスン', '会話レッスン', '自宅', (CURRENT_DATE + 1 + time '19:00') AT TIME ZONE 'Asia/Tokyo', (CURRENT_DATE + 1 + time '19:30') AT TIME ZONE 'Asia/Tokyo', '00000000000000000000000505', CURRENT_DATE + 1, 'Asia/Tokyo', false, 'one_off', NULL, 0)
-) AS x(id, task_id, title, description, location, start_at, end_at, series_id, occurrence_date, timezone, is_exception, repeat_state, frequency_anchor_date, interval_weeks)
-JOIN tasks t ON t.id = x.task_id;
+-- A recurring blueprint keeps its recurrence definition in revisions; the backfill
+-- job materializes concrete occurrences later. Effective revisions demonstrate a
+-- future change without rewriting prior schedule occurrences.
+INSERT INTO schedule_blueprints (id, user_id) VALUES
+    ('00000000000000000000000501', '00000000000000000000000001');
 
-INSERT INTO schedules (id, user_id, project_id, assignee_id, title, description, location, start_at, end_at, series_id, occurrence_date, timezone)
-SELECT
-    lpad((506 + n)::text, 26, '0'),
-    t.user_id,
-    t.project_id,
-    t.assignee_id,
-    (ARRAY['作業時間', '確認ミーティング', '学習時間', 'レビュー枠']::text[])[(n % 4) + 1] || ' ' || to_char(n + 1, 'FM00'),
-    'Schedule一覧確認用の単発予定',
-    (ARRAY['自宅', 'オンライン', 'オフィス', '図書館']::text[])[(n % 4) + 1],
-    ((CURRENT_DATE + n + 1)::timestamp + time '09:00') AT TIME ZONE 'Asia/Tokyo',
-    ((CURRENT_DATE + n + 1)::timestamp + time '09:45') AT TIME ZONE 'Asia/Tokyo',
-    lpad((506 + n)::text, 26, '0'),
-    CURRENT_DATE + n + 1,
-    'Asia/Tokyo'
-FROM generate_series(0, 19) AS series(n)
-JOIN tasks t ON t.id = lpad((220 + n)::text, 26, '0');
+INSERT INTO schedule_blueprint_revisions (
+    id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
+    local_start, local_end, timezone, frequency, interval_count, weekdays,
+    title, description, location, project_id, assignee_id, changed_by
+) VALUES
+    ('00000000000000000000000511', '00000000000000000000000501', '00000000000000000000000001', 1,
+     date_trunc('week', CURRENT_DATE)::date, date_trunc('week', CURRENT_DATE)::date,
+     date_trunc('week', CURRENT_DATE)::date + time '09:30', date_trunc('week', CURRENT_DATE)::date + time '10:00', 'Asia/Tokyo', 'weekly', 1, ARRAY['mon'],
+     '改善チーム朝会', '進捗と今日の優先事項を共有', 'オンライン', '00000000000000000000000101',
+     '00000000000000000000000001', '00000000000000000000000001'),
+    ('00000000000000000000000512', '00000000000000000000000501', '00000000000000000000000001', 2,
+     date_trunc('week', CURRENT_DATE)::date + 14, date_trunc('week', CURRENT_DATE)::date,
+     date_trunc('week', CURRENT_DATE)::date + 14 + time '10:00', date_trunc('week', CURRENT_DATE)::date + 14 + time '10:30', 'Asia/Tokyo', 'weekly', 1, ARRAY['mon'],
+     '改善チーム朝会', '進捗と今日の優先事項を共有（時間変更）', 'オンライン', '00000000000000000000000101',
+     '00000000000000000000000001', '00000000000000000000000001');
 
-INSERT INTO schedule_frequencies (schedule_id, frequency) VALUES
-    ('00000000000000000000000501', 'mon');
-
--- Active-root snapshots are inserted after the frequency set is complete.
-INSERT INTO schedule_revisions (
-    id, revision, user_id, project_id, assignee_id, title, description, location,
-    start_at, end_at, series_id, occurrence_date, timezone, is_exception,
-    repeat_state, frequency_anchor_date, interval_weeks, completed, deleted_at,
-    skipped_at, frequencies, created_at, updated_at, changed_by, changed_at
+-- One-off appointments have both a blueprint/revision and their concrete occurrence.
+WITH fixtures AS (
+    SELECT * FROM (VALUES
+        ('00000000000000000000000504', '00000000000000000000000514', '00000000000000000000000207', '郵便局に立ち寄る', '郵便を出してから帰宅', '駅前郵便局', CURRENT_DATE, time '16:00', time '16:20'),
+        ('00000000000000000000000505', '00000000000000000000000515', '00000000000000000000000205', '英語オンラインレッスン', '会話レッスン', '自宅', CURRENT_DATE + 1, time '19:00', time '19:30')
+    ) AS x(schedule_id, revision_id, task_id, title, description, location, occurrence_date, local_start, local_end)
+), source AS (
+    SELECT f.*, t.user_id, t.project_id, t.assignee_id
+    FROM fixtures f JOIN tasks t ON t.id=f.task_id
 )
-SELECT s.id, s.revision, s.user_id, s.project_id, s.assignee_id, s.title, s.description, s.location,
-       s.start_at, s.end_at, s.series_id, s.occurrence_date, s.timezone, s.is_exception,
-       s.repeat_state, s.frequency_anchor_date, s.interval_weeks, s.completed, s.deleted_at,
-       s.skipped_at,
-       ARRAY(SELECT sf.frequency FROM schedule_frequencies sf WHERE sf.schedule_id = s.id ORDER BY sf.frequency),
-       s.created_at, s.updated_at, s.changed_by, s.updated_at
-FROM schedules s
-WHERE s.id = s.series_id AND s.repeat_state = 'active';
+INSERT INTO schedule_blueprints (id, user_id)
+SELECT schedule_id, user_id FROM source;
+
+WITH fixtures AS (
+    SELECT * FROM (VALUES
+        ('00000000000000000000000504', '00000000000000000000000514', '00000000000000000000000207', '郵便局に立ち寄る', '郵便を出してから帰宅', '駅前郵便局', CURRENT_DATE, time '16:00', time '16:20'),
+        ('00000000000000000000000505', '00000000000000000000000515', '00000000000000000000000205', '英語オンラインレッスン', '会話レッスン', '自宅', CURRENT_DATE + 1, time '19:00', time '19:30')
+    ) AS x(schedule_id, revision_id, task_id, title, description, location, occurrence_date, local_start, local_end)
+), source AS (
+    SELECT f.*, t.user_id, t.project_id, t.assignee_id
+    FROM fixtures f JOIN tasks t ON t.id=f.task_id
+)
+INSERT INTO schedule_blueprint_revisions (
+    id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
+    local_start, local_end, timezone, frequency, interval_count, weekdays,
+    title, description, location, project_id, assignee_id, changed_by
+)
+SELECT revision_id, schedule_id, user_id, 1, occurrence_date, occurrence_date,
+       occurrence_date + local_start, occurrence_date + local_end, 'Asia/Tokyo',
+       'once', 0, '{}', title, description, location, project_id, assignee_id, user_id
+FROM source;
+
+WITH fixtures AS (
+    SELECT * FROM (VALUES
+        ('00000000000000000000000504', '00000000000000000000000514', '00000000000000000000000207', '郵便局に立ち寄る', '郵便を出してから帰宅', '駅前郵便局', CURRENT_DATE, time '16:00', time '16:20'),
+        ('00000000000000000000000505', '00000000000000000000000515', '00000000000000000000000205', '英語オンラインレッスン', '会話レッスン', '自宅', CURRENT_DATE + 1, time '19:00', time '19:30')
+    ) AS x(schedule_id, revision_id, task_id, title, description, location, occurrence_date, local_start, local_end)
+), source AS (
+    SELECT f.*, t.user_id, t.project_id, t.assignee_id
+    FROM fixtures f JOIN tasks t ON t.id=f.task_id
+)
+INSERT INTO schedules (
+    id, blueprint_id, source_revision_id, user_id, occurrence_date,
+    start_at, end_at, title, description, location, project_id,
+    assignee_id, timezone, changed_by
+)
+SELECT schedule_id, schedule_id, revision_id, user_id, occurrence_date,
+       (occurrence_date + local_start) AT TIME ZONE 'Asia/Tokyo',
+       (occurrence_date + local_end) AT TIME ZONE 'Asia/Tokyo',
+       title, description, location, project_id, assignee_id, 'Asia/Tokyo', user_id
+FROM source;
+
+-- Additional one-off fixtures support list pagination while keeping the same
+-- blueprint -> revision -> occurrence relationship as the primary examples.
+WITH source AS (
+    SELECT lpad((506+n)::text, 26, '0') AS schedule_id,
+           lpad((806+n)::text, 26, '0') AS revision_id,
+           lpad((220+n)::text, 26, '0') AS task_id,
+           CURRENT_DATE+n+1 AS occurrence_date,
+           t.user_id, t.project_id, t.assignee_id,
+           (ARRAY['作業時間', '確認ミーティング', '学習時間', 'レビュー枠']::text[])[(n % 4)+1] || ' ' || to_char(n+1, 'FM00') AS title,
+           'Schedule一覧確認用の単発予定' AS description,
+           (ARRAY['自宅', 'オンライン', 'オフィス', '図書館']::text[])[(n % 4)+1] AS location
+    FROM generate_series(0, 19) AS series(n)
+    JOIN tasks t ON t.id=lpad((220+n)::text, 26, '0')
+)
+INSERT INTO schedule_blueprints (id, user_id)
+SELECT schedule_id, user_id FROM source;
+
+WITH source AS (
+    SELECT lpad((506+n)::text, 26, '0') AS schedule_id,
+           lpad((806+n)::text, 26, '0') AS revision_id,
+           lpad((220+n)::text, 26, '0') AS task_id,
+           CURRENT_DATE+n+1 AS occurrence_date,
+           t.user_id, t.project_id, t.assignee_id,
+           (ARRAY['作業時間', '確認ミーティング', '学習時間', 'レビュー枠']::text[])[(n % 4)+1] || ' ' || to_char(n+1, 'FM00') AS title,
+           'Schedule一覧確認用の単発予定' AS description,
+           (ARRAY['自宅', 'オンライン', 'オフィス', '図書館']::text[])[(n % 4)+1] AS location
+    FROM generate_series(0, 19) AS series(n)
+    JOIN tasks t ON t.id=lpad((220+n)::text, 26, '0')
+)
+INSERT INTO schedule_blueprint_revisions (
+    id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
+    local_start, local_end, timezone, frequency, interval_count, weekdays,
+    title, description, location, project_id, assignee_id, changed_by
+)
+SELECT revision_id, schedule_id, user_id, 1, occurrence_date, occurrence_date,
+       occurrence_date + time '09:00', occurrence_date + time '09:45',
+       'Asia/Tokyo', 'once', 0, '{}', title, description, location,
+       project_id, assignee_id, user_id
+FROM source;
+
+WITH source AS (
+    SELECT lpad((506+n)::text, 26, '0') AS schedule_id,
+           lpad((806+n)::text, 26, '0') AS revision_id,
+           lpad((220+n)::text, 26, '0') AS task_id,
+           CURRENT_DATE+n+1 AS occurrence_date,
+           t.user_id, t.project_id, t.assignee_id,
+           (ARRAY['作業時間', '確認ミーティング', '学習時間', 'レビュー枠']::text[])[(n % 4)+1] || ' ' || to_char(n+1, 'FM00') AS title,
+           'Schedule一覧確認用の単発予定' AS description,
+           (ARRAY['自宅', 'オンライン', 'オフィス', '図書館']::text[])[(n % 4)+1] AS location
+    FROM generate_series(0, 19) AS series(n)
+    JOIN tasks t ON t.id=lpad((220+n)::text, 26, '0')
+)
+INSERT INTO schedules (
+    id, blueprint_id, source_revision_id, user_id, occurrence_date,
+    start_at, end_at, title, description, location, project_id,
+    assignee_id, timezone, changed_by
+)
+SELECT schedule_id, schedule_id, revision_id, user_id, occurrence_date,
+       (occurrence_date + time '09:00') AT TIME ZONE 'Asia/Tokyo',
+       (occurrence_date + time '09:45') AT TIME ZONE 'Asia/Tokyo',
+       title, description, location, project_id, assignee_id, 'Asia/Tokyo', user_id
+FROM source;
+
+INSERT INTO schedule_tag_assignments (blueprint_id, tag_id) VALUES
+    ('00000000000000000000000501', '00000000000000000000000305'),
+    ('00000000000000000000000504', '00000000000000000000000302'),
+    ('00000000000000000000000505', '00000000000000000000000303');
 
 INSERT INTO todo_lists (id, user_id, list_date) VALUES
     ('00000000000000000000000601', '00000000000000000000000001', CURRENT_DATE),
@@ -190,7 +290,7 @@ SELECT
 FROM generate_series(0, 11) AS series(n);
 
 INSERT INTO todo_list_schedules (todo_list_id, schedule_id) VALUES
-    ('00000000000000000000000601', '00000000000000000000000501'),
-    ('00000000000000000000000601', '00000000000000000000000504');
+    ('00000000000000000000000601', '00000000000000000000000504'),
+    ('00000000000000000000000601', '00000000000000000000000505');
 
 COMMIT;

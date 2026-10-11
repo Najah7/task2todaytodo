@@ -25,13 +25,13 @@ func isExpectedScheduleError(err error) bool {
 	for _, expected := range []error{
 		ErrScheduleProjectNotFound, ErrScheduleProjectChanged, ErrScheduleAssigneeNotEligible, ErrScheduleScopeInvalid,
 		ErrOccurrenceDateRequired, ErrOccurrenceNotFound, ErrOccurrenceInactive, ErrOccurrenceCompleted,
+		ErrOccurrenceRevisionMismatch, ErrOccurrenceTimeInvalid, ErrOccurrenceTitleEmpty,
 		ErrOccurrenceRuleMismatch, ErrRescheduleDateMismatch, ErrInvalidSchedulePage, ErrPermissionDenied,
-		domain.ErrScheduleIDEmpty, domain.ErrScheduleUserIDEmpty, domain.ErrScheduleAssigneeIDEmpty,
-		domain.ErrScheduleTitleEmpty, domain.ErrScheduleIntervalWeeksLess, domain.ErrScheduleStartAtEmpty,
-		domain.ErrScheduleEndAtEmpty, domain.ErrScheduleEndAtMustBeAfterStartAt,
-		recurrence.ErrFrequencyEmpty, recurrence.ErrFrequencyInvalid, recurrence.ErrRecurrenceIntervalWeeksLess,
-		recurrence.ErrRecurrenceTimezoneInvalid, recurrence.ErrRecurrenceMetadataInvalid,
-		recurrence.ErrRecurrenceLimitInvalid, recurrence.ErrRecurrenceHorizonInvalid,
+		domain.ErrBlueprintIDEmpty, domain.ErrBlueprintTitleEmpty, domain.ErrBlueprintTimezoneEmpty,
+		domain.ErrBlueprintFrequency, domain.ErrBlueprintInterval, domain.ErrBlueprintWeekdays,
+		domain.ErrBlueprintDateRange, domain.ErrBlueprintTimeRange,
+		recurrence.ErrRecurrenceTimezoneInvalid, recurrence.ErrBlueprintFrequencyInvalid,
+		recurrence.ErrBlueprintIntervalInvalid, recurrence.ErrBlueprintRangeInvalid,
 	} {
 		if errors.Is(err, expected) {
 			return true

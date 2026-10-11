@@ -1,7 +1,7 @@
 package shared
 
-// ResourceKind and PermissionAction are the structured parts of a project
-// membership capability. Database policy evaluation also checks the rule
+// ResourceKind and PermissionAction are the structured parts of a permission
+// capability. Database policy evaluation also checks the rule
 // effect, so application callers never pass dotted permission names.
 type ResourceKind string
 type PermissionAction string
@@ -21,6 +21,8 @@ const (
 	ResourceOccurrence         ResourceKind = "occurrence"
 	ResourceProjectMember      ResourceKind = "project_member"
 	ResourceDeletedHistory     ResourceKind = "deleted_history"
+	ResourceAdminJob           ResourceKind = "admin_job"
+	ResourceAdminOperation     ResourceKind = "admin_operation"
 )
 
 const (
@@ -28,6 +30,7 @@ const (
 	ActionRead   PermissionAction = "read"
 	ActionUpdate PermissionAction = "update"
 	ActionDelete PermissionAction = "delete"
+	ActionRun    PermissionAction = "run"
 )
 
 func ProjectRead() Capability      { return Capability{ResourceProject, ActionRead} }
@@ -57,3 +60,7 @@ func ScheduleCreate() Capability   { return Capability{ResourceSchedule, ActionC
 func ScheduleRead() Capability     { return Capability{ResourceSchedule, ActionRead} }
 func ScheduleUpdate() Capability   { return Capability{ResourceSchedule, ActionUpdate} }
 func ScheduleDelete() Capability   { return Capability{ResourceSchedule, ActionDelete} }
+func AdminJobRun() Capability      { return Capability{ResourceAdminJob, ActionRun} }
+func AdminOperationRead() Capability {
+	return Capability{ResourceAdminOperation, ActionRead}
+}

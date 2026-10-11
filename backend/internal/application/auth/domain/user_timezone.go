@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"time"
+	_ "time/tzdata"
 )
 
 const defaultUserTimezone = "Asia/Tokyo"

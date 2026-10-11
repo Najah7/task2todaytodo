@@ -136,6 +136,12 @@ func (noProjectChildren) ReassignTasksAfterProjectMemberRemoval(context.Context,
 func (noProjectChildren) ReassignSchedulesAfterProjectMemberRemoval(context.Context, string, string, string) error {
 	return nil
 }
+func (noProjectChildren) PauseProjectBlueprints(context.Context, string, string, time.Time) error {
+	return nil
+}
+func (noProjectChildren) ResumeProjectBlueprints(context.Context, string, string, time.Time) error {
+	return nil
+}
 
 func TestProjectReadPermissionUsesCurrentRolePermissions(t *testing.T) {
 	pool := projectRepositoryIntegrationPool(t)
