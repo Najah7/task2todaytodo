@@ -98,32 +98,18 @@ func (ns NullEffect) Value() (driver.Value, error) {
 }
 
 type ActionItem struct {
-	ID                  string
-	TaskID              string
-	Title               string
-	Description         pgtype.Text
-	DueDate             pgtype.Date
-	Completed           bool
-	Position            int32
-	SeriesID            string
-	OccurrenceDate      pgtype.Date
-	Timezone            string
-	EstimatedMinutes    pgtype.Int4
-	Priority            string
-	IsException         bool
-	RepeatState         pgtype.Text
-	FrequencyAnchorDate pgtype.Date
-	IntervalWeeks       int32
-	DeletedAt           pgtype.Timestamptz
-	SkippedAt           pgtype.Timestamptz
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
-}
-
-type ActionItemFrequency struct {
-	ActionItemID string
-	Frequency    string
-	CreatedAt    pgtype.Timestamptz
+	ID               string
+	TaskID           string
+	Title            string
+	Description      pgtype.Text
+	DueDate          pgtype.Date
+	Completed        bool
+	Position         int32
+	EstimatedMinutes pgtype.Int4
+	Priority         string
+	DeletedAt        pgtype.Timestamptz
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 type FrequencyMaster struct {

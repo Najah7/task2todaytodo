@@ -65,10 +65,6 @@ func (r taskRepositories) TodoLists() usecase.TodoListRepository {
 	return r.store.TodoLists
 }
 
-func (r taskRepositories) TaskFrequencies() usecase.TaskFrequencyRepository {
-	return r.store.TaskFrequencies
-}
-
 func (r taskRepositories) TaskPriorities() usecase.TaskPriorityRepository {
 	return r.store.TaskPriorities
 }

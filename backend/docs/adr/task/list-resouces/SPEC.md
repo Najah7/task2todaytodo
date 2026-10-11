@@ -10,7 +10,7 @@
 | `GET /tasks` | `created_at DESC, id DESC` |
 | `GET /projects/{id}/tasks` | `created_at DESC, id DESC` |
 | `GET /tags` | `name ASC, id ASC` |
-| `GET /tasks/{taskId}/action-items` | `position ASC, occurrence_date ASC, id ASC` |
+| `GET /tasks/{taskId}/action-items` | `position ASC, id ASC` |
 | `GET /schedules` | `start_at ASC, id ASC` |
 | `GET /projects/{id}/schedules` | `start_at ASC, id ASC` |
 

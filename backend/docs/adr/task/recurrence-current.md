@@ -5,12 +5,12 @@ recurrence details in older planning documents where they differ.
 
 ## Source and generation
 
-- ActionItem recurrence is rooted in `action_items`; Schedule recurrence is rooted
-  in `schedules`. Each context owns its own occurrences and revisions. A Task
-  does not own or import Schedules.
+- ActionItems are one-off persisted work items and do not support recurrence.
+  Schedule recurrence is rooted in `schedules`; the Schedule context owns its
+  occurrences and revisions. A Task does not own or import Schedules.
 - `repeat_state` is `one_off`, `active`, or `stopped`. Active weekday recurrence
   uses `frequency_anchor_date`, `interval_weeks`, and the shared weekday catalog.
-- ActionItem and Schedule lists generate recurring virtual occurrences from
+- Schedule lists generate recurring virtual occurrences from
   each series' local today through the same local calendar date one month later,
   inclusive. If that date does not exist in the next month, use its final day.
   Recurring rows after that boundary are omitted, including saved future
@@ -30,13 +30,12 @@ recurrence details in older planning documents where they differ.
   days, and `interval_weeks` sets the number of weeks between matching weeks.
   Setting `interval_weeks` to `0` stops future generation. Use the resource's
   frequency endpoint to change weekdays.
-- `PATCH` with `scope=future` updates the root template immediately and does
-  not need `occurrence_date`. For ActionItems, `due_date` is rejected for future
-  scope, including explicit `null`; use the frequency endpoint to change the
-  recurring weekday. Current-scope edits can change an occurrence's due date.
-- `occurrence_date` is the stable date identifying a series occurrence. An
-  individual ActionItem edit to `due_date` or Schedule edit to `start_at` may
-  cause actual date/time to differ from that identity date.
+- Schedule `PATCH` with `scope=future` updates the root template immediately and
+  does not need `occurrence_date`. ActionItem updates address a concrete item ID
+  and do not accept a recurrence scope or occurrence date.
+- `occurrence_date` is the stable date identifying a Schedule series occurrence.
+  An individual Schedule edit to `start_at` may cause actual date/time to differ
+  from that identity date.
 - Schedule rescheduling still identifies the target occurrence with
   `occurrence_date` and validates the requested start date against that
   selection.

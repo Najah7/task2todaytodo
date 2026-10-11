@@ -13,7 +13,6 @@ type Repositories interface {
 	TaskTags() TaskTagRepository
 	ActionItems() ActionItemRepository
 	TodoLists() TodoListRepository
-	TaskFrequencies() TaskFrequencyRepository
 	TaskPriorities() TaskPriorityRepository
 	TaskStatuses() TaskStatusRepository
 }

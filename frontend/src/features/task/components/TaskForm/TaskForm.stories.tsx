@@ -66,11 +66,11 @@ type Story = StoryObj<typeof meta>
 
 export const Empty: Story = {}
 
-export const Edit: Story = { args: { mode: "edit", initialValues: { title: "企画書を作成", projectId: "project-1", dueDate: "2026-10-18", description: "概要をまとめる", priority: "high", manualEstimate: "", actionItems: [{ seriesId: "action-1", occurrenceDate: "2026-10-10", isRecurring: false, title: "資料を集める", estimatedMinutes: "0:30", priority: "high" }] }, estimateSource: "action_items" } }
+export const Edit: Story = { args: { mode: "edit", initialValues: { title: "企画書を作成", projectId: "project-1", dueDate: "2026-10-18", description: "概要をまとめる", priority: "high", manualEstimate: "", actionItems: [{ id: "action-1", title: "資料を集める", estimatedMinutes: "0:30", priority: "high" }] }, estimateSource: "action_items" } }
 
-export const RecurringAndCompleted: Story = { args: { mode: "edit", initialValues: { title: "週次レポート", projectId: "project-2", dueDate: "2026-10-16", description: "今週の進捗を整理する", priority: "high", manualEstimate: "", actionItems: [
-  { seriesId: "action-recurring", occurrenceDate: "2026-10-10", isRecurring: true, title: "数値を集計", estimatedMinutes: "0:30", priority: "high", completed: true },
-  { seriesId: "action-once", occurrenceDate: "2026-10-10", isRecurring: false, title: "レビュー依頼を送る", estimatedMinutes: "0:15", priority: "medium", completed: false },
+export const Completed: Story = { args: { mode: "edit", initialValues: { title: "週次レポート", projectId: "project-2", dueDate: "2026-10-16", description: "今週の進捗を整理する", priority: "high", manualEstimate: "", actionItems: [
+  { id: "action-completed", title: "数値を集計", estimatedMinutes: "0:30", priority: "high", completed: true },
+  { id: "action-open", title: "レビュー依頼を送る", estimatedMinutes: "0:15", priority: "medium", completed: false },
 ] }, estimateSource: "action_items" } }
 
 export const Conflict: Story = { args: { mode: "edit", hasConflict: true } }

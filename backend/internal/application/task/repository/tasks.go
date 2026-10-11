@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"time"
 
@@ -170,7 +169,7 @@ func (r TaskRepository) BumpRevisionByUserID(ctx context.Context, userID domain.
 	return nil
 }
 
-func (r TaskRepository) ReadTaskProgressSources(ctx context.Context, taskIDs []string, asOf time.Time) (dao.TaskProgressSources, error) {
+func (r TaskRepository) ReadTaskProgressSources(ctx context.Context, taskIDs []string, _ time.Time) (dao.TaskProgressSources, error) {
 	sources := dao.TaskProgressSources{
 		Counts:   make(map[string]dao.TaskProgressCounts, len(taskIDs)),
 		Statuses: make(map[string]dao.TaskStatus, len(taskIDs)),
@@ -178,9 +177,7 @@ func (r TaskRepository) ReadTaskProgressSources(ctx context.Context, taskIDs []s
 	if len(taskIDs) == 0 {
 		return sources, nil
 	}
-	rows, err := r.queries.ReadTaskProgressSources(ctx, sqlc.ReadTaskProgressSourcesParams{
-		AsOf: pgtype.Timestamptz{Time: asOf, Valid: true}, TaskIds: taskIDs, ProjectIds: nil,
-	})
+	rows, err := r.queries.ReadTaskProgressSources(ctx, sqlc.ReadTaskProgressSourcesParams{TaskIds: taskIDs})
 	if err != nil {
 		return dao.TaskProgressSources{}, err
 	}
@@ -190,45 +187,8 @@ func (r TaskRepository) ReadTaskProgressSources(ctx context.Context, taskIDs []s
 			Total:     int(row.ActionItemTotal),
 			Completed: int(row.ActionItemCompleted),
 		}
-		var actionItemRoots []progressRootRecord
-		if err := json.Unmarshal(row.ActionItemRoots, &actionItemRoots); err != nil {
-			return dao.TaskProgressSources{}, err
-		}
-		for _, root := range actionItemRoots {
-			value, err := root.toDAO(row.TaskID)
-			if err != nil {
-				return dao.TaskProgressSources{}, err
-			}
-			sources.ActionItemRoots = append(sources.ActionItemRoots, value)
-		}
 	}
 	return sources, nil
-}
-
-type progressRootRecord struct {
-	SeriesID             string   `json:"series_id"`
-	OccurrenceDate       string   `json:"occurrence_date"`
-	Timezone             string   `json:"timezone"`
-	IntervalWeeks        int      `json:"interval_weeks"`
-	FrequencyAnchorDate  *string  `json:"frequency_anchor_date"`
-	Frequencies          []string `json:"frequencies"`
-	OccurrenceSavedToday bool     `json:"occurrence_saved_today"`
-}
-
-func (root progressRootRecord) toDAO(taskID string) (dao.ProgressRecurrence, error) {
-	value := dao.ProgressRecurrence{
-		TaskID: taskID, SeriesID: root.SeriesID, OccurrenceDate: root.OccurrenceDate,
-		Timezone: root.Timezone, RepeatState: "active", IntervalWeeks: root.IntervalWeeks,
-		Frequencies: taskFrequenciesDAO(root.Frequencies), OccurrenceSavedToday: root.OccurrenceSavedToday,
-	}
-	if root.FrequencyAnchorDate != nil {
-		date, err := time.Parse("2006-01-02", *root.FrequencyAnchorDate)
-		if err != nil {
-			return dao.ProgressRecurrence{}, err
-		}
-		value.FrequencyAnchorDate = date.UTC().Unix()
-	}
-	return value, nil
 }
 
 func (r TaskRepository) ListByUserIDCursor(ctx context.Context, userID domain.UserID, limit int, anchor *usecase.CursorAnchor) ([]dao.Task, error) {
@@ -246,18 +206,6 @@ func (r TaskRepository) ListByUserIDCursor(ctx context.Context, userID domain.Us
 		return nil, err
 	}
 	return recordsToTasks(records), nil
-}
-
-func (r TaskRepository) ListUsersWithActiveRecurrences(ctx context.Context) ([]domain.UserID, error) {
-	ids, err := r.queries.ListUsersWithActiveRecurrences(ctx)
-	if err != nil {
-		return nil, err
-	}
-	users := make([]domain.UserID, 0, len(ids))
-	for _, id := range ids {
-		users = append(users, domain.UserID(id))
-	}
-	return users, nil
 }
 
 func (r TaskRepository) ListByProjectAndUserIDCursor(ctx context.Context, userID domain.UserID, projectID domain.ProjectID, limit int, anchor *usecase.CursorAnchor) ([]dao.Task, error) {
@@ -334,14 +282,6 @@ func (r TaskRepository) GetDetailsByUserID(ctx context.Context, userID domain.Us
 		Task:        task,
 		ActionItems: items,
 	}, nil
-}
-
-func (r TaskRepository) GetByFrequency(ctx context.Context, frequency domain.TaskFrequency) ([]dao.Task, error) {
-	records, err := r.queries.GetTaskByFrequency(ctx, frequency.String())
-	if err != nil {
-		return nil, err
-	}
-	return recordsToTasks(records), nil
 }
 
 func (r TaskRepository) GetByPriority(ctx context.Context, priority domain.TaskPriority) ([]dao.Task, error) {

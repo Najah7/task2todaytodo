@@ -13,22 +13,17 @@ import (
 var ErrInvalidTaskPage = errors.New("invalid task page")
 
 type CursorAnchor struct {
-	At             string
-	ID             string
-	Revision       int32
-	Name           string
-	Position       int
-	Date           string
-	OccurrenceDate string
-	SeriesID       string
-	AsOf           string
+	At       string
+	ID       string
+	Revision int32
+	Name     string
+	Position int
 }
 
 type CursorPageRequest struct {
-	Size     int
-	FromDate string
-	AsOf     time.Time
-	Anchor   *CursorAnchor
+	Size   int
+	AsOf   time.Time
+	Anchor *CursorAnchor
 }
 
 func validateCursorPageRequest(request CursorPageRequest) error {

@@ -21,16 +21,13 @@ type TaskUseCases struct {
 }
 
 type ActionItemUseCases struct {
-	Create          *CreateActionItemUseCase
-	List            *ListActionItemsUseCase
-	Update          *UpdateActionItemUseCase
-	Delete          *DeleteActionItemUseCase
-	Complete        *CompleteActionItemUseCase
-	Reopen          *ReopenActionItemUseCase
-	Skip            *SkipActionItemUseCase
-	Restore         *RestoreActionItemUseCase
-	Reorder         *ReorderActionItemUseCase
-	UpdateFrequency *UpdateActionItemFrequencyUseCase
+	Create   *CreateActionItemUseCase
+	List     *ListActionItemsUseCase
+	Update   *UpdateActionItemUseCase
+	Delete   *DeleteActionItemUseCase
+	Complete *CompleteActionItemUseCase
+	Reopen   *ReopenActionItemUseCase
+	Reorder  *ReorderActionItemUseCase
 }
 
 type TaskTagUseCases struct {

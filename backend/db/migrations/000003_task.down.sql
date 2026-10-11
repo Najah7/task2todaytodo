@@ -1,5 +1,3 @@
-DROP FUNCTION IF EXISTS recurrence_wall_time_exists(timestamp without time zone, text);
-DROP TABLE IF EXISTS action_item_frequencies;
 DROP TABLE IF EXISTS action_items;
 DROP TABLE IF EXISTS task_tag_assignments;
 DROP TABLE IF EXISTS tags;

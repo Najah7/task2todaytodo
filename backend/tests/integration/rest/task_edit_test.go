@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application"
 	restapi "github.com/Najah7/task2todaytodo/internal/port/rest"
@@ -65,7 +64,6 @@ func newTaskEditAPI(t *testing.T) *taskEditAPI {
 	router.Post("/tasks/{taskId}/action-items", actionItems.Create)
 	router.Get("/tasks/{taskId}/action-items", actionItems.List)
 	router.Patch("/tasks/{taskId}/action-items/{id}", actionItems.Update)
-	router.Post("/tasks/{taskId}/action-items/{id}:skip", actionItems.Skip)
 	router.Post("/tasks/{taskId}/action-items/{id}:complete", actionItems.Complete)
 	router.Delete("/tasks/{taskId}/action-items/{id}", actionItems.Delete)
 	router.Post("/projects", projects.Create)
@@ -98,8 +96,6 @@ type taskEditTask struct {
 
 type taskEditChild struct {
 	ID               string `json:"id"`
-	SeriesID         string `json:"series_id"`
-	OccurrenceDate   string `json:"occurrence_date"`
 	Title            string `json:"title"`
 	Priority         string `json:"priority"`
 	EstimatedMinutes *int   `json:"estimated_minutes"`
@@ -214,12 +210,8 @@ func TestRESTActionItemsUpdateIndividuallyAndPreserveTaskIfMatch(t *testing.T) {
 		t.Fatalf("POST ActionItem status/body=%d/%s", created.Code, created.Body.String())
 	}
 	child := decodeTaskEditChild(t, created.Body.Bytes())
-	seriesID := child.SeriesID
-	if seriesID == "" {
-		seriesID = child.ID
-	}
-	updated := api.request(api.userID, http.MethodPatch, fmt.Sprintf("/tasks/%s/action-items/%s", task.ID, seriesID),
-		fmt.Sprintf(`{"scope":"current","occurrence_date":%q,"title":"Updated child","estimated_minutes":25,"priority":"high"}`, child.OccurrenceDate), "")
+	updated := api.request(api.userID, http.MethodPatch, fmt.Sprintf("/tasks/%s/action-items/%s", task.ID, child.ID),
+		`{"title":"Updated child","estimated_minutes":25,"priority":"high"}`, "")
 	if updated.Code != http.StatusOK {
 		t.Fatalf("PATCH ActionItem status/body=%d/%s", updated.Code, updated.Body.String())
 	}
@@ -239,54 +231,6 @@ func TestRESTActionItemsUpdateIndividuallyAndPreserveTaskIfMatch(t *testing.T) {
 	if got := api.listActionItems(t, task.ID); len(got) != 1 || got[0].Title != "Updated child" || got[0].Priority != "high" || got[0].EstimatedMinutes == nil || *got[0].EstimatedMinutes != 25 {
 		t.Fatalf("independent ActionItem update=%+v", got)
 	}
-}
-
-func TestRESTCurrentRecurringActionItemUpdateAndSkip(t *testing.T) {
-	api := newTaskEditAPI(t)
-	task := api.createTask(t, `{"title":"Recurring task","priority":"high"}`)
-	today := time.Now().UTC().Format("2006-01-02")
-	weekday := [...]string{"sun", "mon", "tue", "wed", "thu", "fri", "sat"}[time.Now().UTC().Weekday()]
-	created := api.request(api.userID, http.MethodPost, "/tasks/"+task.ID+"/action-items", fmt.Sprintf(`{"title":"Weekly item","estimated_minutes":60,"priority":"medium","interval_weeks":1,"frequencies":[%q]}`, weekday), "")
-	if created.Code != http.StatusCreated {
-		t.Fatalf("POST recurring ActionItem status/body=%d/%s", created.Code, created.Body.String())
-	}
-	root := decodeTaskEditChild(t, created.Body.Bytes())
-	seriesID := root.SeriesID
-	if seriesID == "" {
-		seriesID = root.ID
-	}
-	rows := api.listActionItems(t, task.ID)
-	var target, skipped, untouched string
-	for _, row := range rows {
-		if row.OccurrenceDate <= today {
-			continue
-		}
-		if target == "" {
-			target = row.OccurrenceDate
-		} else if skipped == "" {
-			skipped = row.OccurrenceDate
-		} else {
-			untouched = row.OccurrenceDate
-		}
-	}
-	if target == "" || skipped == "" || untouched == "" {
-		t.Fatalf("need three future occurrences: %+v", rows)
-	}
-	update := api.request(api.userID, http.MethodPatch, fmt.Sprintf("/tasks/%s/action-items/%s", task.ID, seriesID), fmt.Sprintf(`{"scope":"current","occurrence_date":%q,"title":"Current override","estimated_minutes":75,"priority":"low"}`, target), "")
-	if update.Code != http.StatusOK {
-		t.Fatalf("PATCH current occurrence status/body=%d/%s", update.Code, update.Body.String())
-	}
-	assertOccurrenceFields(t, api.listActionItems(t, task.ID), target, "Current override", "low", 75)
-	skip := api.request(api.userID, http.MethodPost, fmt.Sprintf("/tasks/%s/action-items/%s:skip", task.ID, seriesID), fmt.Sprintf(`{"occurrence_date":%q}`, skipped), "")
-	if skip.Code != http.StatusOK {
-		t.Fatalf("skip current occurrence status/body=%d/%s", skip.Code, skip.Body.String())
-	}
-	after := api.listActionItems(t, task.ID)
-	assertOccurrenceFields(t, after, target, "Current override", "low", 75)
-	if findOccurrence(after, skipped) != nil {
-		t.Fatalf("skipped occurrence remains visible: %+v", after)
-	}
-	assertOccurrenceFields(t, after, untouched, "Weekly item", "medium", 60)
 }
 
 func TestRESTTaskEditChangesProjectAndPriority(t *testing.T) {
@@ -345,21 +289,4 @@ func decodeTaskEditChild(t *testing.T, body []byte) taskEditChild {
 		t.Fatalf("decode ActionItem: %v; body=%s", err, body)
 	}
 	return child
-}
-
-func findOccurrence(rows []taskEditChild, date string) *taskEditChild {
-	for i := range rows {
-		if rows[i].OccurrenceDate == date {
-			return &rows[i]
-		}
-	}
-	return nil
-}
-
-func assertOccurrenceFields(t *testing.T, rows []taskEditChild, date, title, priority string, estimate int) {
-	t.Helper()
-	row := findOccurrence(rows, date)
-	if row == nil || row.Title != title || row.Priority != priority || row.EstimatedMinutes == nil || *row.EstimatedMinutes != estimate {
-		t.Fatalf("occurrence %s=%+v; want title=%q priority=%q estimate=%d", date, row, title, priority, estimate)
-	}
 }

@@ -53,12 +53,10 @@ export function useTaskListTable() {
 
   function toggleActionItem(item: TaskActionItemRowView) {
     if (busy || busyActionItemKey) return
-    setBusyActionItemKey(item.occurrenceKey)
+    setBusyActionItemKey(item.id)
     void updateActionItemCompletion({
       taskId: item.taskId,
-      actionItemId: item.actionItemId,
-      seriesId: item.seriesId,
-      occurrenceDate: item.occurrenceDate,
+      actionItemId: item.id,
       completed: !item.completed,
     }).catch(() => undefined).finally(() => setBusyActionItemKey(undefined))
   }

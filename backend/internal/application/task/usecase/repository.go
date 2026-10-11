@@ -17,21 +17,11 @@ var (
 	ErrProjectLifecycleUnavailable = errors.New("project lifecycle service is unavailable")
 	ErrActionItemTaskNotFound      = errors.New("action item task not found")
 	ErrActionItemNotFound          = errors.New("action item not found")
-	ErrActionItemPositionConflict  = errors.New("action item position already exists")
-	ErrOccurrenceDateRequired      = errors.New("occurrence date is required for recurring series")
-	ErrOccurrenceNotFound          = errors.New("recurrence occurrence not found")
-	ErrOccurrenceInactive          = errors.New("recurrence occurrence is inactive")
-	ErrOccurrenceCompleted         = errors.New("completed occurrence cannot be skipped")
-	ErrOccurrenceRuleMismatch      = errors.New("date does not match active recurrence rule")
 	ErrTaskTagNotFound             = errors.New("task tag not found")
 	ErrTaskTagAssignmentNotOwned   = errors.New("task and tag must belong to the same user")
 	ErrRevisionConflict            = errors.New("resource revision does not match")
 	ErrPermissionDenied            = errors.New("permission denied")
 )
-
-type UserTimezoneReader interface {
-	GetTimezone(ctx context.Context, userID string) (string, error)
-}
 
 // TaskProject is the small, primitive project view needed by Task commands.
 // Project lifecycle, membership, and progress belong to the Project context.
@@ -68,7 +58,6 @@ type TaskRepository interface {
 	GetByUserID(ctx context.Context, userID domain.UserID, id domain.TaskID) (dao.Task, error)
 	GetByUserIDWithPermission(ctx context.Context, userID domain.UserID, id domain.TaskID, capability shared.Capability) (dao.Task, error)
 	GetDetailsByUserID(ctx context.Context, userID domain.UserID, id domain.TaskID) (dao.TaskDetails, error)
-	ListUsersWithActiveRecurrences(ctx context.Context) ([]domain.UserID, error)
 	AssignToProjectByUserID(ctx context.Context, userID domain.UserID, taskID domain.TaskID, projectID domain.ProjectID, expectedRevision int32) (dao.Task, error)
 	RemoveFromProjectByUserID(ctx context.Context, userID domain.UserID, taskID domain.TaskID, projectID domain.ProjectID, expectedRevision int32) (dao.Task, error)
 	CreateInProject(ctx context.Context, actorID domain.UserID, task domain.Task) (dao.Task, error)
@@ -78,7 +67,6 @@ type TaskRepository interface {
 	ListEligibleTaskAssignees(ctx context.Context, actorID domain.UserID, taskID domain.TaskID) ([]dao.TaskAssignee, error)
 	LockProjectForTaskAssignment(ctx context.Context, actorID domain.UserID, taskID domain.TaskID) error
 	IsEligibleTaskAssignee(ctx context.Context, actorID domain.UserID, taskID domain.TaskID, assigneeID domain.UserID) (bool, error)
-	GetByFrequency(ctx context.Context, frequency domain.TaskFrequency) ([]dao.Task, error)
 	GetByPriority(ctx context.Context, priority domain.TaskPriority) ([]dao.Task, error)
 	GetByProject(ctx context.Context, projectID domain.ProjectID) ([]dao.Task, error)
 	GetByStatus(ctx context.Context, status domain.TaskStatus) ([]dao.Task, error)
@@ -96,10 +84,6 @@ type TaskTagRepository interface {
 	RemoveFromTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, tagID string) error
 }
 
-type TaskFrequencyRepository interface {
-	List(ctx context.Context) ([]dao.TaskFrequency, error)
-}
-
 type TaskPriorityRepository interface {
 	List(ctx context.Context) ([]dao.Priority, error)
 }
@@ -110,24 +94,16 @@ type TaskStatusRepository interface {
 
 type ActionItemRepository interface {
 	TaskListProjectionReader
-	Get(ctx context.Context, id domain.ActionItemID) (dao.ActionItem, error)
 	GetForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) (dao.ActionItem, error)
+	GetForCommand(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID, capability shared.Capability) (dao.ActionItem, error)
 	ListByTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID) ([]dao.ActionItem, error)
-	ListActiveSeriesByUserID(ctx context.Context, userID domain.UserID) ([]dao.ActionItem, error)
-	Create(ctx context.Context, item domain.ActionItem) (dao.ActionItem, error)
+	ListByTaskCursor(ctx context.Context, userID domain.UserID, taskID domain.TaskID, limit int, anchor *CursorAnchor) ([]dao.ActionItem, error)
 	CreateForOwnedTask(ctx context.Context, userID domain.UserID, item domain.ActionItem, appendToTail bool) (dao.ActionItem, error)
-	CreateOccurrenceForOwnedTask(ctx context.Context, userID domain.UserID, item domain.ActionItem) (dao.ActionItem, error)
-	Update(ctx context.Context, item domain.ActionItem) (dao.ActionItem, error)
 	UpdateForOwnedTask(ctx context.Context, userID domain.UserID, item domain.ActionItem) (dao.ActionItem, error)
-	SetPositionForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID, position int) error
 	ReorderForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID, newPosition int) (dao.ActionItem, error)
 	CheckForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) error
 	UncheckForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) error
-	Delete(ctx context.Context, id domain.ActionItemID) error
 	DeleteForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) error
-	TombstoneForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) error
-	DeleteUneditedFutureBySeries(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.ActionItemID, fromDate time.Time) (int64, error)
-	DeleteUneditedFutureByTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, now time.Time) (int64, error)
 }
 
 type TodoListRepository interface {

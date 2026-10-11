@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
@@ -9,56 +10,34 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/logging"
 )
 
-type deleteActionItemUOW interface {
-	Do(ctx context.Context, fn func(context.Context, Repositories) error) error
-}
+var ErrActionItemCompleted = errors.New("completed action item cannot be deleted")
 
 type DeleteActionItemUseCase struct {
-	uow    deleteActionItemUOW
+	uow    UOW
 	logger logging.Logger
 }
 
-func NewDeleteActionItemUseCase(uow deleteActionItemUOW, logger logging.Logger) *DeleteActionItemUseCase {
+func NewDeleteActionItemUseCase(uow UOW, logger logging.Logger) *DeleteActionItemUseCase {
 	return &DeleteActionItemUseCase{logger: logging.OrNop(logger), uow: uow}
 }
 
 func (uc *DeleteActionItemUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, actionItemID domain.ActionItemID) (err error) {
 	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "DeleteActionItemUseCase.Execute", err) }()
-
 	asOf := time.Now()
 	return uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		return withTaskProgressMutationForPermission(ctx, repos, userID, taskID, asOf, shared.ActionItemDelete(), func() error {
-			actionItems := repos.ActionItems()
-			item, err := getActionItemForCommand(ctx, actionItems, userID, taskID, actionItemID, shared.ActionItemDelete())
+			repository := repos.ActionItems()
+			item, err := repository.GetForCommand(ctx, userID, taskID, actionItemID, shared.ActionItemDelete())
 			if err != nil {
 				return err
 			}
-
-			if item.RepeatState == repeatStateOneOff && item.Completed {
-				return ErrOccurrenceCompleted
-			}
 			if item.Deleted {
-				return ErrOccurrenceInactive
+				return ErrActionItemNotFound
 			}
-			// Deleting the root suppresses future projections while retaining its
-			// repeat metadata for saved occurrence history.
-			if item.SeriesID == item.ID {
-				if err := actionItems.TombstoneForOwnedTask(ctx, userID, taskID, actionItemID); err != nil {
-					return err
-				}
-				return nil
+			if item.Completed {
+				return ErrActionItemCompleted
 			}
-
-			// Keep the deleted occurrence row so this date stays suppressed.
-			return actionItems.TombstoneForOwnedTask(ctx, userID, taskID, actionItemID)
+			return repository.DeleteForOwnedTask(ctx, userID, taskID, actionItemID)
 		})
 	})
-
-}
-
-func (uc *DeleteActionItemUseCase) DeleteSeries(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.ActionItemID) (err error) {
-	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "DeleteActionItemUseCase.DeleteSeries", err) }()
-
-	return uc.Execute(ctx, userID, taskID, seriesID)
-
 }

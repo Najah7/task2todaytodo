@@ -3570,7 +3570,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Marks task done and stops future recurrence generation.",
+                "description": "Marks task done while preserving its ActionItems.",
                 "produces": [
                     "application/json"
                 ],
@@ -3955,12 +3955,6 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "First occurrence date (YYYY-MM-DD); defaults to today in each series timezone",
-                        "name": "from_date",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
                         "description": "Response field mask",
                         "name": "fields",
                         "in": "query"
@@ -4005,7 +3999,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a one-off or recurring ActionItem owned by the authenticated user.",
+                "description": "Creates a single ActionItem owned by the authenticated user.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4075,7 +4069,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deletes the entire ActionItem series, or one-off ActionItem.",
+                "description": "Deletes a saved ActionItem.",
                 "tags": [
                     "ActionItems"
                 ],
@@ -4090,7 +4084,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "ActionItem series ID",
+                        "description": "ActionItem ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -4118,6 +4112,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
+                    "409": {
+                        "description": "Completed ActionItems cannot be deleted",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
                     "500": {
                         "description": "Failed to delete action item",
                         "schema": {
@@ -4132,7 +4132,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Updates one occurrence with current scope and occurrence_date. Future scope updates the root template immediately and does not require occurrence_date. due_date cannot be changed with future scope; use the frequency endpoint to change recurrence weekdays. occurrence_date is stable occurrence identity and may differ from due_date after an edit.",
+                "description": "Updates a saved ActionItem.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4153,7 +4153,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "ActionItem series ID",
+                        "description": "ActionItem ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -4176,7 +4176,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid request or scope",
+                        "description": "Invalid request",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -4193,97 +4193,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
-                    "409": {
-                        "description": "Position conflict",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
                     "500": {
                         "description": "Failed to update action item",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{taskId}/action-items/{id}/frequency": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Changes recurrence settings immediately on the root item. frequencies selects weekdays and interval_weeks sets the number of weeks between matching weeks. Use this endpoint to change recurrence weekdays. interval_weeks zero stops future generation; occurrence_date is not part of this request.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ActionItems"
-                ],
-                "summary": "Update action item frequency",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "taskId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "ActionItem root ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Frequency settings",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/rest.ActionItemFrequencyUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid frequency settings",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Task or series root not found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Position conflict",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to update action item frequency",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -4298,7 +4209,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Marks one ActionItem occurrence complete. Recurring items require occurrence_date; one-off items may omit it. occurrence_date identifies scheduled occurrence and may differ from due_date after an edit.",
+                "description": "Marks an ActionItem complete.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4319,18 +4230,10 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "ActionItem series ID",
+                        "description": "ActionItem ID",
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "Stable occurrence date; required for recurring items",
-                        "name": "request",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ActionItemOccurrenceRequest"
-                        }
                     }
                 ],
                 "responses": {
@@ -4374,7 +4277,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Reopens one ActionItem occurrence. Recurring items require occurrence_date; one-off items may omit it. occurrence_date identifies scheduled occurrence and may differ from due_date after an edit.",
+                "description": "Reopens an ActionItem.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4395,18 +4298,10 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "ActionItem series ID",
+                        "description": "ActionItem ID",
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "Stable occurrence date; required for recurring items",
-                        "name": "request",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ActionItemOccurrenceRequest"
-                        }
                     }
                 ],
                 "responses": {
@@ -4450,7 +4345,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Moves the ActionItem to a new zero-based position for the same occurrence date.",
+                "description": "Moves the ActionItem to a new zero-based position in its Task.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4471,7 +4366,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "ActionItem series ID",
+                        "description": "ActionItem ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -4511,172 +4406,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
-                    "409": {
-                        "description": "Concurrent position conflict",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
                     "500": {
                         "description": "Failed to reorder action item",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{taskId}/action-items/{id}:restore": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ActionItems"
-                ],
-                "summary": "Restore action item occurrence",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "taskId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "ActionItem series ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Stable recurring occurrence date",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/rest.ActionItemOccurrenceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/tasks/{taskId}/action-items/{id}:skip": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ActionItems"
-                ],
-                "summary": "Skip action item occurrence",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "taskId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "ActionItem series ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Stable recurring occurrence date",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/rest.ActionItemOccurrenceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Completed occurrence cannot be skipped",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -4902,38 +4633,11 @@ const docTemplate = `{
                     "type": "integer",
                     "x-nullable": true
                 },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                },
                 "priority": {
                     "type": "string"
                 },
                 "title": {
                     "type": "string"
-                }
-            }
-        },
-        "rest.ActionItemFrequencyUpdateRequest": {
-            "type": "object",
-            "required": [
-                "frequencies",
-                "interval_weeks"
-            ],
-            "properties": {
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "interval_weeks": {
-                    "type": "integer"
                 }
             }
         },
@@ -4951,20 +4655,9 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.ActionItemOccurrenceRequest": {
-            "type": "object",
-            "properties": {
-                "occurrence_date": {
-                    "type": "string"
-                }
-            }
-        },
         "rest.ActionItemReorderRequest": {
             "type": "object",
             "properties": {
-                "occurrence_date": {
-                    "type": "string"
-                },
                 "position": {
                     "type": "integer"
                 }
@@ -4992,25 +4685,7 @@ const docTemplate = `{
                     "type": "integer",
                     "x-nullable": true
                 },
-                "frequencies": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "frequency_anchor_date": {
-                    "type": "string"
-                },
                 "id": {
-                    "type": "string"
-                },
-                "interval_weeks": {
-                    "type": "integer"
-                },
-                "is_exception": {
-                    "type": "boolean"
-                },
-                "occurrence_date": {
                     "type": "string"
                 },
                 "position": {
@@ -5019,16 +4694,7 @@ const docTemplate = `{
                 "priority": {
                     "type": "string"
                 },
-                "repeat_state": {
-                    "type": "string"
-                },
-                "series_id": {
-                    "type": "string"
-                },
                 "task_id": {
-                    "type": "string"
-                },
-                "timezone": {
                     "type": "string"
                 },
                 "title": {
@@ -5041,9 +4707,6 @@ const docTemplate = `{
         },
         "rest.ActionItemUpdateRequest": {
             "type": "object",
-            "required": [
-                "scope"
-            ],
             "properties": {
                 "description": {
                     "type": "string"
@@ -5055,18 +4718,8 @@ const docTemplate = `{
                     "type": "integer",
                     "x-nullable": true
                 },
-                "occurrence_date": {
-                    "type": "string"
-                },
                 "priority": {
                     "type": "string"
-                },
-                "scope": {
-                    "type": "string",
-                    "enum": [
-                        "current",
-                        "future"
-                    ]
                 },
                 "title": {
                     "type": "string"

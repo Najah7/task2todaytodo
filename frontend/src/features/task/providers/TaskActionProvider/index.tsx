@@ -54,12 +54,10 @@ export function TaskActionProvider({ children }: Props) {
 
   const completionMutation = useMutation({
     mutationKey: actionItemCompletionMutationKey,
-    mutationFn: ({ taskId, actionItemId, seriesId, occurrenceDate, completed }: UpdateActionItemCompletionInput) => {
-      const id = seriesId ?? actionItemId
-      const request = seriesId && occurrenceDate ? { occurrence_date: occurrenceDate } : undefined
+    mutationFn: ({ taskId, actionItemId, completed }: UpdateActionItemCompletionInput) => {
       return completed
-        ? postTasksTaskIdActionItemsIdcomplete(taskId, id, request)
-        : postTasksTaskIdActionItemsIdreopen(taskId, id, request)
+        ? postTasksTaskIdActionItemsIdcomplete(taskId, actionItemId)
+        : postTasksTaskIdActionItemsIdreopen(taskId, actionItemId)
     },
     onSuccess: async (_response, input) => {
       notify.success(i18n("tasks.toast.actionItemUpdated"))

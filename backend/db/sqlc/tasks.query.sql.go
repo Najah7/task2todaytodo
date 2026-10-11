@@ -41,57 +41,6 @@ func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
 	return i, err
 }
 
-const getTaskByFrequency = `-- name: GetTaskByFrequency :many
-SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
-FROM tasks AS t
-WHERE t.deleted_at IS NULL
-AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL))
-AND EXISTS (
-    SELECT 1
-    FROM action_items AS ti
-    JOIN action_item_frequencies AS tif ON tif.action_item_id = ti.series_id
-    WHERE ti.task_id = t.id
-      AND tif.frequency = $1::text
-)
-`
-
-func (q *Queries) GetTaskByFrequency(ctx context.Context, frequency string) ([]Task, error) {
-	rows, err := q.db.Query(ctx, getTaskByFrequency, frequency)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Task
-	for rows.Next() {
-		var i Task
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.ProjectID,
-			&i.AssigneeID,
-			&i.Title,
-			&i.Description,
-			&i.DueDate,
-			&i.ManualEstimatedMinutes,
-			&i.ActualMinutes,
-			&i.Priority,
-			&i.Status,
-			&i.Revision,
-			&i.DeletedAt,
-			&i.ChangedBy,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getTaskByPriority = `-- name: GetTaskByPriority :many
 SELECT id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at FROM tasks WHERE tasks.priority = $1 AND deleted_at IS NULL
   AND (project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=tasks.project_id AND p.deleted_at IS NULL))
@@ -354,13 +303,6 @@ SELECT
     ti.priority,
     ti.completed,
     ti.position,
-    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
-    ARRAY(
-        SELECT tif.frequency
-        FROM action_item_frequencies AS tif
-        WHERE tif.action_item_id = ti.series_id
-        ORDER BY tif.frequency
-    )::text[] AS frequencies,
     ti.created_at,
     ti.updated_at
 FROM action_items AS ti
@@ -386,8 +328,6 @@ type ListActionItemsByTaskForUserRow struct {
 	Priority         string
 	Completed        bool
 	Position         int32
-	IntervalWeeks    int32
-	Frequencies      []string
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 }
@@ -411,8 +351,6 @@ func (q *Queries) ListActionItemsByTaskForUser(ctx context.Context, arg ListActi
 			&i.Priority,
 			&i.Completed,
 			&i.Position,
-			&i.IntervalWeeks,
-			&i.Frequencies,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -917,40 +855,6 @@ func (q *Queries) ListTasksByUserIDCursorPage(ctx context.Context, arg ListTasks
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listUsersWithActiveRecurrences = `-- name: ListUsersWithActiveRecurrences :many
-SELECT DISTINCT t.user_id
-FROM tasks AS t
-WHERE t.status <> 'done'
-  AND t.deleted_at IS NULL
-  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL AND p.status <> 'done'))
-  AND EXISTS (
-      SELECT 1 FROM action_items AS ti
-      WHERE ti.task_id = t.id AND ti.id = ti.series_id
-        AND ti.repeat_state = 'active' AND ti.deleted_at IS NULL
-  )
-ORDER BY t.user_id
-`
-
-func (q *Queries) ListUsersWithActiveRecurrences(ctx context.Context) ([]string, error) {
-	rows, err := q.db.Query(ctx, listUsersWithActiveRecurrences)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var user_id string
-		if err := rows.Scan(&user_id); err != nil {
-			return nil, err
-		}
-		items = append(items, user_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

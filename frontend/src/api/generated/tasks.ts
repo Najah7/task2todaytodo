@@ -231,18 +231,10 @@ export interface RestActionItemResponse {
   due_date?: string;
   /** @nullable */
   estimated_minutes: number | null;
-  frequencies?: string[];
-  frequency_anchor_date?: string;
   id?: string;
-  interval_weeks?: number;
-  is_exception?: boolean;
-  occurrence_date?: string;
   position?: number;
   priority?: string;
-  repeat_state?: string;
-  series_id?: string;
   task_id?: string;
-  timezone?: string;
   title?: string;
   updated_at?: number;
 }
@@ -257,42 +249,20 @@ export interface RestActionItemCreateRequest {
   due_date?: string;
   /** @nullable */
   estimated_minutes?: number | null;
-  frequencies?: string[];
-  interval_weeks?: number;
   priority?: string;
   title?: string;
 }
-
-export type RestActionItemUpdateRequestScope = typeof RestActionItemUpdateRequestScope[keyof typeof RestActionItemUpdateRequestScope];
-
-
-export const RestActionItemUpdateRequestScope = {
-  current: 'current',
-  future: 'future',
-} as const;
 
 export interface RestActionItemUpdateRequest {
   description?: string;
   due_date?: string;
   /** @nullable */
   estimated_minutes?: number | null;
-  occurrence_date?: string;
   priority?: string;
-  scope: RestActionItemUpdateRequestScope;
   title?: string;
 }
 
-export interface RestActionItemFrequencyUpdateRequest {
-  frequencies: string[];
-  interval_weeks: number;
-}
-
-export interface RestActionItemOccurrenceRequest {
-  occurrence_date?: string;
-}
-
 export interface RestActionItemReorderRequest {
-  occurrence_date?: string;
   position?: number;
 }
 
@@ -410,10 +380,6 @@ page_size?: number;
  * Opaque next page token
  */
 page_token?: string;
-/**
- * First occurrence date (YYYY-MM-DD); defaults to today in each series timezone
- */
-from_date?: string;
 /**
  * Response field mask
  */
@@ -1780,7 +1746,7 @@ export const getPostTasksIdcompleteUrl = (id: string,) => {
 }
 
 /**
- * Marks task done and stops future recurrence generation.
+ * Marks task done while preserving its ActionItems.
  * @summary Complete task
  */
 export const postTasksIdcomplete = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
@@ -2272,7 +2238,7 @@ export const getPostTasksTaskIdActionItemsUrl = (taskId: string,) => {
 }
 
 /**
- * Creates a one-off or recurring ActionItem owned by the authenticated user.
+ * Creates a single ActionItem owned by the authenticated user.
  * @summary Create action item
  */
 export const postTasksTaskIdActionItems = async (taskId: string,
@@ -2363,7 +2329,7 @@ export const getDeleteTasksTaskIdActionItemsIdUrl = (taskId: string,
 }
 
 /**
- * Deletes the entire ActionItem series, or one-off ActionItem.
+ * Deletes a saved ActionItem.
  * @summary Delete action item
  */
 export const deleteTasksTaskIdActionItemsId = async (taskId: string,
@@ -2440,7 +2406,7 @@ export const getPatchTasksTaskIdActionItemsIdUrl = (taskId: string,
 }
 
 /**
- * Updates one occurrence with current scope and occurrence_date. Future scope updates the root template immediately and does not require occurrence_date. due_date cannot be changed with future scope; use the frequency endpoint to change recurrence weekdays. occurrence_date is stable occurrence identity and may differ from due_date after an edit.
+ * Updates a saved ActionItem.
  * @summary Update action item
  */
 export const patchTasksTaskIdActionItemsId = async (taskId: string,
@@ -2522,98 +2488,6 @@ export const usePatchTasksTaskIdActionItemsId = <TError = ErrorType<RestErrRespo
       return useMutation(getPatchTasksTaskIdActionItemsIdMutationOptions(options), queryClient);
     }
 
-export const getPutTasksTaskIdActionItemsIdFrequencyUrl = (taskId: string,
-    id: string,) => {
-
-
-
-
-  return `/api/tasks/${taskId}/action-items/${id}/frequency`
-}
-
-/**
- * Changes recurrence settings immediately on the root item. frequencies selects weekdays and interval_weeks sets the number of weeks between matching weeks. Use this endpoint to change recurrence weekdays. interval_weeks zero stops future generation; occurrence_date is not part of this request.
- * @summary Update action item frequency
- */
-export const putTasksTaskIdActionItemsIdFrequency = async (taskId: string,
-    id: string,
-    restActionItemFrequencyUpdateRequest: RestActionItemFrequencyUpdateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return apiFetch<RestMessageResponse>(getPutTasksTaskIdActionItemsIdFrequencyUrl(taskId,id),
-  {
-    ...options,
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(restActionItemFrequencyUpdateRequest)
-  }
-);}
-
-
-
-
-
-export const getPutTasksTaskIdActionItemsIdFrequencyMutationKey = () => ['putTasksTaskIdActionItemsIdFrequency'] as const;
-
-export const getPutTasksTaskIdActionItemsIdFrequencyMutationOptions = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putTasksTaskIdActionItemsIdFrequency>>, TError,PutTasksTaskIdActionItemsIdFrequencyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof putTasksTaskIdActionItemsIdFrequency>>, TError,PutTasksTaskIdActionItemsIdFrequencyMutationVariables, TContext> => {
-
-const mutationKey = getPutTasksTaskIdActionItemsIdFrequencyMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof putTasksTaskIdActionItemsIdFrequency>>, PutTasksTaskIdActionItemsIdFrequencyMutationVariables> = (props) => {
-          const {taskId,id,data} = props ?? {};
-
-          return  putTasksTaskIdActionItemsIdFrequency(taskId,id,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type PutTasksTaskIdActionItemsIdFrequencyMutationResult = NonNullable<Awaited<ReturnType<typeof putTasksTaskIdActionItemsIdFrequency>>>
-    export type PutTasksTaskIdActionItemsIdFrequencyMutationBody = RestActionItemFrequencyUpdateRequest
-    export type PutTasksTaskIdActionItemsIdFrequencyMutationError = ErrorType<RestErrResponse>
-    export type PutTasksTaskIdActionItemsIdFrequencyMutationVariables = {taskId: string;id: string;data: RestActionItemFrequencyUpdateRequest}
-
-    /**
- * @summary Update action item frequency
- */
-export const usePutTasksTaskIdActionItemsIdFrequency = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putTasksTaskIdActionItemsIdFrequency>>, TError,PutTasksTaskIdActionItemsIdFrequencyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof putTasksTaskIdActionItemsIdFrequency>>,
-        TError,
-        PutTasksTaskIdActionItemsIdFrequencyMutationVariables,
-        TContext
-      > => {
-      return useMutation(getPutTasksTaskIdActionItemsIdFrequencyMutationOptions(options), queryClient);
-    }
-
 export const getPostTasksTaskIdActionItemsIdcompleteUrl = (taskId: string,
     id: string,) => {
 
@@ -2624,33 +2498,18 @@ export const getPostTasksTaskIdActionItemsIdcompleteUrl = (taskId: string,
 }
 
 /**
- * Marks one ActionItem occurrence complete. Recurring items require occurrence_date; one-off items may omit it. occurrence_date identifies scheduled occurrence and may differ from due_date after an edit.
+ * Marks an ActionItem complete.
  * @summary Complete action item
  */
 export const postTasksTaskIdActionItemsIdcomplete = async (taskId: string,
-    id: string,
-    restActionItemOccurrenceRequest?: RestActionItemOccurrenceRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
+    id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return apiFetch<RestMessageResponse>(getPostTasksTaskIdActionItemsIdcompleteUrl(taskId,id),
+  return apiFetch<RestMessageResponse>(getPostTasksTaskIdActionItemsIdcompleteUrl(taskId,id),
   {
     ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(restActionItemOccurrenceRequest)
+    method: 'POST'
+
+
   }
 );}
 
@@ -2675,9 +2534,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdcomplete>>, PostTasksTaskIdActionItemsIdcompleteMutationVariables> = (props) => {
-          const {taskId,id,data} = props ?? {};
+          const {taskId,id} = props ?? {};
 
-          return  postTasksTaskIdActionItemsIdcomplete(taskId,id,data,requestOptions)
+          return  postTasksTaskIdActionItemsIdcomplete(taskId,id,requestOptions)
         }
 
 
@@ -2688,9 +2547,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PostTasksTaskIdActionItemsIdcompleteMutationResult = NonNullable<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdcomplete>>>
-    export type PostTasksTaskIdActionItemsIdcompleteMutationBody = RestActionItemOccurrenceRequest | undefined
+
     export type PostTasksTaskIdActionItemsIdcompleteMutationError = ErrorType<RestErrResponse>
-    export type PostTasksTaskIdActionItemsIdcompleteMutationVariables = {taskId: string;id: string;data?: RestActionItemOccurrenceRequest}
+    export type PostTasksTaskIdActionItemsIdcompleteMutationVariables = {taskId: string;id: string}
 
     /**
  * @summary Complete action item
@@ -2716,33 +2575,18 @@ export const getPostTasksTaskIdActionItemsIdreopenUrl = (taskId: string,
 }
 
 /**
- * Reopens one ActionItem occurrence. Recurring items require occurrence_date; one-off items may omit it. occurrence_date identifies scheduled occurrence and may differ from due_date after an edit.
+ * Reopens an ActionItem.
  * @summary Reopen action item
  */
 export const postTasksTaskIdActionItemsIdreopen = async (taskId: string,
-    id: string,
-    restActionItemOccurrenceRequest?: RestActionItemOccurrenceRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
+    id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return apiFetch<RestMessageResponse>(getPostTasksTaskIdActionItemsIdreopenUrl(taskId,id),
+  return apiFetch<RestMessageResponse>(getPostTasksTaskIdActionItemsIdreopenUrl(taskId,id),
   {
     ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(restActionItemOccurrenceRequest)
+    method: 'POST'
+
+
   }
 );}
 
@@ -2767,9 +2611,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdreopen>>, PostTasksTaskIdActionItemsIdreopenMutationVariables> = (props) => {
-          const {taskId,id,data} = props ?? {};
+          const {taskId,id} = props ?? {};
 
-          return  postTasksTaskIdActionItemsIdreopen(taskId,id,data,requestOptions)
+          return  postTasksTaskIdActionItemsIdreopen(taskId,id,requestOptions)
         }
 
 
@@ -2780,9 +2624,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PostTasksTaskIdActionItemsIdreopenMutationResult = NonNullable<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdreopen>>>
-    export type PostTasksTaskIdActionItemsIdreopenMutationBody = RestActionItemOccurrenceRequest | undefined
+
     export type PostTasksTaskIdActionItemsIdreopenMutationError = ErrorType<RestErrResponse>
-    export type PostTasksTaskIdActionItemsIdreopenMutationVariables = {taskId: string;id: string;data?: RestActionItemOccurrenceRequest}
+    export type PostTasksTaskIdActionItemsIdreopenMutationVariables = {taskId: string;id: string}
 
     /**
  * @summary Reopen action item
@@ -2808,7 +2652,7 @@ export const getPostTasksTaskIdActionItemsIdreorderUrl = (taskId: string,
 }
 
 /**
- * Moves the ActionItem to a new zero-based position for the same occurrence date.
+ * Moves the ActionItem to a new zero-based position in its Task.
  * @summary Reorder action item
  */
 export const postTasksTaskIdActionItemsIdreorder = async (taskId: string,
@@ -2888,186 +2732,4 @@ export const usePostTasksTaskIdActionItemsIdreorder = <TError = ErrorType<RestEr
         TContext
       > => {
       return useMutation(getPostTasksTaskIdActionItemsIdreorderMutationOptions(options), queryClient);
-    }
-
-export const getPostTasksTaskIdActionItemsIdrestoreUrl = (taskId: string,
-    id: string,) => {
-
-
-
-
-  return `/api/tasks/${taskId}/action-items/${id}:restore`
-}
-
-/**
- * @summary Restore action item occurrence
- */
-export const postTasksTaskIdActionItemsIdrestore = async (taskId: string,
-    id: string,
-    restActionItemOccurrenceRequest: RestActionItemOccurrenceRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return apiFetch<RestMessageResponse>(getPostTasksTaskIdActionItemsIdrestoreUrl(taskId,id),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(restActionItemOccurrenceRequest)
-  }
-);}
-
-
-
-
-
-export const getPostTasksTaskIdActionItemsIdrestoreMutationKey = () => ['postTasksTaskIdActionItemsIdrestore'] as const;
-
-export const getPostTasksTaskIdActionItemsIdrestoreMutationOptions = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdrestore>>, TError,PostTasksTaskIdActionItemsIdrestoreMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdrestore>>, TError,PostTasksTaskIdActionItemsIdrestoreMutationVariables, TContext> => {
-
-const mutationKey = getPostTasksTaskIdActionItemsIdrestoreMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdrestore>>, PostTasksTaskIdActionItemsIdrestoreMutationVariables> = (props) => {
-          const {taskId,id,data} = props ?? {};
-
-          return  postTasksTaskIdActionItemsIdrestore(taskId,id,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type PostTasksTaskIdActionItemsIdrestoreMutationResult = NonNullable<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdrestore>>>
-    export type PostTasksTaskIdActionItemsIdrestoreMutationBody = RestActionItemOccurrenceRequest
-    export type PostTasksTaskIdActionItemsIdrestoreMutationError = ErrorType<RestErrResponse>
-    export type PostTasksTaskIdActionItemsIdrestoreMutationVariables = {taskId: string;id: string;data: RestActionItemOccurrenceRequest}
-
-    /**
- * @summary Restore action item occurrence
- */
-export const usePostTasksTaskIdActionItemsIdrestore = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdrestore>>, TError,PostTasksTaskIdActionItemsIdrestoreMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdrestore>>,
-        TError,
-        PostTasksTaskIdActionItemsIdrestoreMutationVariables,
-        TContext
-      > => {
-      return useMutation(getPostTasksTaskIdActionItemsIdrestoreMutationOptions(options), queryClient);
-    }
-
-export const getPostTasksTaskIdActionItemsIdskipUrl = (taskId: string,
-    id: string,) => {
-
-
-
-
-  return `/api/tasks/${taskId}/action-items/${id}:skip`
-}
-
-/**
- * @summary Skip action item occurrence
- */
-export const postTasksTaskIdActionItemsIdskip = async (taskId: string,
-    id: string,
-    restActionItemOccurrenceRequest: RestActionItemOccurrenceRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return apiFetch<RestMessageResponse>(getPostTasksTaskIdActionItemsIdskipUrl(taskId,id),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(restActionItemOccurrenceRequest)
-  }
-);}
-
-
-
-
-
-export const getPostTasksTaskIdActionItemsIdskipMutationKey = () => ['postTasksTaskIdActionItemsIdskip'] as const;
-
-export const getPostTasksTaskIdActionItemsIdskipMutationOptions = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdskip>>, TError,PostTasksTaskIdActionItemsIdskipMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdskip>>, TError,PostTasksTaskIdActionItemsIdskipMutationVariables, TContext> => {
-
-const mutationKey = getPostTasksTaskIdActionItemsIdskipMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdskip>>, PostTasksTaskIdActionItemsIdskipMutationVariables> = (props) => {
-          const {taskId,id,data} = props ?? {};
-
-          return  postTasksTaskIdActionItemsIdskip(taskId,id,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type PostTasksTaskIdActionItemsIdskipMutationResult = NonNullable<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdskip>>>
-    export type PostTasksTaskIdActionItemsIdskipMutationBody = RestActionItemOccurrenceRequest
-    export type PostTasksTaskIdActionItemsIdskipMutationError = ErrorType<RestErrResponse>
-    export type PostTasksTaskIdActionItemsIdskipMutationVariables = {taskId: string;id: string;data: RestActionItemOccurrenceRequest}
-
-    /**
- * @summary Skip action item occurrence
- */
-export const usePostTasksTaskIdActionItemsIdskip = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdskip>>, TError,PostTasksTaskIdActionItemsIdskipMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdskip>>,
-        TError,
-        PostTasksTaskIdActionItemsIdskipMutationVariables,
-        TContext
-      > => {
-      return useMutation(getPostTasksTaskIdActionItemsIdskipMutationOptions(options), queryClient);
     }

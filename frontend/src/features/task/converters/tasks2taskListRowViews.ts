@@ -41,20 +41,12 @@ export function tasks2taskListRowViews(inputs: Input[]): TaskListRowView[] {
       dueDateTone,
       actionItems: actionItems.map((item) => {
         const taskId = item.task_id || id
-        const seriesId = item.series_id || undefined
-        const occurrenceDate = item.occurrence_date || undefined
-        const isRecurring = Boolean(seriesId && ((item.interval_weeks ?? 0) > 0 || item.repeat_state === "active" || item.repeat_state === "paused"))
-        const actionItemId = seriesId ?? item.id ?? ""
         return {
-          occurrenceKey: `${seriesId ?? actionItemId}:${occurrenceDate ?? ""}`,
+          id: item.id ?? "",
           taskId,
-          actionItemId,
-          ...(seriesId ? { seriesId } : {}),
-          ...(occurrenceDate ? { occurrenceDate } : {}),
           title: item.title ?? "",
           estimateLabel: durationLabel(item.estimated_minutes),
           completed: item.completed ?? false,
-          occurrenceDateLabel: occurrenceDate && isRecurring ? formatDate(occurrenceDate, language) : "",
           todayRegistration: null,
         }
       }),

@@ -34,9 +34,7 @@ func (repos reopenActionItemRepositoriesFake) ActionItems() ActionItemRepository
 }
 
 type reopenActionItemState struct {
-	completed     bool
-	intervalWeeks int
-	seriesID      domain.ActionItemID
+	completed bool
 }
 
 type reopenActionItemRepositoryFake struct {
@@ -51,12 +49,10 @@ type reopenActionItemRepositoryFake struct {
 
 func (*reopenActionItemRepositoryFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
 	items := make(map[string][]dao.ActionItem, len(taskIDs))
-	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
 	for _, id := range taskIDs {
 		items[id] = nil
-		skipped[id] = nil
 	}
-	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+	return dao.TaskListProjectionSources{ActionItemsByTask: items}, nil
 }
 
 func (repo *reopenActionItemRepositoryFake) UncheckForOwnedTask(_ context.Context, userID domain.UserID, taskID domain.TaskID, itemID domain.ActionItemID) error {
@@ -106,49 +102,43 @@ func TestReopenActionItemUseCaseReopensOneTimeItem(t *testing.T) {
 	}
 }
 
-func TestReopenActionItemUseCaseIsIdempotentAndPreservesRecurrence(t *testing.T) {
-	userID, taskID, sourceID := domain.UserID("user-1"), domain.TaskID("task-1"), domain.ActionItemID("series-root")
-	key := reopenActionItemKey(userID, taskID, sourceID)
-	uow, repo := newReopenActionItemFixture(map[string]reopenActionItemState{
-		key: {completed: true, intervalWeeks: 2, seriesID: sourceID},
-	})
+func TestReopenActionItemUseCaseIsIdempotentForConcreteItem(t *testing.T) {
+	userID, taskID, itemID := domain.UserID("user-1"), domain.TaskID("task-1"), domain.ActionItemID("item-1")
+	key := reopenActionItemKey(userID, taskID, itemID)
+	uow, repo := newReopenActionItemFixture(map[string]reopenActionItemState{key: {completed: true}})
 	useCase := NewReopenActionItemUseCase(uow, nil)
 
 	for range 2 {
-		if err := useCase.Execute(context.Background(), userID, taskID, sourceID); err != nil {
+		if err := useCase.Execute(context.Background(), userID, taskID, itemID); err != nil {
 			t.Fatalf("Execute() error = %v, want nil", err)
 		}
 	}
-	item := repo.items[key]
-	if item.completed {
+	if repo.items[key].completed {
 		t.Error("source occurrence is still completed")
-	}
-	if item.intervalWeeks != 2 || item.seriesID != sourceID {
-		t.Errorf("recurrence changed after reopen: interval=%d series=%q", item.intervalWeeks, item.seriesID)
 	}
 	if uow.calls != 2 || repo.calls != 2 {
 		t.Errorf("repeated reopen calls = UOW:%d repository:%d, want 2 each", uow.calls, repo.calls)
 	}
 }
 
-func TestReopenActionItemUseCaseLeavesOtherOccurrenceUnchanged(t *testing.T) {
+func TestReopenActionItemUseCaseChangesOnlyRequestedItem(t *testing.T) {
 	userID, taskID := domain.UserID("user-1"), domain.TaskID("task-1")
-	itemID, otherOccurrenceID := domain.ActionItemID("occurrence-today"), domain.ActionItemID("occurrence-next-week")
+	itemID, otherID := domain.ActionItemID("item-1"), domain.ActionItemID("item-2")
 	key := reopenActionItemKey(userID, taskID, itemID)
-	otherKey := reopenActionItemKey(userID, taskID, otherOccurrenceID)
+	otherKey := reopenActionItemKey(userID, taskID, otherID)
 	uow, repo := newReopenActionItemFixture(map[string]reopenActionItemState{
-		key:      {completed: true, intervalWeeks: 1, seriesID: "series-root"},
-		otherKey: {completed: true, intervalWeeks: 1, seriesID: "series-root"},
+		key:      {completed: true},
+		otherKey: {completed: true},
 	})
 
 	if err := NewReopenActionItemUseCase(uow, nil).Execute(context.Background(), userID, taskID, itemID); err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
 	}
 	if repo.items[key].completed {
-		t.Error("requested occurrence is still completed")
+		t.Error("requested ActionItem is still completed")
 	}
 	if !repo.items[otherKey].completed {
-		t.Error("other occurrence was reopened as a side effect")
+		t.Error("other ActionItem was reopened as a side effect")
 	}
 }
 

@@ -194,11 +194,8 @@ func run() (runErr error) {
 		auth.Post("/tasks/{taskId}/action-items", actionItemHandler.Create)
 		auth.Post("/tasks/{taskId}/action-items/{id}:complete", actionItemHandler.Complete)
 		auth.Post("/tasks/{taskId}/action-items/{id}:reopen", actionItemHandler.Reopen)
-		auth.Post("/tasks/{taskId}/action-items/{id}:skip", actionItemHandler.Skip)
-		auth.Post("/tasks/{taskId}/action-items/{id}:restore", actionItemHandler.Restore)
 		auth.Post("/tasks/{taskId}/action-items/{id}:reorder", actionItemHandler.Reorder)
 		auth.Patch("/tasks/{taskId}/action-items/{id}", actionItemHandler.Update)
-		auth.Put("/tasks/{taskId}/action-items/{id}/frequency", actionItemHandler.UpdateFrequency)
 		auth.Delete("/tasks/{taskId}/action-items/{id}", actionItemHandler.Delete)
 
 		// Schedules

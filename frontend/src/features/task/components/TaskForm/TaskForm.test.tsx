@@ -95,8 +95,7 @@ function editData(values: Partial<TaskFormValues> = {}): TaskAPIData {
     estimate_source: "manual", revision: 3, can_update: true,
   }
   const actionItems = (values.actionItems ?? []).map((item, index) => ({
-    id: item.seriesId ?? `item-${index}`, series_id: item.seriesId ?? null,
-    occurrence_date: item.occurrenceDate ?? "2026-10-10", title: item.title,
+    id: item.id ?? `item-${index}`, title: item.title,
     estimated_minutes: 30, priority: item.priority, completed: false,
   }))
   return {
@@ -130,7 +129,7 @@ test("retries only failed ActionItems after applying successful row IDs and defa
       complete: false,
       taskSaved: true,
       actionItems: [
-        { index: 0, key: values.actionItems[0]!.clientKey!, identity: { seriesId: "saved-item-1", occurrenceDate: "2026-10-10" }, savedFields: { title: "Saved item", estimatedMinutes: "0:30", priority: "medium" } },
+        { index: 0, key: values.actionItems[0]!.clientKey!, identity: { id: "saved-item-1" }, savedFields: { title: "Saved item", estimatedMinutes: "0:30", priority: "medium" } },
         { index: 1, key: values.actionItems[1]!.clientKey!, error: "tasks.form.actionItemSaveError" },
       ],
     }
@@ -152,7 +151,7 @@ test("retries only failed ActionItems after applying successful row IDs and defa
   await waitFor(() => expect(submit).toHaveBeenCalledTimes(2))
   expect(retryOperations).toHaveLength(1)
   expect(retryOperations[0]).toMatchObject({ type: "create", item: { title: "Retry item" } })
-  expect(submit.mock.calls[1]![0].actionItems[0]).toMatchObject({ seriesId: "saved-item-1", title: "Saved item" })
+  expect(submit.mock.calls[1]![0].actionItems[0]).toMatchObject({ id: "saved-item-1", title: "Saved item" })
 })
 
 test("does not validate an ActionItem row marked for deletion", async () => {

@@ -75,9 +75,9 @@ test("creates a Task with an ActionItem and reflects completion in list progress
   const editForm = page.getByRole("form", { name: "タスクを編集" })
   await editForm.getByLabel("タスク名 必須").fill("Draft survives conflict")
   const currentChild = revisedActionItemRows[0]
-  const independentChildEdit = await page.request.patch(`/api/tasks/${createdTask.id}/action-items/${currentChild.series_id}`, {
+  const independentChildEdit = await page.request.patch(`/api/tasks/${createdTask.id}/action-items/${currentChild.id}`, {
     headers,
-    data: { scope: "current", occurrence_date: currentChild.occurrence_date, title: "External child edit" },
+    data: { title: "External child edit" },
   })
   expect(independentChildEdit.status()).toBe(200)
   await page.getByRole("button", { name: "変更を保存", exact: true }).click()
@@ -125,7 +125,7 @@ test("creates a Task with an ActionItem and reflects completion in list progress
   await expect(revisedTaskRow).toBeVisible()
 })
 
-test("shows only failed ActionItem save and retries without duplicating successful saves", async ({ page, request }) => {
+test("retries failed ActionItem deletion without duplicating successful saves", async ({ page, request }) => {
   await signIn(page, request)
   await page.goto("/tasks/new")
   const createForm = page.getByRole("form", { name: "タスクを追加" })
@@ -141,60 +141,37 @@ test("shows only failed ActionItem save and retries without duplicating successf
   const headers = { Authorization: `Bearer ${token}` }
   const tasksResponse = await page.request.get("/api/tasks?status=all&title=Partial%20save%20task", { headers })
   expect(tasksResponse.status()).toBe(200)
-  const taskRows = (await tasksResponse.json()).items
-  expect(taskRows).toHaveLength(1)
-  const task = taskRows[0]
-  const profileResponse = await page.request.get("/api/users/me", { headers })
-  expect(profileResponse.status()).toBe(200)
-  const profile = await profileResponse.json()
+  const task = (await tasksResponse.json()).items[0]
   const childrenResponse = await page.request.get(`/api/tasks/${task.id}/action-items`, { headers })
   expect(childrenResponse.status()).toBe(200)
-  const children = (await childrenResponse.json()).items
-  expect(children).toHaveLength(1)
-  const first = children[0]
-  const firstSeriesId = first.series_id || first.id
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: profile.timezone }).format(new Date())
-  const weekday = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date(`${today}T00:00:00Z`).getUTCDay()]
-  const recurringResponse = await page.request.post(`/api/tasks/${task.id}/action-items`, {
+  const first = (await childrenResponse.json()).items[0]
+  const createSecond = await page.request.post(`/api/tasks/${task.id}/action-items`, {
     headers,
-    data: { title: "Delete fails once", estimated_minutes: 45, due_date: today, interval_weeks: 1, frequencies: [weekday] },
+    data: { title: "Delete fails once", estimated_minutes: 45 },
   })
-  expect(recurringResponse.status()).toBe(201)
-  const recurringRoot = await recurringResponse.json()
-  const seriesId = recurringRoot.series_id || recurringRoot.id
-  const recurringListResponse = await page.request.get(`/api/tasks/${task.id}/action-items`, { headers })
-  expect(recurringListResponse.status()).toBe(200)
-  const recurringRows = (await recurringListResponse.json()).items
-  const second = recurringRows.find((item: { series_id: string; occurrence_date: string; title: string }) => item.series_id === seriesId && item.occurrence_date === today && item.title === "Delete fails once")
-  expect(second).toBeTruthy()
-  const secondIndex = recurringRows.indexOf(second) + 1
-  expect(secondIndex).toBeGreaterThan(0)
-  const firstIndex = recurringRows.findIndex((item: { title: string; series_id: string; id: string }) => item.title === "Update succeeds" && (item.series_id || item.id) === firstSeriesId) + 1
-  expect(firstIndex).toBeGreaterThan(0)
-  const firstInput = page.getByLabel(new RegExp(`^アクションアイテム名 ${firstIndex}(?: \\(|$)`))
+  expect(createSecond.status()).toBe(201)
+  const second = await createSecond.json()
 
-  const requests = { taskCreate: 0, firstItemUpdate: 0, failedSkip: 0 }
-  const skipStatuses: number[] = []
+  const requests = { taskCreate: 0, firstItemUpdate: 0, deleteSecond: 0 }
+  const deleteStatuses: number[] = []
   page.on("request", (outgoing) => {
     if (outgoing.method() === "POST" && outgoing.url().endsWith("/api/tasks")) requests.taskCreate += 1
-    if (outgoing.method() === "PATCH" && outgoing.url().endsWith(`/api/tasks/${task.id}/action-items/${firstSeriesId}`)) requests.firstItemUpdate += 1
-    if (outgoing.method() === "POST" && outgoing.url().endsWith(`/api/tasks/${task.id}/action-items/${seriesId}:skip`)) requests.failedSkip += 1
+    if (outgoing.method() === "PATCH" && outgoing.url().endsWith(`/api/tasks/${task.id}/action-items/${first.id}`)) requests.firstItemUpdate += 1
+    if (outgoing.method() === "DELETE" && outgoing.url().endsWith(`/api/tasks/${task.id}/action-items/${second.id}`)) requests.deleteSecond += 1
   })
   page.on("response", (incoming) => {
-    if (incoming.url().endsWith(`/api/tasks/${task.id}/action-items/${seriesId}:skip`)) skipStatuses.push(incoming.status())
+    if (incoming.url().endsWith(`/api/tasks/${task.id}/action-items/${second.id}`) && incoming.request().method() === "DELETE") deleteStatuses.push(incoming.status())
   })
 
   const taskRow = page.getByRole("row").filter({ hasText: "Partial save task" })
   await taskRow.getByRole("button", { name: "タスクを編集: Partial save task", exact: true }).click()
+  const firstInput = page.getByLabel("アクションアイテム名 1", { exact: true })
   await firstInput.fill("Update saved once")
-  await page.getByRole("button", { name: `アクションアイテム ${secondIndex} を削除`, exact: true }).click()
+  await page.getByLabel("アクションアイテム名 2", { exact: true }).fill("Delete fails once")
+  await page.getByRole("button", { name: "アクションアイテム 2 を削除", exact: true }).click()
 
-  const completeSecond = await page.request.post(`/api/tasks/${task.id}/action-items/${second.series_id}:complete`, {
-    headers,
-    data: { occurrence_date: second.occurrence_date },
-  })
+  const completeSecond = await page.request.post(`/api/tasks/${task.id}/action-items/${second.id}:complete`, { headers })
   expect(completeSecond.status()).toBe(200)
-
   await page.getByRole("button", { name: "変更を保存", exact: true }).click()
   const failedActionItem = page.getByRole("group").filter({ hasText: "Delete fails once" })
   await expect(failedActionItem.getByText("Delete fails once: アクションアイテムを保存できませんでした。", { exact: true })).toBeVisible()
@@ -204,16 +181,13 @@ test("shows only failed ActionItem save and retries without duplicating successf
   expect(savedAfterFailure.status()).toBe(200)
   const savedRows = (await savedAfterFailure.json()).items
   expect(savedRows.filter((item: { title: string }) => item.title === "Update saved once")).toHaveLength(1)
-  expect(savedRows.some((item: { title: string; occurrence_date: string }) => item.title === "Delete fails once" && item.occurrence_date === today)).toBe(true)
+  expect(savedRows.find((item: { id: string }) => item.id === second.id)).toMatchObject({ id: second.id, completed: true })
   expect(requests.taskCreate).toBe(0)
   expect(requests.firstItemUpdate).toBe(1)
-  expect(requests.failedSkip).toBe(1)
-  expect(skipStatuses).toEqual([409])
+  expect(requests.deleteSecond).toBe(1)
+  expect(deleteStatuses).toEqual([409])
 
-  const reopenSecond = await page.request.post(`/api/tasks/${task.id}/action-items/${seriesId}:reopen`, {
-    headers,
-    data: { occurrence_date: second.occurrence_date },
-  })
+  const reopenSecond = await page.request.post(`/api/tasks/${task.id}/action-items/${second.id}:reopen`, { headers })
   expect(reopenSecond.status()).toBe(200)
   await page.getByRole("button", { name: "変更を保存", exact: true }).click()
   await expect(page).toHaveURL(/\/tasks(?:\?status=open)?$/)
@@ -225,9 +199,9 @@ test("shows only failed ActionItem save and retries without duplicating successf
   expect(finalChildren.status()).toBe(200)
   const finalRows = (await finalChildren.json()).items
   expect(finalRows.filter((item: { title: string }) => item.title === "Update saved once")).toHaveLength(1)
-  expect(finalRows.some((item: { title: string; occurrence_date: string }) => item.title === "Delete fails once" && item.occurrence_date === today)).toBe(false)
+  expect(finalRows.some((item: { id: string }) => item.id === second.id)).toBe(false)
   expect(requests.taskCreate).toBe(0)
   expect(requests.firstItemUpdate).toBe(1)
-  expect(requests.failedSkip).toBe(2)
-  expect(skipStatuses).toEqual([409, 200])
+  expect(requests.deleteSecond).toBe(2)
+  expect(deleteStatuses).toEqual([409, 204])
 })

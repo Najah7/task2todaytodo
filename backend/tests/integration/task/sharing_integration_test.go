@@ -37,7 +37,7 @@ func sharingPermissionID(t *testing.T, tx interface {
 }
 
 func TestTaskListIsAssignedOnly(t *testing.T) {
-	pool := recurrenceIntegrationPool(t)
+	pool := integrationPool(t)
 	ctx := t.Context()
 	fixture := newSharingFixture(t, pool)
 	editorID, viewerID := fixture.user(t), fixture.user(t)
@@ -91,7 +91,7 @@ func TestTaskListIsAssignedOnly(t *testing.T) {
 }
 
 func TestTaskAssignmentUsesItsOwnDynamicPermission(t *testing.T) {
-	pool := recurrenceIntegrationPool(t)
+	pool := integrationPool(t)
 	ctx := t.Context()
 	fixture := newSharingFixture(t, pool)
 	editorID, viewerID := fixture.user(t), fixture.user(t)
@@ -140,7 +140,7 @@ func TestTaskAssignmentUsesItsOwnDynamicPermission(t *testing.T) {
 }
 
 func TestOperationOnlyPermissionsDoNotRequireReadOrParentUpdateGrants(t *testing.T) {
-	pool := recurrenceIntegrationPool(t)
+	pool := integrationPool(t)
 	ctx := t.Context()
 	fixture := newSharingFixture(t, pool)
 	actorID := fixture.user(t)
@@ -181,10 +181,9 @@ func TestOperationOnlyPermissionsDoNotRequireReadOrParentUpdateGrants(t *testing
 	if _, err := pool.Exec(ctx, `DELETE FROM role_permissions WHERE role_id = $1 AND permission_id = $2`, roleID, taskUpdateAllow); err != nil {
 		t.Fatalf("remove task.update grant before child-only operation: %v", err)
 	}
-	today := time.Now().UTC().Truncate(time.Minute)
 	newActionItemTitle := "Updated without action_item.read or task.update permission"
-	if _, err := usecase.NewUpdateActionItemUseCase(sharingTestUOW{pool: pool}, nil).ExecuteOccurrence(
-		ctx, actor, task, domain.ActionItemID(actionItemID), today.Format("2006-01-02"), "current",
+	if _, err := usecase.NewUpdateActionItemUseCase(sharingTestUOW{pool: pool}, nil).Execute(
+		ctx, actor, task, domain.ActionItemID(actionItemID),
 		usecase.PatchField[string]{Present: true, Value: &newActionItemTitle}, usecase.PatchField[string]{}, usecase.PatchField[time.Time]{},
 	); err != nil {
 		t.Fatalf("action_item.update with no read or task.update grant: %v", err)
@@ -207,7 +206,7 @@ func TestOperationOnlyPermissionsDoNotRequireReadOrParentUpdateGrants(t *testing
 }
 
 func TestSharedTaskCreationUsesProjectOwnerAndRecordsMemberActor(t *testing.T) {
-	pool := recurrenceIntegrationPool(t)
+	pool := integrationPool(t)
 	ctx := t.Context()
 	fixture := newSharingFixture(t, pool)
 	editorID := fixture.user(t)
@@ -241,7 +240,7 @@ func TestSharedTaskCreationUsesProjectOwnerAndRecordsMemberActor(t *testing.T) {
 }
 
 func TestSharedActionItemReadWriteAndDeletePermissions(t *testing.T) {
-	pool := recurrenceIntegrationPool(t)
+	pool := integrationPool(t)
 	ctx := t.Context()
 	fixture := newSharingFixture(t, pool)
 	viewerID, editorID, adminID := fixture.user(t), fixture.user(t), fixture.user(t)
@@ -254,8 +253,7 @@ func TestSharedActionItemReadWriteAndDeletePermissions(t *testing.T) {
 
 	uow := sharingTestUOW{pool: pool}
 	today := time.Now().UTC().Truncate(time.Minute)
-	date := today.Format("2006-01-02")
-	pageRequest := usecase.CursorPageRequest{Size: 10, FromDate: date}
+	pageRequest := usecase.CursorPageRequest{Size: 10}
 	actionItemList := usecase.NewListActionItemsUseCase(uow, nil)
 	viewerActionItems, err := actionItemList.Execute(ctx, domain.UserID(viewerID), domain.TaskID(taskID))
 	if err != nil || len(viewerActionItems) != 1 || viewerActionItems[0].ID != initialActionItemID {
@@ -266,15 +264,14 @@ func TestSharedActionItemReadWriteAndDeletePermissions(t *testing.T) {
 		t.Fatalf("viewer actionItem page = %+v, error %v; want initial shared actionItem", viewerActionItemPage, err)
 	}
 
-	timezones := sharingTimezoneReader{}
-	viewerCreate := usecase.NewCreateActionItemUseCase(uow, timezones, nil)
+	viewerCreate := usecase.NewCreateActionItemUseCase(uow, nil)
 	if _, err := viewerCreate.Execute(ctx, usecase.CreateActionItemInput{
 		ID: domain.ActionItemID(ulid.Make().String()), UserID: domain.UserID(viewerID), TaskID: domain.TaskID(taskID), Title: "Viewer write must fail",
 	}); !errors.Is(err, usecase.ErrPermissionDenied) {
 		t.Fatalf("viewer assignee create-actionItem error = %v, want permission denied", err)
 	}
 
-	createdActionItem, err := usecase.NewCreateActionItemUseCase(uow, timezones, nil).Execute(ctx, usecase.CreateActionItemInput{
+	createdActionItem, err := usecase.NewCreateActionItemUseCase(uow, nil).Execute(ctx, usecase.CreateActionItemInput{
 		ID: domain.ActionItemID(ulid.Make().String()), UserID: domain.UserID(editorID), TaskID: domain.TaskID(taskID),
 		Title: "Editor created actionItem", DueDate: today,
 	})
@@ -283,8 +280,8 @@ func TestSharedActionItemReadWriteAndDeletePermissions(t *testing.T) {
 	}
 
 	updatedActionItemTitle := "Editor updated actionItem"
-	updatedActionItem, err := usecase.NewUpdateActionItemUseCase(uow, nil).ExecuteOccurrence(
-		ctx, domain.UserID(editorID), domain.TaskID(taskID), domain.ActionItemID(createdActionItem.SeriesID), createdActionItem.OccurrenceDate, "current",
+	updatedActionItem, err := usecase.NewUpdateActionItemUseCase(uow, nil).Execute(
+		ctx, domain.UserID(editorID), domain.TaskID(taskID), domain.ActionItemID(createdActionItem.ID),
 		usecase.PatchField[string]{Present: true, Value: &updatedActionItemTitle}, usecase.PatchField[string]{}, usecase.PatchField[time.Time]{},
 	)
 	if err != nil || updatedActionItem.Title != updatedActionItemTitle {
@@ -301,7 +298,7 @@ func TestSharedActionItemReadWriteAndDeletePermissions(t *testing.T) {
 }
 
 func TestSharedEditorCanAttachOnlyProjectOwnerTags(t *testing.T) {
-	pool := recurrenceIntegrationPool(t)
+	pool := integrationPool(t)
 	ctx := t.Context()
 	fixture := newSharingFixture(t, pool)
 	editorID, viewerID := fixture.user(t), fixture.user(t)
@@ -351,14 +348,8 @@ func TestSharedEditorCanAttachOnlyProjectOwnerTags(t *testing.T) {
 	}
 }
 
-type sharingTimezoneReader struct{}
-
-func (sharingTimezoneReader) GetTimezone(context.Context, string) (string, error) {
-	return "UTC", nil
-}
-
 func TestTaskRevisionSnapshotsRecordInitialAndLatestActor(t *testing.T) {
-	pool := recurrenceIntegrationPool(t)
+	pool := integrationPool(t)
 	ctx := t.Context()
 	fixture := newSharingFixture(t, pool)
 	actorID := fixture.user(t)
@@ -401,7 +392,7 @@ func TestTaskRevisionSnapshotsRecordInitialAndLatestActor(t *testing.T) {
 }
 
 func TestConcurrentTaskRevisionWritersProduceOneWinnerAndOneConflict(t *testing.T) {
-	pool := recurrenceIntegrationPool(t)
+	pool := integrationPool(t)
 	ctx := t.Context()
 	fixture := newSharingFixture(t, pool)
 	firstMemberID, secondMemberID := fixture.user(t), fixture.user(t)
@@ -469,7 +460,7 @@ func TestConcurrentTaskRevisionWritersProduceOneWinnerAndOneConflict(t *testing.
 }
 
 func TestConcurrentTaskAssignmentAndProjectMoveKeepAssigneeEligible(t *testing.T) {
-	pool := recurrenceIntegrationPool(t)
+	pool := integrationPool(t)
 	ctx := t.Context()
 	fixture := newSharingFixture(t, pool)
 	memberID := fixture.user(t)
@@ -542,7 +533,7 @@ func TestConcurrentTaskAssignmentAndProjectMoveKeepAssigneeEligible(t *testing.T
 }
 
 func TestDeleteTaskSoftDeletesActionItems(t *testing.T) {
-	pool := recurrenceIntegrationPool(t)
+	pool := integrationPool(t)
 	ctx := t.Context()
 	fixture := newSharingFixture(t, pool)
 	taskID := fixture.task(t, fixture.ownerID, "Task to delete")
@@ -595,7 +586,7 @@ func TestDeleteTaskSoftDeletesActionItems(t *testing.T) {
 }
 
 func TestTaskRevisionHistoryAccessTracksMembershipAndDeletion(t *testing.T) {
-	pool := recurrenceIntegrationPool(t)
+	pool := integrationPool(t)
 	ctx := t.Context()
 	fixture := newSharingFixture(t, pool)
 	viewerID, removedID, adminID := fixture.user(t), fixture.user(t), fixture.user(t)
@@ -773,12 +764,11 @@ func (fixture *sharingFixture) task(t *testing.T, assigneeID, title string) stri
 
 func (fixture *sharingFixture) actionItem(t *testing.T, taskID string) string {
 	t.Helper()
-	date := time.Now().UTC().Format("2006-01-02")
 	actionItemID := ulid.Make().String()
 	if _, err := fixture.tx.Exec(t.Context(), `
-		INSERT INTO action_items (id, task_id, title, position, series_id, occurrence_date, timezone)
-		VALUES ($1, $2, 'ActionItem child', 0, $1, $3::date, 'UTC')
-	`, actionItemID, taskID, date); err != nil {
+		INSERT INTO action_items (id, task_id, title, position)
+		VALUES ($1, $2, 'ActionItem child', 0)
+	`, actionItemID, taskID); err != nil {
 		t.Fatalf("insert actionItem child: %v", err)
 	}
 	return actionItemID

@@ -235,7 +235,7 @@ func (taskHandlerActionItemRepository) DeleteUneditedFutureByTask(context.Contex
 }
 
 func (taskHandlerActionItemRepository) ReadTaskListProjection(context.Context, domain.UserID, []string) (dao.TaskListProjectionSources, error) {
-	return dao.TaskListProjectionSources{ActionItemsByTask: map[string][]dao.ActionItem{}, SkippedByTask: map[string]map[string]map[string]bool{}}, nil
+	return dao.TaskListProjectionSources{ActionItemsByTask: map[string][]dao.ActionItem{}}, nil
 }
 
 type taskHandlerRepositories struct {

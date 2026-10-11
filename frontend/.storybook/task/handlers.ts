@@ -33,8 +33,8 @@ export const taskListStoryHandlers = [
   http.get("*/api/tasks/task-1/action-items", () => HttpResponse.json({ items: [
     { id: "item-1", task_id: "task-1", title: "離脱ポイントを洗い出す", estimated_minutes: 30, completed: true },
     { id: "item-2", task_id: "task-1", title: "競合のオンボーディングを調べる", estimated_minutes: 45, completed: true },
-    { id: "series-1", series_id: "series-1", occurrence_date: "2026-10-10", task_id: "task-1", title: "導入画面の構成を考える", estimated_minutes: 60, completed: false },
-    { id: "series-2", series_id: "series-2", occurrence_date: "2026-10-10", task_id: "task-1", title: "フィードバックを反映", estimated_minutes: 30, completed: false },
-    { id: "series-3", series_id: "series-3", occurrence_date: "2026-10-10", task_id: "task-1", title: "文言を見直す", estimated_minutes: 45, completed: false },
+    { id: "action-item-1", task_id: "task-1", title: "導入画面の構成を考える", estimated_minutes: 60, completed: false },
+    { id: "action-item-2", task_id: "task-1", title: "フィードバックを反映", estimated_minutes: 30, completed: false },
+    { id: "action-item-3", task_id: "task-1", title: "文言を見直す", estimated_minutes: 45, completed: false },
   ] })),
 ]

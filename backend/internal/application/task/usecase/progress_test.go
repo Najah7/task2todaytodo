@@ -25,12 +25,10 @@ type taskProgressTestActionItems struct{ ActionItemRepository }
 
 func (taskProgressTestActionItems) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
 	items := make(map[string][]dao.ActionItem, len(taskIDs))
-	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
 	for _, id := range taskIDs {
 		items[id] = nil
-		skipped[id] = nil
 	}
-	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+	return dao.TaskListProjectionSources{ActionItemsByTask: items}, nil
 }
 func (taskProgressTestRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle {
 	return inertProjectWorkLifecycle{}

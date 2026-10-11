@@ -556,7 +556,7 @@ func (h *TaskHandler) Wait(w http.ResponseWriter, r *http.Request) {
 //	@Failure		428			{object}	ErrResponse	"If-Match is required"
 //
 //	@Summary		Complete task
-//	@Description	Marks task done and stops future recurrence generation.
+//	@Description	Marks task done while preserving its ActionItems.
 //	@Tags			Tasks
 //	@Produce		json
 //	@Security		BearerAuth

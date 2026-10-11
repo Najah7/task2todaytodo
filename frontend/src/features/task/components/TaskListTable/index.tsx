@@ -119,7 +119,7 @@ function TaskRows({ task, expanded, busyActionItemKey, actionItemsQueryState, on
             ) : task.actionItems.length === 0 ? <p className={`${styles.detailsMessage} text-body`}>{i18n("tasks.actionItem.none")}</p> : (
               <div className={styles.actionItems}>
                 {task.actionItems.map((item) => (
-                  <ActionItemRow key={item.occurrenceKey} item={item} busy={busyActionItemKey === item.occurrenceKey} onToggle={onToggleActionItem} />
+                  <ActionItemRow key={item.id} item={item} busy={busyActionItemKey === item.id} onToggle={onToggleActionItem} />
                 ))}
               </div>
             )}
@@ -137,7 +137,7 @@ function ActionItemRow({ item, busy, onToggle }: { item: TaskActionItemRowView; 
       <button className={styles.checkButton} type="button" disabled={busy} aria-label={i18n(item.completed ? "tasks.actionItem.reopen" : "tasks.actionItem.complete", { title: item.title })} aria-pressed={item.completed} onClick={() => onToggle(item)}>
         <span aria-hidden="true">{item.completed ? "✓" : ""}</span>
       </button>
-      <span className={styles.itemTitle}><span className="text-body">{item.title}</span>{item.occurrenceDateLabel && <span className={`${styles.occurrenceDate} text-caption`}>{item.occurrenceDateLabel}</span>}</span>
+      <span className={styles.itemTitle}><span className="text-body">{item.title}</span></span>
       <span className={`${styles.itemEstimate} text-numeric`}>{item.estimateLabel}</span>
       {item.todayRegistration ? (
         <RegisteredTime timeLabel={item.todayRegistration.timeLabel} />

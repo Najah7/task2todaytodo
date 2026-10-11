@@ -11,146 +11,153 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 )
 
-type updateActionItemUOWFake struct{ repos Repositories }
+type updateActionItemUOWFake struct {
+	repos Repositories
+	err   error
+	calls int
+}
 
-func (u *updateActionItemUOWFake) Do(ctx context.Context, fn func(context.Context, Repositories) error) error {
-	return fn(ctx, u.repos)
+func (uow *updateActionItemUOWFake) Do(ctx context.Context, fn func(context.Context, Repositories) error) error {
+	uow.calls++
+	if uow.err != nil {
+		return uow.err
+	}
+	return fn(ctx, uow.repos)
 }
 
 type updateActionItemRepositoriesFake struct {
 	taskProgressTestRepositories
-	items ActionItemRepository
+	actionItems ActionItemRepository
 }
 
-func (r *updateActionItemRepositoriesFake) ActionItems() ActionItemRepository { return r.items }
-
-type fixedUpdateID string
-
-func (id fixedUpdateID) Generate() string { return string(id) }
+func (repos updateActionItemRepositoriesFake) ActionItems() ActionItemRepository {
+	return repos.actionItems
+}
 
 type updateActionItemRepositoryFake struct {
 	ActionItemRepository
-	root                         dao.ActionItem
-	current                      *dao.ActionItem
-	updated                      domain.ActionItem
-	result                       dao.ActionItem
-	templateCalls, overrideCalls int
-	snapshotID                   domain.ActionItemID
+	current     dao.ActionItem
+	updated     domain.ActionItem
+	userID      domain.UserID
+	taskID      domain.TaskID
+	itemID      domain.ActionItemID
+	getErr      error
+	updateErr   error
+	getCalls    int
+	updateCalls int
 }
 
-func (r *updateActionItemRepositoryFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
+func (*updateActionItemRepositoryFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
 	items := make(map[string][]dao.ActionItem, len(taskIDs))
-	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
 	for _, id := range taskIDs {
-		rows := []dao.ActionItem{r.root}
-		if r.current != nil {
-			rows = append(rows, *r.current)
+		items[id] = nil
+	}
+	return dao.TaskListProjectionSources{ActionItemsByTask: items}, nil
+}
+
+func (repo *updateActionItemRepositoryFake) GetForCommand(_ context.Context, userID domain.UserID, taskID domain.TaskID, itemID domain.ActionItemID, capability shared.Capability) (dao.ActionItem, error) {
+	repo.getCalls++
+	repo.userID, repo.taskID, repo.itemID = userID, taskID, itemID
+	if capability != shared.ActionItemUpdate() {
+		return dao.ActionItem{}, errors.New("unexpected capability")
+	}
+	return repo.current, repo.getErr
+}
+
+func (repo *updateActionItemRepositoryFake) UpdateForOwnedTask(_ context.Context, userID domain.UserID, item domain.ActionItem) (dao.ActionItem, error) {
+	repo.updateCalls++
+	repo.userID, repo.taskID, repo.updated = userID, item.TaskID, item
+	if repo.updateErr != nil {
+		return dao.ActionItem{}, repo.updateErr
+	}
+	return dao.ActionItem{ID: string(item.ID), TaskID: string(item.TaskID), Title: item.Title, Description: item.Description, DueDate: item.DueDate.Unix(), EstimatedMinutes: item.EstimatedMinutes, Priority: dao.Priority{Value: item.Priority.Value}, Completed: item.Completed, Position: item.Position}, nil
+}
+
+func newUpdateActionItemFixture() (*updateActionItemUOWFake, *updateActionItemRepositoryFake, *UpdateActionItemUseCase) {
+	created := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	repo := &updateActionItemRepositoryFake{current: dao.ActionItem{
+		ID: "item-1", TaskID: "task-1", Title: "Old title", Description: "Old description",
+		DueDate: time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC).Unix(), EstimatedMinutes: intPointer(25), Priority: dao.Priority{Value: "medium"}, Position: 3,
+		CreatedAt: created.Unix(), UpdatedAt: created.Unix(),
+	}}
+	uow := &updateActionItemUOWFake{repos: updateActionItemRepositoriesFake{actionItems: repo}}
+	return uow, repo, NewUpdateActionItemUseCase(uow, nil)
+}
+
+func TestUpdateActionItemUseCaseUpdatesFieldsOnConcreteID(t *testing.T) {
+	uow, repo, uc := newUpdateActionItemFixture()
+	dueDate := time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)
+	estimate := 45
+	got, err := uc.Execute(context.Background(), "user-1", "task-1", "item-1", patchValue("New title"), patchValue("New description"), patchValue(dueDate), ActionItemPlanningPatch{
+		EstimatedMinutes: patchValue(estimate), Priority: patchValue("high"),
+	})
+	if err != nil {
+		t.Fatalf("Execute() error = %v, want nil", err)
+	}
+	if repo.getCalls != 1 || repo.updateCalls != 1 || uow.calls != 1 {
+		t.Fatalf("calls = UOW:%d get:%d update:%d; want one each", uow.calls, repo.getCalls, repo.updateCalls)
+	}
+	if repo.userID != "user-1" || repo.taskID != "task-1" || repo.itemID != "item-1" || repo.updated.ID != "item-1" {
+		t.Errorf("repository scope / updated ID = %q/%q/%q/%q", repo.userID, repo.taskID, repo.itemID, repo.updated.ID)
+	}
+	if got.ID != "item-1" || got.Title != "New title" || got.Description != "New description" || got.DueDate != dueDate.Unix() || got.EstimatedMinutes == nil || *got.EstimatedMinutes != estimate || got.Priority.Value != "high" || got.Position != 3 {
+		t.Errorf("updated item = %+v; want changed fields and preserved position", got)
+	}
+}
+
+func TestUpdateActionItemUseCasePreservesFieldsOmittedFromPatch(t *testing.T) {
+	_, repo, uc := newUpdateActionItemFixture()
+	_, err := uc.Execute(context.Background(), "user-1", "task-1", "item-1", PatchField[string]{}, PatchField[string]{}, PatchField[time.Time]{})
+	if err != nil {
+		t.Fatalf("Execute() error = %v, want nil", err)
+	}
+	if repo.updated.Title != "Old title" || repo.updated.Description != "Old description" || repo.updated.EstimatedMinutes == nil || *repo.updated.EstimatedMinutes != 25 || repo.updated.Priority.Value != "medium" {
+		t.Errorf("unchanged patch item = %+v; want persisted fields retained", repo.updated)
+	}
+}
+
+func TestUpdateActionItemUseCaseRejectsNullTitleAndPropagatesNotFound(t *testing.T) {
+	_, repo, uc := newUpdateActionItemFixture()
+	if _, err := uc.Execute(context.Background(), "user-1", "task-1", "item-1", PatchField[string]{Present: true}, PatchField[string]{}, PatchField[time.Time]{}); !errors.Is(err, ErrActionItemPatchRequiredFieldNull) {
+		t.Errorf("null title error = %v; want %v", err, ErrActionItemPatchRequiredFieldNull)
+	}
+	if repo.getCalls != 0 {
+		t.Errorf("GetForCommand calls = %d; want 0 for invalid request", repo.getCalls)
+	}
+
+	wantErr := ErrActionItemNotFound
+	repo.getErr = wantErr
+	if _, err := uc.Execute(context.Background(), "user-1", "task-1", "missing", PatchField[string]{}, PatchField[string]{}, PatchField[time.Time]{}); !errors.Is(err, wantErr) {
+		t.Errorf("missing item error = %v; want %v", err, wantErr)
+	}
+	if repo.updateCalls != 0 {
+		t.Errorf("UpdateForOwnedTask calls = %d; want 0 for missing item", repo.updateCalls)
+	}
+}
+
+func TestUpdateActionItemUseCasePropagatesRepositoryAndUOWErrors(t *testing.T) {
+	wantErr := errors.New("repository unavailable")
+	t.Run("repository", func(t *testing.T) {
+		uow, repo, uc := newUpdateActionItemFixture()
+		repo.updateErr = wantErr
+		_, err := uc.Execute(context.Background(), "user-1", "task-1", "item-1", PatchField[string]{}, PatchField[string]{}, PatchField[time.Time]{})
+		if !errors.Is(err, wantErr) {
+			t.Errorf("Execute() error = %v, want %v", err, wantErr)
 		}
-		items[id] = rows
-		skipped[id] = nil
-	}
-	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
-}
-
-func (r *updateActionItemRepositoryFake) GetForOwnedTask(context.Context, domain.UserID, domain.TaskID, domain.ActionItemID) (dao.ActionItem, error) {
-	return r.root, nil
-}
-func (r *updateActionItemRepositoryFake) ListByTask(context.Context, domain.UserID, domain.TaskID) ([]dao.ActionItem, error) {
-	rows := []dao.ActionItem{r.root}
-	if r.current != nil {
-		rows = append(rows, *r.current)
-	}
-	return rows, nil
-}
-func (r *updateActionItemRepositoryFake) UpsertActionItemOverride(_ context.Context, _ domain.UserID, item domain.ActionItem) (string, error) {
-	r.overrideCalls++
-	r.updated = item
-	return string(item.ID), nil
-}
-func (r *updateActionItemRepositoryFake) UpdateActionItemSeriesTemplate(_ context.Context, _ domain.UserID, _ domain.TaskID, _ domain.ActionItemID, snapshotID domain.ActionItemID, item domain.ActionItem) (dao.ActionItem, error) {
-	r.templateCalls++
-	r.snapshotID = snapshotID
-	r.updated = item
-	r.root.Title = item.Title
-	return dao.ActionItem{ID: r.root.ID, TaskID: r.root.TaskID, SeriesID: r.root.ID, OccurrenceDate: r.root.OccurrenceDate, Title: item.Title, IntervalWeeks: r.root.IntervalWeeks, RepeatState: r.root.RepeatState, FrequencyAnchorDate: r.root.FrequencyAnchorDate, Timezone: r.root.Timezone}, nil
-}
-func (r *updateActionItemRepositoryFake) UpdateForOwnedTask(_ context.Context, _ domain.UserID, item domain.ActionItem) (dao.ActionItem, error) {
-	r.updated = item
-	return dao.ActionItem{ID: string(item.ID), TaskID: string(item.TaskID), SeriesID: string(item.SeriesID), OccurrenceDate: item.OccurrenceDate.Format("2006-01-02"), Title: item.Title, Timezone: item.Timezone}, nil
-}
-
-type fixedUpdateTodayUOW struct{ Repositories }
-
-func updateActionItemRow(id string, interval int, state string) dao.ActionItem {
-	return dao.ActionItem{ID: id, TaskID: "task-1", Title: "Review PR", Description: "Check tests", DueDate: mustParseDate("2026-10-05").Unix(), Position: 3, IntervalWeeks: interval, Frequencies: []dao.TaskFrequency{{Value: "mon"}}, RepeatState: state, FrequencyAnchorDate: mustParseDate("2026-10-05").Unix(), SeriesID: id, OccurrenceDate: "2026-10-05", Timezone: "UTC", CreatedAt: 100, UpdatedAt: 200}
-}
-
-func TestUpdateActionItemFutureScopeSnapshotsRootAndKeepsCadenceAnchor(t *testing.T) {
-	root := updateActionItemRow("action-item-root", 1, repeatStateActive)
-	repo := &updateActionItemRepositoryFake{root: root}
-	uow := &updateActionItemUOWFake{repos: &updateActionItemRepositoriesFake{items: repo}}
-	uc := NewUpdateActionItemUseCase(uow, nil, fixedUpdateID("snapshot-id"))
-	title := "new title"
-	got, err := uc.ExecuteOccurrence(context.Background(), "user-1", "task-1", "action-item-root", "2026-10-05", actionItemScopeFuture, PatchField[string]{Present: true, Value: &title}, PatchField[string]{}, PatchField[time.Time]{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if repo.templateCalls != 1 || repo.snapshotID != "snapshot-id" || repo.updated.Title != title {
-		t.Fatalf("template calls=%d snapshot=%s title=%s", repo.templateCalls, repo.snapshotID, repo.updated.Title)
-	}
-	if repo.root.FrequencyAnchorDate != root.FrequencyAnchorDate || got.Title != title {
-		t.Fatalf("root=%#v result=%#v", repo.root, got)
-	}
-}
-
-func TestUpdateActionItemFutureScopeRejectsDueDateEvenWhenCleared(t *testing.T) {
-	root := updateActionItemRow("action-item-root", 1, repeatStateActive)
-	repo := &updateActionItemRepositoryFake{root: root}
-	uow := &updateActionItemUOWFake{repos: &updateActionItemRepositoriesFake{items: repo}}
-	uc := NewUpdateActionItemUseCase(uow, nil, fixedUpdateID("snapshot-id"))
-
-	for _, value := range []*time.Time{nil, func() *time.Time { due := mustParseDate("2026-10-12"); return &due }()} {
-		_, err := uc.ExecuteOccurrence(context.Background(), "user-1", "task-1", "action-item-root", "2026-10-05", actionItemScopeFuture, PatchField[string]{}, PatchField[string]{}, PatchField[time.Time]{Present: true, Value: value})
-		if !errors.Is(err, ErrActionItemFutureDueDateUnsupported) {
-			t.Fatalf("future due_date PATCH error=%v, want %v", err, ErrActionItemFutureDueDateUnsupported)
+		if uow.calls != 1 || repo.updateCalls != 1 {
+			t.Errorf("calls = UOW:%d update:%d", uow.calls, repo.updateCalls)
 		}
-	}
-	if repo.templateCalls != 0 || repo.overrideCalls != 0 {
-		t.Fatalf("future due_date PATCH mutated repository: template=%d override=%d", repo.templateCalls, repo.overrideCalls)
-	}
+	})
+	t.Run("unit of work", func(t *testing.T) {
+		uow, repo, uc := newUpdateActionItemFixture()
+		uow.err = wantErr
+		_, err := uc.Execute(context.Background(), "user-1", "task-1", "item-1", PatchField[string]{}, PatchField[string]{}, PatchField[time.Time]{})
+		if !errors.Is(err, wantErr) || repo.getCalls != 0 {
+			t.Errorf("Execute() error = %v get calls=%d; want UOW error and no read", err, repo.getCalls)
+		}
+	})
 }
 
-func TestUpdateActionItemCurrentFirstOccurrenceCreatesChildID(t *testing.T) {
-	root := updateActionItemRow("action-item-root", 1, repeatStateActive)
-	repo := &updateActionItemRepositoryFake{root: root}
-	uow := &updateActionItemUOWFake{repos: &updateActionItemRepositoriesFake{items: repo}}
-	uc := NewUpdateActionItemUseCase(uow, nil, fixedUpdateID("child-id"))
-	title := "edited first occurrence"
-	got, err := uc.ExecuteOccurrence(context.Background(), "user-1", "task-1", "action-item-root", "2026-10-05", actionItemScopeCurrent, PatchField[string]{Present: true, Value: &title}, PatchField[string]{}, PatchField[time.Time]{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if repo.overrideCalls != 1 || got.ID != "child-id" || got.ID == root.ID || !repo.updated.IsException {
-		t.Fatalf("first occurrence result=%#v child=%#v", got, repo.updated)
-	}
-}
+func intPointer(value int) *int { return &value }
 
-func TestActionItemDueDateOverrideSurvivesProjection(t *testing.T) {
-	date := mustParseDate("2026-10-05")
-	due := time.Date(2026, 10, 12, 16, 45, 0, 0, time.UTC)
-	root := updateActionItemRow("series", 1, repeatStateActive)
-	exception := root
-	exception.ID = "saved"
-	exception.IsException = true
-	exception.OccurrenceDate = "2026-10-12"
-	exception.DueDate = due.Unix()
-	item, err := actionItemDomainOccurrence(root, &exception, date.AddDate(0, 0, 7), "saved", false, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !item.DueDate.Equal(due) {
-		t.Errorf("due date=%s want %s", item.DueDate, due)
-	}
-}
-
-var _ shared.ID = fixedUpdateID("")
+func patchValue[T any](value T) PatchField[T] { return PatchField[T]{Present: true, Value: &value} }

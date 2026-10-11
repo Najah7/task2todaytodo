@@ -1,13 +1,9 @@
 export type TaskActionItemRowView = {
-  occurrenceKey: string
+  id: string
   taskId: string
-  actionItemId: string
-  seriesId?: string
-  occurrenceDate?: string
   title: string
   estimateLabel: string
   completed: boolean
-  occurrenceDateLabel: string
   todayRegistration: { timeLabel: string } | null
 }
 

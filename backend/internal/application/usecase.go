@@ -31,7 +31,7 @@ func NewUseCase(authStore AuthStore, projectStore ProjectStore, taskStore TaskSt
 		Role:                NewRoleUseCases(authStore, logger),
 		Project:             NewProjectUseCases(projectStore, projectUOW, logger, newTaskProjectProgressReader(projectStore.Projects, taskStore.ActionItems)),
 		Task:                NewTaskUseCases(taskStore, taskUOW, authStore, ID, logger),
-		ActionItem:          NewActionItemUseCases(taskUOW, authStore, ID, logger),
+		ActionItem:          NewActionItemUseCases(taskUOW, logger),
 		Schedule:            schedules,
 		TaskTag:             NewTaskTagUseCases(taskUOW, logger),
 		Tag:                 tags,

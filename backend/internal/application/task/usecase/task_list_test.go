@@ -25,10 +25,12 @@ func (repo *taskListRepositoryFake) ListTaskPage(_ context.Context, _ domain.Use
 	return append([]dao.Task(nil), repo.page...), nil
 }
 
-type taskListProjectionReaderFake struct{}
+type taskListProjectionReaderFake struct {
+	sources dao.TaskListProjectionSources
+}
 
-func (taskListProjectionReaderFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, _ []string) (dao.TaskListProjectionSources, error) {
-	return dao.TaskListProjectionSources{ActionItemsByTask: map[string][]dao.ActionItem{}, SkippedByTask: map[string]map[string]map[string]bool{}}, nil
+func (reader taskListProjectionReaderFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, _ []string) (dao.TaskListProjectionSources, error) {
+	return reader.sources, nil
 }
 
 func TestListTasksFilteredPageSummaryUsesStatusIndependentCandidateSet(t *testing.T) {
@@ -46,7 +48,7 @@ func TestListTasksFilteredPageSummaryUsesStatusIndependentCandidateSet(t *testin
 			{ID: "open-five", Status: dao.TaskStatus{Value: "open"}, ManualEstimatedMinutes: &five},
 		},
 	}
-	useCase := &ListTasksUseCase{repo: repo, projection: taskListProjectionReaderFake{}}
+	useCase := &ListTasksUseCase{repo: repo, projection: taskListProjectionReaderFake{sources: dao.TaskListProjectionSources{ActionItemsByTask: map[string][]dao.ActionItem{}}}}
 	page, err := useCase.ExecuteFilteredPage(context.Background(), "user-1", TaskListRequest{
 		Size: 2, Status: "open", DueFilter: "all", SortBy: "due_date", SortOrder: "asc",
 		AsOf: time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC),
@@ -76,27 +78,24 @@ func TestListTasksFilteredPageRejectsInvalidSort(t *testing.T) {
 	}
 }
 
-func TestTaskEstimateUsesVisibleSavedHistoryAfterSeriesRootDeletion(t *testing.T) {
+func TestTaskListProgressAndEstimateUsePersistedActionItems(t *testing.T) {
 	manual, child := 99, 7
-	root := recurringActionItemRoot()
-	root.Deleted = true
-	saved := root
-	saved.ID = "saved-occurrence"
-	saved.Deleted = false
-	saved.IsException = true
-	saved.OccurrenceDate = "2026-10-05"
-	saved.Completed = true
-	saved.EstimatedMinutes = &child
+	other := 12
 	tasks, err := ApplyTaskListProjection([]dao.Task{{
 		ID: "task", Status: dao.TaskStatus{Value: "open"}, ManualEstimatedMinutes: &manual,
 	}}, dao.TaskListProjectionSources{
-		ActionItemsByTask: map[string][]dao.ActionItem{"task": {root, saved}},
-		SkippedByTask:     map[string]map[string]map[string]bool{"task": {}},
+		ActionItemsByTask: map[string][]dao.ActionItem{"task": {
+			{ID: "item-1", TaskID: "task", EstimatedMinutes: &child, Completed: true},
+			{ID: "item-2", TaskID: "task", EstimatedMinutes: &other},
+		}},
 	}, time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tasks[0].EstimateSource != "action_items" || tasks[0].EstimatedMinutes == nil || *tasks[0].EstimatedMinutes != child {
-		t.Fatalf("estimate source/value = %q/%v; want visible saved row sum %d", tasks[0].EstimateSource, tasks[0].EstimatedMinutes, child)
+	if tasks[0].ActionItemCount != 2 || tasks[0].ActionItemCompletedCount != 1 || tasks[0].Progress != 50 {
+		t.Fatalf("ActionItem count/completed/progress = %d/%d/%d; want 2/1/50", tasks[0].ActionItemCount, tasks[0].ActionItemCompletedCount, tasks[0].Progress)
+	}
+	if tasks[0].EstimateSource != "action_items" || tasks[0].EstimatedMinutes == nil || *tasks[0].EstimatedMinutes != child+other {
+		t.Fatalf("estimate source/value = %q/%v; want persisted ActionItem sum %d", tasks[0].EstimateSource, tasks[0].EstimatedMinutes, child+other)
 	}
 }

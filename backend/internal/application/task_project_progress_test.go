@@ -34,11 +34,10 @@ func TestTaskProjectProgressReaderUsesTaskListProjectionAndUserScope(t *testing.
 	reader := &taskProjectionReaderFake{sources: taskdao.TaskListProjectionSources{
 		ActionItemsByTask: map[string][]taskdao.ActionItem{
 			"task-1": {
-				{ID: "item-done", TaskID: "task-1", SeriesID: "item-done", OccurrenceDate: "2026-10-10", Timezone: "Asia/Tokyo", RepeatState: "one_off", Completed: true},
-				{ID: "item-open", TaskID: "task-1", SeriesID: "item-open", OccurrenceDate: "2026-10-10", Timezone: "Asia/Tokyo", RepeatState: "one_off"},
+				{ID: "item-done", TaskID: "task-1", Completed: true},
+				{ID: "item-open", TaskID: "task-1"},
 			},
 		},
-		SkippedByTask: map[string]map[string]map[string]bool{},
 	}}
 	base := projectProgressReaderFake{sources: projectdao.ProjectProgressSources{Tasks: []projectdao.ProjectTaskProgress{{
 		ProjectID: "project-1", TaskID: "task-1", UserID: "owner-1", Done: false,

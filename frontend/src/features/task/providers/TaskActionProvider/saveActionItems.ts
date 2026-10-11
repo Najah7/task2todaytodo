@@ -2,7 +2,6 @@ import {
   deleteTasksTaskIdActionItemsId,
   patchTasksTaskIdActionItemsId,
   postTasksTaskIdActionItems,
-  postTasksTaskIdActionItemsIdskip,
   type RestActionItemResponse,
 } from "~/api/generated/tasks"
 import type { TaskFormSaveResult } from "./context"
@@ -26,18 +25,14 @@ export async function saveTaskActionItems(taskId: string, operations: TaskAction
         outcomes.push({
           index: operation.index,
           key: operation.key,
-          identity: { seriesId: created.series_id ?? created.id ?? "", occurrenceDate: created.occurrence_date ?? created.due_date ?? "" },
+          identity: { id: created.id ?? "" },
           savedFields: responseSavedFields(created, operation.item),
         })
       } else if (operation.type === "update") {
-        const updated = await patchTasksTaskIdActionItemsId(taskId, operation.seriesId, operation.data)
+        const updated = await patchTasksTaskIdActionItemsId(taskId, operation.actionItemId, operation.data)
         outcomes.push({ index: operation.index, key: operation.key, savedFields: responseSavedFields(updated, operation.item) })
       } else {
-        if (operation.item.isRecurring) {
-          await postTasksTaskIdActionItemsIdskip(taskId, operation.item.seriesId!, { occurrence_date: operation.item.occurrenceDate })
-        } else {
-          await deleteTasksTaskIdActionItemsId(taskId, operation.item.seriesId!)
-        }
+        await deleteTasksTaskIdActionItemsId(taskId, operation.item.id!)
         outcomes.push({ index: operation.index, key: operation.key, deletionSucceeded: true })
       }
       hasSavedItems = true

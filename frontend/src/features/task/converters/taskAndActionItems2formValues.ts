@@ -11,10 +11,8 @@ export function taskAndActionItems2formValues(inputs: { task: RestTaskResponse; 
     priority: task.priority,
     manualEstimate: minutesToDurationText(task.manual_estimated_minutes),
     actionItems: actionItems.map((item) => ({
-      seriesId: item.series_id ?? item.id ?? "",
-      occurrenceDate: item.occurrence_date ?? "",
-      clientKey: `persisted:${item.series_id ?? item.id ?? ""}:${item.occurrence_date ?? ""}`,
-      isRecurring: Boolean(item.series_id && ((item.interval_weeks ?? 0) > 0 || item.repeat_state === "active" || item.repeat_state === "paused")),
+      id: item.id ?? "",
+      clientKey: `persisted:${item.id ?? ""}`,
       completed: item.completed ?? false,
       title: item.title ?? "",
       estimatedMinutes: minutesToDurationText(item.estimated_minutes),

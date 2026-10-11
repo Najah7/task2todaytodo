@@ -274,7 +274,7 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 		if _, err := fixture.tx.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,status,changed_by) VALUES($1,$2,$3,$2,$4,'open',$2)`, taskID, fixture.ownerID, fixture.projectID, []string{"Individually deleted Task", "Live Task"}[i]); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := fixture.tx.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,series_id,occurrence_date,timezone) VALUES($1,$2,$3,0,$1,'2026-10-08','UTC')`, actionItemIDs[i], taskID, "Action item"); err != nil {
+		if _, err := fixture.tx.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position) VALUES($1,$2,$3,0)`, actionItemIDs[i], taskID, "Action item"); err != nil {
 			t.Fatal(err)
 		}
 	}

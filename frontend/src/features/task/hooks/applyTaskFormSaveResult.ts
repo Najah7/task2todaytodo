@@ -23,8 +23,7 @@ export function applyTaskFormSaveResult(
       form.setError(`actionItems.${item.index}.${field}` as `actionItems.${number}.title`, { type: "server", message })
     }
     if (item.identity) {
-      form.setValue(`actionItems.${item.index}.seriesId`, item.identity.seriesId, { shouldDirty: false })
-      form.setValue(`actionItems.${item.index}.occurrenceDate`, item.identity.occurrenceDate, { shouldDirty: false })
+      form.setValue(`actionItems.${item.index}.id`, item.identity.id, { shouldDirty: false })
     }
     if (item.savedFields) {
       for (const [field, value] of Object.entries(item.savedFields)) {

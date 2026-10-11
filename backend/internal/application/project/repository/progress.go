@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/Najah7/task2todaytodo/db/sqlc"
@@ -16,27 +15,14 @@ func (r *ProjectRepository) ReadProjectProgressSources(ctx context.Context, proj
 		return sources, nil
 	}
 
-	taskRows, err := r.queries.ReadTaskProgressSources(ctx, sqlc.ReadTaskProgressSourcesParams{
-		AsOf: projectProgressTime(asOf), ProjectIds: projectIDs,
-	})
+	taskRows, err := r.queries.ReadTaskProgressSources(ctx, sqlc.ReadTaskProgressSourcesParams{ProjectIds: projectIDs})
 	if err != nil {
 		return dao.ProjectProgressSources{}, err
 	}
 	for _, row := range taskRows {
-		var roots []projectTaskProgressRoot
-		if err := json.Unmarshal(row.ActionItemRoots, &roots); err != nil {
-			return dao.ProjectProgressSources{}, err
-		}
 		task := dao.ProjectTaskProgress{
 			ProjectID: row.ProjectID.String, TaskID: row.TaskID, UserID: row.UserID, Done: row.Status == "done", ProjectStatus: row.ProjectStatus,
 			Total: int(row.ActionItemTotal), Completed: int(row.ActionItemCompleted),
-		}
-		for _, root := range roots {
-			task.Roots = append(task.Roots, dao.ProjectProgressRecurrence{
-				OccurrenceDate: root.OccurrenceDate, Timezone: root.Timezone, IntervalWeeks: root.IntervalWeeks,
-				FrequencyAnchorDate: root.FrequencyAnchorDate, Frequencies: root.Frequencies,
-				OccurrenceSavedToday: root.OccurrenceSavedToday,
-			})
 		}
 		sources.Tasks = append(sources.Tasks, task)
 	}
@@ -77,13 +63,4 @@ func (r *ProjectRepository) ReadProjectProgressSources(ctx context.Context, proj
 
 func projectProgressTime(value time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: value, Valid: true}
-}
-
-type projectTaskProgressRoot struct {
-	OccurrenceDate       string   `json:"occurrence_date"`
-	Timezone             string   `json:"timezone"`
-	IntervalWeeks        int      `json:"interval_weeks"`
-	FrequencyAnchorDate  string   `json:"frequency_anchor_date"`
-	Frequencies          []string `json:"frequencies"`
-	OccurrenceSavedToday bool     `json:"occurrence_saved_today"`
 }

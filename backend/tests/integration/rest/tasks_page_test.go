@@ -104,8 +104,6 @@ type tasksPageActionItem struct {
 	Priority         string `json:"priority"`
 	EstimatedMinutes *int   `json:"estimated_minutes"`
 	Completed        bool   `json:"completed"`
-	SeriesID         string `json:"series_id"`
-	OccurrenceDate   string `json:"occurrence_date"`
 }
 
 type tasksPageList struct {
@@ -450,38 +448,29 @@ func TestRESTTaskListDueFiltersAndNullLastOrdering(t *testing.T) {
 	}
 }
 
-func TestRESTTaskEstimateMatchesAllPagedRecurringActionItemRows(t *testing.T) {
+func TestRESTTaskEstimateMatchesAllPagedActionItemRows(t *testing.T) {
 	api := newTasksPageREST(t)
-	task := createTasksPageTask(t, api, `{"title":"Recurring estimate","manual_estimated_minutes":120,"priority":"high"}`)
+	task := createTasksPageTask(t, api, `{"title":"Action item estimate","manual_estimated_minutes":120,"priority":"high"}`)
 	today := calendar.NormalizeCalendarDate(time.Now().UTC())
 	todayText := today.Format("2006-01-02")
-	weekday := strings.ToLower(today.Weekday().String()[:3])
-	actionItemResponse := api.request(http.MethodPost, fmt.Sprintf("/tasks/%s/action-items", task.ID), fmt.Sprintf(`{"title":"Weekly item","due_date":%q,"estimated_minutes":17,"interval_weeks":1,"frequencies":[%q]}`, todayText, weekday))
+	actionItemResponse := api.request(http.MethodPost, fmt.Sprintf("/tasks/%s/action-items", task.ID), fmt.Sprintf(`{"title":"Planned item","due_date":%q,"estimated_minutes":17}`, todayText))
 	if actionItemResponse.Code != http.StatusCreated {
-		t.Fatalf("create recurring ActionItem status/body=%d/%s", actionItemResponse.Code, actionItemResponse.Body.String())
+		t.Fatalf("create ActionItem status/body=%d/%s", actionItemResponse.Code, actionItemResponse.Body.String())
 	}
-	var root tasksPageActionItem
-	if err := json.Unmarshal(actionItemResponse.Body.Bytes(), &root); err != nil {
-		t.Fatalf("decode recurring ActionItem: %v; body=%s", err, actionItemResponse.Body.String())
+	var first tasksPageActionItem
+	if err := json.Unmarshal(actionItemResponse.Body.Bytes(), &first); err != nil {
+		t.Fatalf("decode ActionItem: %v; body=%s", err, actionItemResponse.Body.String())
 	}
-	if root.SeriesID != root.ID || root.Priority != "high" || root.EstimatedMinutes == nil || *root.EstimatedMinutes != 17 {
-		t.Fatalf("recurring root=%+v; want saved root with inherited priority/high and 17 minutes", root)
+	if first.Priority != "high" || first.EstimatedMinutes == nil || *first.EstimatedMinutes != 17 {
+		t.Fatalf("ActionItem=%+v; want inherited high priority and 17 minutes", first)
 	}
 
-	windowEnd := calendar.AddCalendarMonthClamped(today)
-	outOfRangeDate := windowEnd.AddDate(0, 0, 1).Format("2006-01-02")
 	if _, err := api.pool.Exec(t.Context(), `
-		INSERT INTO action_items (id, task_id, title, description, due_date, completed, position, series_id, occurrence_date, timezone, is_exception, repeat_state, frequency_anchor_date, interval_weeks, estimated_minutes, priority)
-		SELECT $1, task_id, title, description, due_date, false, position + 1, id, $2::date, timezone, true, NULL, NULL, 0, 999, 'low'
-		FROM action_items WHERE id=$3 AND task_id=$4`, ulid.Make().String(), outOfRangeDate, root.ID, task.ID); err != nil {
-		t.Fatalf("insert saved out-of-window recurring exception: %v", err)
-	}
-	pastDate := today.AddDate(0, 0, -7).Format("2006-01-02")
-	if _, err := api.pool.Exec(t.Context(), `
-		INSERT INTO action_items (id, task_id, title, description, due_date, completed, position, series_id, occurrence_date, timezone, is_exception, repeat_state, frequency_anchor_date, interval_weeks, estimated_minutes, priority)
-		SELECT $1, task_id, title, description, due_date, true, position + 1, id, $2::date, timezone, true, NULL, NULL, 0, 17, 'high'
-		FROM action_items WHERE id=$3 AND task_id=$4`, ulid.Make().String(), pastDate, root.ID, task.ID); err != nil {
-		t.Fatalf("insert saved completed past occurrence: %v", err)
+		INSERT INTO action_items (id, task_id, title, due_date, completed, position, estimated_minutes, priority)
+		SELECT lpad((n + 500)::text, 26, '0'), $1, 'Saved ActionItem ' || n, $2::date + n,
+		       n = 1, n, 17, 'high'
+		FROM generate_series(1, 5) AS series(n)`, task.ID, todayText); err != nil {
+		t.Fatalf("insert persisted ActionItems for page coverage: %v", err)
 	}
 
 	var projected []tasksPageActionItem
@@ -493,14 +482,14 @@ func TestRESTTaskEstimateMatchesAllPagedRecurringActionItemRows(t *testing.T) {
 		}
 		response := api.request(http.MethodGet, fmt.Sprintf("/tasks/%s/action-items?%s", task.ID, query.Encode()), "")
 		if response.Code != http.StatusOK {
-			t.Fatalf("list recurring ActionItems status/body=%d/%s", response.Code, response.Body.String())
+			t.Fatalf("list ActionItems status/body=%d/%s", response.Code, response.Body.String())
 		}
 		var page struct {
 			Items         []tasksPageActionItem `json:"items"`
 			NextPageToken string                `json:"next_page_token"`
 		}
 		if err := json.Unmarshal(response.Body.Bytes(), &page); err != nil {
-			t.Fatalf("decode recurring ActionItem page: %v; body=%s", err, response.Body.String())
+			t.Fatalf("decode ActionItem page: %v; body=%s", err, response.Body.String())
 		}
 		projected = append(projected, page.Items...)
 		pageToken = page.NextPageToken
@@ -509,12 +498,12 @@ func TestRESTTaskEstimateMatchesAllPagedRecurringActionItemRows(t *testing.T) {
 		}
 	}
 	if len(projected) != 6 {
-		t.Fatalf("all ActionItem pages returned %d occurrences; want one saved past row plus 5 in-window weekly occurrences", len(projected))
+		t.Fatalf("all ActionItem pages returned %d rows; want 6 persisted ActionItems", len(projected))
 	}
 	var actionEstimate, completedCount int
 	for _, item := range projected {
 		if item.Priority != "high" || item.EstimatedMinutes == nil || *item.EstimatedMinutes != 17 {
-			t.Fatalf("projected occurrence lost inherited planning values: %+v", item)
+			t.Fatalf("ActionItem lost planning values: %+v", item)
 		}
 		actionEstimate += *item.EstimatedMinutes
 		if item.Completed {
@@ -522,9 +511,9 @@ func TestRESTTaskEstimateMatchesAllPagedRecurringActionItemRows(t *testing.T) {
 		}
 	}
 	if actionEstimate != 102 || completedCount != 1 {
-		t.Fatalf("ActionItem list estimate/completed=%d/%d; want 102 minutes and one saved past completion", actionEstimate, completedCount)
+		t.Fatalf("ActionItem list estimate/completed=%d/%d; want 102 minutes and one completed row", actionEstimate, completedCount)
 	}
-	listResponse := api.request(http.MethodGet, tasksPageQuery(url.Values{"status": {"all"}, "due_filter": {"all"}, "title": {"Recurring estimate"}}), "")
+	listResponse := api.request(http.MethodGet, tasksPageQuery(url.Values{"status": {"all"}, "due_filter": {"all"}, "title": {"Action item estimate"}}), "")
 	if listResponse.Code != http.StatusOK {
 		t.Fatalf("list Task estimate status/body=%d/%s", listResponse.Code, listResponse.Body.String())
 	}
@@ -549,19 +538,19 @@ func TestRESTTaskEstimateMatchesAllPagedRecurringActionItemRows(t *testing.T) {
 	}
 	assertTaskDetailProjection(1, 16)
 
-	var openOccurrence *tasksPageActionItem
+	var openItem *tasksPageActionItem
 	for i := range projected {
 		if !projected[i].Completed {
-			openOccurrence = &projected[i]
+			openItem = &projected[i]
 			break
 		}
 	}
-	if openOccurrence == nil {
-		t.Fatal("expected an incomplete projected occurrence")
+	if openItem == nil {
+		t.Fatal("expected an incomplete ActionItem")
 	}
-	complete := api.request(http.MethodPost, fmt.Sprintf("/tasks/%s/action-items/%s:complete", task.ID, openOccurrence.ID), fmt.Sprintf(`{"occurrence_date":%q}`, openOccurrence.OccurrenceDate))
+	complete := api.request(http.MethodPost, fmt.Sprintf("/tasks/%s/action-items/%s:complete", task.ID, openItem.ID), "")
 	if complete.Code != http.StatusOK {
-		t.Fatalf("complete recurring occurrence status/body=%d/%s", complete.Code, complete.Body.String())
+		t.Fatalf("complete ActionItem status/body=%d/%s", complete.Code, complete.Body.String())
 	}
 	afterCompleteResponse := api.request(http.MethodGet, fmt.Sprintf("/tasks/%s/action-items", task.ID), "")
 	if afterCompleteResponse.Code != http.StatusOK {
@@ -582,14 +571,14 @@ func TestRESTTaskEstimateMatchesAllPagedRecurringActionItemRows(t *testing.T) {
 	if len(afterComplete.Items) != len(projected) || afterCompleteEstimate != actionEstimate {
 		t.Fatalf("after-complete ActionItem projection=%+v sum=%d; want %d rows and unchanged %d-minute estimate", afterComplete.Items, afterCompleteEstimate, len(projected), actionEstimate)
 	}
-	completedResponse := api.request(http.MethodGet, tasksPageQuery(url.Values{"status": {"all"}, "due_filter": {"all"}, "title": {"Recurring estimate"}}), "")
+	completedResponse := api.request(http.MethodGet, tasksPageQuery(url.Values{"status": {"all"}, "due_filter": {"all"}, "title": {"Action item estimate"}}), "")
 	completed := decodeTasksPageList(t, completedResponse)
 	if len(completed.Items) != 1 || completed.Items[0].ActionItemCount != len(projected) || completed.Items[0].ActionItemCompletedCount != 2 || completed.Items[0].Progress != 33 || completed.Items[0].EstimatedMinutes == nil || *completed.Items[0].EstimatedMinutes != actionEstimate || completed.Items[0].Priority != "high" {
 		var gotEstimate *int
 		if len(completed.Items) > 0 {
 			gotEstimate = completed.Items[0].EstimatedMinutes
 		}
-		t.Fatalf("completed recurring Task projection=%+v estimate=%v; want 2/6, 33%% progress, %d minutes and high priority", completed.Items, taskPageEstimateValue(gotEstimate), actionEstimate)
+		t.Fatalf("completed Task projection=%+v estimate=%v; want 2/6, 33%% progress, %d minutes and high priority", completed.Items, taskPageEstimateValue(gotEstimate), actionEstimate)
 	}
 	assertTaskDetailProjection(2, 33)
 }

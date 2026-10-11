@@ -11,26 +11,14 @@ import (
 
 func recordToTask(record sqlc.Task) dao.Task {
 	return dao.Task{
-		ID:                     record.ID,
-		UserID:                 record.UserID,
-		ProjectID:              pgTextString(record.ProjectID),
-		AssigneeID:             record.AssigneeID,
-		Title:                  record.Title,
-		Description:            pgTextString(record.Description),
-		DueDate:                pgDateUnix(record.DueDate),
-		ManualEstimatedMinutes: pgIntPointer(record.ManualEstimatedMinutes),
-		EstimatedMinutes:       pgIntPointer(record.ManualEstimatedMinutes),
-		EstimateSource:         "manual",
-		ActualMinutes:          pgIntPointer(record.ActualMinutes),
-		Progress:               0,
-		Priority:               dao.Priority{Value: record.Priority},
-		Status:                 dao.TaskStatus{Value: record.Status},
-		CreatedAt:              pgUnix(record.CreatedAt),
-		UpdatedAt:              pgUnix(record.UpdatedAt),
-		Revision:               record.Revision,
-		DeletedAt:              pgUnixPointer(record.DeletedAt),
-		ChangedBy:              record.ChangedBy,
-		CursorCreatedAt:        record.CreatedAt.Time.UTC().Format(time.RFC3339Nano),
+		ID: record.ID, UserID: record.UserID, ProjectID: pgTextString(record.ProjectID),
+		AssigneeID: record.AssigneeID, Title: record.Title, Description: pgTextString(record.Description),
+		DueDate: pgDateUnix(record.DueDate), ManualEstimatedMinutes: pgIntPointer(record.ManualEstimatedMinutes),
+		EstimatedMinutes: pgIntPointer(record.ManualEstimatedMinutes), EstimateSource: "manual",
+		ActualMinutes: pgIntPointer(record.ActualMinutes), Progress: 0, Priority: dao.Priority{Value: record.Priority},
+		Status: dao.TaskStatus{Value: record.Status}, CreatedAt: pgUnix(record.CreatedAt), UpdatedAt: pgUnix(record.UpdatedAt),
+		Revision: record.Revision, DeletedAt: pgUnixPointer(record.DeletedAt), ChangedBy: record.ChangedBy,
+		CursorCreatedAt: record.CreatedAt.Time.UTC().Format(time.RFC3339Nano),
 	}
 }
 
@@ -42,267 +30,30 @@ func recordsToTasks(records []sqlc.Task) []dao.Task {
 	return tasks
 }
 
-func recordToActionItem(record sqlc.ActionItem) dao.ActionItem {
-	item := actionItemDAO(
-		record.ID,
-		record.TaskID,
-		record.Title,
-		record.Description,
-		record.DueDate,
-		record.Completed,
-		record.Position,
-		0,
-		nil,
-		record.SeriesID,
-		record.OccurrenceDate,
-		record.Timezone,
-		record.IsException,
-		record.DeletedAt.Valid,
-		record.CreatedAt,
-		record.UpdatedAt,
-	)
-	return applyActionItemPlanning(item, record.EstimatedMinutes, record.Priority)
-}
-
-func recordToCreatedActionItemRow(record sqlc.CreateActionItemRow) dao.ActionItem {
-	item := actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
-		record.DueDate, record.Completed, record.Position, record.IntervalWeeks, nil,
-		record.SeriesID, record.OccurrenceDate, record.Timezone, record.IsException,
-		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt)
-	return applyActionItemPlanning(item, record.EstimatedMinutes, record.Priority)
-}
-
-func recordToUpdatedActionItemRow(record sqlc.UpdateActionItemRow) dao.ActionItem {
-	item := actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
-		record.DueDate, record.Completed, record.Position, record.IntervalWeeks, nil,
-		record.SeriesID, record.OccurrenceDate, record.Timezone, record.IsException,
-		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt)
-	return applyActionItemPlanning(item, record.EstimatedMinutes, record.Priority)
-}
-
-func recordToActionItemRow(record sqlc.GetActionItemRow) dao.ActionItem {
-	item := actionItemDAO(
-		record.ID,
-		record.TaskID,
-		record.Title,
-		record.Description,
-		record.DueDate,
-		record.Completed,
-		record.Position,
-		record.IntervalWeeks,
-		record.Frequencies,
-		record.SeriesID,
-		record.OccurrenceDate,
-		record.Timezone,
-		record.IsException,
-		sqlcBoolean(record.Deleted),
-		record.CreatedAt,
-		record.UpdatedAt,
-	)
-	if record.RepeatState.Valid {
-		item.RepeatState = record.RepeatState.String
-	}
-	item.FrequencyAnchorDate = pgDateUnix(record.FrequencyAnchorDate)
-	return applyActionItemPlanning(item, record.EstimatedMinutes, record.Priority)
-}
-
-func recordToActionItemByTaskAndUserIDRow(record sqlc.GetActionItemByTaskAndUserIDRow) dao.ActionItem {
-	item := actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
-		record.DueDate, record.Completed, record.Position, record.IntervalWeeks, record.Frequencies,
-		record.SeriesID, record.OccurrenceDate, record.Timezone, record.IsException,
-		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt)
-	if record.RepeatState.Valid {
-		item.RepeatState = record.RepeatState.String
-	}
-	item.FrequencyAnchorDate = pgDateUnix(record.FrequencyAnchorDate)
-	return applyActionItemPlanning(item, record.EstimatedMinutes, record.Priority)
-}
-
-func recordToCreatedActionItemByTaskAndUserIDRow(record sqlc.CreateActionItemByTaskAndUserIDRow) dao.ActionItem {
-	item := actionItemDAO(
-		record.ID,
-		record.TaskID,
-		record.Title,
-		record.Description,
-		record.DueDate,
-		record.Completed,
-		record.Position,
-		record.IntervalWeeks,
-		record.Frequencies,
-		record.SeriesID,
-		record.OccurrenceDate,
-		record.Timezone,
-		record.IsException,
-		sqlcBoolean(record.Deleted),
-		record.CreatedAt,
-		record.UpdatedAt,
-	)
-	return applyActionItemPlanning(item, record.EstimatedMinutes, record.Priority)
-}
-
-func recordToCreatedActionItemOccurrenceByTaskAndUserIDRow(record sqlc.CreateActionItemOccurrenceByTaskAndUserIDRow) dao.ActionItem {
-	item := actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
-		record.DueDate, record.Completed, record.Position, record.IntervalWeeks, record.Frequencies,
-		record.SeriesID, record.OccurrenceDate, record.Timezone, record.IsException,
-		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt)
-	return applyActionItemPlanning(item, record.EstimatedMinutes, record.Priority)
-}
-
-func recordToUpdatedActionItemByTaskAndUserIDRow(record sqlc.UpdateActionItemByTaskAndUserIDRow) dao.ActionItem {
-	item := actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
-		record.DueDate, record.Completed, record.Position, record.IntervalWeeks, record.Frequencies,
-		record.SeriesID, record.OccurrenceDate, record.Timezone, record.IsException,
-		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt)
-	return applyActionItemPlanning(item, record.EstimatedMinutes, record.Priority)
-}
-
-func recordToReorderedActionItemByTaskAndUserIDRow(record sqlc.ReorderActionItemsByTaskAndUserIDRow) dao.ActionItem {
-	item := actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
-		record.DueDate, record.Completed, record.Position, record.IntervalWeeks, record.Frequencies,
-		record.SeriesID, record.OccurrenceDate, record.Timezone, record.IsException,
-		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt)
-	return applyActionItemPlanning(item, record.EstimatedMinutes, record.Priority)
-}
-
-func recordsToActionItems(records []sqlc.ListActionItemsByTaskAndUserIDRow) []dao.ActionItem {
-	items := make([]dao.ActionItem, 0, len(records))
-	for _, record := range records {
-		item := actionItemDAO(
-			record.ID,
-			record.TaskID,
-			record.Title,
-			record.Description,
-			record.DueDate,
-			record.Completed,
-			record.Position,
-			record.IntervalWeeks,
-			record.Frequencies,
-			record.SeriesID,
-			record.OccurrenceDate,
-			record.Timezone,
-			record.IsException,
-			sqlcBoolean(record.Deleted),
-			record.CreatedAt,
-			record.UpdatedAt,
-		)
-		if record.RepeatState.Valid {
-			item.RepeatState = record.RepeatState.String
-		}
-		item.FrequencyAnchorDate = pgDateUnix(record.FrequencyAnchorDate)
-		items = append(items, applyActionItemPlanning(item, record.EstimatedMinutes, record.Priority))
-	}
-	return items
-}
-
-func applyActionItemPlanning(item dao.ActionItem, estimatedMinutes pgtype.Int4, priority string) dao.ActionItem {
-	item.EstimatedMinutes = pgIntPointer(estimatedMinutes)
-	item.Priority = dao.Priority{Value: priority}
-	return item
-}
-
 func recordsToActionItemsForTaskRows(records []sqlc.ListActionItemsByTaskForUserRow) []dao.ActionItem {
 	items := make([]dao.ActionItem, 0, len(records))
 	for _, record := range records {
-		item := actionItemDAO(
-			record.ID,
-			record.TaskID,
-			record.Title,
-			record.Description,
-			record.DueDate,
-			record.Completed,
-			record.Position,
-			record.IntervalWeeks,
-			record.Frequencies,
-			"",
-			pgtype.Date{},
-			"",
-			false,
-			false,
-			record.CreatedAt,
-			record.UpdatedAt,
-		)
-		items = append(items, applyActionItemPlanning(item, record.EstimatedMinutes, record.Priority))
+		items = append(items, actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
+			record.DueDate, record.EstimatedMinutes, record.Priority, record.Completed,
+			record.Position, false, record.CreatedAt, record.UpdatedAt))
 	}
 	return items
 }
 
-func actionItemDAO(
-	id string,
-	taskID string,
-	title string,
-	description pgtype.Text,
-	dueDate pgtype.Date,
-	completed bool,
-	position int32,
-	intervalWeeks int32,
-	frequencies []string,
-	seriesID string,
-	occurrenceDate pgtype.Date,
-	timezone string,
-	isException bool,
-	deleted bool,
-	createdAt pgtype.Timestamptz,
-	updatedAt pgtype.Timestamptz,
-) dao.ActionItem {
-	occurrenceDateString := ""
-	if date := pgDateString(occurrenceDate); date != nil {
-		occurrenceDateString = *date
-	}
-	repeatState := ""
-	frequencyAnchorDate := int64(0)
-	if id == seriesID {
-		repeatState = "one_off"
-		if intervalWeeks > 0 {
-			repeatState = "active"
-			frequencyAnchorDate = pgDateUnix(occurrenceDate)
-		}
-	}
+func actionItemDAO(id, taskID, title string, description pgtype.Text, dueDate pgtype.Date,
+	estimatedMinutes pgtype.Int4, priority string, completed bool, position int32,
+	deleted bool, createdAt, updatedAt pgtype.Timestamptz) dao.ActionItem {
 	return dao.ActionItem{
-		ID:                  id,
-		TaskID:              taskID,
-		Title:               title,
-		Description:         pgTextString(description),
-		DueDate:             pgDateUnix(dueDate),
-		Completed:           completed,
-		Position:            int(position),
-		IntervalWeeks:       int(intervalWeeks),
-		RepeatState:         repeatState,
-		FrequencyAnchorDate: frequencyAnchorDate,
-		Frequencies:         taskFrequenciesDAO(frequencies),
-		SeriesID:            seriesID,
-		OccurrenceDate:      occurrenceDateString,
-		Timezone:            timezone,
-		IsException:         isException,
-		Deleted:             deleted,
-		CreatedAt:           pgUnix(createdAt),
-		UpdatedAt:           pgUnix(updatedAt),
+		ID: id, TaskID: taskID, Title: title, Description: pgTextString(description), DueDate: pgDateUnix(dueDate),
+		EstimatedMinutes: pgIntPointer(estimatedMinutes), Priority: dao.Priority{Value: priority},
+		Completed: completed, Position: int(position), Deleted: deleted,
+		CreatedAt: pgUnix(createdAt), UpdatedAt: pgUnix(updatedAt),
 	}
-}
-
-func taskFrequencyStrings(frequencies domain.TaskFrequencies) []string {
-	values := make([]string, 0, len(frequencies))
-	for _, frequency := range frequencies {
-		values = append(values, frequency.String())
-	}
-	return values
-}
-
-func taskFrequenciesDAO(values []string) []dao.TaskFrequency {
-	frequencies := make([]dao.TaskFrequency, 0, len(values))
-	for _, value := range values {
-		frequencies = append(frequencies, dao.TaskFrequency{Value: value})
-	}
-	return frequencies
 }
 
 func recordToTodoList(record sqlc.TodoList) dao.TodoList {
-	return dao.TodoList{
-		ID:        record.ID,
-		UserID:    record.UserID,
-		ListDate:  pgDateUnix(record.ListDate),
-		CreatedAt: pgUnix(record.CreatedAt),
-		UpdatedAt: pgUnix(record.UpdatedAt),
-	}
+	return dao.TodoList{ID: record.ID, UserID: record.UserID, ListDate: pgDateUnix(record.ListDate),
+		CreatedAt: pgUnix(record.CreatedAt), UpdatedAt: pgUnix(record.UpdatedAt)}
 }
 
 func recordsToTodoLists(records []sqlc.TodoList) []dao.TodoList {

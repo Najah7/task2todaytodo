@@ -135,7 +135,7 @@ READ:  Repository -> DAO -> UseCase/REST handler
   callback, perform every database write, and every database read that enforces
   transaction invariants, through the transaction-bound repositories or ports
   in `repos`. Do not use non-transaction repositories for those operations.
-- Task and Schedule currently read the user's timezone inside the UOW callback
+- Schedule currently reads the user's timezone inside the UOW callback
   through a non-transaction-bound scalar reader. This returns a committed-value
   snapshot; it does not guarantee transaction invariants. Do not generalize
   this exception to non-transactional writes or other invariant reads.

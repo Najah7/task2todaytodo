@@ -1,9 +1,7 @@
 erDiagram
     %% External references: users, projects, priority_master, roles, and project_members.
     %% Composite FK: tasks(project_id, user_id) -> projects(id, user_id).
-    %% Composite self-FK: action_items(series_id, task_id) -> action_items(id, task_id).
-    %% Composite unique keys: tags(user_id, name), action_items(id, task_id).
-    %% Partial unique index: action_items(series_id, occurrence_date), only when id <> series_id.
+    %% Composite unique key: tags(user_id, name).
 
     users {
         text id PK "NOT NULL"
@@ -95,23 +93,9 @@ erDiagram
         date due_date "NULL"
         boolean completed "NOT NULL"
         integer position "NOT NULL"
-        text series_id FK "NOT NULL"
-        date occurrence_date "NOT NULL"
-        text timezone "NOT NULL"
-        boolean is_exception "NOT NULL"
-        text repeat_state "NULL"
-        date frequency_anchor_date "NULL"
-        integer interval_weeks "NOT NULL"
         timestamptz deleted_at "NULL"
-        timestamptz skipped_at "NULL"
         timestamptz created_at "NOT NULL"
         timestamptz updated_at "NOT NULL"
-    }
-
-    action_item_frequencies {
-        text action_item_id PK, FK "NOT NULL"
-        text frequency PK, FK "NOT NULL"
-        timestamptz created_at "NOT NULL"
     }
 
     users ||..o{ tasks : owns
@@ -126,6 +110,3 @@ erDiagram
     tasks ||--o{ task_tag_assignments : has_tags
     tags ||--o{ task_tag_assignments : assigned_to_tasks
     tasks ||..o{ action_items : contains
-    action_items ||..o{ action_items : series_parent_same_task
-    action_items ||--o{ action_item_frequencies : repeats_on
-    frequency_master ||--o{ action_item_frequencies : used_by_item

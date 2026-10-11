@@ -182,9 +182,7 @@ test("keeps draft, confirmation, and cache when explicit reload finds a nonedita
 test("retries a failed revision refresh before completing a clean follow-up save", async () => {
   let taskReads = 0
   const actionItem = {
-    id: "series-1",
-    series_id: "series-1",
-    occurrence_date: "2026-10-10",
+    id: "action-item-1",
     title: "Original action item",
     estimated_minutes: 30,
     priority: "medium",
@@ -194,7 +192,7 @@ test("retries a failed revision refresh before completing a clean follow-up save
     const shared = commonResponse(input)
     const url = new URL(String(input), "http://localhost")
     if (url.pathname === "/api/tasks/task-1/action-items" && init?.method !== "PATCH") return jsonResponse({ items: [actionItem] })
-    if (url.pathname === "/api/tasks/task-1/action-items/series-1" && init?.method === "PATCH") {
+    if (url.pathname === "/api/tasks/task-1/action-items/action-item-1" && init?.method === "PATCH") {
       return jsonResponse({ ...actionItem, title: "Saved action item" })
     }
     if (shared) return shared

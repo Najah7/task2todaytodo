@@ -17,9 +17,7 @@ export const taskCreateSchema = z.object({
   manualEstimate: optionalEstimate,
   actionItems: z.array(z.object({
     clientKey: z.string().optional(),
-    seriesId: z.string().optional(),
-    occurrenceDate: z.string().optional(),
-    isRecurring: z.boolean().optional(),
+    id: z.string().optional(),
     completed: z.boolean().optional(),
     pendingDelete: z.boolean().optional(),
     deletionSucceeded: z.boolean().optional(),

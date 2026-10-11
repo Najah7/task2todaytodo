@@ -9,28 +9,10 @@ definitions:
       estimated_minutes:
         type: integer
         x-nullable: true
-      frequencies:
-        items:
-          type: string
-        type: array
-      interval_weeks:
-        type: integer
       priority:
         type: string
       title:
         type: string
-    type: object
-  rest.ActionItemFrequencyUpdateRequest:
-    properties:
-      frequencies:
-        items:
-          type: string
-        type: array
-      interval_weeks:
-        type: integer
-    required:
-    - frequencies
-    - interval_weeks
     type: object
   rest.ActionItemListResponse:
     properties:
@@ -41,15 +23,8 @@ definitions:
       next_page_token:
         type: string
     type: object
-  rest.ActionItemOccurrenceRequest:
-    properties:
-      occurrence_date:
-        type: string
-    type: object
   rest.ActionItemReorderRequest:
     properties:
-      occurrence_date:
-        type: string
       position:
         type: integer
     type: object
@@ -66,31 +41,13 @@ definitions:
       estimated_minutes:
         type: integer
         x-nullable: true
-      frequencies:
-        items:
-          type: string
-        type: array
-      frequency_anchor_date:
-        type: string
       id:
-        type: string
-      interval_weeks:
-        type: integer
-      is_exception:
-        type: boolean
-      occurrence_date:
         type: string
       position:
         type: integer
       priority:
         type: string
-      repeat_state:
-        type: string
-      series_id:
-        type: string
       task_id:
-        type: string
-      timezone:
         type: string
       title:
         type: string
@@ -108,19 +65,10 @@ definitions:
       estimated_minutes:
         type: integer
         x-nullable: true
-      occurrence_date:
-        type: string
       priority:
-        type: string
-      scope:
-        enum:
-        - current
-        - future
         type: string
       title:
         type: string
-    required:
-    - scope
     type: object
   rest.Err:
     properties:
@@ -3426,7 +3374,7 @@ paths:
       - Tasks
   /tasks/{id}:complete:
     post:
-      description: Marks task done and stops future recurrence generation.
+      description: Marks task done while preserving its ActionItems.
       parameters:
       - description: Current task ETag, for example \
         in: header
@@ -3671,11 +3619,6 @@ paths:
         in: query
         name: page_token
         type: string
-      - description: First occurrence date (YYYY-MM-DD); defaults to today in each
-          series timezone
-        in: query
-        name: from_date
-        type: string
       - description: Response field mask
         in: query
         name: fields
@@ -3711,8 +3654,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a one-off or recurring ActionItem owned by the authenticated
-        user.
+      description: Creates a single ActionItem owned by the authenticated user.
       parameters:
       - description: Task ID
         in: path
@@ -3755,14 +3697,14 @@ paths:
       - ActionItems
   /tasks/{taskId}/action-items/{id}:
     delete:
-      description: Deletes the entire ActionItem series, or one-off ActionItem.
+      description: Deletes a saved ActionItem.
       parameters:
       - description: Task ID
         in: path
         name: taskId
         required: true
         type: string
-      - description: ActionItem series ID
+      - description: ActionItem ID
         in: path
         name: id
         required: true
@@ -3782,6 +3724,10 @@ paths:
           description: Task or action item not found
           schema:
             $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Completed ActionItems cannot be deleted
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
         "500":
           description: Failed to delete action item
           schema:
@@ -3794,18 +3740,14 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Updates one occurrence with current scope and occurrence_date.
-        Future scope updates the root template immediately and does not require occurrence_date.
-        due_date cannot be changed with future scope; use the frequency endpoint to
-        change recurrence weekdays. occurrence_date is stable occurrence identity
-        and may differ from due_date after an edit.
+      description: Updates a saved ActionItem.
       parameters:
       - description: Task ID
         in: path
         name: taskId
         required: true
         type: string
-      - description: ActionItem series ID
+      - description: ActionItem ID
         in: path
         name: id
         required: true
@@ -3824,7 +3766,7 @@ paths:
           schema:
             $ref: '#/definitions/rest.ActionItemResponse'
         "400":
-          description: Invalid request or scope
+          description: Invalid request
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "401":
@@ -3833,10 +3775,6 @@ paths:
             $ref: '#/definitions/rest.ErrResponse'
         "404":
           description: Task or action item not found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "409":
-          description: Position conflict
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "500":
@@ -3848,86 +3786,22 @@ paths:
       summary: Update action item
       tags:
       - ActionItems
-  /tasks/{taskId}/action-items/{id}/frequency:
-    put:
-      consumes:
-      - application/json
-      description: Changes recurrence settings immediately on the root item. frequencies
-        selects weekdays and interval_weeks sets the number of weeks between matching
-        weeks. Use this endpoint to change recurrence weekdays. interval_weeks zero
-        stops future generation; occurrence_date is not part of this request.
-      parameters:
-      - description: Task ID
-        in: path
-        name: taskId
-        required: true
-        type: string
-      - description: ActionItem root ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Frequency settings
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.ActionItemFrequencyUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "400":
-          description: Invalid frequency settings
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Task or series root not found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "409":
-          description: Position conflict
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "500":
-          description: Failed to update action item frequency
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Update action item frequency
-      tags:
-      - ActionItems
   /tasks/{taskId}/action-items/{id}:complete:
     post:
       consumes:
       - application/json
-      description: Marks one ActionItem occurrence complete. Recurring items require
-        occurrence_date; one-off items may omit it. occurrence_date identifies scheduled
-        occurrence and may differ from due_date after an edit.
+      description: Marks an ActionItem complete.
       parameters:
       - description: Task ID
         in: path
         name: taskId
         required: true
         type: string
-      - description: ActionItem series ID
+      - description: ActionItem ID
         in: path
         name: id
         required: true
         type: string
-      - description: Stable occurrence date; required for recurring items
-        in: body
-        name: request
-        schema:
-          $ref: '#/definitions/rest.ActionItemOccurrenceRequest'
       produces:
       - application/json
       responses:
@@ -3960,25 +3834,18 @@ paths:
     post:
       consumes:
       - application/json
-      description: Reopens one ActionItem occurrence. Recurring items require occurrence_date;
-        one-off items may omit it. occurrence_date identifies scheduled occurrence
-        and may differ from due_date after an edit.
+      description: Reopens an ActionItem.
       parameters:
       - description: Task ID
         in: path
         name: taskId
         required: true
         type: string
-      - description: ActionItem series ID
+      - description: ActionItem ID
         in: path
         name: id
         required: true
         type: string
-      - description: Stable occurrence date; required for recurring items
-        in: body
-        name: request
-        schema:
-          $ref: '#/definitions/rest.ActionItemOccurrenceRequest'
       produces:
       - application/json
       responses:
@@ -4011,15 +3878,14 @@ paths:
     post:
       consumes:
       - application/json
-      description: Moves the ActionItem to a new zero-based position for the same
-        occurrence date.
+      description: Moves the ActionItem to a new zero-based position in its Task.
       parameters:
       - description: Task ID
         in: path
         name: taskId
         required: true
         type: string
-      - description: ActionItem series ID
+      - description: ActionItem ID
         in: path
         name: id
         required: true
@@ -4049,10 +3915,6 @@ paths:
           description: Task or action item not found
           schema:
             $ref: '#/definitions/rest.ErrResponse'
-        "409":
-          description: Concurrent position conflict
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
         "500":
           description: Failed to reorder action item
           schema:
@@ -4060,108 +3922,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Reorder action item
-      tags:
-      - ActionItems
-  /tasks/{taskId}/action-items/{id}:restore:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Task ID
-        in: path
-        name: taskId
-        required: true
-        type: string
-      - description: ActionItem series ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Stable recurring occurrence date
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.ActionItemOccurrenceRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Restore action item occurrence
-      tags:
-      - ActionItems
-  /tasks/{taskId}/action-items/{id}:skip:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Task ID
-        in: path
-        name: taskId
-        required: true
-        type: string
-      - description: ActionItem series ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Stable recurring occurrence date
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.ActionItemOccurrenceRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "409":
-          description: Completed occurrence cannot be skipped
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Skip action item occurrence
       tags:
       - ActionItems
   /users/me:

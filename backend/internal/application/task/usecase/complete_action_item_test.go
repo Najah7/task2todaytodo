@@ -34,9 +34,7 @@ func (repos completeActionItemRepositoriesFake) ActionItems() ActionItemReposito
 }
 
 type completeActionItemState struct {
-	completed     bool
-	intervalWeeks int
-	frequencies   []dao.TaskFrequency
+	completed bool
 }
 
 type completeActionItemRepositoryFake struct {
@@ -51,12 +49,10 @@ type completeActionItemRepositoryFake struct {
 
 func (*completeActionItemRepositoryFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
 	items := make(map[string][]dao.ActionItem, len(taskIDs))
-	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
 	for _, id := range taskIDs {
 		items[id] = nil
-		skipped[id] = nil
 	}
-	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+	return dao.TaskListProjectionSources{ActionItemsByTask: items}, nil
 }
 
 func (repo *completeActionItemRepositoryFake) CheckForOwnedTask(_ context.Context, userID domain.UserID, taskID domain.TaskID, itemID domain.ActionItemID) error {
@@ -89,7 +85,7 @@ func TestCompleteActionItemUseCaseCompletesOneTimeItem(t *testing.T) {
 	userID, taskID, itemID := domain.UserID("user-1"), domain.TaskID("task-1"), domain.ActionItemID("item-1")
 	key := completeActionItemKey(userID, taskID, itemID)
 	uow, repo := newCompleteActionItemFixture(map[string]completeActionItemState{
-		key: {intervalWeeks: 0},
+		key: {},
 	})
 
 	if err := NewCompleteActionItemUseCase(uow, nil).Execute(context.Background(), userID, taskID, itemID); err != nil {
@@ -106,40 +102,33 @@ func TestCompleteActionItemUseCaseCompletesOneTimeItem(t *testing.T) {
 	}
 }
 
-func TestCompleteActionItemUseCaseCompletesRecurringSourceAndIsIdempotent(t *testing.T) {
-	userID, taskID, sourceID := domain.UserID("user-1"), domain.TaskID("task-1"), domain.ActionItemID("series-root")
-	key := completeActionItemKey(userID, taskID, sourceID)
-	frequencies := []dao.TaskFrequency{{Value: "monday", Label: "Monday"}}
-	uow, repo := newCompleteActionItemFixture(map[string]completeActionItemState{
-		key: {intervalWeeks: 1, frequencies: frequencies},
-	})
+func TestCompleteActionItemUseCaseIsIdempotentForConcreteItem(t *testing.T) {
+	userID, taskID, itemID := domain.UserID("user-1"), domain.TaskID("task-1"), domain.ActionItemID("item-1")
+	key := completeActionItemKey(userID, taskID, itemID)
+	uow, repo := newCompleteActionItemFixture(map[string]completeActionItemState{key: {}})
 	useCase := NewCompleteActionItemUseCase(uow, nil)
 
 	for range 2 {
-		if err := useCase.Execute(context.Background(), userID, taskID, sourceID); err != nil {
+		if err := useCase.Execute(context.Background(), userID, taskID, itemID); err != nil {
 			t.Fatalf("Execute() error = %v, want nil", err)
 		}
 	}
-	item := repo.items[key]
-	if !item.completed {
-		t.Error("recurring source is not completed")
-	}
-	if item.intervalWeeks != 1 || len(item.frequencies) != 1 || item.frequencies[0] != frequencies[0] {
-		t.Errorf("recurrence changed after completion: interval=%d frequencies=%v", item.intervalWeeks, item.frequencies)
+	if !repo.items[key].completed {
+		t.Error("ActionItem is not completed")
 	}
 	if uow.calls != 2 || repo.calls != 2 {
 		t.Errorf("repeated completion calls = UOW:%d repository:%d, want 2 each", uow.calls, repo.calls)
 	}
 }
 
-func TestCompleteActionItemUseCaseLeavesFutureOccurrenceIndependent(t *testing.T) {
+func TestCompleteActionItemUseCaseChangesOnlyRequestedItem(t *testing.T) {
 	userID, taskID := domain.UserID("user-1"), domain.TaskID("task-1")
-	completedID, futureID := domain.ActionItemID("occurrence-today"), domain.ActionItemID("occurrence-future")
+	completedID, otherID := domain.ActionItemID("item-1"), domain.ActionItemID("item-2")
 	completedKey := completeActionItemKey(userID, taskID, completedID)
-	futureKey := completeActionItemKey(userID, taskID, futureID)
+	otherKey := completeActionItemKey(userID, taskID, otherID)
 	uow, repo := newCompleteActionItemFixture(map[string]completeActionItemState{
-		completedKey: {intervalWeeks: 1},
-		futureKey:    {intervalWeeks: 1},
+		completedKey: {},
+		otherKey:     {},
 	})
 
 	if err := NewCompleteActionItemUseCase(uow, nil).Execute(context.Background(), userID, taskID, completedID); err != nil {
@@ -148,8 +137,8 @@ func TestCompleteActionItemUseCaseLeavesFutureOccurrenceIndependent(t *testing.T
 	if !repo.items[completedKey].completed {
 		t.Error("requested occurrence is not completed")
 	}
-	if repo.items[futureKey].completed {
-		t.Error("future occurrence was completed as a side effect")
+	if repo.items[otherKey].completed {
+		t.Error("other ActionItem was completed as a side effect")
 	}
 }
 

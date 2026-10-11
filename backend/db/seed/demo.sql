@@ -12,7 +12,6 @@ TRUNCATE TABLE
     schedule_tag_assignments,
     schedule_frequencies,
     schedules,
-    action_item_frequencies,
     action_items,
     task_tag_assignments,
     tags,
@@ -100,15 +99,15 @@ SELECT
     lpad((305 + (n % 16))::text, 26, '0')
 FROM generate_series(0, 35) AS series(n);
 
--- One-off and recurring ActionItems. Only the first occurrence is stored for a series.
-INSERT INTO action_items (id, task_id, title, description, due_date, completed, position, series_id, occurrence_date, timezone, is_exception) VALUES
-    ('00000000000000000000000401', '00000000000000000000000201', 'インタビュー記録を読み返す', NULL, CURRENT_DATE, true, 0, '00000000000000000000000401', CURRENT_DATE, 'Asia/Tokyo', false),
-    ('00000000000000000000000402', '00000000000000000000000201', '課題を3つに分類する', '利用者、業務、システムの観点で分類', CURRENT_DATE, false, 1, '00000000000000000000000402', CURRENT_DATE, 'Asia/Tokyo', false),
-    ('00000000000000000000000403', '00000000000000000000000201', 'チームに要点を共有する', NULL, CURRENT_DATE + 1, false, 2, '00000000000000000000000403', CURRENT_DATE, 'Asia/Tokyo', false),
-    ('00000000000000000000000404', '00000000000000000000000205', '記事の要点を3行で書く', NULL, CURRENT_DATE + 1, false, 0, '00000000000000000000000404', CURRENT_DATE, 'Asia/Tokyo', false),
-    ('00000000000000000000000405', '00000000000000000000000204', '英単語を復習する', '平日に短時間の復習', CURRENT_DATE, true, 0, '00000000000000000000000405', date_trunc('week', CURRENT_DATE)::date, 'Asia/Tokyo', false);
+-- ActionItems are single persisted rows; recurrence applies to Schedules only.
+INSERT INTO action_items (id, task_id, title, description, due_date, completed, position) VALUES
+    ('00000000000000000000000401', '00000000000000000000000201', 'インタビュー記録を読み返す', NULL, CURRENT_DATE, true, 0),
+    ('00000000000000000000000402', '00000000000000000000000201', '課題を3つに分類する', '利用者、業務、システムの観点で分類', CURRENT_DATE, false, 1),
+    ('00000000000000000000000403', '00000000000000000000000201', 'チームに要点を共有する', NULL, CURRENT_DATE + 1, false, 2),
+    ('00000000000000000000000404', '00000000000000000000000205', '記事の要点を3行で書く', NULL, CURRENT_DATE + 1, false, 0),
+    ('00000000000000000000000405', '00000000000000000000000204', '英単語を復習する', '平日に短時間の復習', CURRENT_DATE, true, 0);
 
-INSERT INTO action_items (id, task_id, title, description, due_date, completed, position, series_id, occurrence_date, timezone)
+INSERT INTO action_items (id, task_id, title, description, due_date, completed, position)
 SELECT
     lpad((408 + n)::text, 26, '0'),
     lpad((220 + n)::text, 26, '0'),
@@ -116,20 +115,8 @@ SELECT
     'ActionItem一覧・ページング確認用データ',
     CASE WHEN n < 12 THEN CURRENT_DATE - (n + 2) ELSE CURRENT_DATE + (n % 10) END,
     n < 12 OR n % 4 = 0,
-    0,
-    lpad((408 + n)::text, 26, '0'),
-    CASE WHEN n < 12 THEN CURRENT_DATE - (n + 2) ELSE CURRENT_DATE END,
-    'Asia/Tokyo'
+    0
 FROM generate_series(0, 27) AS series(n);
-
-UPDATE action_items
-SET repeat_state = 'active', frequency_anchor_date = occurrence_date, interval_weeks = 1
-WHERE id = '00000000000000000000000405';
-
-INSERT INTO action_item_frequencies (action_item_id, frequency) VALUES
-    ('00000000000000000000000405', 'mon'),
-    ('00000000000000000000000405', 'wed'),
-    ('00000000000000000000000405', 'fri');
 
 -- Fixed appointments, a weekly recurring series, and one edited occurrence.
 INSERT INTO schedules (id, user_id, project_id, assignee_id, title, description, location, start_at, end_at, series_id, occurrence_date, timezone, is_exception, repeat_state, frequency_anchor_date, interval_weeks)

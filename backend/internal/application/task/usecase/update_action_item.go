@@ -11,16 +11,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/logging"
 )
 
-var (
-	ErrActionItemPatchRequiredFieldNull   = errors.New("required action item field cannot be null")
-	ErrActionItemScopeInvalid             = errors.New("action item scope must be current or future")
-	ErrActionItemFutureDueDateUnsupported = errors.New("due_date cannot be changed for future occurrences; change recurrence weekdays instead")
-)
-
-const (
-	actionItemScopeCurrent = "current"
-	actionItemScopeFuture  = "future"
-)
+var ErrActionItemPatchRequiredFieldNull = errors.New("required action item field cannot be null")
 
 type ActionItemPlanningPatch struct {
 	EstimatedMinutes PatchField[int]
@@ -29,142 +20,40 @@ type ActionItemPlanningPatch struct {
 
 type UpdateActionItemUseCase struct {
 	uow    UOW
-	ID     shared.ID
-	now    func() time.Time
 	logger logging.Logger
 }
 
-func NewUpdateActionItemUseCase(uow UOW, logger logging.Logger, ids ...shared.ID) *UpdateActionItemUseCase {
-	uc := &UpdateActionItemUseCase{uow: uow, now: time.Now, logger: logging.OrNop(logger)}
-	if len(ids) > 0 {
-		uc.ID = ids[0]
-	}
-	return uc
+func NewUpdateActionItemUseCase(uow UOW, logger logging.Logger) *UpdateActionItemUseCase {
+	return &UpdateActionItemUseCase{uow: uow, logger: logging.OrNop(logger)}
 }
 
-// ExecuteOccurrence edits one saved occurrence or updates series fields immediately for future scope.
-func (uc *UpdateActionItemUseCase) ExecuteOccurrence(ctx context.Context, userID domain.UserID, taskID domain.TaskID, seriesID domain.ActionItemID, occurrenceDate, scope string, title PatchField[string], description PatchField[string], dueDate PatchField[time.Time], planning ...ActionItemPlanningPatch) (output dao.ActionItem, err error) {
-	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "UpdateActionItemUseCase.ExecuteOccurrence", err) }()
-
-	asOf := uc.now()
-	patch := ActionItemPlanningPatch{}
-	if len(planning) > 0 {
-		patch = planning[0]
-	}
-	applyPlanning := func(item *domain.ActionItem) error {
-		if patch.EstimatedMinutes.Present {
-			item.EstimatedMinutes = nil
-			if patch.EstimatedMinutes.Value != nil {
-				value := *patch.EstimatedMinutes.Value
-				item.EstimatedMinutes = &value
-			}
-		}
-		if patch.Priority.Present {
-			if patch.Priority.Value == nil {
-				return domain.ErrTaskPriorityEmpty
-			}
-			priority, err := domain.NewTaskPriority(*patch.Priority.Value)
-			if err != nil {
-				return err
-			}
-			item.Priority = priority
-		}
-		return nil
-	}
-	if scope == actionItemScopeFuture {
-		if dueDate.Present {
-			return dao.ActionItem{}, ErrActionItemFutureDueDateUnsupported
-		}
-		if title.Present && title.Value == nil {
-			return dao.ActionItem{}, ErrActionItemPatchRequiredFieldNull
-		}
-		var result dao.ActionItem
-		err := uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-			return withTaskProgressMutationForPermission(ctx, repos, userID, taskID, asOf, shared.ActionItemUpdate(), func() error {
-				state, err := loadActionItemOccurrenceWithCapability(ctx, repos, userID, taskID, seriesID, occurrenceDate, asOf, shared.ActionItemUpdate())
-				if err != nil {
-					return err
-				}
-				root := state.root
-				effective := root.Title
-				descriptionValue := root.Description
-				dueValue := root.DueDate
-				position := root.Position
-				if title.Present {
-					effective = *title.Value
-				}
-				if description.Present {
-					descriptionValue = ""
-					if description.Value != nil {
-						descriptionValue = *description.Value
-					}
-				}
-				item, err := actionItemDomainOccurrence(root, nil, mustParseDate(root.OccurrenceDate), domain.ActionItemID(root.ID), root.Completed, asOf)
-				if err != nil {
-					return err
-				}
-				item.Title, item.Description, item.Position = effective, descriptionValue, position
-				if err := applyPlanning(&item); err != nil {
-					return err
-				}
-				if dueValue == 0 {
-					item.DueDate = time.Time{}
-				} else {
-					item.DueDate = time.Unix(dueValue, 0).UTC()
-				}
-				validated, err := domain.NewActionItemWithRecurrence(item)
-				if err != nil {
-					return err
-				}
-				if !actionItemIsRecurring(root) {
-					result, err = repos.ActionItems().UpdateForOwnedTask(ctx, userID, validated)
-					return err
-				}
-				writer, ok := repos.ActionItems().(actionItemSeriesTemplateWriter)
-				if !ok {
-					return ErrOccurrenceInactive
-				}
-				snapshotID, err := generatedActionItemID(uc.ID)
-				if err != nil {
-					return err
-				}
-				result, err = writer.UpdateActionItemSeriesTemplate(ctx, userID, taskID, seriesID, snapshotID, validated)
-				return err
-			})
-		})
-		return result, err
-	}
-	if scope != actionItemScopeCurrent {
-		return dao.ActionItem{}, ErrActionItemScopeInvalid
-	}
+func (uc *UpdateActionItemUseCase) Execute(
+	ctx context.Context,
+	userID domain.UserID,
+	taskID domain.TaskID,
+	itemID domain.ActionItemID,
+	title PatchField[string],
+	description PatchField[string],
+	dueDate PatchField[time.Time],
+	planning ...ActionItemPlanningPatch,
+) (output dao.ActionItem, err error) {
+	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "UpdateActionItemUseCase.Execute", err) }()
 	if title.Present && title.Value == nil {
 		return dao.ActionItem{}, ErrActionItemPatchRequiredFieldNull
 	}
+	var patch ActionItemPlanningPatch
+	if len(planning) > 0 {
+		patch = planning[0]
+	}
+	asOf := time.Now()
 	var result dao.ActionItem
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		return withTaskProgressMutationForPermissionAndState(ctx, repos, userID, taskID, asOf, shared.ActionItemUpdate(), func(_ dao.Task, projectBefore taskProjectMutationSnapshot) error {
-			state, err := loadActionItemOccurrenceWithCapability(ctx, repos, userID, taskID, seriesID, occurrenceDate, asOf, shared.ActionItemUpdate())
+		return withTaskProgressMutationForPermission(ctx, repos, userID, taskID, asOf, shared.ActionItemUpdate(), func() error {
+			current, err := repos.ActionItems().GetForCommand(ctx, userID, taskID, itemID, shared.ActionItemUpdate())
 			if err != nil {
 				return err
 			}
-			state.projectDone = projectBefore.State.Status == "done"
-			if projectDoneSuppressesActionItemOccurrence(state) {
-				return ErrOccurrenceInactive
-			}
-			var id domain.ActionItemID
-			completed := false
-			if state.current != nil {
-				id = domain.ActionItemID(state.current.ID)
-				completed = state.current.Completed
-			} else if !actionItemIsRecurring(state.root) {
-				id = domain.ActionItemID(state.root.ID)
-			} else {
-				id, err = generatedActionItemID(uc.ID)
-				if err != nil {
-					return err
-				}
-			}
-			item, err := actionItemDomainOccurrence(state.root, state.current, state.date, id, completed, asOf)
+			item, err := actionItemDomainFromDAO(current)
 			if err != nil {
 				return err
 			}
@@ -183,55 +72,49 @@ func (uc *UpdateActionItemUseCase) ExecuteOccurrence(ctx context.Context, userID
 					item.DueDate = *dueDate.Value
 				}
 			}
-			if err := applyPlanning(&item); err != nil {
+			if patch.EstimatedMinutes.Present {
+				item.EstimatedMinutes = nil
+				if patch.EstimatedMinutes.Value != nil {
+					value := *patch.EstimatedMinutes.Value
+					item.EstimatedMinutes = &value
+				}
+			}
+			if patch.Priority.Present {
+				if patch.Priority.Value == nil {
+					return domain.ErrTaskPriorityEmpty
+				}
+				item.Priority, err = domain.NewTaskPriority(*patch.Priority.Value)
+				if err != nil {
+					return err
+				}
+			}
+			if err := item.Validate(); err != nil {
 				return err
 			}
-			validated, err := domain.NewActionItemWithRecurrence(item)
-			if err != nil {
-				return err
-			}
-			if !actionItemIsRecurring(state.root) {
-				result, err = repos.ActionItems().UpdateForOwnedTask(ctx, userID, validated)
-				return err
-			}
-			writer, err := requireActionItemOverride(repos.ActionItems())
-			if err != nil {
-				return err
-			}
-			savedID, err := writer.UpsertActionItemOverride(ctx, userID, validated)
-			if err != nil {
-				return err
-			}
-			result = actionItemDAOFromOccurrence(state.root, validated, savedID)
-			return nil
+			result, err = repos.ActionItems().UpdateForOwnedTask(ctx, userID, item)
+			return err
 		})
 	})
 	return result, err
-
 }
 
-func (uc *UpdateActionItemUseCase) Execute(
-	ctx context.Context,
-	userID domain.UserID,
-	taskID domain.TaskID,
-	actionItemID domain.ActionItemID,
-	scope string,
-	title PatchField[string],
-	description PatchField[string],
-	dueDate PatchField[time.Time],
-	planning ...ActionItemPlanningPatch,
-) (dao.ActionItem, error) {
-	var row dao.ActionItem
-	if err := uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		var err error
-		row, err = getActionItemForCommand(ctx, repos.ActionItems(), userID, taskID, actionItemID, shared.ActionItemUpdate())
-		return err
-	}); err != nil {
-		logUnexpectedTaskFailure(uc.logger, ctx, "action_item.update.load", err)
-		return dao.ActionItem{}, err
+func actionItemDomainFromDAO(item dao.ActionItem) (domain.ActionItem, error) {
+	var dueDate time.Time
+	if item.DueDate != 0 {
+		dueDate = time.Unix(item.DueDate, 0).UTC()
 	}
-	if row.ID != string(actionItemID) || row.TaskID != string(taskID) {
-		return dao.ActionItem{}, ErrActionItemNotFound
+	createdAt := time.Unix(item.CreatedAt, 0).UTC()
+	updatedAt := time.Unix(item.UpdatedAt, 0).UTC()
+	priority := domain.TaskPriority{}
+	var err error
+	if item.Priority.Value != "" {
+		priority, err = domain.NewTaskPriority(item.Priority.Value)
+		if err != nil {
+			return domain.ActionItem{}, err
+		}
 	}
-	return uc.ExecuteOccurrence(ctx, userID, taskID, domain.ActionItemID(row.SeriesID), row.OccurrenceDate, scope, title, description, dueDate, planning...)
+	return domain.NewExistingActionItem(domain.ActionItemID(item.ID), domain.TaskID(item.TaskID), item.Title, item.Description, dueDate, item.Completed, item.Position, createdAt, updatedAt, domain.ActionItemPlanning{
+		EstimatedMinutes: item.EstimatedMinutes,
+		Priority:         priority,
+	})
 }

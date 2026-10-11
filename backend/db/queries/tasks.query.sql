@@ -140,19 +140,6 @@ ORDER BY
   CASE WHEN sqlc.arg(sort_by)::text = 'created_at' AND ((sqlc.arg(sort_order)::text = 'desc' AND sqlc.arg(direction)::text = 'forward') OR (sqlc.arg(sort_order)::text = 'asc' AND sqlc.arg(direction)::text = 'backward')) THEN t.id END DESC
 LIMIT sqlc.arg(page_limit)::integer;
 
--- name: ListUsersWithActiveRecurrences :many
-SELECT DISTINCT t.user_id
-FROM tasks AS t
-WHERE t.status <> 'done'
-  AND t.deleted_at IS NULL
-  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL AND p.status <> 'done'))
-  AND EXISTS (
-      SELECT 1 FROM action_items AS ti
-      WHERE ti.task_id = t.id AND ti.id = ti.series_id
-        AND ti.repeat_state = 'active' AND ti.deleted_at IS NULL
-  )
-ORDER BY t.user_id;
-
 -- name: ListProjectTasksByUserIDCursorPage :many
 SELECT t.*, p.status AS project_status
 FROM tasks AS t
@@ -184,13 +171,6 @@ SELECT
     ti.priority,
     ti.completed,
     ti.position,
-    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
-    ARRAY(
-        SELECT tif.frequency
-        FROM action_item_frequencies AS tif
-        WHERE tif.action_item_id = ti.series_id
-        ORDER BY tif.frequency
-    )::text[] AS frequencies,
     ti.created_at,
     ti.updated_at
 FROM action_items AS ti
@@ -219,16 +199,3 @@ SELECT * FROM tasks WHERE tasks.priority = $1 AND deleted_at IS NULL
 -- name: GetTaskByProject :many
 SELECT * FROM tasks WHERE project_id = sqlc.arg(project_id)::text AND deleted_at IS NULL
   AND EXISTS (SELECT 1 FROM projects p WHERE p.id=tasks.project_id AND p.deleted_at IS NULL);
-
--- name: GetTaskByFrequency :many
-SELECT t.*
-FROM tasks AS t
-WHERE t.deleted_at IS NULL
-AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL))
-AND EXISTS (
-    SELECT 1
-    FROM action_items AS ti
-    JOIN action_item_frequencies AS tif ON tif.action_item_id = ti.series_id
-    WHERE ti.task_id = t.id
-      AND tif.frequency = sqlc.arg(frequency)::text
-);

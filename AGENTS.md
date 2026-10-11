@@ -10,7 +10,7 @@ Reduce the burden of maintaining long-term plans so users can focus on today's w
 
 - Project: Groups Tasks and Schedules. Tasks and Schedules may also exist without a Project.
 - Task: Groups ActionItems.
-- ActionItem: Work without a fixed start and end time; one-off or recurring.
+- ActionItem: One-off work without a fixed start and end time.
 - Schedule: Work with a fixed start and end time; one-off or recurring.
 - TodoList: The generated execution plan for a day, combining ActionItems and Schedules.
 

@@ -159,7 +159,6 @@
 .completedActionItem > span { color: var(--color-text-muted); text-decoration: line-through; }
 .itemEstimate { text-align: right; }
 .itemTitle { display: grid; gap: var(--space-xs); min-width: 0; }
-.occurrenceDate { color: var(--color-text-muted); }
 
 .registerButton {
   justify-self: start;

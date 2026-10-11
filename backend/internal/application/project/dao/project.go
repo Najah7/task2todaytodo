@@ -14,7 +14,6 @@ type ProjectTaskProgress struct {
 	Progress      int
 	Total         int
 	Completed     int
-	Roots         []ProjectProgressRecurrence
 }
 
 type ProjectScheduleProgress struct {

@@ -1,7 +1,6 @@
 import { FormProvider, useFieldArray, useWatch } from "react-hook-form"
 import { Link } from "react-router"
 import { useI18n, type MessageKey } from "~/features/i18n/hooks"
-import { useLanguage } from "~/features/i18n/hooks"
 import { messages } from "~/features/i18n/messages"
 import { actionItemKey } from "~/features/task/converters/taskFormValues2updateRequest"
 import ConfirmationDialog from "~/features/shared/components/ConfirmationDialog"
@@ -13,7 +12,6 @@ import type { TaskFormProps } from "./types"
 
 export default function TaskForm({ form, ...viewProps }: TaskFormProps) {
   const i18n = useI18n()
-  const { language } = useLanguage()
   const { heading, submitLabel, options, estimateSource, showTaskPriorityInheritance, showActionItemPriorityInheritance, showEstimateWillRecalculate, partialSaveMessage, actionItemErrors, serverError, onClearActionItemError, onSubmit, onCancel, discardConfirmation, conflict } = viewProps
   const { register, control, setValue, formState: { errors, isSubmitting } } = form
   const { fields, append } = useFieldArray({ control, name: "actionItems" })
@@ -103,8 +101,7 @@ export default function TaskForm({ form, ...viewProps }: TaskFormProps) {
               {fields.map((field, index) => {
                 const item = watchedItems[index] ?? field
                 const titlePath = `actionItems.${index}.title` as const
-                const occurrenceLabel = item.isRecurring && item.occurrenceDate ? ` (${formatDate(item.occurrenceDate, language)})` : ""
-                const titleLabel = `${i18n("tasks.form.actionItemTitle")} ${index + 1}${occurrenceLabel}`
+                const titleLabel = `${i18n("tasks.form.actionItemTitle")} ${index + 1}`
                 const titleError = errorText(errors.actionItems?.[index]?.title?.message)
                 const estimateError = errorText(errors.actionItems?.[index]?.estimatedMinutes?.message)
                 const priorityError = errorText(errors.actionItems?.[index]?.priority?.message)
@@ -123,7 +120,6 @@ export default function TaskForm({ form, ...viewProps }: TaskFormProps) {
                   <div className={styles.actionItemRow} key={field.id}>
                     <div>
                       <input {...register(titlePath)} className={`${controls.input} ${styles.control}`} aria-label={titleLabel} aria-invalid={Boolean(titleError)} aria-describedby={titleError ? `task-action-item-${index}-title-error` : undefined} />
-                      {item.isRecurring && item.occurrenceDate && <p className="text-caption">{i18n("tasks.form.currentOccurrence", { date: formatDate(item.occurrenceDate, language) })}</p>}
                       {item.completed && <p className="text-caption">{i18n("tasks.form.completedCannotDelete")}</p>}
                       {titleError && <p className={styles.error} id={`task-action-item-${index}-title-error`}>{titleError}</p>}
                       {saveError && <p className={styles.error} role="alert">{i18n(saveError)}</p>}
@@ -134,7 +130,7 @@ export default function TaskForm({ form, ...viewProps }: TaskFormProps) {
                     </div>
                     <div className={styles.priorityField}>
                       <select {...register(`actionItems.${index}.priority`)} className={`${controls.select} ${styles.control}`} aria-label={`${i18n("tasks.form.priority")} ${index + 1}`} aria-invalid={Boolean(priorityError)} aria-describedby={priorityError ? `task-action-item-${index}-priority-error` : undefined}>
-                        {showActionItemPriorityInheritance && !item.seriesId && <option value="">{i18n("tasks.form.inheritTaskPriority")}{taskPriority ? ` (${options.priorities.find((option) => option.value === taskPriority)?.label ?? ""})` : ""}</option>}
+                        {showActionItemPriorityInheritance && !item.id && <option value="">{i18n("tasks.form.inheritTaskPriority")}{taskPriority ? ` (${options.priorities.find((option) => option.value === taskPriority)?.label ?? ""})` : ""}</option>}
                         {options.priorities.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                       </select>
                       {priorityError && <p className={styles.error} id={`task-action-item-${index}-priority-error`}>{priorityError}</p>}
@@ -182,9 +178,4 @@ export default function TaskForm({ form, ...viewProps }: TaskFormProps) {
 
 function createClientKey(): string {
   return globalThis.crypto?.randomUUID?.() ?? `new-${Date.now()}-${Math.random()}`
-}
-
-function formatDate(value: string, language: string): string {
-  const date = new Date(`${value}T00:00:00Z`)
-  return new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : "en-US", { month: "short", day: "numeric", weekday: "short", timeZone: "UTC" }).format(date)
 }

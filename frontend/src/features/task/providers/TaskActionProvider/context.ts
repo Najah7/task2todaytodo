@@ -13,7 +13,7 @@ export type TaskFormSaveResult = {
     error?: MessageKey
     fieldErrors?: Partial<Record<"title" | "estimatedMinutes" | "priority", MessageKey>>
     deletionSucceeded?: boolean
-    identity?: { seriesId: string; occurrenceDate: string }
+    identity?: { id: string }
     savedFields?: Partial<Pick<TaskFormValues["actionItems"][number], "title" | "estimatedMinutes" | "priority">>
   }[]
   revisionRefreshError?: boolean
@@ -29,8 +29,6 @@ export type TaskFormSubmissionError = Error & {
 export type UpdateActionItemCompletionInput = {
   taskId: string
   actionItemId: string
-  seriesId?: string
-  occurrenceDate?: string
   completed: boolean
 }
 

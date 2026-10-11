@@ -101,12 +101,10 @@ func (reader getTaskActionItemsFake) ReadTaskListProjection(ctx context.Context,
 
 func (reader getTaskProjectionFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
 	items := make(map[string][]dao.ActionItem, len(taskIDs))
-	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
 	for _, id := range taskIDs {
 		items[id] = reader.rows
-		skipped[id] = nil
 	}
-	return dao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+	return dao.TaskListProjectionSources{ActionItemsByTask: items}, nil
 }
 
 func (repo *getTaskTagRepositoryFake) ListByTaskAndUserID(_ context.Context, userID domain.UserID, taskID domain.TaskID) ([]dao.TaskTag, error) {
@@ -130,9 +128,9 @@ func TestGetTaskUseCaseExecuteReturnsOwnedTaskAndTags(t *testing.T) {
 	}
 	tagRepo := &getTaskTagRepositoryFake{tags: wantTags, accesses: &accesses}
 	rows := []dao.ActionItem{
-		{ID: "item-1", TaskID: string(taskID), SeriesID: "item-1", RepeatState: repeatStateOneOff, OccurrenceDate: "2026-10-10", Completed: true},
-		{ID: "item-2", TaskID: string(taskID), SeriesID: "item-2", RepeatState: repeatStateOneOff, OccurrenceDate: "2026-10-10", Completed: true},
-		{ID: "item-3", TaskID: string(taskID), SeriesID: "item-3", RepeatState: repeatStateOneOff, OccurrenceDate: "2026-10-10"},
+		{ID: "item-1", TaskID: string(taskID), Completed: true},
+		{ID: "item-2", TaskID: string(taskID), Completed: true},
+		{ID: "item-3", TaskID: string(taskID)},
 	}
 	wantTask.Progress, wantTask.ActionItemCount, wantTask.ActionItemCompletedCount = 66, 3, 2
 	wantTask.EstimateSource = "action_items"

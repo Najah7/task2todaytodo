@@ -30,12 +30,6 @@ func (projectAuditTimezoneReader) GetTimezone(context.Context, string) (string, 
 	return "UTC", nil
 }
 
-type projectTaskAuditTimezoneReader struct{}
-
-func (projectTaskAuditTimezoneReader) GetTimezone(context.Context, string) (string, error) {
-	return "UTC", nil
-}
-
 func TestProjectScheduleAndTaskCreateUseProjectOwnerAndRecordMemberActor(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
@@ -350,7 +344,7 @@ func TestProjectDeletionLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,changed_by) VALUES($1,$2,$3,$2,'Child task',$2)`, taskID, ownerID, projectID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,series_id,occurrence_date,timezone) VALUES($1,$2,'Child actionItem',0,$1,'2026-10-07','UTC')`, actionItemID, taskID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position) VALUES($1,$2,'Child actionItem',0)`, actionItemID, taskID); err != nil {
 		t.Fatal(err)
 	}
 	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
@@ -419,7 +413,7 @@ func TestProjectProgressCombinesPerTaskFloorsAndScheduleOccurrencesFromDB(t *tes
 	}
 	insertActionItem := func(id, taskID string, position int, completed bool) {
 		t.Helper()
-		if _, err := pool.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,series_id,occurrence_date,timezone,completed) VALUES($1,$2,$3,$4,$1,'2026-10-07','UTC',$5)`, id, taskID, "ActionItem", position, completed); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,completed) VALUES($1,$2,$3,$4,$5)`, id, taskID, "ActionItem", position, completed); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -674,7 +668,7 @@ func TestProjectDeletionLeavesActionItemCreatedBeforeParentLockUntouched(t *test
 	childPool := projectRaceNamedPool(t, childApp)
 	deletePool := projectRaceNamedPool(t, deleteApp)
 	childStore, deleteStore := application.NewStore(childPool), application.NewStore(deletePool)
-	create := taskusecase.NewCreateActionItemUseCase(application.NewTaskUOW(childPool, childStore.Task, childStore.Project), projectTaskAuditTimezoneReader{}, nil)
+	create := taskusecase.NewCreateActionItemUseCase(application.NewTaskUOW(childPool, childStore.Task, childStore.Project), nil)
 	remove := projectusecase.NewDeleteProjectUseCase(application.NewProjectUOW(deletePool, deleteStore.Project, deleteStore.Task, deleteStore.Schedule), nil)
 	raceCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()

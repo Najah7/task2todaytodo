@@ -8,7 +8,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 )
 
-// TaskListProjectionReader loads saved ActionItem rows and skipped recurrence dates for Tasks in one read.
+// TaskListProjectionReader loads persisted ActionItem rows for Tasks in one read.
 type TaskListProjectionReader interface {
 	ReadTaskListProjection(ctx context.Context, userID domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error)
 }
@@ -53,16 +53,11 @@ func ApplyTaskListProjection(tasks []dao.Task, sources dao.TaskListProjectionSou
 	for i := range tasks {
 		task := &tasks[i]
 		rows := sources.ActionItemsByTask[task.ID]
-		skipped := sources.SkippedByTask[task.ID]
-		projected, err := ExpandActionItemListRows(rows, asOf, task.Status.Value == "done", task.ProjectStatus == "done", skipped)
-		if err != nil {
-			return nil, err
-		}
-		task.ActionItemCount = len(projected)
+		task.ActionItemCount = len(rows)
 		task.ActionItemCompletedCount = 0
 		var total int
 		hasEstimate := false
-		for _, item := range projected {
+		for _, item := range rows {
 			if item.Completed {
 				task.ActionItemCompletedCount++
 			}
@@ -71,13 +66,7 @@ func ApplyTaskListProjection(tasks []dao.Task, sources dao.TaskListProjectionSou
 				hasEstimate = true
 			}
 		}
-		definitions := 0
-		for _, row := range rows {
-			if row.ID == row.SeriesID && !row.Deleted {
-				definitions++
-			}
-		}
-		if definitions == 0 && len(projected) == 0 {
+		if len(rows) == 0 {
 			task.EstimatedMinutes = cloneMinutes(task.ManualEstimatedMinutes)
 			task.EstimateSource = "manual"
 		} else {

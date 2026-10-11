@@ -26,7 +26,6 @@ DELETE /tasks/:taskId/action-items/:id - ActionItemを削除する (DeleteAction
 POST /tasks/:taskId/action-items/:id:complete - ActionItemを完了する (CompleteActionItemUseCase)
 POST /tasks/:taskId/action-items/:id:reopen - ActionItemの完了を取り消す (ReopenActionItemUseCase)
 POST /tasks/:taskId/action-items/:id:reorder - ActionItemを並べ替える (ReorderActionItemUseCase)
-PUT /tasks/:taskId/action-items/:id/frequency - ActionItemの繰り返しを変更・停止する (UpdateActionItemFrequencyUseCase)
 
 GET /schedules - 個人用Scheduleを一覧取得する (ListSchedulesUseCase)
 POST /schedules - 個人Scheduleを作成する (CreateScheduleUseCase)

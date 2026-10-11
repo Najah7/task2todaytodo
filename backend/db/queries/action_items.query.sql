@@ -1,313 +1,70 @@
--- name: GetActionItem :one
-SELECT
-    ti.id,
-    ti.task_id,
-    ti.title,
-    ti.description,
-    ti.due_date,
-    ti.estimated_minutes,
-    ti.priority,
-    ti.completed,
-    ti.position,
-    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
-    (SELECT r.repeat_state FROM action_items r WHERE r.id = ti.series_id) AS repeat_state,
-    (SELECT r.frequency_anchor_date FROM action_items r WHERE r.id = ti.series_id) AS frequency_anchor_date,
-    ti.series_id,
-    ti.occurrence_date,
-    ti.timezone,
-    ti.is_exception,
-    (ti.deleted_at IS NOT NULL) AS deleted,
-    ARRAY(
-        SELECT tif.frequency
-        FROM action_item_frequencies AS tif
-        WHERE tif.action_item_id = ti.series_id
-        ORDER BY tif.frequency
-    )::text[] AS frequencies,
-    ti.created_at,
-    ti.updated_at
-FROM action_items AS ti
-WHERE ti.id = $1
-  AND ti.deleted_at IS NULL;
-
 -- name: GetActionItemByTaskAndUserID :one
-SELECT
-    ti.id,
-    ti.task_id,
-    ti.title,
-    ti.description,
-    ti.due_date,
-    ti.estimated_minutes,
-    ti.priority,
-    ti.completed,
-    ti.position,
-    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
-    (SELECT r.repeat_state FROM action_items r WHERE r.id = ti.series_id) AS repeat_state,
-    (SELECT r.frequency_anchor_date FROM action_items r WHERE r.id = ti.series_id) AS frequency_anchor_date,
-    ti.series_id,
-    ti.occurrence_date,
-    ti.timezone,
-    ti.is_exception,
-    (ti.deleted_at IS NOT NULL) AS deleted,
-    ARRAY(
-        SELECT tif.frequency
-        FROM action_item_frequencies AS tif
-        WHERE tif.action_item_id = ti.series_id
-        ORDER BY tif.frequency
-    )::text[] AS frequencies,
-    ti.created_at,
-    ti.updated_at
-FROM action_items AS ti
-JOIN tasks AS t ON t.id = ti.task_id
-WHERE ti.id = $1
-  AND ti.task_id = $2
+SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+       ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
+       ai.created_at, ai.updated_at
+FROM action_items ai JOIN tasks t ON t.id = ai.task_id
+WHERE ai.id = sqlc.arg(id)::text
+  AND ai.task_id = sqlc.arg(task_id)::text
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, $3, 'action_item', 'read')
-  AND ti.deleted_at IS NULL;
+  AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'action_item', 'read')
+  AND ai.deleted_at IS NULL;
 
 -- name: GetActionItemByTaskAndUserIDForCommand :one
-SELECT
-    ti.id,
-    ti.task_id,
-    ti.title,
-    ti.description,
-    ti.due_date,
-    ti.estimated_minutes,
-    ti.priority,
-    ti.completed,
-    ti.position,
-    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id), 0)::integer AS interval_weeks,
-    (SELECT r.repeat_state FROM action_items r WHERE r.id = ti.series_id) AS repeat_state,
-    (SELECT r.frequency_anchor_date FROM action_items r WHERE r.id = ti.series_id) AS frequency_anchor_date,
-    ti.series_id,
-    ti.occurrence_date,
-    ti.timezone,
-    ti.is_exception,
-    (ti.deleted_at IS NOT NULL) AS deleted,
-    ARRAY(
-        SELECT tif.frequency
-        FROM action_item_frequencies AS tif
-        WHERE tif.action_item_id = ti.series_id
-        ORDER BY tif.frequency
-    )::text[] AS frequencies,
-    ti.created_at,
-    ti.updated_at
-FROM action_items AS ti
-JOIN tasks AS t ON t.id = ti.task_id
-WHERE ti.id = sqlc.arg(id)::text
-  AND ti.task_id = sqlc.arg(task_id)::text
+SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+       ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
+       ai.created_at, ai.updated_at
+FROM action_items ai JOIN tasks t ON t.id = ai.task_id
+WHERE ai.id = sqlc.arg(id)::text
+  AND ai.task_id = sqlc.arg(task_id)::text
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
   AND task_has_permission(t.id, sqlc.arg(actor_id)::text, sqlc.arg(resource_id)::text, sqlc.arg(action)::action);
 
 -- name: ListActionItemsByTaskAndUserID :many
-SELECT
-    ti.id,
-    ti.task_id,
-    ti.title,
-    ti.description,
-    ti.due_date,
-    ti.estimated_minutes,
-    ti.priority,
-    ti.completed,
-    ti.position,
-    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
-    (SELECT r.repeat_state FROM action_items r WHERE r.id = ti.series_id) AS repeat_state,
-    (SELECT r.frequency_anchor_date FROM action_items r WHERE r.id = ti.series_id) AS frequency_anchor_date,
-    ti.series_id,
-    ti.occurrence_date,
-    ti.timezone,
-    ti.is_exception,
-    (ti.deleted_at IS NOT NULL) AS deleted,
-    ARRAY(
-        SELECT tif.frequency
-        FROM action_item_frequencies AS tif
-        WHERE tif.action_item_id = ti.series_id
-        ORDER BY tif.frequency
-    )::text[] AS frequencies,
-    ti.created_at,
-    ti.updated_at
-FROM action_items AS ti
-JOIN tasks AS t ON t.id = ti.task_id
-WHERE ti.task_id = sqlc.arg(task_id)::text
+SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+       ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
+       ai.created_at, ai.updated_at
+FROM action_items ai JOIN tasks t ON t.id = ai.task_id
+WHERE ai.task_id = sqlc.arg(task_id)::text
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
   AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'action_item', 'read')
-  AND ti.deleted_at IS NULL
-ORDER BY ti.position ASC, ti.occurrence_date ASC;
+  AND ai.deleted_at IS NULL
+ORDER BY ai.position ASC, ai.id ASC;
 
--- name: ListActionItemsForOccurrenceProjectionByTaskAndUserID :many
-SELECT
-    ti.id,
-    ti.task_id,
-    ti.title,
-    ti.description,
-    ti.due_date,
-    ti.estimated_minutes,
-    ti.priority,
-    ti.completed,
-    ti.position,
-    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
-    (SELECT r.repeat_state FROM action_items r WHERE r.id = ti.series_id) AS repeat_state,
-    (SELECT r.frequency_anchor_date FROM action_items r WHERE r.id = ti.series_id) AS frequency_anchor_date,
-    ti.series_id,
-    ti.occurrence_date,
-    ti.timezone,
-    ti.is_exception,
-    (ti.deleted_at IS NOT NULL) AS deleted,
-    ARRAY(
-        SELECT tif.frequency
-        FROM action_item_frequencies AS tif
-        WHERE tif.action_item_id = ti.series_id
-        ORDER BY tif.frequency
-    )::text[] AS frequencies,
-    ti.created_at,
-    ti.updated_at
-FROM action_items AS ti
-JOIN tasks AS t ON t.id = ti.task_id
-WHERE ti.task_id = sqlc.arg(task_id)::text
+-- name: ListActionItemsForTaskIDsAndUserID :many
+SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+       ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
+       ai.created_at, ai.updated_at
+FROM action_items ai JOIN tasks t ON t.id = ai.task_id
+WHERE ai.task_id = ANY(sqlc.arg(task_ids)::text[])
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
   AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'action_item', 'read')
-ORDER BY ti.position ASC, ti.occurrence_date ASC;
-
--- name: ListActionItemsForOccurrenceProjectionByTaskIDsAndUserID :many
-SELECT
-    ti.id, ti.task_id, ti.title, ti.description, ti.due_date,
-    ti.estimated_minutes, ti.priority, ti.completed, ti.position,
-    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id), 0)::integer AS interval_weeks,
-    (SELECT r.repeat_state FROM action_items r WHERE r.id = ti.series_id) AS repeat_state,
-    (SELECT r.frequency_anchor_date FROM action_items r WHERE r.id = ti.series_id) AS frequency_anchor_date,
-    ti.series_id, ti.occurrence_date, ti.timezone, ti.is_exception,
-    (ti.deleted_at IS NOT NULL) AS deleted,
-    ARRAY(SELECT tif.frequency FROM action_item_frequencies tif WHERE tif.action_item_id = ti.series_id ORDER BY tif.frequency)::text[] AS frequencies,
-    ti.created_at, ti.updated_at
-FROM action_items ti
-JOIN tasks t ON t.id = ti.task_id
-WHERE ti.task_id = ANY(sqlc.arg(task_ids)::text[])
-  AND t.deleted_at IS NULL
-  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'action_item', 'read')
-ORDER BY ti.task_id, ti.position, ti.occurrence_date;
-
--- name: ListActionItemsForOccurrenceCommandByTaskAndUserID :many
-SELECT
-    ti.id,
-    ti.task_id,
-    ti.title,
-    ti.description,
-    ti.due_date,
-    ti.estimated_minutes,
-    ti.priority,
-    ti.completed,
-    ti.position,
-    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id), 0)::integer AS interval_weeks,
-    (SELECT r.repeat_state FROM action_items r WHERE r.id = ti.series_id) AS repeat_state,
-    (SELECT r.frequency_anchor_date FROM action_items r WHERE r.id = ti.series_id) AS frequency_anchor_date,
-    ti.series_id,
-    ti.occurrence_date,
-    ti.timezone,
-    ti.is_exception,
-    (ti.deleted_at IS NOT NULL) AS deleted,
-    ARRAY(
-        SELECT tif.frequency
-        FROM action_item_frequencies AS tif
-        WHERE tif.action_item_id = ti.series_id
-        ORDER BY tif.frequency
-    )::text[] AS frequencies,
-    ti.created_at,
-    ti.updated_at
-FROM action_items AS ti
-JOIN tasks AS t ON t.id = ti.task_id
-WHERE ti.task_id = sqlc.arg(task_id)::text
-  AND t.deleted_at IS NULL
-  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, sqlc.arg(actor_id)::text, sqlc.arg(resource_id)::text, sqlc.arg(action)::action)
-ORDER BY ti.position ASC, ti.occurrence_date ASC;
+  AND ai.deleted_at IS NULL
+ORDER BY ai.task_id, ai.position, ai.id;
 
 -- name: ListActionItemsByTaskAndUserIDCursorPage :many
-SELECT
-    ti.id,
-    ti.task_id,
-    ti.title,
-    ti.description,
-    ti.due_date,
-    ti.estimated_minutes,
-    ti.priority,
-    ti.completed,
-    ti.position,
-    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
-    (SELECT r.repeat_state FROM action_items r WHERE r.id = ti.series_id) AS repeat_state,
-    (SELECT r.frequency_anchor_date FROM action_items r WHERE r.id = ti.series_id) AS frequency_anchor_date,
-    ti.series_id,
-    ti.occurrence_date,
-    ti.timezone,
-    ti.is_exception,
-    (ti.deleted_at IS NOT NULL) AS deleted,
-    ARRAY(
-        SELECT tif.frequency
-        FROM action_item_frequencies AS tif
-        WHERE tif.action_item_id = ti.series_id
-        ORDER BY tif.frequency
-    )::text[] AS frequencies,
-    ti.created_at,
-    ti.updated_at
-FROM action_items AS ti
-JOIN tasks AS t ON t.id = ti.task_id
-WHERE ti.task_id = $1
+SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+       ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
+       ai.created_at, ai.updated_at
+FROM action_items ai JOIN tasks t ON t.id = ai.task_id
+WHERE ai.task_id = sqlc.arg(task_id)::text
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, $2, 'action_item', 'read')
-  AND ti.deleted_at IS NULL
-  AND (sqlc.narg(cursor_position)::integer IS NULL OR (ti.position, ti.occurrence_date, ti.id) > (sqlc.narg(cursor_position)::integer, sqlc.narg(cursor_date)::date, sqlc.narg(cursor_id)::text))
-ORDER BY ti.position ASC, ti.occurrence_date ASC, ti.id ASC
+  AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'action_item', 'read')
+  AND ai.deleted_at IS NULL
+  AND (sqlc.narg(cursor_position)::integer IS NULL
+       OR (ai.position, ai.id) > (sqlc.narg(cursor_position)::integer, sqlc.narg(cursor_id)::text))
+ORDER BY ai.position ASC, ai.id ASC
 LIMIT sqlc.arg(page_limit)::integer;
 
--- name: ListActiveActionItemSeriesByUserID :many
-SELECT
-    ti.id,
-    ti.task_id,
-    ti.title,
-    ti.description,
-    ti.due_date,
-    ti.estimated_minutes,
-    ti.priority,
-    ti.completed,
-    ti.position,
-    COALESCE((SELECT r.interval_weeks FROM action_items r WHERE r.id = ti.series_id ), 0)::integer AS interval_weeks,
-    (SELECT r.repeat_state FROM action_items r WHERE r.id = ti.series_id) AS repeat_state,
-    (SELECT r.frequency_anchor_date FROM action_items r WHERE r.id = ti.series_id) AS frequency_anchor_date,
-    ti.series_id,
-    ti.occurrence_date,
-    ti.timezone,
-    ti.is_exception,
-    false AS deleted,
-    ARRAY(
-        SELECT tif.frequency
-        FROM action_item_frequencies AS tif
-        WHERE tif.action_item_id = ti.series_id
-        ORDER BY tif.frequency
-    )::text[] AS frequencies,
-    ti.created_at,
-    ti.updated_at
-FROM action_items AS ti
-JOIN tasks AS t ON t.id = ti.task_id
-WHERE t.user_id = $1
-  AND t.deleted_at IS NULL
-  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL AND p.status <> 'done'))
-  AND t.status <> 'done'
-  AND ti.id = ti.series_id
-  AND EXISTS (SELECT 1 FROM action_items r WHERE r.id = ti.series_id AND r.repeat_state = 'active')
-  AND ti.deleted_at IS NULL
-ORDER BY ti.occurrence_date ASC, ti.position ASC;
-
 -- name: NextActionItemPosition :one
-SELECT COALESCE(MAX(ti.position), -1)::integer + 1 AS position
-FROM action_items AS ti
-JOIN tasks AS t ON t.id = ti.task_id
-WHERE ti.task_id = $1
+SELECT COALESCE(MAX(ai.position), -1)::integer + 1 AS position
+FROM action_items ai JOIN tasks t ON t.id = ai.task_id
+WHERE ai.task_id = sqlc.arg(task_id)::text
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, $2, 'action_item', 'create')
-  AND ti.occurrence_date = sqlc.arg(occurrence_date)::date
-  AND ti.deleted_at IS NULL;
+  AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'action_item', 'create')
+  AND ai.deleted_at IS NULL;

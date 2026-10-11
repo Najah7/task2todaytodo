@@ -127,51 +127,13 @@ CREATE TABLE action_items (
     due_date date,
     completed boolean NOT NULL DEFAULT false,
     position integer NOT NULL CHECK (position >= 0),
-    series_id text NOT NULL,
-    occurrence_date date NOT NULL,
-    timezone text NOT NULL CHECK (btrim(timezone) <> ''),
     estimated_minutes integer CHECK (estimated_minutes IS NULL OR estimated_minutes >= 0),
     priority text NOT NULL DEFAULT 'low',
-    is_exception boolean NOT NULL DEFAULT false,
-    repeat_state text DEFAULT 'one_off',
-    frequency_anchor_date date,
-    interval_weeks integer NOT NULL DEFAULT 0 CHECK (interval_weeks >= 0),
     deleted_at timestamptz,
-    skipped_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT action_items_priority_fk FOREIGN KEY (priority) REFERENCES priority_master(priority) ON DELETE RESTRICT,
-    CONSTRAINT action_items_id_task_id_key UNIQUE (id, task_id),
-    CONSTRAINT action_items_series_task_fk
-        FOREIGN KEY (series_id, task_id) REFERENCES action_items(id, task_id) ON DELETE CASCADE,
-    CHECK (repeat_state IS NULL OR repeat_state IN ('one_off', 'active', 'stopped')),
-    CHECK (
-        (id = series_id AND (
-            (repeat_state = 'one_off' AND frequency_anchor_date IS NULL AND interval_weeks = 0) OR
-            (repeat_state = 'active' AND frequency_anchor_date IS NOT NULL AND interval_weeks > 0) OR
-            (repeat_state = 'stopped' AND frequency_anchor_date IS NOT NULL AND interval_weeks = 0)
-        )) OR
-        (id <> series_id AND repeat_state IS NULL AND frequency_anchor_date IS NULL AND interval_weeks = 0)
-    )
+    CONSTRAINT action_items_priority_fk FOREIGN KEY (priority) REFERENCES priority_master(priority) ON DELETE RESTRICT
 );
-CREATE UNIQUE INDEX idx_action_items_series_occurrence_child_key
-    ON action_items(series_id, occurrence_date) WHERE id <> series_id;
-
-CREATE TABLE action_item_frequencies (
-    action_item_id text NOT NULL REFERENCES action_items(id) ON DELETE CASCADE,
-    frequency text NOT NULL REFERENCES frequency_master(frequency) ON DELETE RESTRICT,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (action_item_id, frequency)
-);
-
-CREATE FUNCTION recurrence_wall_time_exists(local_time timestamp without time zone, timezone_name text)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-STRICT
-AS $$
-    SELECT ((local_time AT TIME ZONE timezone_name) AT TIME ZONE timezone_name) = local_time
-$$;
 
 INSERT INTO frequency_master (frequency, label, label_jp) VALUES
     ('mon', 'Monday', '月曜日'),
@@ -198,8 +160,8 @@ CREATE INDEX idx_tasks_project_user_created_id ON tasks(project_id, user_id, cre
 
 CREATE INDEX idx_tags_user_name_id ON tags(user_id, name, id);
 
-CREATE INDEX idx_action_items_task_position_occurrence_id_live
-    ON action_items(task_id, position, occurrence_date, id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_action_items_task_position_id_live
+    ON action_items(task_id, position, id) WHERE deleted_at IS NULL;
 
 CREATE INDEX idx_task_revisions_changed_at ON task_revisions(id, changed_at DESC, revision DESC);
 

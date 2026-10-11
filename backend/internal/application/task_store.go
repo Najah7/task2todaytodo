@@ -8,35 +8,32 @@ import (
 )
 
 type TaskStore struct {
-	Tasks           *repository.TaskRepository
-	TaskTags        *repository.TaskTagRepository
-	ActionItems     *repository.ActionItemRepository
-	TodoLists       *repository.TodoListRepository
-	TaskFrequencies *repository.TaskFrequencyRepository
-	TaskPriorities  *repository.TaskPriorityRepository
-	TaskStatuses    *repository.TaskStatusRepository
+	Tasks          *repository.TaskRepository
+	TaskTags       *repository.TaskTagRepository
+	ActionItems    *repository.ActionItemRepository
+	TodoLists      *repository.TodoListRepository
+	TaskPriorities *repository.TaskPriorityRepository
+	TaskStatuses   *repository.TaskStatusRepository
 }
 
 func newTaskStore(pool *pgxpool.Pool) TaskStore {
 	return TaskStore{
-		Tasks:           repository.NewTaskRepository(pool),
-		TaskTags:        repository.NewTaskTagRepository(pool),
-		ActionItems:     repository.NewActionItemRepository(pool),
-		TodoLists:       repository.NewTodoListRepository(pool),
-		TaskFrequencies: repository.NewTaskFrequencyRepository(pool),
-		TaskPriorities:  repository.NewTaskPriorityRepository(pool),
-		TaskStatuses:    repository.NewTaskStatusRepository(pool),
+		Tasks:          repository.NewTaskRepository(pool),
+		TaskTags:       repository.NewTaskTagRepository(pool),
+		ActionItems:    repository.NewActionItemRepository(pool),
+		TodoLists:      repository.NewTodoListRepository(pool),
+		TaskPriorities: repository.NewTaskPriorityRepository(pool),
+		TaskStatuses:   repository.NewTaskStatusRepository(pool),
 	}
 }
 
 func (s TaskStore) WithTx(tx pgx.Tx) TaskStore {
 	return TaskStore{
-		Tasks:           s.Tasks.WithTx(tx),
-		TaskTags:        s.TaskTags.WithTx(tx),
-		ActionItems:     s.ActionItems.WithTx(tx),
-		TodoLists:       s.TodoLists.WithTx(tx),
-		TaskFrequencies: s.TaskFrequencies.WithTx(tx),
-		TaskPriorities:  s.TaskPriorities.WithTx(tx),
-		TaskStatuses:    s.TaskStatuses.WithTx(tx),
+		Tasks:          s.Tasks.WithTx(tx),
+		TaskTags:       s.TaskTags.WithTx(tx),
+		ActionItems:    s.ActionItems.WithTx(tx),
+		TodoLists:      s.TodoLists.WithTx(tx),
+		TaskPriorities: s.TaskPriorities.WithTx(tx),
+		TaskStatuses:   s.TaskStatuses.WithTx(tx),
 	}
 }

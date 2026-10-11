@@ -354,12 +354,10 @@ type projectHandlerActionItems struct {
 
 func (projectHandlerActionItems) ReadTaskListProjection(_ context.Context, _ taskdomain.UserID, taskIDs []string) (taskdao.TaskListProjectionSources, error) {
 	items := make(map[string][]taskdao.ActionItem, len(taskIDs))
-	skipped := make(map[string]map[string]map[string]bool, len(taskIDs))
 	for _, id := range taskIDs {
 		items[id] = nil
-		skipped[id] = nil
 	}
-	return taskdao.TaskListProjectionSources{ActionItemsByTask: items, SkippedByTask: skipped}, nil
+	return taskdao.TaskListProjectionSources{ActionItemsByTask: items}, nil
 }
 func (projectHandlerRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle {
 	return projectHandlerLifecycle{}

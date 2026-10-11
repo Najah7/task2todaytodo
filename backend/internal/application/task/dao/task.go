@@ -45,37 +45,13 @@ type TaskEstimateSource struct {
 	EstimateSource         string
 }
 
-type ProgressRecurrence struct {
-	TaskID               string
-	SeriesID             string
-	OccurrenceDate       string
-	Timezone             string
-	RepeatState          string
-	FrequencyAnchorDate  int64
-	IntervalWeeks        int
-	Frequencies          []TaskFrequency
-	StartAt              int64
-	EndAt                int64
-	OccurrenceSavedToday bool
-}
-
 type TaskProgressSources struct {
-	Counts          map[string]TaskProgressCounts
-	Statuses        map[string]TaskStatus
-	ActionItemRoots []ProgressRecurrence
+	Counts   map[string]TaskProgressCounts
+	Statuses map[string]TaskStatus
 }
 
 type TaskListProjectionSources struct {
 	ActionItemsByTask map[string][]ActionItem
-	SkippedByTask     map[string]map[string]map[string]bool
-}
-
-type TaskFrequency struct {
-	Value     string
-	Label     string
-	LabelJp   string
-	CreatedAt int64
-	UpdatedAt int64
 }
 
 type Priority struct {
