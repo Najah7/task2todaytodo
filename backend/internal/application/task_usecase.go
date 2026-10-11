@@ -7,10 +7,10 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	tagusecase "github.com/Najah7/task2todaytodo/internal/application/tag/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/task/usecase"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
-func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthStore, ID shared.ID, logger logging.Logger) usecase.TaskUseCases {
+func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthStore, ID shared.ID, logger telemetry.Logger) usecase.TaskUseCases {
 	return usecase.TaskUseCases{
 		Create:            usecase.NewCreateTaskUseCase(taskUOW, logger),
 		List:              usecase.NewListTasksUseCase(taskStore.Tasks, logger, taskStore.ActionItems),
@@ -32,7 +32,7 @@ func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthSto
 	}
 }
 
-func NewScheduleUseCases(scheduleUOW scheduleusecase.UOW, authStore AuthStore, ID shared.ID, logger logging.Logger) scheduleusecase.ScheduleUseCases {
+func NewScheduleUseCases(scheduleUOW scheduleusecase.UOW, authStore AuthStore, ID shared.ID, logger telemetry.Logger) scheduleusecase.ScheduleUseCases {
 	return scheduleusecase.ScheduleUseCases{
 		CreateBlueprint:          scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, ID, authStore.Users, logger),
 		GetBlueprint:             scheduleusecase.NewGetBlueprintUseCase(scheduleUOW),
@@ -57,7 +57,7 @@ func NewScheduleUseCases(scheduleUOW scheduleusecase.UOW, authStore AuthStore, I
 	}
 }
 
-func NewActionItemUseCases(taskUOW usecase.UOW, logger logging.Logger) usecase.ActionItemUseCases {
+func NewActionItemUseCases(taskUOW usecase.UOW, logger telemetry.Logger) usecase.ActionItemUseCases {
 	return usecase.ActionItemUseCases{
 		Create:   usecase.NewCreateActionItemUseCase(taskUOW, logger),
 		List:     usecase.NewListActionItemsUseCase(taskUOW, logger),
@@ -69,13 +69,13 @@ func NewActionItemUseCases(taskUOW usecase.UOW, logger logging.Logger) usecase.A
 	}
 }
 
-func NewTaskTagUseCases(taskUOW usecase.UOW, logger logging.Logger) usecase.TaskTagUseCases {
+func NewTaskTagUseCases(taskUOW usecase.UOW, logger telemetry.Logger) usecase.TaskTagUseCases {
 	return usecase.TaskTagUseCases{
 		AddToTask:      usecase.NewAddTagToTaskUseCase(taskUOW, logger),
 		RemoveFromTask: usecase.NewRemoveTagFromTaskUseCase(taskUOW, logger),
 	}
 }
 
-func NewTagUseCases(tagStore TagStore, logger logging.Logger) tagusecase.CatalogUseCases {
+func NewTagUseCases(tagStore TagStore, logger telemetry.Logger) tagusecase.CatalogUseCases {
 	return tagusecase.NewCatalogUseCases(tagStore.Tags, logger)
 }

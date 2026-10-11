@@ -5,7 +5,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type removeTagFromTaskUOW interface {
@@ -14,11 +14,11 @@ type removeTagFromTaskUOW interface {
 
 type RemoveTagFromTaskUseCase struct {
 	uow    removeTagFromTaskUOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewRemoveTagFromTaskUseCase(uow removeTagFromTaskUOW, logger logging.Logger) *RemoveTagFromTaskUseCase {
-	return &RemoveTagFromTaskUseCase{logger: logging.OrNop(logger), uow: uow}
+func NewRemoveTagFromTaskUseCase(uow removeTagFromTaskUOW, logger telemetry.Logger) *RemoveTagFromTaskUseCase {
+	return &RemoveTagFromTaskUseCase{logger: telemetry.OrNop(logger), uow: uow}
 }
 
 func (uc *RemoveTagFromTaskUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, tagID string) (err error) {

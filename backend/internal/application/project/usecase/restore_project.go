@@ -7,17 +7,17 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type RestoreProjectUseCase struct {
 	uow      UnitOfWork
 	progress ProjectProgressReader
-	logger   logging.Logger
+	logger   telemetry.Logger
 }
 
-func NewRestoreProjectUseCase(uow UnitOfWork, progress ProjectProgressReader, logger logging.Logger) *RestoreProjectUseCase {
-	return &RestoreProjectUseCase{uow: uow, progress: progress, logger: logging.OrNop(logger)}
+func NewRestoreProjectUseCase(uow UnitOfWork, progress ProjectProgressReader, logger telemetry.Logger) *RestoreProjectUseCase {
+	return &RestoreProjectUseCase{uow: uow, progress: progress, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *RestoreProjectUseCase) Execute(ctx context.Context, actor domain.UserID, id domain.ProjectID, expected int32) (output dao.Project, err error) {

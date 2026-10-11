@@ -5,16 +5,16 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/auth/dao"
 	domain "github.com/Najah7/task2todaytodo/internal/application/auth/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type SignUpUseCase struct {
 	repo   UserRepository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewSignUpUseCase(repo UserRepository, logger logging.Logger) *SignUpUseCase {
-	return &SignUpUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewSignUpUseCase(repo UserRepository, logger telemetry.Logger) *SignUpUseCase {
+	return &SignUpUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *SignUpUseCase) Execute(ctx context.Context, ID, email, password string) (dao.User, error) {

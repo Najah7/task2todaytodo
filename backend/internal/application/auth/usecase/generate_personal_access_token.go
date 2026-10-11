@@ -5,17 +5,17 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/auth/dao"
 	domain "github.com/Najah7/task2todaytodo/internal/application/auth/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type GeneratePersonalAccessTokenUseCase struct {
 	repo   PersonalAccessTokenRepository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewGeneratePersonalAccessTokenUseCase(repo PersonalAccessTokenRepository, logger logging.Logger) *GeneratePersonalAccessTokenUseCase {
+func NewGeneratePersonalAccessTokenUseCase(repo PersonalAccessTokenRepository, logger telemetry.Logger) *GeneratePersonalAccessTokenUseCase {
 	return &GeneratePersonalAccessTokenUseCase{
-		repo: repo, logger: logging.OrNop(logger),
+		repo: repo, logger: telemetry.OrNop(logger),
 	}
 }
 

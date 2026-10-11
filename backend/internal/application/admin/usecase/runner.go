@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 var ErrLeaseLost = errors.New("operation lease lost")
@@ -19,13 +19,13 @@ type AsyncRunner struct {
 	cancel   context.CancelFunc
 	lease    time.Duration
 	interval time.Duration
-	logger   logging.Logger
+	logger   telemetry.Logger
 	mu       sync.Mutex
 	closed   bool
 	wg       sync.WaitGroup
 }
 
-func NewAsyncRunner(repo OperationRepository, executor BackfillExecutor, process context.Context, lease, heartbeatInterval time.Duration, loggers ...logging.Logger) *AsyncRunner {
+func NewAsyncRunner(repo OperationRepository, executor BackfillExecutor, process context.Context, lease, heartbeatInterval time.Duration, loggers ...telemetry.Logger) *AsyncRunner {
 	if process == nil {
 		process = context.Background()
 	}
@@ -36,11 +36,11 @@ func NewAsyncRunner(repo OperationRepository, executor BackfillExecutor, process
 	if heartbeatInterval <= 0 || heartbeatInterval >= lease {
 		heartbeatInterval = lease / 3
 	}
-	var logger logging.Logger
+	var logger telemetry.Logger
 	if len(loggers) > 0 {
 		logger = loggers[0]
 	}
-	return &AsyncRunner{repo: repo, executor: executor, process: runContext, cancel: cancel, lease: lease, interval: heartbeatInterval, logger: logging.OrNop(logger)}
+	return &AsyncRunner{repo: repo, executor: executor, process: runContext, cancel: cancel, lease: lease, interval: heartbeatInterval, logger: telemetry.OrNop(logger)}
 }
 
 func (r *AsyncRunner) StartOperation(id, token, actorID string, cutoff time.Time) {
@@ -178,10 +178,10 @@ func (r *AsyncRunner) repositoryCallTimeout() time.Duration {
 }
 
 func (r *AsyncRunner) logFailure(ctx context.Context, operation string, err error) {
-	if err == nil || logging.IsRoutineError(err) {
+	if err == nil || telemetry.IsRoutineError(err) {
 		return
 	}
-	fields := append([]any{"operation", operation}, logging.ErrorFields(err)...)
+	fields := append([]any{"operation", operation}, telemetry.ErrorFields(err)...)
 	r.logger.Error(ctx, "admin backfill operation failed", fields...)
 }
 

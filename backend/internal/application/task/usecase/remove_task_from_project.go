@@ -7,7 +7,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type removeTaskFromProjectUOW interface {
@@ -17,11 +17,11 @@ type removeTaskFromProjectUOW interface {
 type RemoveTaskFromProjectUseCase struct {
 	uow      removeTaskFromProjectUOW
 	progress taskProgressSource
-	logger   logging.Logger
+	logger   telemetry.Logger
 }
 
-func NewRemoveTaskFromProjectUseCase(uow removeTaskFromProjectUOW, progress taskProgressSource, logger logging.Logger) *RemoveTaskFromProjectUseCase {
-	return &RemoveTaskFromProjectUseCase{logger: logging.OrNop(logger), uow: uow, progress: progress}
+func NewRemoveTaskFromProjectUseCase(uow removeTaskFromProjectUOW, progress taskProgressSource, logger telemetry.Logger) *RemoveTaskFromProjectUseCase {
+	return &RemoveTaskFromProjectUseCase{logger: telemetry.OrNop(logger), uow: uow, progress: progress}
 }
 
 func (uc *RemoveTaskFromProjectUseCase) Execute(ctx context.Context, userID domain.UserID, projectID domain.ProjectID, taskID domain.TaskID, expectedRevision int32) (output dao.Task, err error) {

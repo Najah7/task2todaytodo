@@ -7,16 +7,16 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared/pagination"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type ListActionItemsUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewListActionItemsUseCase(uow UOW, logger logging.Logger) *ListActionItemsUseCase {
-	return &ListActionItemsUseCase{logger: logging.OrNop(logger), uow: uow}
+func NewListActionItemsUseCase(uow UOW, logger telemetry.Logger) *ListActionItemsUseCase {
+	return &ListActionItemsUseCase{logger: telemetry.OrNop(logger), uow: uow}
 }
 
 func (uc *ListActionItemsUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID) (output []dao.ActionItem, err error) {

@@ -4,20 +4,20 @@ import (
 	"context"
 
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type GetOccurrenceUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewGetOccurrenceUseCase(uow UOW, loggers ...logging.Logger) *GetOccurrenceUseCase {
-	var logger logging.Logger
+func NewGetOccurrenceUseCase(uow UOW, loggers ...telemetry.Logger) *GetOccurrenceUseCase {
+	var logger telemetry.Logger
 	if len(loggers) > 0 {
 		logger = loggers[0]
 	}
-	return &GetOccurrenceUseCase{uow: uow, logger: logging.OrNop(logger)}
+	return &GetOccurrenceUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *GetOccurrenceUseCase) Execute(ctx context.Context, actorID, blueprintID, occurrenceDate string) (output dao.ScheduleOccurrence, err error) {

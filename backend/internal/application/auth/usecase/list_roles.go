@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/Najah7/task2todaytodo/internal/application/auth/dao"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type listRolesRepository interface {
@@ -13,11 +13,11 @@ type listRolesRepository interface {
 
 type ListRolesUseCase struct {
 	repo   listRolesRepository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewListRolesUseCase(repo listRolesRepository, logger logging.Logger) *ListRolesUseCase {
-	return &ListRolesUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewListRolesUseCase(repo listRolesRepository, logger telemetry.Logger) *ListRolesUseCase {
+	return &ListRolesUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *ListRolesUseCase) Execute(ctx context.Context) (roles []dao.Role, err error) {

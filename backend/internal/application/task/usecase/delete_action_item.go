@@ -7,18 +7,18 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 var ErrActionItemCompleted = errors.New("completed action item cannot be deleted")
 
 type DeleteActionItemUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewDeleteActionItemUseCase(uow UOW, logger logging.Logger) *DeleteActionItemUseCase {
-	return &DeleteActionItemUseCase{logger: logging.OrNop(logger), uow: uow}
+func NewDeleteActionItemUseCase(uow UOW, logger telemetry.Logger) *DeleteActionItemUseCase {
+	return &DeleteActionItemUseCase{logger: telemetry.OrNop(logger), uow: uow}
 }
 
 func (uc *DeleteActionItemUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, actionItemID domain.ActionItemID) (err error) {

@@ -1,4 +1,4 @@
-package logging
+package telemetry
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/Najah7/task2todaytodo/internal/settings"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -20,18 +21,11 @@ type Logger interface {
 	Error(ctx context.Context, msg string, args ...any)
 }
 
-type Config struct {
-	Service     string
-	Environment string
-	Version     string
-	Level       slog.Level
-}
-
 type slogLogger struct{ logger *slog.Logger }
 
-func New(writer io.Writer, cfg Config) Logger {
+func NewLogger(writer io.Writer, app settings.ApplicationSettings, loggerConfig settings.LoggerSettings) Logger {
 	handler := slog.NewJSONHandler(writer, &slog.HandlerOptions{
-		Level: cfg.Level,
+		Level: loggerConfig.LogLevel,
 		ReplaceAttr: func(groups []string, attr slog.Attr) slog.Attr {
 			if len(groups) != 0 {
 				return attr
@@ -46,14 +40,14 @@ func New(writer io.Writer, cfg Config) Logger {
 		},
 	})
 	logger := slog.New(handler)
-	if cfg.Service != "" {
-		logger = logger.With("service", cfg.Service)
+	if app.Service != "" {
+		logger = logger.With("service", app.Service)
 	}
-	if cfg.Environment != "" {
-		logger = logger.With("environment", cfg.Environment)
+	if app.Environment != "" {
+		logger = logger.With("environment", app.Environment)
 	}
-	if cfg.Version != "" {
-		logger = logger.With("version", cfg.Version)
+	if app.Version != "" {
+		logger = logger.With("version", app.Version)
 	}
 	return &slogLogger{logger: logger}
 }

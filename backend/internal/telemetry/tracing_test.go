@@ -2,12 +2,14 @@ package telemetry
 
 import (
 	"context"
+	"encoding/base64"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/settings"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -19,20 +21,20 @@ import (
 
 func TestSetupUsesResolvedMetadataInResource(t *testing.T) {
 	t.Setenv("OTEL_TRACES_EXPORTER", "none")
-	t.Setenv("OTEL_SERVICE_NAME", "override-api")
-	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=ignored,deployment.environment.name=production,service.version=9.8.7,team=platform")
-	identity, metadata, err := newResource(context.Background(), Metadata{
-		Service: "api", Environment: "development", Version: "1.0.0",
-	})
+	t.Setenv("OTEL_SERVICE_NAME", "process-env-api")
+	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=process-env-ignored,deployment.environment.name=process-env,service.version=0.0.0,other=ignored")
+	identity, err := newResource(context.Background(), settings.ApplicationSettings{
+		Service: "configured-api", Environment: "production", Version: "9.8.7",
+	}, settings.LoggerSettings{ResourceAttributes: map[string]string{
+		"service.name": "ignored", "deployment.environment.name": "ignored", "service.version": "ignored",
+		"telemetry.sdk.name": "ignored", "team": "platform",
+	}})
 	if err != nil {
 		t.Fatalf("Setup() error = %v", err)
 	}
-	if metadata != (Metadata{Service: "override-api", Environment: "production", Version: "9.8.7"}) {
-		t.Fatalf("metadata = %+v", metadata)
-	}
 	attrs := resourceAttributes(identity)
 	want := map[string]string{
-		"service.name":                "override-api",
+		"service.name":                "configured-api",
 		"deployment.environment.name": "production",
 		"service.version":             "9.8.7",
 		"team":                        "platform",
@@ -42,17 +44,11 @@ func TestSetupUsesResolvedMetadataInResource(t *testing.T) {
 			t.Errorf("resource %s = %q, want %q", key, attrs[key], value)
 		}
 	}
-}
-
-func TestResourceServiceOverridesApplicationDefault(t *testing.T) {
-	t.Setenv("OTEL_SERVICE_NAME", "")
-	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=worker")
-	identity, metadata, err := newResource(context.Background(), Metadata{Service: "api"})
-	if err != nil {
-		t.Fatalf("newResource() error = %v", err)
+	if attrs["telemetry.sdk.name"] == "ignored" {
+		t.Fatal("application resource attributes overrode telemetry SDK metadata")
 	}
-	if metadata.Service != "worker" || resourceAttributes(identity)["service.name"] != "worker" {
-		t.Fatalf("resolved service = %q, resource service.name = %q", metadata.Service, resourceAttributes(identity)["service.name"])
+	if _, exists := attrs["other"]; exists {
+		t.Fatal("resource metadata was reread from process environment")
 	}
 }
 
@@ -62,12 +58,10 @@ func TestSetupDefaultsMetadataAndNoExporterShutdown(t *testing.T) {
 	t.Setenv("OTEL_TRACES_EXPORTER", "none")
 	t.Setenv("OTEL_SERVICE_NAME", "")
 	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "")
-	provider, metadata, err := Setup(context.Background(), Metadata{})
+	cfg := loadConfigWithDefaults(t)
+	provider, err := Setup(context.Background(), cfg.Application, cfg.Logger)
 	if err != nil {
 		t.Fatalf("Setup() error = %v", err)
-	}
-	if metadata != (Metadata{Service: "api", Environment: "development", Version: "1.0.0"}) {
-		t.Fatalf("metadata = %+v", metadata)
 	}
 	shutdown(t, provider)
 }
@@ -78,7 +72,8 @@ func TestHTTPHandlerExtractsW3CTraceContext(t *testing.T) {
 	t.Setenv("OTEL_TRACES_EXPORTER", "none")
 	t.Setenv("OTEL_SERVICE_NAME", "")
 	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "")
-	provider, _, err := Setup(context.Background(), Metadata{Service: "api"})
+	cfg := loadConfigWithDefaults(t)
+	provider, err := Setup(context.Background(), cfg.Application, cfg.Logger)
 	if err != nil {
 		t.Fatalf("Setup() error = %v", err)
 	}
@@ -145,7 +140,12 @@ func TestOTLPHTTPExporterSendsProtobufTrace(t *testing.T) {
 	}
 	t.Setenv("OTEL_SERVICE_NAME", "payload-api")
 	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "deployment.environment.name=testing,service.version=5.6.7")
-	provider, _, err := Setup(context.Background(), Metadata{Service: "api", Environment: "development", Version: "1.0.0"})
+	provider, err := Setup(context.Background(), settings.ApplicationSettings{
+		Service: "payload-api", Environment: "testing", Version: "5.6.7",
+	}, settings.LoggerSettings{ResourceAttributes: map[string]string{
+		"deployment.environment.name": "ignored",
+		"service.version":             "ignored",
+	}})
 	if err != nil {
 		t.Fatalf("Setup() error = %v", err)
 	}
@@ -221,6 +221,17 @@ func resourceAttributes(resource *resource.Resource) map[string]string {
 		attrs[string(kv.Key)] = kv.Value.AsString()
 	}
 	return attrs
+}
+
+func loadConfigWithDefaults(t *testing.T) settings.Settings {
+	t.Helper()
+	encodedKey := base64.StdEncoding.EncodeToString(make([]byte, 32))
+	t.Setenv("PAGE_TOKEN_KEY", encodedKey)
+	cfg, err := settings.Load()
+	if err != nil {
+		t.Fatalf("config.Load() error = %v", err)
+	}
+	return cfg
 }
 
 func shutdown(t *testing.T, provider *sdktrace.TracerProvider) {

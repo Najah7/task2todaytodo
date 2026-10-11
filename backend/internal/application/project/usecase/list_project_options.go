@@ -5,7 +5,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/shared/status"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type projectOptionsRepository interface {
@@ -16,11 +16,11 @@ type projectOptionsRepository interface {
 
 type ListProjectOptionsUseCase struct {
 	repo   projectOptionsRepository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewListProjectOptionsUseCase(repo projectOptionsRepository, logger logging.Logger) *ListProjectOptionsUseCase {
-	return &ListProjectOptionsUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewListProjectOptionsUseCase(repo projectOptionsRepository, logger telemetry.Logger) *ListProjectOptionsUseCase {
+	return &ListProjectOptionsUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *ListProjectOptionsUseCase) Execute(ctx context.Context) (output ProjectOptions, err error) {

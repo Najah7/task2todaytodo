@@ -5,30 +5,30 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type ListBlueprintTagsUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 type AddTagToBlueprintUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 type RemoveTagFromBlueprintUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewListBlueprintTagsUseCase(uow UOW, logger logging.Logger) *ListBlueprintTagsUseCase {
-	return &ListBlueprintTagsUseCase{uow: uow, logger: logging.OrNop(logger)}
+func NewListBlueprintTagsUseCase(uow UOW, logger telemetry.Logger) *ListBlueprintTagsUseCase {
+	return &ListBlueprintTagsUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
-func NewAddTagToBlueprintUseCase(uow UOW, logger logging.Logger) *AddTagToBlueprintUseCase {
-	return &AddTagToBlueprintUseCase{uow: uow, logger: logging.OrNop(logger)}
+func NewAddTagToBlueprintUseCase(uow UOW, logger telemetry.Logger) *AddTagToBlueprintUseCase {
+	return &AddTagToBlueprintUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
-func NewRemoveTagFromBlueprintUseCase(uow UOW, logger logging.Logger) *RemoveTagFromBlueprintUseCase {
-	return &RemoveTagFromBlueprintUseCase{uow: uow, logger: logging.OrNop(logger)}
+func NewRemoveTagFromBlueprintUseCase(uow UOW, logger telemetry.Logger) *RemoveTagFromBlueprintUseCase {
+	return &RemoveTagFromBlueprintUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *ListBlueprintTagsUseCase) Execute(ctx context.Context, actorID, blueprintID string) (output []dao.ScheduleTag, err error) {

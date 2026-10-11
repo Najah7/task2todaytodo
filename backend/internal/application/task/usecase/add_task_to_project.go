@@ -8,7 +8,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type addTaskToProjectUOW interface {
@@ -18,11 +18,11 @@ type addTaskToProjectUOW interface {
 type AddTaskToProjectUseCase struct {
 	uow      addTaskToProjectUOW
 	progress taskProgressSource
-	logger   logging.Logger
+	logger   telemetry.Logger
 }
 
-func NewAddTaskToProjectUseCase(uow addTaskToProjectUOW, progress taskProgressSource, logger logging.Logger) *AddTaskToProjectUseCase {
-	return &AddTaskToProjectUseCase{logger: logging.OrNop(logger), uow: uow, progress: progress}
+func NewAddTaskToProjectUseCase(uow addTaskToProjectUOW, progress taskProgressSource, logger telemetry.Logger) *AddTaskToProjectUseCase {
+	return &AddTaskToProjectUseCase{logger: telemetry.OrNop(logger), uow: uow, progress: progress}
 }
 
 func (uc *AddTaskToProjectUseCase) Execute(ctx context.Context, userID domain.UserID, projectID domain.ProjectID, taskID domain.TaskID, expectedRevision int32) (output dao.Task, err error) {

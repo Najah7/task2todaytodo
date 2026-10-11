@@ -6,14 +6,14 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type RescheduleOccurrenceUseCase struct {
 	update *UpdateOccurrenceUseCase
 }
 
-func NewRescheduleOccurrenceUseCase(uow UOW, logger logging.Logger, ids shared.ID) *RescheduleOccurrenceUseCase {
+func NewRescheduleOccurrenceUseCase(uow UOW, logger telemetry.Logger, ids shared.ID) *RescheduleOccurrenceUseCase {
 	return &RescheduleOccurrenceUseCase{update: NewUpdateOccurrenceUseCase(uow, logger, ids)}
 }
 

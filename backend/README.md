@@ -2,8 +2,8 @@
 
 The backend is a Go HTTP API. Business rules live in `internal/application`; the
 REST boundary lives in `internal/port/rest`. PostgreSQL migrations and query
-sources live under `db/`. Runtime configuration, structured logging, and trace
-setup belong to `internal/config`, `internal/logging`, and `internal/telemetry`.
+sources live under `db/`. Runtime configuration belongs to `internal/config`;
+logging and trace setup belong to `internal/telemetry`.
 
 Start the backend with the [repository quick start](../README.md#backend-quick-start).
 Run `make help` in this directory for available commands. Common developer
@@ -27,5 +27,6 @@ for implementation boundaries.
 The API writes structured JSON logs to stdout. Request logs carry a request ID
 and, when available, trace context. Local [`.env.example`](.env.example)
 disables trace export; configure an external Collector to export traces. The
-repository does not start a Collector. See the [logging guide](internal/logging/AGENTS.md)
-and [telemetry guide](internal/telemetry/AGENTS.md) for implementation rules.
+repository does not start a Collector. See the
+[logging and telemetry guide](internal/telemetry/AGENTS.md) for implementation
+rules.

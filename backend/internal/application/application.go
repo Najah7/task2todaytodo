@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/config"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/settings"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type Application struct {
@@ -15,7 +15,7 @@ type Application struct {
 	UOW     UOW
 }
 
-func New(database config.DatabaseConfig, ids shared.ID, logger logging.Logger) (*Application, func(context.Context) error, error) {
+func New(database settings.DatabaseSettings, ids shared.ID, logger telemetry.Logger) (*Application, func(context.Context) error, error) {
 	ctx := context.Background()
 	pool, err := newPool(ctx, database)
 	if err != nil {

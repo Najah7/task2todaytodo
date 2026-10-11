@@ -6,7 +6,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type deleteTaskUOW interface {
@@ -15,11 +15,11 @@ type deleteTaskUOW interface {
 
 type DeleteTaskUseCase struct {
 	uow    deleteTaskUOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewDeleteTaskUseCase(uow deleteTaskUOW, logger logging.Logger) *DeleteTaskUseCase {
-	return &DeleteTaskUseCase{logger: logging.OrNop(logger), uow: uow}
+func NewDeleteTaskUseCase(uow deleteTaskUOW, logger telemetry.Logger) *DeleteTaskUseCase {
+	return &DeleteTaskUseCase{logger: telemetry.OrNop(logger), uow: uow}
 }
 
 func (uc *DeleteTaskUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, expectedRevision int32) (err error) {

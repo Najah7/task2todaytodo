@@ -7,7 +7,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type getProjectRepository interface {
@@ -18,11 +18,11 @@ type getProjectRepository interface {
 type GetProjectUseCase struct {
 	repo     getProjectRepository
 	progress ProjectProgressReader
-	logger   logging.Logger
+	logger   telemetry.Logger
 }
 
-func NewGetProjectUseCase(repo getProjectRepository, progress ProjectProgressReader, logger logging.Logger) *GetProjectUseCase {
-	return &GetProjectUseCase{logger: logging.OrNop(logger), repo: repo, progress: progress}
+func NewGetProjectUseCase(repo getProjectRepository, progress ProjectProgressReader, logger telemetry.Logger) *GetProjectUseCase {
+	return &GetProjectUseCase{logger: telemetry.OrNop(logger), repo: repo, progress: progress}
 }
 
 func (uc *GetProjectUseCase) Execute(ctx context.Context, userID domain.UserID, projectID domain.ProjectID) (output dao.Project, err error) {

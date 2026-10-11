@@ -6,7 +6,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared/pagination"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type projectRevisionReader interface {
@@ -15,11 +15,11 @@ type projectRevisionReader interface {
 
 type ListProjectRevisionsUseCase struct {
 	repo   projectRevisionReader
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewListProjectRevisionsUseCase(repo projectRevisionReader, logger logging.Logger) *ListProjectRevisionsUseCase {
-	return &ListProjectRevisionsUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewListProjectRevisionsUseCase(repo projectRevisionReader, logger telemetry.Logger) *ListProjectRevisionsUseCase {
+	return &ListProjectRevisionsUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *ListProjectRevisionsUseCase) Execute(ctx context.Context, actor domain.UserID, project domain.ProjectID, request CursorPageRequest) (page CursorPage[dao.ProjectRevision], err error) {

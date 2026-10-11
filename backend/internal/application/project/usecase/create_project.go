@@ -7,7 +7,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type CreateProjectInput struct {
@@ -29,11 +29,11 @@ type createProjectRepository interface {
 
 type CreateProjectUseCase struct {
 	repo   createProjectRepository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewCreateProjectUseCase(repo createProjectRepository, logger logging.Logger) *CreateProjectUseCase {
-	return &CreateProjectUseCase{logger: logging.OrNop(logger), repo: repo}
+func NewCreateProjectUseCase(repo createProjectRepository, logger telemetry.Logger) *CreateProjectUseCase {
+	return &CreateProjectUseCase{logger: telemetry.OrNop(logger), repo: repo}
 }
 
 func (uc *CreateProjectUseCase) Execute(ctx context.Context, input CreateProjectInput) (output dao.Project, err error) {

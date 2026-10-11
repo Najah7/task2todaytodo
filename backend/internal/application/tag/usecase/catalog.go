@@ -6,7 +6,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared/pagination"
 	"github.com/Najah7/task2todaytodo/internal/application/tag/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/tag/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type CatalogUseCases struct {
@@ -19,23 +19,23 @@ type CatalogUseCases struct {
 
 type CreateTagUseCase struct {
 	repo   Repository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 type ListTagsUseCase struct {
 	repo   Repository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 type GetTagUseCase struct {
 	repo   Repository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 type RenameTagUseCase struct {
 	repo   Repository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 type DeleteTagUseCase struct {
 	repo   Repository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
 type CreateTagInput struct {
@@ -49,23 +49,23 @@ type RenameTagInput struct {
 	Name   string
 }
 
-func NewCatalogUseCases(repo Repository, logger logging.Logger) CatalogUseCases {
+func NewCatalogUseCases(repo Repository, logger telemetry.Logger) CatalogUseCases {
 	return CatalogUseCases{Create: NewCreateTagUseCase(repo, logger), List: NewListTagsUseCase(repo, logger), Get: NewGetTagUseCase(repo, logger), Rename: NewRenameTagUseCase(repo, logger), Delete: NewDeleteTagUseCase(repo, logger)}
 }
-func NewCreateTagUseCase(repo Repository, logger logging.Logger) *CreateTagUseCase {
-	return &CreateTagUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewCreateTagUseCase(repo Repository, logger telemetry.Logger) *CreateTagUseCase {
+	return &CreateTagUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
-func NewListTagsUseCase(repo Repository, logger logging.Logger) *ListTagsUseCase {
-	return &ListTagsUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewListTagsUseCase(repo Repository, logger telemetry.Logger) *ListTagsUseCase {
+	return &ListTagsUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
-func NewGetTagUseCase(repo Repository, logger logging.Logger) *GetTagUseCase {
-	return &GetTagUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewGetTagUseCase(repo Repository, logger telemetry.Logger) *GetTagUseCase {
+	return &GetTagUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
-func NewRenameTagUseCase(repo Repository, logger logging.Logger) *RenameTagUseCase {
-	return &RenameTagUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewRenameTagUseCase(repo Repository, logger telemetry.Logger) *RenameTagUseCase {
+	return &RenameTagUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
-func NewDeleteTagUseCase(repo Repository, logger logging.Logger) *DeleteTagUseCase {
-	return &DeleteTagUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewDeleteTagUseCase(repo Repository, logger telemetry.Logger) *DeleteTagUseCase {
+	return &DeleteTagUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *CreateTagUseCase) Execute(ctx context.Context, input CreateTagInput) (dao.Tag, error) {

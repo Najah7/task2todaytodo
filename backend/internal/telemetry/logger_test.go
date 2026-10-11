@@ -1,4 +1,4 @@
-package logging
+package telemetry
 
 import (
 	"context"
@@ -9,12 +9,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Najah7/task2todaytodo/internal/settings"
 	"go.opentelemetry.io/otel/trace"
 )
 
 func TestLoggerWritesMetadataAndCorrelation(t *testing.T) {
 	var output strings.Builder
-	logger := New(&output, Config{Service: "api", Environment: "test", Version: "v1", Level: -4})
+	appConfig := settings.ApplicationSettings{Service: "api", Environment: "test", Version: "v1"}
+	loggerConfig := settings.LoggerSettings{LogLevel: -4}
+	logger := NewLogger(&output, appConfig, loggerConfig)
 	spanContext := trace.NewSpanContext(trace.SpanContextConfig{
 		TraceID: trace.TraceID{1, 2, 3}, SpanID: trace.SpanID{4, 5}, TraceFlags: trace.FlagsSampled,
 	})
@@ -46,7 +49,7 @@ func TestLoggerWritesMetadataAndCorrelation(t *testing.T) {
 
 func TestLoggerLevelFilteringAndMissingCorrelation(t *testing.T) {
 	var output strings.Builder
-	logger := New(&output, Config{Level: 0})
+	logger := NewLogger(&output, settings.ApplicationSettings{}, settings.LoggerSettings{LogLevel: 0})
 	logger.Debug(context.Background(), "hidden")
 	logger.Info(context.Background(), "visible")
 	if strings.Contains(output.String(), "hidden") || !strings.Contains(output.String(), "visible") {

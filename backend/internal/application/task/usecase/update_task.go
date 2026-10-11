@@ -10,7 +10,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 var ErrTaskPatchRequiredFieldNull = errors.New("required task field cannot be null")
@@ -38,12 +38,12 @@ func (e TaskUpdateFieldError) Unwrap() error { return e.Err }
 
 type UpdateTaskUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 	now    func() time.Time
 }
 
-func NewUpdateTaskUseCase(uow UOW, logger logging.Logger) *UpdateTaskUseCase {
-	return &UpdateTaskUseCase{uow: uow, logger: logging.OrNop(logger), now: time.Now}
+func NewUpdateTaskUseCase(uow UOW, logger telemetry.Logger) *UpdateTaskUseCase {
+	return &UpdateTaskUseCase{uow: uow, logger: telemetry.OrNop(logger), now: time.Now}
 }
 
 func (uc *UpdateTaskUseCase) Execute(ctx context.Context, in UpdateTaskInput) (result dao.Task, err error) {

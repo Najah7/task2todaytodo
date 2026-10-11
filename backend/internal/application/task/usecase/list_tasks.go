@@ -6,18 +6,18 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type ListTasksUseCase struct {
 	tasks      TaskCursorRepository
 	repo       taskListRepository
 	projection TaskListProjectionReader
-	logger     logging.Logger
+	logger     telemetry.Logger
 }
 
-func NewListTasksUseCase(tasks TaskCursorRepository, logger logging.Logger, projection ...TaskListProjectionReader) *ListTasksUseCase {
-	uc := &ListTasksUseCase{logger: logging.OrNop(logger), tasks: tasks}
+func NewListTasksUseCase(tasks TaskCursorRepository, logger telemetry.Logger, projection ...TaskListProjectionReader) *ListTasksUseCase {
+	uc := &ListTasksUseCase{logger: telemetry.OrNop(logger), tasks: tasks}
 	if repo, ok := tasks.(taskListRepository); ok {
 		uc.repo = repo
 	}

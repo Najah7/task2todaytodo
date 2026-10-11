@@ -2,10 +2,10 @@ package application
 
 import (
 	authusecase "github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
-func NewUserUseCases(authStore AuthStore, logger logging.Logger) authusecase.UserUseCases {
+func NewUserUseCases(authStore AuthStore, logger telemetry.Logger) authusecase.UserUseCases {
 	return authusecase.UserUseCases{
 		Get:            authusecase.NewGetUserUseCase(authStore.Users, logger),
 		GetByEmail:     authusecase.NewGetUserByEmailUseCase(authStore.Users, logger),
@@ -17,7 +17,7 @@ func NewUserUseCases(authStore AuthStore, logger logging.Logger) authusecase.Use
 	}
 }
 
-func NewPersonalAccessTokenUseCases(authStore AuthStore, logger logging.Logger) authusecase.PersonalAccessTokenUseCases {
+func NewPersonalAccessTokenUseCases(authStore AuthStore, logger telemetry.Logger) authusecase.PersonalAccessTokenUseCases {
 	return authusecase.PersonalAccessTokenUseCases{
 		Authenticate: authusecase.NewAuthenticateUseCase(authStore.PersonalAccessTokens, logger),
 		Login:        authusecase.NewLoginUserUseCase(authStore.Users, logger),
@@ -26,7 +26,7 @@ func NewPersonalAccessTokenUseCases(authStore AuthStore, logger logging.Logger) 
 	}
 }
 
-func NewRoleUseCases(authStore AuthStore, logger logging.Logger) authusecase.RoleUseCases {
+func NewRoleUseCases(authStore AuthStore, logger telemetry.Logger) authusecase.RoleUseCases {
 	return authusecase.RoleUseCases{
 		List:        authusecase.NewListRolesUseCase(authStore.Roles, logger),
 		Permissions: authusecase.NewListPermissionsUseCase(authStore.Roles, logger),

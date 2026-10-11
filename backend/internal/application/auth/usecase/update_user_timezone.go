@@ -5,16 +5,16 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/auth/dao"
 	domain "github.com/Najah7/task2todaytodo/internal/application/auth/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type UpdateUserTimezoneUseCase struct {
 	repo   UserRepository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewUpdateUserTimezoneUseCase(repo UserRepository, logger logging.Logger) *UpdateUserTimezoneUseCase {
-	return &UpdateUserTimezoneUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewUpdateUserTimezoneUseCase(repo UserRepository, logger telemetry.Logger) *UpdateUserTimezoneUseCase {
+	return &UpdateUserTimezoneUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *UpdateUserTimezoneUseCase) Execute(ctx context.Context, userID domain.UserID, timezone string) (dao.User, error) {

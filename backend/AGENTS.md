@@ -16,8 +16,7 @@ internal/application/<context>/repository/ DB adapter and sqlc mapping
 internal/application/shared/             Cross-context application contracts
 internal/application/shared/pagination/  Transport-independent List page policy
 internal/config/                          Process environment loading and validation
-internal/logging/                         Structured logger contract and slog implementation
-internal/telemetry/                       OpenTelemetry SDK setup, propagation and trace export
+internal/telemetry/                       Structured logging and OpenTelemetry setup, propagation and trace export
 internal/application/shared/calendar/    Shared calendar and wall-time helpers
 internal/application/shared/recurrence/  Shared recurrence values and occurrence rules
 internal/port/rest/                      HTTP handlers, response and error mapping
@@ -75,8 +74,7 @@ Before changing an area below, read its guide:
 - [REST handlers, errors, and list APIs](internal/port/rest/AGENTS.md)
 - [Database migrations and SQL generation](db/AGENTS.md)
 - [Runtime configuration](internal/config/AGENTS.md)
-- [Logging across backend layers](internal/logging/AGENTS.md)
-- [OpenTelemetry setup and trace export](internal/telemetry/AGENTS.md)
+- [Logging and OpenTelemetry across backend layers](internal/telemetry/AGENTS.md)
 - [Application architecture and rules](internal/application/AGENTS.md)
 
 ## Test

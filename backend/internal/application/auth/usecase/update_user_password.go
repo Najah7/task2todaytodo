@@ -4,16 +4,16 @@ import (
 	"context"
 
 	domain "github.com/Najah7/task2todaytodo/internal/application/auth/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type UpdateUserPasswordUseCase struct {
 	repo   UserRepository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewUpdateUserPasswordUseCase(repo UserRepository, logger logging.Logger) *UpdateUserPasswordUseCase {
-	return &UpdateUserPasswordUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewUpdateUserPasswordUseCase(repo UserRepository, logger telemetry.Logger) *UpdateUserPasswordUseCase {
+	return &UpdateUserPasswordUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *UpdateUserPasswordUseCase) Execute(ctx context.Context, userID domain.UserID, newPassword string) error {

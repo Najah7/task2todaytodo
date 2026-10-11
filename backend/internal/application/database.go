@@ -6,11 +6,11 @@ import (
 	"net"
 	"net/url"
 
-	"github.com/Najah7/task2todaytodo/internal/config"
+	"github.com/Najah7/task2todaytodo/internal/settings"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func newPool(ctx context.Context, database config.DatabaseConfig) (*pgxpool.Pool, error) {
+func newPool(ctx context.Context, database settings.DatabaseSettings) (*pgxpool.Pool, error) {
 	cfg, err := postgresPoolConfig(database)
 	if err != nil {
 		return nil, err
@@ -29,7 +29,7 @@ func newPool(ctx context.Context, database config.DatabaseConfig) (*pgxpool.Pool
 	return pool, nil
 }
 
-func postgresPoolConfig(database config.DatabaseConfig) (*pgxpool.Config, error) {
+func postgresPoolConfig(database settings.DatabaseSettings) (*pgxpool.Config, error) {
 	cfg, err := pgxpool.ParseConfig(postgresConnectionString(database))
 	if err != nil {
 		return nil, fmt.Errorf("invalid database connection settings")
@@ -40,7 +40,7 @@ func postgresPoolConfig(database config.DatabaseConfig) (*pgxpool.Config, error)
 	return cfg, nil
 }
 
-func postgresConnectionString(database config.DatabaseConfig) string {
+func postgresConnectionString(database settings.DatabaseSettings) string {
 	postgresURL := url.URL{
 		Scheme: "postgres",
 		User: url.UserPassword(

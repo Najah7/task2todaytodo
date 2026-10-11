@@ -15,11 +15,10 @@ import (
 
 	_ "github.com/Najah7/task2todaytodo/docs"
 	"github.com/Najah7/task2todaytodo/internal/application"
-	"github.com/Najah7/task2todaytodo/internal/config"
-	"github.com/Najah7/task2todaytodo/internal/logging"
 	"github.com/Najah7/task2todaytodo/internal/port/adapter"
 	"github.com/Najah7/task2todaytodo/internal/port/rest"
 	"github.com/Najah7/task2todaytodo/internal/port/rest/middleware"
+	"github.com/Najah7/task2todaytodo/internal/settings"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
@@ -35,35 +34,26 @@ import (
 // @in							header
 // @name						Authorization
 func main() {
-	conf, err := config.Load()
+	settings, err := settings.Load()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, append([]any{"API initialization failed", "operation", "load_configuration"}, logging.ErrorFields(err)...)...)
+		fmt.Fprintln(os.Stderr, append([]any{"API initialization failed", "operation", "load_configuration"}, telemetry.ErrorFields(err)...)...)
 		os.Exit(1)
 	}
-	provider, metadata, err := telemetry.Setup(context.Background(), telemetry.Metadata{
-		Service:     conf.Application.Service,
-		Environment: conf.Application.Environment,
-		Version:     conf.Application.Version,
-	})
+	provider, err := telemetry.Setup(context.Background(), settings.Application, settings.Logger)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, append([]any{"API initialization failed", "operation", "configure_telemetry"}, logging.ErrorFields(err)...)...)
+		fmt.Fprintln(os.Stderr, append([]any{"API initialization failed", "operation", "configure_telemetry"}, telemetry.ErrorFields(err)...)...)
 		os.Exit(1)
 	}
-	logger := logging.New(os.Stdout, logging.Config{
-		Service:     metadata.Service,
-		Environment: metadata.Environment,
-		Version:     metadata.Version,
-		Level:       conf.Application.LogLevel,
-	})
+	logger := telemetry.NewLogger(os.Stdout, settings.Application, settings.Logger)
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		logger.Error(context.Background(), "OpenTelemetry error", logging.ErrorFields(err)...)
+		logger.Error(context.Background(), "OpenTelemetry error", telemetry.ErrorFields(err)...)
 	}))
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
 	ids := adapter.NewULID()
-	app, closeApp, err := application.New(conf.Database, ids, logger)
+	app, closeApp, err := application.New(settings.Database, ids, logger)
 	if err != nil {
-		logger.Error(context.Background(), "API initialization failed", append([]any{"operation", "initialize_application"}, logging.ErrorFields(err)...)...)
+		logger.Error(context.Background(), "API initialization failed", append([]any{"operation", "initialize_application"}, telemetry.ErrorFields(err)...)...)
 		stop()
 		telemetry.Shutdown(provider, logger)
 		os.Exit(1)
@@ -72,13 +62,13 @@ func main() {
 	r.Use(middleware.StripTrailingSlash)
 	r.Use(middleware.NewRequestLogging(logger, adapter.NewUUID()))
 
-	handler, err := rest.NewHandler(app.UseCase, ids, conf.Secrets.PageTokenKey)
+	handler, err := rest.NewHandler(app.UseCase, ids, settings.Secrets.PageTokenKey)
 	if err != nil {
-		logger.Error(context.Background(), "API initialization failed", append([]any{"operation", "initialize_http_handler"}, logging.ErrorFields(err)...)...)
+		logger.Error(context.Background(), "API initialization failed", append([]any{"operation", "initialize_http_handler"}, telemetry.ErrorFields(err)...)...)
 		var closeErr error
 		application.Close(closeApp, &closeErr)
 		if closeErr != nil {
-			logger.Error(context.Background(), "API stopped with error", append([]any{"operation", "shutdown_application"}, logging.ErrorFields(closeErr)...)...)
+			logger.Error(context.Background(), "API stopped with error", append([]any{"operation", "shutdown_application"}, telemetry.ErrorFields(closeErr)...)...)
 		}
 		stop()
 		telemetry.Shutdown(provider, logger)
@@ -180,7 +170,7 @@ func main() {
 		auth.Delete("/schedule-blueprints/{id}/following/{occurrence_date}", handler.Schedule.DeleteBlueprintFollowing)
 		auth.Get("/schedule-blueprints/{id}/assignees", handler.Schedule.ListAssignees)
 		auth.Get("/schedule-blueprints/{id}/tags", handler.Schedule.ListBlueprintTags)
-		
+
 		// Schedules
 		auth.Get("/schedules", handler.Schedule.ListOccurrences)
 		auth.Get("/schedules/{blueprint_id}/{occurrence_date}", handler.Schedule.GetOccurrence)
@@ -206,13 +196,13 @@ func main() {
 	})
 
 	srv := &http.Server{
-		Addr:              conf.Server.Addr,
-		Handler:           otelhttp.NewHandler(r, metadata.Service),
+		Addr:              settings.Server.Addr,
+		Handler:           otelhttp.NewHandler(r, settings.Application.Service),
 		ReadHeaderTimeout: 5 * time.Second,
 		ErrorLog:          log.New(serverLogWriter{logger: logger}, "", 0),
 	}
 
-	logger.Info(context.Background(), "server starting", "address", conf.Server.Addr, "swagger_url", swaggerURL(conf.Server.Addr))
+	logger.Info(context.Background(), "server starting", "address", settings.Server.Addr, "swagger_url", swaggerURL(settings.Server.Addr))
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.ListenAndServe() }()
 
@@ -220,7 +210,7 @@ func main() {
 	select {
 	case err := <-serveErr:
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error(context.Background(), "API stopped with error", append([]any{"operation", "serve_http"}, logging.ErrorFields(err)...)...)
+			logger.Error(context.Background(), "API stopped with error", append([]any{"operation", "serve_http"}, telemetry.ErrorFields(err)...)...)
 			exitCode = 1
 		}
 	case <-shutdownCtx.Done():
@@ -228,15 +218,15 @@ func main() {
 		shutdownErr := srv.Shutdown(ctx)
 		cancel()
 		if shutdownErr != nil {
-			logger.Error(context.Background(), "API stopped with error", append([]any{"operation", "shutdown_http"}, logging.ErrorFields(shutdownErr)...)...)
+			logger.Error(context.Background(), "API stopped with error", append([]any{"operation", "shutdown_http"}, telemetry.ErrorFields(shutdownErr)...)...)
 			exitCode = 1
 			if err := srv.Close(); err != nil {
-				logger.Error(context.Background(), "API stopped with error", append([]any{"operation", "close_http"}, logging.ErrorFields(err)...)...)
+				logger.Error(context.Background(), "API stopped with error", append([]any{"operation", "close_http"}, telemetry.ErrorFields(err)...)...)
 				exitCode = 1
 			}
 		}
 		if err := <-serveErr; err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error(context.Background(), "API stopped with error", append([]any{"operation", "serve_http"}, logging.ErrorFields(err)...)...)
+			logger.Error(context.Background(), "API stopped with error", append([]any{"operation", "serve_http"}, telemetry.ErrorFields(err)...)...)
 			exitCode = 1
 		} else if shutdownErr == nil {
 			logger.Info(context.Background(), "server stopped")
@@ -246,7 +236,7 @@ func main() {
 	var closeErr error
 	application.Close(closeApp, &closeErr)
 	if closeErr != nil {
-		logger.Error(context.Background(), "API stopped with error", append([]any{"operation", "shutdown_application"}, logging.ErrorFields(closeErr)...)...)
+		logger.Error(context.Background(), "API stopped with error", append([]any{"operation", "shutdown_application"}, telemetry.ErrorFields(closeErr)...)...)
 		exitCode = 1
 	}
 	stop()
@@ -271,7 +261,7 @@ func swaggerURL(serverAddr string) string {
 	return "http://" + host + "/swagger/index.html"
 }
 
-type serverLogWriter struct{ logger logging.Logger }
+type serverLogWriter struct{ logger telemetry.Logger }
 
 func (w serverLogWriter) Write(p []byte) (int, error) {
 	w.logger.Error(context.Background(), "HTTP server error", "operation", "serve_http", "source", "net/http")

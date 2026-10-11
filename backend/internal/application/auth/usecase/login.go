@@ -4,16 +4,16 @@ import (
 	"context"
 
 	domain "github.com/Najah7/task2todaytodo/internal/application/auth/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type LoginUserUseCase struct {
 	repo   UserRepository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewLoginUserUseCase(repo UserRepository, logger logging.Logger) *LoginUserUseCase {
-	return &LoginUserUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewLoginUserUseCase(repo UserRepository, logger telemetry.Logger) *LoginUserUseCase {
+	return &LoginUserUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *LoginUserUseCase) Execute(ctx context.Context, email, password string) (domain.UserID, error) {
@@ -29,7 +29,7 @@ func (uc *LoginUserUseCase) Execute(ctx context.Context, email, password string)
 
 	userRecord, err := uc.repo.GetByEmail(ctx, e.String())
 	if err != nil {
-		if ctx.Err() == nil && logging.IsNotFound(err) {
+		if ctx.Err() == nil && telemetry.IsNotFound(err) {
 			logAuthenticationRejected(uc.logger, ctx, "invalid_credentials")
 			return "", ErrInvalidCredentials
 		} else {

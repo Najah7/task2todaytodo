@@ -5,16 +5,16 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type HoldTaskUseCase struct {
 	changeStatus *changeTaskStatusUseCase
-	logger       logging.Logger
+	logger       telemetry.Logger
 }
 
-func NewHoldTaskUseCase(uow UOW, logger logging.Logger) *HoldTaskUseCase {
-	return &HoldTaskUseCase{logger: logging.OrNop(logger), changeStatus: newChangeTaskStatusUseCase(uow, logger)}
+func NewHoldTaskUseCase(uow UOW, logger telemetry.Logger) *HoldTaskUseCase {
+	return &HoldTaskUseCase{logger: telemetry.OrNop(logger), changeStatus: newChangeTaskStatusUseCase(uow, logger)}
 }
 
 func (uc *HoldTaskUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, expectedRevision int32) (task dao.Task, err error) {

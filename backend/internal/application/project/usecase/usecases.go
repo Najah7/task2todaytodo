@@ -1,6 +1,6 @@
 package usecase
 
-import "github.com/Najah7/task2todaytodo/internal/logging"
+import "github.com/Najah7/task2todaytodo/internal/telemetry"
 
 type ProjectMemberUseCases struct {
 	ListMembers  *ListProjectMembersUseCase
@@ -21,11 +21,11 @@ type UseCases struct {
 	Restore      *RestoreProjectUseCase
 }
 
-func NewUseCases(repo Repository, tx UnitOfWork, logger logging.Logger) *UseCases {
+func NewUseCases(repo Repository, tx UnitOfWork, logger telemetry.Logger) *UseCases {
 	return NewUseCasesWithProgressReader(repo, tx, repo, logger)
 }
 
-func NewUseCasesWithProgressReader(repo Repository, tx UnitOfWork, progress ProjectProgressReader, logger logging.Logger) *UseCases {
+func NewUseCasesWithProgressReader(repo Repository, tx UnitOfWork, progress ProjectProgressReader, logger telemetry.Logger) *UseCases {
 	return &UseCases{
 		Create:       NewCreateProjectUseCase(repo, logger),
 		List:         NewListProjectsUseCase(repo, progress, logger),

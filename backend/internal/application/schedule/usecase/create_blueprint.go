@@ -9,7 +9,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 var (
@@ -23,15 +23,15 @@ type CreateBlueprintUseCase struct {
 	ids       shared.ID
 	timezones TimezoneValidator
 	now       func() time.Time
-	logger    logging.Logger
+	logger    telemetry.Logger
 }
 
-func NewCreateBlueprintUseCase(uow UOW, ids shared.ID, timezones TimezoneValidator, logger logging.Logger, clocks ...func() time.Time) *CreateBlueprintUseCase {
+func NewCreateBlueprintUseCase(uow UOW, ids shared.ID, timezones TimezoneValidator, logger telemetry.Logger, clocks ...func() time.Time) *CreateBlueprintUseCase {
 	now := time.Now
 	if len(clocks) > 0 && clocks[0] != nil {
 		now = clocks[0]
 	}
-	return &CreateBlueprintUseCase{uow: uow, ids: ids, timezones: timezones, now: now, logger: logging.OrNop(logger)}
+	return &CreateBlueprintUseCase{uow: uow, ids: ids, timezones: timezones, now: now, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *CreateBlueprintUseCase) Execute(ctx context.Context, actorID string, input CreateBlueprintInput) (output dao.Blueprint, err error) {

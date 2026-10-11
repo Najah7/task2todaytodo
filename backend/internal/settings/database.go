@@ -1,6 +1,6 @@
-package config
+package settings
 
-type DatabaseConfig struct {
+type DatabaseSettings struct {
 	User     string
 	Password string
 	Host     string

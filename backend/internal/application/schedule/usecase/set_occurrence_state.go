@@ -8,7 +8,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 // SetOccurrenceStateUseCase applies one named state transition to an occurrence.
@@ -16,13 +16,13 @@ import (
 type SetOccurrenceStateUseCase struct {
 	uow    UOW
 	state  string
-	logger logging.Logger
+	logger telemetry.Logger
 	ids    shared.ID
 	now    func() time.Time
 }
 
-func NewSetOccurrenceStateUseCase(uow UOW, state string, logger logging.Logger, ids shared.ID) *SetOccurrenceStateUseCase {
-	return &SetOccurrenceStateUseCase{uow: uow, state: state, logger: logging.OrNop(logger), ids: ids, now: time.Now}
+func NewSetOccurrenceStateUseCase(uow UOW, state string, logger telemetry.Logger, ids shared.ID) *SetOccurrenceStateUseCase {
+	return &SetOccurrenceStateUseCase{uow: uow, state: state, logger: telemetry.OrNop(logger), ids: ids, now: time.Now}
 }
 
 func (uc *SetOccurrenceStateUseCase) Execute(ctx context.Context, actorID, blueprintID, occurrenceDate string, expectedRevision int32) (err error) {

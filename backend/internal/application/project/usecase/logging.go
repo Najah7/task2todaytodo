@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 var (
@@ -13,7 +13,7 @@ var (
 	ErrPermissionDenied = errors.New("permission denied")
 )
 
-func logUnexpectedProjectFailure(logger logging.Logger, ctx context.Context, operation string, err error) {
+func logUnexpectedProjectFailure(logger telemetry.Logger, ctx context.Context, operation string, err error) {
 	if err == nil {
 		return
 	}
@@ -22,12 +22,12 @@ func logUnexpectedProjectFailure(logger logging.Logger, ctx context.Context, ope
 			return
 		}
 	}
-	fields := append([]any{"operation", operation}, logging.ErrorFields(err)...)
-	logging.OrNop(logger).Error(ctx, "project operation failed", fields...)
+	fields := append([]any{"operation", operation}, telemetry.ErrorFields(err)...)
+	telemetry.OrNop(logger).Error(ctx, "project operation failed", fields...)
 }
-func logProjectRestoreFailure(logger logging.Logger, ctx context.Context, operation string, err error) {
+func logProjectRestoreFailure(logger telemetry.Logger, ctx context.Context, operation string, err error) {
 	if err != nil {
-		fields := append([]any{"operation", operation}, logging.ErrorFields(err)...)
-		logging.OrNop(logger).Error(ctx, "failed to restore project", fields...)
+		fields := append([]any{"operation", operation}, telemetry.ErrorFields(err)...)
+		telemetry.OrNop(logger).Error(ctx, "failed to restore project", fields...)
 	}
 }

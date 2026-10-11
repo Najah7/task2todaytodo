@@ -10,7 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/settings"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -21,16 +22,16 @@ func (id fixedID) Generate() string { return string(id) }
 type testLogger struct{ output *bytes.Buffer }
 
 func (l testLogger) Debug(ctx context.Context, msg string, args ...any) {
-	logging.New(l.output, logging.Config{Level: -4}).Debug(ctx, msg, args...)
+	telemetry.NewLogger(l.output, settings.ApplicationSettings{}, settings.LoggerSettings{LogLevel: -4}).Debug(ctx, msg, args...)
 }
 func (l testLogger) Info(ctx context.Context, msg string, args ...any) {
-	logging.New(l.output, logging.Config{Level: -4}).Info(ctx, msg, args...)
+	telemetry.NewLogger(l.output, settings.ApplicationSettings{}, settings.LoggerSettings{LogLevel: -4}).Info(ctx, msg, args...)
 }
 func (l testLogger) Warn(ctx context.Context, msg string, args ...any) {
-	logging.New(l.output, logging.Config{Level: -4}).Warn(ctx, msg, args...)
+	telemetry.NewLogger(l.output, settings.ApplicationSettings{}, settings.LoggerSettings{LogLevel: -4}).Warn(ctx, msg, args...)
 }
 func (l testLogger) Error(ctx context.Context, msg string, args ...any) {
-	logging.New(l.output, logging.Config{Level: -4}).Error(ctx, msg, args...)
+	telemetry.NewLogger(l.output, settings.ApplicationSettings{}, settings.LoggerSettings{LogLevel: -4}).Error(ctx, msg, args...)
 }
 
 func TestRequestLoggingIDsStatusAndSafePath(t *testing.T) {
@@ -47,8 +48,8 @@ func TestRequestLoggingIDsStatusAndSafePath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var output bytes.Buffer
 			handler := NewRequestLogging(testLogger{&output}, fixedID("123e4567-e89b-12d3-a456-426614174000"))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if logging.RequestID(r.Context()) != tt.wantID {
-					t.Errorf("context request ID = %q", logging.RequestID(r.Context()))
+				if telemetry.RequestID(r.Context()) != tt.wantID {
+					t.Errorf("context request ID = %q", telemetry.RequestID(r.Context()))
 				}
 				if tt.status != 200 {
 					w.WriteHeader(tt.status)

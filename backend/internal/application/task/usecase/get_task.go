@@ -7,7 +7,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 // TaskWithTags is the task read model returned by GetTaskUseCase. Child work
@@ -23,11 +23,11 @@ type getTaskUOW interface {
 
 type GetTaskUseCase struct {
 	uow    getTaskUOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewGetTaskUseCase(uow getTaskUOW, logger logging.Logger) *GetTaskUseCase {
-	return &GetTaskUseCase{logger: logging.OrNop(logger), uow: uow}
+func NewGetTaskUseCase(uow getTaskUOW, logger telemetry.Logger) *GetTaskUseCase {
+	return &GetTaskUseCase{logger: telemetry.OrNop(logger), uow: uow}
 }
 
 func (uc *GetTaskUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID) (output TaskWithTags, err error) {

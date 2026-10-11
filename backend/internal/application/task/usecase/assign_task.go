@@ -8,16 +8,16 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type AssignTaskUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewAssignTaskUseCase(uow UOW, logger logging.Logger) *AssignTaskUseCase {
-	return &AssignTaskUseCase{uow: uow, logger: logging.OrNop(logger)}
+func NewAssignTaskUseCase(uow UOW, logger telemetry.Logger) *AssignTaskUseCase {
+	return &AssignTaskUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *AssignTaskUseCase) Execute(

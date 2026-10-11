@@ -8,7 +8,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 var ErrActionItemPatchRequiredFieldNull = errors.New("required action item field cannot be null")
@@ -20,11 +20,11 @@ type ActionItemPlanningPatch struct {
 
 type UpdateActionItemUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewUpdateActionItemUseCase(uow UOW, logger logging.Logger) *UpdateActionItemUseCase {
-	return &UpdateActionItemUseCase{uow: uow, logger: logging.OrNop(logger)}
+func NewUpdateActionItemUseCase(uow UOW, logger telemetry.Logger) *UpdateActionItemUseCase {
+	return &UpdateActionItemUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *UpdateActionItemUseCase) Execute(

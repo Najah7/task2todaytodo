@@ -6,16 +6,16 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type ListProjectMembersUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewListProjectMembersUseCase(uow UOW, logger logging.Logger) *ListProjectMembersUseCase {
-	return &ListProjectMembersUseCase{uow: uow, logger: logging.OrNop(logger)}
+func NewListProjectMembersUseCase(uow UOW, logger telemetry.Logger) *ListProjectMembersUseCase {
+	return &ListProjectMembersUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *ListProjectMembersUseCase) Execute(ctx context.Context, actor domain.UserID, project domain.ProjectID) (members []dao.ProjectMember, err error) {

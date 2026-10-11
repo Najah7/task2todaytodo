@@ -10,7 +10,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared/pagination"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type projectListRepository interface {
@@ -39,11 +39,11 @@ var ErrInvalidProjectListRequest = errors.New("invalid project list request")
 type ListProjectsUseCase struct {
 	repo     projectListRepository
 	progress ProjectProgressReader
-	logger   logging.Logger
+	logger   telemetry.Logger
 }
 
-func NewListProjectsUseCase(repo projectListRepository, progress ProjectProgressReader, logger logging.Logger) *ListProjectsUseCase {
-	return &ListProjectsUseCase{logger: logging.OrNop(logger), repo: repo, progress: progress}
+func NewListProjectsUseCase(repo projectListRepository, progress ProjectProgressReader, logger telemetry.Logger) *ListProjectsUseCase {
+	return &ListProjectsUseCase{logger: telemetry.OrNop(logger), repo: repo, progress: progress}
 }
 
 func (uc *ListProjectsUseCase) Execute(ctx context.Context, userID domain.UserID) (output []dao.Project, err error) {

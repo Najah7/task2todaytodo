@@ -3,17 +3,17 @@ package usecase
 import (
 	"context"
 
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type RevokePersonalAccessTokenUseCase struct {
 	repo   PersonalAccessTokenRepository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewRevokePersonalAccessTokenUseCase(repo PersonalAccessTokenRepository, logger logging.Logger) *RevokePersonalAccessTokenUseCase {
+func NewRevokePersonalAccessTokenUseCase(repo PersonalAccessTokenRepository, logger telemetry.Logger) *RevokePersonalAccessTokenUseCase {
 	return &RevokePersonalAccessTokenUseCase{
-		repo: repo, logger: logging.OrNop(logger),
+		repo: repo, logger: telemetry.OrNop(logger),
 	}
 }
 

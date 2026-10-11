@@ -9,6 +9,11 @@ guide when changing runtime configuration in any of those areas.
 - `internal/config` owns process environment loading and validation. Pass
   database settings into `internal/application`; application code must not read
   process environment.
+- `internal/config` resolves shared service, environment, and version metadata
+  once and parses `OTEL_RESOURCE_ATTRIBUTES` for application and telemetry
+  setup. Identity fields live in `Config.Application`; resource attributes and
+  log level live in `Config.Logger`. Sampling and exporter settings remain
+  owned by the OpenTelemetry SDK and its environment configuration.
 - `cmd/api/main.go` passes the validated `PAGE_TOKEN_KEY` to `rest.NewHandler`,
   which creates the shared REST cursor-token codec.
 - Keep database settings consistent in the application, migration command, and

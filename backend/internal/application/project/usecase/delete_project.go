@@ -5,16 +5,16 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type DeleteProjectUseCase struct {
 	uow    DeleteProjectUnitOfWork
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewDeleteProjectUseCase(uow DeleteProjectUnitOfWork, logger logging.Logger) *DeleteProjectUseCase {
-	return &DeleteProjectUseCase{uow: uow, logger: logging.OrNop(logger)}
+func NewDeleteProjectUseCase(uow DeleteProjectUnitOfWork, logger telemetry.Logger) *DeleteProjectUseCase {
+	return &DeleteProjectUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
 func (uc *DeleteProjectUseCase) Execute(ctx context.Context, actor domain.UserID, projectID domain.ProjectID, expectedRevision int32) (err error) {
 	defer func() { logUnexpectedProjectFailure(uc.logger, ctx, "DeleteProjectUseCase.Execute", err) }()

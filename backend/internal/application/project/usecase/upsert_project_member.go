@@ -4,16 +4,16 @@ import (
 	"context"
 
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type UpsertProjectMemberUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewUpsertProjectMemberUseCase(uow UOW, logger logging.Logger) *UpsertProjectMemberUseCase {
-	return &UpsertProjectMemberUseCase{uow: uow, logger: logging.OrNop(logger)}
+func NewUpsertProjectMemberUseCase(uow UOW, logger telemetry.Logger) *UpsertProjectMemberUseCase {
+	return &UpsertProjectMemberUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *UpsertProjectMemberUseCase) Execute(ctx context.Context, actor domain.UserID, project domain.ProjectID, member domain.UserID, role string) (err error) {

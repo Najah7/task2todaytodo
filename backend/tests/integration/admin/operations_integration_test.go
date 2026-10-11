@@ -16,9 +16,8 @@ import (
 	adminrepo "github.com/Najah7/task2todaytodo/internal/application/admin/repository"
 	adminusecase "github.com/Najah7/task2todaytodo/internal/application/admin/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/config"
-	"github.com/Najah7/task2todaytodo/internal/logging"
 	"github.com/Najah7/task2todaytodo/internal/port/adapter"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 	"github.com/Najah7/task2todaytodo/tests/integration/internal/testdb"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/oklog/ulid/v2"
@@ -73,7 +72,7 @@ func TestApplicationCompositionAndCleanup(t *testing.T) {
 	app, closeApp, err := application.New(config.DatabaseConfig{
 		User: conn.User, Password: conn.Password, Host: conn.Host,
 		Port: strconv.Itoa(int(conn.Port)), Name: conn.Database, SSLMode: "disable",
-	}, adapter.NewULID(), logging.Nop())
+	}, adapter.NewULID(), telemetry.Nop())
 	if err != nil {
 		t.Fatalf("application.New(): %v", err)
 	}

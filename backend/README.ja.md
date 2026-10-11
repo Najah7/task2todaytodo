@@ -3,8 +3,8 @@
 バックエンドは Go 製の HTTP API です。ビジネスルールは
 `internal/application`、REST 境界は `internal/port/rest` に置きます。
 PostgreSQL のマイグレーションとクエリソースは `db/` 以下にあります。
-実行時設定、構造化ログ、トレース設定はそれぞれ
-`internal/config`、`internal/logging`、`internal/telemetry` が担当します。
+実行時設定は `internal/config`、構造化ログとトレース設定は
+`internal/telemetry` が担当します。
 
 起動手順は[リポジトリのクイックスタート](../README.ja.md#バックエンドのクイックスタート)を参照してください。
 このディレクトリで `make help` を実行すると、利用可能なコマンドを確認できます。
@@ -30,5 +30,4 @@ API は構造化 JSON ログを標準出力に書き込みます。リクエス�
 ローカルの [`.env.example`](.env.example) ではトレースのエクスポートを無効にしています。
 エクスポートには外部 Collector を設定してください。このリポジトリは
 Collector を起動しません。実装規約は
-[ログガイド](internal/logging/AGENTS.md)と
-[テレメトリーガイド](internal/telemetry/AGENTS.md)を参照してください。
+[ログとテレメトリーのガイド](internal/telemetry/AGENTS.md)を参照してください。

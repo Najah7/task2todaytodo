@@ -6,18 +6,18 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared/recurrence"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
-func logUnexpectedScheduleFailure(logger logging.Logger, ctx context.Context, operation string, err error) {
-	if err == nil || logging.IsRoutineError(err) || isExpectedScheduleError(err) {
+func logUnexpectedScheduleFailure(logger telemetry.Logger, ctx context.Context, operation string, err error) {
+	if err == nil || telemetry.IsRoutineError(err) || isExpectedScheduleError(err) {
 		return
 	}
-	fields := append([]any{"operation", operation}, logging.ErrorFields(err)...)
+	fields := append([]any{"operation", operation}, telemetry.ErrorFields(err)...)
 	logger.Error(ctx, "schedule operation failed", fields...)
 }
 
-func logScheduleStateChange(logger logging.Logger, ctx context.Context, operation string, actorID domain.UserID, scheduleID domain.ScheduleID) {
+func logScheduleStateChange(logger telemetry.Logger, ctx context.Context, operation string, actorID domain.UserID, scheduleID domain.ScheduleID) {
 	logger.Info(ctx, "schedule operation completed", "operation", operation, "user_id", string(actorID), "schedule_id", string(scheduleID))
 }
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type addTagToTaskUOW interface {
@@ -14,11 +14,11 @@ type addTagToTaskUOW interface {
 
 type AddTagToTaskUseCase struct {
 	uow    addTagToTaskUOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewAddTagToTaskUseCase(uow addTagToTaskUOW, logger logging.Logger) *AddTagToTaskUseCase {
-	return &AddTagToTaskUseCase{logger: logging.OrNop(logger), uow: uow}
+func NewAddTagToTaskUseCase(uow addTagToTaskUOW, logger telemetry.Logger) *AddTagToTaskUseCase {
+	return &AddTagToTaskUseCase{logger: telemetry.OrNop(logger), uow: uow}
 }
 
 func (uc *AddTagToTaskUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, tagID string) (err error) {

@@ -3,8 +3,8 @@
 These rules apply to handlers and middleware under `internal/port/rest/`.
 See the [application guide](../../application/AGENTS.md) for usecases and read
 models; see the
-[logging guide](../../logging/AGENTS.md) for request and runtime logging
-policies.
+[telemetry guide](../../telemetry/AGENTS.md) for request, runtime logging, and
+trace policies.
 
 ## Handler and public error
 

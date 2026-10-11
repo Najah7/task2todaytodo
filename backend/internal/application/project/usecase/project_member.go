@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 var (
@@ -26,7 +26,7 @@ func validProjectMemberInput(values ...string) bool {
 	return true
 }
 
-func logProjectMemberFailure(logger logging.Logger, ctx context.Context, operation string, err error) {
+func logProjectMemberFailure(logger telemetry.Logger, ctx context.Context, operation string, err error) {
 	for _, expected := range []error{
 		ErrProjectMemberNotFound,
 		ErrProjectMemberRoleNotFound,

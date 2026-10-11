@@ -8,7 +8,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type taskStatusTransition uint8
@@ -22,11 +22,11 @@ const (
 
 type changeTaskStatusUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func newChangeTaskStatusUseCase(uow UOW, logger logging.Logger) *changeTaskStatusUseCase {
-	return &changeTaskStatusUseCase{uow: uow, logger: logging.OrNop(logger)}
+func newChangeTaskStatusUseCase(uow UOW, logger telemetry.Logger) *changeTaskStatusUseCase {
+	return &changeTaskStatusUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *changeTaskStatusUseCase) execute(

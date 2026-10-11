@@ -5,22 +5,22 @@ import (
 	"errors"
 
 	"github.com/Najah7/task2todaytodo/internal/application/auth/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type AuthenticateUseCase struct {
 	repo   PersonalAccessTokenRepository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewAuthenticateUseCase(repo PersonalAccessTokenRepository, logger logging.Logger) *AuthenticateUseCase {
-	return &AuthenticateUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewAuthenticateUseCase(repo PersonalAccessTokenRepository, logger telemetry.Logger) *AuthenticateUseCase {
+	return &AuthenticateUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *AuthenticateUseCase) Execute(ctx context.Context, token string) (domain.UserID, error) {
 	dao, err := uc.repo.GetByToken(ctx, token)
 	if err != nil {
-		if ctx.Err() == nil && logging.IsNotFound(err) {
+		if ctx.Err() == nil && telemetry.IsNotFound(err) {
 			logAuthenticationRejected(uc.logger, ctx, "invalid_token")
 		} else {
 			logUnexpectedFailure(uc.logger, ctx, "authenticate.load_token", err)

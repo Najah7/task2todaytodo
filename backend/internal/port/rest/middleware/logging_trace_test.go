@@ -10,8 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Najah7/task2todaytodo/internal/logging"
 	"github.com/Najah7/task2todaytodo/internal/port/rest"
+	"github.com/Najah7/task2todaytodo/internal/settings"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
@@ -24,12 +25,12 @@ import (
 
 const integrationRequestID = "123e4567-e89b-12d3-a456-426614174000"
 
-func traceFixture(t *testing.T, output *bytes.Buffer, configure func(*chi.Mux, *sdktrace.TracerProvider, logging.Logger)) (http.Handler, *tracetest.SpanRecorder) {
+func traceFixture(t *testing.T, output *bytes.Buffer, configure func(*chi.Mux, *sdktrace.TracerProvider, telemetry.Logger)) (http.Handler, *tracetest.SpanRecorder) {
 	t.Helper()
 	recorder := tracetest.NewSpanRecorder()
 	provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
 	t.Cleanup(func() { _ = provider.Shutdown(context.Background()) })
-	logger := logging.New(output, logging.Config{Service: "test", Level: -4})
+	logger := telemetry.NewLogger(output, settings.ApplicationSettings{Service: "test"}, settings.LoggerSettings{LogLevel: -4})
 	router := chi.NewRouter()
 	router.Use(NewRequestLogging(logger, fixedID(integrationRequestID)))
 	configure(router, provider, logger)
@@ -54,7 +55,7 @@ func TestRequestLoggingTraceCorrelationAcrossLevels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var output bytes.Buffer
-			handler, recorder := traceFixture(t, &output, func(router *chi.Mux, provider *sdktrace.TracerProvider, logger logging.Logger) {
+			handler, recorder := traceFixture(t, &output, func(router *chi.Mux, provider *sdktrace.TracerProvider, logger telemetry.Logger) {
 				router.Get("/items/{itemID}", func(w http.ResponseWriter, r *http.Request) {
 					childCtx, child := provider.Tracer("usecase").Start(r.Context(), "usecase")
 					logger.Info(childCtx, "usecase event")
@@ -128,7 +129,7 @@ func TestRequestLoggingTraceCorrelationAcrossLevels(t *testing.T) {
 
 func TestRequestLoggingUnmatchedPathNeverLeaks(t *testing.T) {
 	var output bytes.Buffer
-	handler, recorder := traceFixture(t, &output, func(router *chi.Mux, _ *sdktrace.TracerProvider, logger logging.Logger) {
+	handler, recorder := traceFixture(t, &output, func(router *chi.Mux, _ *sdktrace.TracerProvider, logger telemetry.Logger) {
 		notFound := NewRequestLogging(logger, fixedID(integrationRequestID))(http.NotFoundHandler())
 		router.NotFound(notFound.ServeHTTP)
 	})
@@ -168,7 +169,7 @@ func TestRequestLoggingGeneratedTraceAndUnsampledParent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var output bytes.Buffer
-			handler, recorder := traceFixture(t, &output, func(router *chi.Mux, _ *sdktrace.TracerProvider, _ logging.Logger) {
+			handler, recorder := traceFixture(t, &output, func(router *chi.Mux, _ *sdktrace.TracerProvider, _ telemetry.Logger) {
 				router.Get("/work", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 			})
 			req := httptest.NewRequest(http.MethodGet, "/work", nil)
@@ -212,7 +213,7 @@ func TestRequestLoggingPanicMarksExportedSpanAndErrorResponse(t *testing.T) {
 	for _, committed := range []bool{false, true} {
 		t.Run(map[bool]string{false: "uncommitted", true: "committed"}[committed], func(t *testing.T) {
 			var output bytes.Buffer
-			handler, recorder := traceFixture(t, &output, func(router *chi.Mux, _ *sdktrace.TracerProvider, _ logging.Logger) {
+			handler, recorder := traceFixture(t, &output, func(router *chi.Mux, _ *sdktrace.TracerProvider, _ telemetry.Logger) {
 				router.Get("/panic/{mode}", func(w http.ResponseWriter, r *http.Request) {
 					if chi.URLParam(r, "mode") == "committed" {
 						_, _ = w.Write([]byte("committed"))

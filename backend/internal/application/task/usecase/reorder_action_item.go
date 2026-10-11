@@ -8,18 +8,18 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 var ErrActionItemPositionOutOfRange = errors.New("action item position is out of range")
 
 type ReorderActionItemUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewReorderActionItemUseCase(uow UOW, logger logging.Logger) *ReorderActionItemUseCase {
-	return &ReorderActionItemUseCase{uow: uow, logger: logging.OrNop(logger)}
+func NewReorderActionItemUseCase(uow UOW, logger telemetry.Logger) *ReorderActionItemUseCase {
+	return &ReorderActionItemUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *ReorderActionItemUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, actionItemID domain.ActionItemID, position int) (output dao.ActionItem, err error) {

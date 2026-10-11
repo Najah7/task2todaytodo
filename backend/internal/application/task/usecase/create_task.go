@@ -7,7 +7,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type CreateTaskInput struct {
@@ -22,11 +22,11 @@ type CreateTaskInput struct {
 
 type CreateTaskUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewCreateTaskUseCase(uow UOW, logger logging.Logger) *CreateTaskUseCase {
-	return &CreateTaskUseCase{logger: logging.OrNop(logger), uow: uow}
+func NewCreateTaskUseCase(uow UOW, logger telemetry.Logger) *CreateTaskUseCase {
+	return &CreateTaskUseCase{logger: telemetry.OrNop(logger), uow: uow}
 }
 
 func (uc *CreateTaskUseCase) Execute(ctx context.Context, input CreateTaskInput) (output dao.Task, err error) {

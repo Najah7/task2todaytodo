@@ -6,16 +6,16 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type ReopenActionItemUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewReopenActionItemUseCase(uow UOW, logger logging.Logger) *ReopenActionItemUseCase {
-	return &ReopenActionItemUseCase{logger: logging.OrNop(logger), uow: uow}
+func NewReopenActionItemUseCase(uow UOW, logger telemetry.Logger) *ReopenActionItemUseCase {
+	return &ReopenActionItemUseCase{logger: telemetry.OrNop(logger), uow: uow}
 }
 
 func (uc *ReopenActionItemUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, actionItemID domain.ActionItemID) (err error) {

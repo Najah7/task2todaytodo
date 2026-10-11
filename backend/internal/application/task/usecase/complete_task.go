@@ -7,7 +7,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type completeTaskUOW interface {
@@ -17,14 +17,14 @@ type completeTaskUOW interface {
 type CompleteTaskUseCase struct {
 	uow    completeTaskUOW
 	now    func() time.Time
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewCompleteTaskUseCase(uow completeTaskUOW, now func() time.Time, logger logging.Logger) *CompleteTaskUseCase {
+func NewCompleteTaskUseCase(uow completeTaskUOW, now func() time.Time, logger telemetry.Logger) *CompleteTaskUseCase {
 	if now == nil {
 		now = time.Now
 	}
-	return &CompleteTaskUseCase{logger: logging.OrNop(logger), uow: uow, now: now}
+	return &CompleteTaskUseCase{logger: telemetry.OrNop(logger), uow: uow, now: now}
 }
 
 func (uc *CompleteTaskUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, expectedRevision int32) (changed dao.Task, err error) {

@@ -10,7 +10,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	tagusecase "github.com/Najah7/task2todaytodo/internal/application/tag/usecase"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type UseCase struct {
@@ -27,7 +27,7 @@ type UseCase struct {
 	Admin               adminusecase.UseCases
 }
 
-func NewUseCase(authStore AuthStore, projectStore ProjectStore, taskStore TaskStore, tagStore TagStore, adminStore AdminStore, projectUOW projectusecase.UnitOfWork, taskUOW taskusecase.UOW, scheduleUOW scheduleusecase.UOW, ID shared.ID, logger logging.Logger) (UseCase, func(context.Context) error) {
+func NewUseCase(authStore AuthStore, projectStore ProjectStore, taskStore TaskStore, tagStore TagStore, adminStore AdminStore, projectUOW projectusecase.UnitOfWork, taskUOW taskusecase.UOW, scheduleUOW scheduleusecase.UOW, ID shared.ID, logger telemetry.Logger) (UseCase, func(context.Context) error) {
 	tags := NewTagUseCases(tagStore, logger)
 	schedules := NewScheduleUseCases(scheduleUOW, authStore, ID, logger)
 	admin, closeAdmin := NewAdminUseCases(adminStore, scheduleBackfillAdapter{usecase: schedules.Backfill}, ID, logger)

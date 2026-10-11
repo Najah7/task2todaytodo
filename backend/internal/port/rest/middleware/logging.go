@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/logging"
 	"github.com/Najah7/task2todaytodo/internal/port/rest"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
@@ -17,8 +17,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func NewRequestLogging(logger logging.Logger, ids shared.ID) func(http.Handler) http.Handler {
-	logger = logging.OrNop(logger)
+func NewRequestLogging(logger telemetry.Logger, ids shared.ID) func(http.Handler) http.Handler {
+	logger = telemetry.OrNop(logger)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			requestID := incomingRequestID(r.Header.Get("X-Request-ID"))
@@ -26,7 +26,7 @@ func NewRequestLogging(logger logging.Logger, ids shared.ID) func(http.Handler) 
 				requestID = ids.Generate()
 			}
 			w.Header().Set("X-Request-ID", requestID)
-			ctx := logging.WithRequestID(r.Context(), requestID)
+			ctx := telemetry.WithRequestID(r.Context(), requestID)
 			r = r.WithContext(ctx)
 			wrapped := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 			started := time.Now()

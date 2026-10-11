@@ -9,7 +9,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 var (
@@ -22,13 +22,13 @@ var (
 
 type UpdateOccurrenceUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 	ids    shared.ID
 	now    func() time.Time
 }
 
-func NewUpdateOccurrenceUseCase(uow UOW, logger logging.Logger, ids shared.ID) *UpdateOccurrenceUseCase {
-	return &UpdateOccurrenceUseCase{uow: uow, logger: logging.OrNop(logger), ids: ids, now: time.Now}
+func NewUpdateOccurrenceUseCase(uow UOW, logger telemetry.Logger, ids shared.ID) *UpdateOccurrenceUseCase {
+	return &UpdateOccurrenceUseCase{uow: uow, logger: telemetry.OrNop(logger), ids: ids, now: time.Now}
 }
 
 func (uc *UpdateOccurrenceUseCase) Execute(ctx context.Context, actorID, blueprintID, occurrenceDate string, input UpdateScheduleInput, expectedRevision int32) (dao.ScheduleOccurrence, error) {

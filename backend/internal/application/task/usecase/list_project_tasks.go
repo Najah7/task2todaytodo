@@ -7,7 +7,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type listProjectTasksTaskRepository interface {
@@ -18,11 +18,11 @@ type ListProjectTasksUseCase struct {
 	projects   TaskProjectRepository
 	tasks      listProjectTasksTaskRepository
 	projection TaskListProjectionReader
-	logger     logging.Logger
+	logger     telemetry.Logger
 }
 
-func NewListProjectTasksUseCase(projects TaskProjectRepository, tasks listProjectTasksTaskRepository, logger logging.Logger, projection ...TaskListProjectionReader) *ListProjectTasksUseCase {
-	uc := &ListProjectTasksUseCase{logger: logging.OrNop(logger), projects: projects, tasks: tasks}
+func NewListProjectTasksUseCase(projects TaskProjectRepository, tasks listProjectTasksTaskRepository, logger telemetry.Logger, projection ...TaskListProjectionReader) *ListProjectTasksUseCase {
+	uc := &ListProjectTasksUseCase{logger: telemetry.OrNop(logger), projects: projects, tasks: tasks}
 	if len(projection) > 0 {
 		uc.projection = projection[0]
 	}

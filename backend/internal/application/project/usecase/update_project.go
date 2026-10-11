@@ -9,7 +9,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 var ErrProjectPatchRequiredFieldNull = errors.New("required project field cannot be null")
@@ -23,11 +23,11 @@ type updateProjectRepository interface {
 type UpdateProjectUseCase struct {
 	repo     updateProjectRepository
 	progress ProjectProgressReader
-	logger   logging.Logger
+	logger   telemetry.Logger
 }
 
-func NewUpdateProjectUseCase(repo updateProjectRepository, progress ProjectProgressReader, logger logging.Logger) *UpdateProjectUseCase {
-	return &UpdateProjectUseCase{logger: logging.OrNop(logger), repo: repo, progress: progress}
+func NewUpdateProjectUseCase(repo updateProjectRepository, progress ProjectProgressReader, logger telemetry.Logger) *UpdateProjectUseCase {
+	return &UpdateProjectUseCase{logger: telemetry.OrNop(logger), repo: repo, progress: progress}
 }
 
 func (uc *UpdateProjectUseCase) Execute(

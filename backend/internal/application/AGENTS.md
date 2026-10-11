@@ -4,7 +4,7 @@ These rules apply to `internal/application/`, including the composition root
 and each business context. See the [backend guide](../../AGENTS.md) for commands
 and real-database integration tests. See the [REST guide](../port/rest/AGENTS.md),
 [configuration guide](../config/AGENTS.md), [SQL guide](../../db/AGENTS.md), and
-[logging guide](../logging/AGENTS.md) for adjacent boundaries.
+[telemetry guide](../telemetry/AGENTS.md) for logging and trace boundaries.
 
 ## Structure and boundaries
 
@@ -181,8 +181,9 @@ READ:  Repository -> DAO -> UseCase/REST handler
 
 ## Logging
 
-- Usecases may depend on the `internal/logging` contract, but not concrete slog
-  or OTel implementations. Domain models and DAOs must not depend on a logger.
+- Usecases may depend on the `internal/telemetry` Logger contract and safe error
+  helpers, but not concrete slog or OTel SDK types. Domain models and DAOs must
+  not depend on a logger.
 - Log authentication outcomes, security events, and important state operations,
   such as task status changes and occurrence complete/reopen/skip/restore/
   reschedule. Use INFO for success. Use WARN for authentication rejection and
@@ -192,7 +193,8 @@ READ:  Repository -> DAO -> UseCase/REST handler
   success inside the callback or after rollback or commit failure. Describe
   idempotent commands as completed operations unless an actual change is known.
 - Log unexpected repository, transaction, and persisted-state restoration
-  failures at ERROR. Include an `operation` field and `logging.ErrorFields(err)`.
+  failures at ERROR. Include an `operation` field and
+  `telemetry.ErrorFields(err)`.
   Invalid stored state is unexpected, even if its error is also used for input
   validation.
 - Ordinary CRUD success and expected validation, not-found, conflict,

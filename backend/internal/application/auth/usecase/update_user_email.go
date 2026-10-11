@@ -5,16 +5,16 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/auth/dao"
 	domain "github.com/Najah7/task2todaytodo/internal/application/auth/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type UpdateUserEmailUseCase struct {
 	repo   UserRepository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewUpdateUserEmailUseCase(repo UserRepository, logger logging.Logger) *UpdateUserEmailUseCase {
-	return &UpdateUserEmailUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewUpdateUserEmailUseCase(repo UserRepository, logger telemetry.Logger) *UpdateUserEmailUseCase {
+	return &UpdateUserEmailUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *UpdateUserEmailUseCase) Execute(ctx context.Context, userID domain.UserID, newEmail string) (dao.User, error) {

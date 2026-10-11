@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Najah7/task2todaytodo/internal/settings"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -17,27 +18,19 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
-// Metadata identifies this API instance in both logs and telemetry.
-type Metadata struct {
-	Service     string
-	Environment string
-	Version     string
-}
-
-// Setup installs W3C propagation and an SDK tracer provider. Metadata from
-// standard OpenTelemetry resource environment variables overrides app defaults.
-func Setup(ctx context.Context, defaults Metadata) (*trace.TracerProvider, Metadata, error) {
-	identity, metadata, err := newResource(ctx, defaults)
+// Setup installs W3C propagation and an SDK tracer provider.
+func Setup(ctx context.Context, app settings.ApplicationSettings, logger settings.LoggerSettings) (*trace.TracerProvider, error) {
+	identity, err := newResource(ctx, app, logger)
 	if err != nil {
-		return nil, Metadata{}, err
+		return nil, err
 	}
 	sampler, err := samplerFromEnv()
 	if err != nil {
-		return nil, Metadata{}, err
+		return nil, err
 	}
 	exporter, err := newSpanExporter(ctx)
 	if err != nil {
-		return nil, Metadata{}, fmt.Errorf("configure OpenTelemetry trace exporter: %w", err)
+		return nil, fmt.Errorf("configure OpenTelemetry trace exporter: %w", err)
 	}
 	options := []trace.TracerProviderOption{
 		trace.WithResource(identity),
@@ -52,25 +45,27 @@ func Setup(ctx context.Context, defaults Metadata) (*trace.TracerProvider, Metad
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
-	return provider, metadata, nil
+	return provider, nil
 }
 
-func newResource(ctx context.Context, defaults Metadata) (*resource.Resource, Metadata, error) {
-	resourceFromEnv, err := resource.New(ctx, resource.WithFromEnv(), resource.WithTelemetrySDK())
-	if err != nil {
-		return nil, Metadata{}, fmt.Errorf("read OpenTelemetry resource environment: %w", err)
+func newResource(ctx context.Context, app settings.ApplicationSettings, logger settings.LoggerSettings) (*resource.Resource, error) {
+	attributes := make([]attribute.KeyValue, 0, len(logger.ResourceAttributes)+3)
+	for key, value := range logger.ResourceAttributes {
+		attributes = append(attributes, attribute.String(key, value))
 	}
-	metadata := resolveMetadata(defaults, resourceFromEnv)
-	identity, err := resource.Merge(resourceFromEnv, resource.NewWithAttributes(
-		"",
-		attribute.String("service.name", metadata.Service),
-		attribute.String("service.version", metadata.Version),
-		attribute.String("deployment.environment.name", metadata.Environment),
-	))
+	attributes = append(attributes,
+		attribute.String("service.name", app.Service),
+		attribute.String("service.version", app.Version),
+		attribute.String("deployment.environment.name", app.Environment),
+	)
+	identity, err := resource.New(ctx,
+		resource.WithAttributes(attributes...),
+		resource.WithTelemetrySDK(),
+	)
 	if err != nil {
-		return nil, Metadata{}, fmt.Errorf("configure OpenTelemetry resource: %w", err)
+		return nil, fmt.Errorf("configure OpenTelemetry resource: %w", err)
 	}
-	return identity, metadata, nil
+	return identity, nil
 }
 
 func newSpanExporter(ctx context.Context) (trace.SpanExporter, error) {
@@ -100,41 +95,6 @@ func newSpanExporter(ctx context.Context) (trace.SpanExporter, error) {
 	default:
 		return nil, fmt.Errorf("unsupported OTLP trace protocol; expected grpc or http/protobuf")
 	}
-}
-
-func resolveMetadata(defaults Metadata, env *resource.Resource) Metadata {
-	metadata := defaults
-	if metadata.Service == "" {
-		metadata.Service = "api"
-	}
-	if metadata.Environment == "" {
-		metadata.Environment = "development"
-	}
-	if metadata.Version == "" {
-		metadata.Version = "1.0.0"
-	}
-	for _, kv := range env.Attributes() {
-		switch string(kv.Key) {
-		case "service.name":
-			if value := kv.Value.AsString(); value != "" {
-				metadata.Service = value
-			}
-		case "deployment.environment.name":
-			if value := kv.Value.AsString(); value != "" {
-				metadata.Environment = value
-			}
-		case "service.version":
-			if value := kv.Value.AsString(); value != "" {
-				metadata.Version = value
-			}
-		}
-	}
-	// OTEL_SERVICE_NAME is defined to take precedence over service.name in
-	// OTEL_RESOURCE_ATTRIBUTES.
-	if service := strings.TrimSpace(os.Getenv("OTEL_SERVICE_NAME")); service != "" {
-		metadata.Service = service
-	}
-	return metadata
 }
 
 func samplerFromEnv() (trace.Sampler, error) {

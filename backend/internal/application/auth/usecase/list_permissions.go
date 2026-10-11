@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/Najah7/task2todaytodo/internal/application/auth/dao"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type listPermissionsRepository interface {
@@ -13,11 +13,11 @@ type listPermissionsRepository interface {
 
 type ListPermissionsUseCase struct {
 	repo   listPermissionsRepository
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewListPermissionsUseCase(repo listPermissionsRepository, logger logging.Logger) *ListPermissionsUseCase {
-	return &ListPermissionsUseCase{repo: repo, logger: logging.OrNop(logger)}
+func NewListPermissionsUseCase(repo listPermissionsRepository, logger telemetry.Logger) *ListPermissionsUseCase {
+	return &ListPermissionsUseCase{repo: repo, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *ListPermissionsUseCase) Execute(ctx context.Context) (permissions []dao.Permission, err error) {

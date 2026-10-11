@@ -5,16 +5,16 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
-	"github.com/Najah7/task2todaytodo/internal/logging"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 type ListScheduleAssigneesUseCase struct {
 	uow    UOW
-	logger logging.Logger
+	logger telemetry.Logger
 }
 
-func NewListScheduleAssigneesUseCase(uow UOW, logger logging.Logger) *ListScheduleAssigneesUseCase {
-	return &ListScheduleAssigneesUseCase{uow: uow, logger: logging.OrNop(logger)}
+func NewListScheduleAssigneesUseCase(uow UOW, logger telemetry.Logger) *ListScheduleAssigneesUseCase {
+	return &ListScheduleAssigneesUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *ListScheduleAssigneesUseCase) Execute(ctx context.Context, actorID domain.UserID, blueprintID domain.ScheduleID) (output []dao.Assignee, err error) {
