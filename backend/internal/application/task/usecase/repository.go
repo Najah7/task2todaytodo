@@ -17,8 +17,6 @@ var (
 	ErrProjectLifecycleUnavailable = errors.New("project lifecycle service is unavailable")
 	ErrActionItemTaskNotFound      = errors.New("action item task not found")
 	ErrActionItemNotFound          = errors.New("action item not found")
-	ErrTaskTagNotFound             = errors.New("task tag not found")
-	ErrTaskTagAssignmentNotOwned   = errors.New("task and tag must belong to the same user")
 	ErrRevisionConflict            = errors.New("resource revision does not match")
 	ErrPermissionDenied            = errors.New("permission denied")
 )
@@ -70,18 +68,11 @@ type TaskRepository interface {
 	GetByPriority(ctx context.Context, priority domain.TaskPriority) ([]dao.Task, error)
 	GetByProject(ctx context.Context, projectID domain.ProjectID) ([]dao.Task, error)
 	GetByStatus(ctx context.Context, status domain.TaskStatus) ([]dao.Task, error)
-	GetByTag(ctx context.Context, tagID string) ([]dao.Task, error)
 	Create(ctx context.Context, task domain.Task) (dao.Task, error)
 	Update(ctx context.Context, task domain.Task) (dao.Task, error)
 	UpdateByUserID(ctx context.Context, userID domain.UserID, task domain.Task, expectedRevision int32) (dao.Task, error)
 	Delete(ctx context.Context, id domain.TaskID) error
 	DeleteByUserID(ctx context.Context, userID domain.UserID, id domain.TaskID, expectedRevision int32) error
-}
-
-type TaskTagRepository interface {
-	ListByTaskAndUserID(ctx context.Context, userID domain.UserID, taskID domain.TaskID) ([]dao.TaskTag, error)
-	AddToTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, tagID string) error
-	RemoveFromTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, tagID string) error
 }
 
 type TaskPriorityRepository interface {

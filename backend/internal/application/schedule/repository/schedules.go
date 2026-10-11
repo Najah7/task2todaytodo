@@ -6,7 +6,6 @@ import (
 	"sort"
 
 	"github.com/Najah7/task2todaytodo/db/sqlc"
-	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
@@ -47,40 +46,6 @@ func (r *ScheduleRepository) CheckProjectPermission(ctx context.Context, actor d
 		return false, usecase.ErrScheduleProjectNotFound
 	}
 	return allowed, err
-}
-
-func (r *ScheduleRepository) ListTags(ctx context.Context, actor domain.UserID, id domain.ScheduleID) ([]dao.ScheduleTag, error) {
-	rows, err := r.queries.ListScheduleTagsByScheduleAndUserID(ctx, sqlc.ListScheduleTagsByScheduleAndUserIDParams{ScheduleID: string(id), UserID: string(actor)})
-	if err != nil {
-		return nil, err
-	}
-	out := make([]dao.ScheduleTag, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, dao.ScheduleTag{ID: row.ID, UserID: row.UserID, Name: row.Name, CreatedAt: unix(row.CreatedAt), UpdatedAt: unix(row.UpdatedAt)})
-	}
-	return out, nil
-}
-
-func (r *ScheduleRepository) AddTag(ctx context.Context, actor domain.UserID, id domain.ScheduleID, tagID string) error {
-	result, err := r.queries.AddScheduleTagToScheduleByUserID(ctx, sqlc.AddScheduleTagToScheduleByUserIDParams{ScheduleID: string(id), TagID: tagID, UserID: string(actor)})
-	if err != nil {
-		return err
-	}
-	if !result.Owned {
-		return usecase.ErrScheduleTagNotFound
-	}
-	return nil
-}
-
-func (r *ScheduleRepository) RemoveTag(ctx context.Context, actor domain.UserID, id domain.ScheduleID, tagID string) error {
-	result, err := r.queries.RemoveScheduleTagFromScheduleByUserID(ctx, sqlc.RemoveScheduleTagFromScheduleByUserIDParams{ScheduleID: string(id), TagID: tagID, UserID: string(actor)})
-	if err != nil {
-		return err
-	}
-	if !result.Owned {
-		return usecase.ErrScheduleTagNotFound
-	}
-	return nil
 }
 
 func (r *ScheduleRepository) DeleteProjectSchedulesByActor(ctx context.Context, actor domain.UserID, project domain.ProjectID) error {

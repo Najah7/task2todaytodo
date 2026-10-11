@@ -19,7 +19,4 @@ type ScheduleUseCases struct {
 	Backfill                  ScheduleBackfill
 	ProjectBlueprintLifecycle ProjectBlueprintLifecycle
 	ListAssignees             *ListScheduleAssigneesUseCase
-	ListBlueprintTags         *ListBlueprintTagsUseCase
-	AddTagToBlueprint         *AddTagToBlueprintUseCase
-	RemoveTagFromBlueprint    *RemoveTagFromBlueprintUseCase
 }

@@ -53,10 +53,6 @@ func (r taskRepositories) Tasks() usecase.TaskRepository {
 	return r.store.Tasks
 }
 
-func (r taskRepositories) TaskTags() usecase.TaskTagRepository {
-	return r.store.TaskTags
-}
-
 func (r taskRepositories) ActionItems() usecase.ActionItemRepository {
 	return r.store.ActionItems
 }

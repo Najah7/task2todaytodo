@@ -308,14 +308,6 @@ func (r TaskRepository) GetByStatus(ctx context.Context, status domain.TaskStatu
 	return recordsToTasks(records), nil
 }
 
-func (r TaskRepository) GetByTag(ctx context.Context, tagID string) ([]dao.Task, error) {
-	records, err := r.queries.GetTaskByTag(ctx, tagID)
-	if err != nil {
-		return nil, err
-	}
-	return recordsToTasks(records), nil
-}
-
 func (r TaskRepository) Create(ctx context.Context, task domain.Task) (dao.Task, error) {
 	record, err := r.queries.CreateTask(ctx, sqlc.CreateTaskParams{
 		ID:                     string(task.ID),

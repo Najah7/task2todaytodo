@@ -10,7 +10,6 @@ type Repositories interface {
 	ProjectLifecycle() shared.ProjectWorkLifecycle
 	TaskProjects() TaskProjectRepository
 	Tasks() TaskRepository
-	TaskTags() TaskTagRepository
 	ActionItems() ActionItemRepository
 	TodoLists() TodoListRepository
 	TaskPriorities() TaskPriorityRepository

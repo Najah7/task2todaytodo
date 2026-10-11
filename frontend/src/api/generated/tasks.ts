@@ -150,13 +150,7 @@ export interface RestTaskCreateRequest {
   title?: string;
 }
 
-export interface RestTaskAssignedTagResponse {
-  id?: string;
-  name?: string;
-}
-
 export interface RestTaskDetailsResponse {
-  tags?: RestTaskAssignedTagResponse[];
   task?: RestTaskResponse;
 }
 
@@ -218,10 +212,6 @@ export interface RestTaskRevisionListResponse {
 
 export interface RestMessageResponse {
   message?: string;
-}
-
-export interface RestTaskTagAssignmentRequest {
-  tag_id?: string;
 }
 
 export interface RestActionItemResponse {
@@ -995,7 +985,7 @@ export const getGetTasksIdUrl = (id: string,) => {
 }
 
 /**
- * Returns a task the caller may read and its assigned tags.
+ * Returns a task the caller may read.
  * @summary Get task
  */
 export const getTasksId = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestTaskDetailsResponse> => {
@@ -1558,184 +1548,6 @@ export function useGetTasksIdRevisions<TData = Awaited<ReturnType<typeof getTask
 
 
 
-
-export const getPostTasksIdTagsaddUrl = (id: string,) => {
-
-
-
-
-  return `/api/tasks/${id}/tags:add`
-}
-
-/**
- * @summary Add tag to task
- */
-export const postTasksIdTagsadd = async (id: string,
-    restTaskTagAssignmentRequest: RestTaskTagAssignmentRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return apiFetch<RestMessageResponse>(getPostTasksIdTagsaddUrl(id),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(restTaskTagAssignmentRequest)
-  }
-);}
-
-
-
-
-
-export const getPostTasksIdTagsaddMutationKey = () => ['postTasksIdTagsadd'] as const;
-
-export const getPostTasksIdTagsaddMutationOptions = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postTasksIdTagsadd>>, TError,PostTasksIdTagsaddMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof postTasksIdTagsadd>>, TError,PostTasksIdTagsaddMutationVariables, TContext> => {
-
-const mutationKey = getPostTasksIdTagsaddMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postTasksIdTagsadd>>, PostTasksIdTagsaddMutationVariables> = (props) => {
-          const {id,data} = props ?? {};
-
-          return  postTasksIdTagsadd(id,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type PostTasksIdTagsaddMutationResult = NonNullable<Awaited<ReturnType<typeof postTasksIdTagsadd>>>
-    export type PostTasksIdTagsaddMutationBody = RestTaskTagAssignmentRequest
-    export type PostTasksIdTagsaddMutationError = ErrorType<RestErrResponse>
-    export type PostTasksIdTagsaddMutationVariables = {id: string;data: RestTaskTagAssignmentRequest}
-
-    /**
- * @summary Add tag to task
- */
-export const usePostTasksIdTagsadd = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postTasksIdTagsadd>>, TError,PostTasksIdTagsaddMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postTasksIdTagsadd>>,
-        TError,
-        PostTasksIdTagsaddMutationVariables,
-        TContext
-      > => {
-      return useMutation(getPostTasksIdTagsaddMutationOptions(options), queryClient);
-    }
-
-export const getPostTasksIdTagsremoveUrl = (id: string,) => {
-
-
-
-
-  return `/api/tasks/${id}/tags:remove`
-}
-
-/**
- * @summary Remove tag from task
- */
-export const postTasksIdTagsremove = async (id: string,
-    restTaskTagAssignmentRequest: RestTaskTagAssignmentRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return apiFetch<RestMessageResponse>(getPostTasksIdTagsremoveUrl(id),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(restTaskTagAssignmentRequest)
-  }
-);}
-
-
-
-
-
-export const getPostTasksIdTagsremoveMutationKey = () => ['postTasksIdTagsremove'] as const;
-
-export const getPostTasksIdTagsremoveMutationOptions = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postTasksIdTagsremove>>, TError,PostTasksIdTagsremoveMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof postTasksIdTagsremove>>, TError,PostTasksIdTagsremoveMutationVariables, TContext> => {
-
-const mutationKey = getPostTasksIdTagsremoveMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postTasksIdTagsremove>>, PostTasksIdTagsremoveMutationVariables> = (props) => {
-          const {id,data} = props ?? {};
-
-          return  postTasksIdTagsremove(id,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type PostTasksIdTagsremoveMutationResult = NonNullable<Awaited<ReturnType<typeof postTasksIdTagsremove>>>
-    export type PostTasksIdTagsremoveMutationBody = RestTaskTagAssignmentRequest
-    export type PostTasksIdTagsremoveMutationError = ErrorType<RestErrResponse>
-    export type PostTasksIdTagsremoveMutationVariables = {id: string;data: RestTaskTagAssignmentRequest}
-
-    /**
- * @summary Remove tag from task
- */
-export const usePostTasksIdTagsremove = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postTasksIdTagsremove>>, TError,PostTasksIdTagsremoveMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postTasksIdTagsremove>>,
-        TError,
-        PostTasksIdTagsremoveMutationVariables,
-        TContext
-      > => {
-      return useMutation(getPostTasksIdTagsremoveMutationOptions(options), queryClient);
-    }
 
 export const getPostTasksIdcompleteUrl = (id: string,) => {
 

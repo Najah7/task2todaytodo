@@ -167,52 +167,6 @@ func (q *Queries) GetTaskByStatus(ctx context.Context, status string) ([]Task, e
 	return items, nil
 }
 
-const getTaskByTag = `-- name: GetTaskByTag :many
-SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at
-FROM tasks AS t
-JOIN task_tag_assignments AS tta ON tta.task_id = t.id
-WHERE tta.tag_id = $1
-  AND t.deleted_at IS NULL
-  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL))
-`
-
-func (q *Queries) GetTaskByTag(ctx context.Context, tagID string) ([]Task, error) {
-	rows, err := q.db.Query(ctx, getTaskByTag, tagID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Task
-	for rows.Next() {
-		var i Task
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.ProjectID,
-			&i.AssigneeID,
-			&i.Title,
-			&i.Description,
-			&i.DueDate,
-			&i.ManualEstimatedMinutes,
-			&i.ActualMinutes,
-			&i.Priority,
-			&i.Status,
-			&i.Revision,
-			&i.DeletedAt,
-			&i.ChangedBy,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getTaskByUserID = `-- name: GetTaskByUserID :one
 SELECT id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
 FROM tasks AS t

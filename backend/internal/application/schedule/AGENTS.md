@@ -28,9 +28,6 @@ approved decisions.
   mutation accepts `If-Match: "0"`. Saved occurrences use positive revisions.
 - Project and assignee changes support the same individual/following scopes as
   title and time changes. Preserve their values on earlier occurrences.
-- Tag behavior changes are outside this redesign's scope. Retain existing
-  functionality with only the reference adjustments required by the new schema;
-  do not add individual/following scopes for tags or remove the Tag feature.
 - `/schedules` serves individual occurrences. Lists require UTC `from` and `to`,
   return stored and virtual occurrences overlapping the range, and never write.
   Personal lists include occurrences assigned to the caller; Project lists

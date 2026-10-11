@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 )
@@ -27,10 +28,8 @@ func (uow *getTaskUOWFake) Do(ctx context.Context, fn func(context.Context, Repo
 
 type getTaskRepositoriesFake struct {
 	taskProgressTestRepositories
-	tasks    TaskRepository
-	tags     TaskTagRepository
-	items    TaskListProjectionReader
-	accesses *[]string
+	tasks TaskRepository
+	items TaskListProjectionReader
 }
 
 func (repos getTaskRepositoriesFake) ActionItems() ActionItemRepository {
@@ -40,25 +39,20 @@ func (repos getTaskRepositoriesFake) ActionItems() ActionItemRepository {
 	return taskProgressTestActionItems{}
 }
 
-func (repos getTaskRepositoriesFake) Tasks() TaskRepository {
-	*repos.accesses = append(*repos.accesses, "tasks")
-	return repos.tasks
-}
-
-func (repos getTaskRepositoriesFake) TaskTags() TaskTagRepository {
-	*repos.accesses = append(*repos.accesses, "tags")
-	return repos.tags
-}
+func (repos getTaskRepositoriesFake) Tasks() TaskRepository { return repos.tasks }
 
 type getTaskTaskRepositoryFake struct {
 	taskProgressTestRepository
 	taskProgressSourceFake
-	task     dao.Task
-	err      error
-	userID   domain.UserID
-	taskID   domain.TaskID
-	calls    int
-	accesses *[]string
+	task            dao.Task
+	err             error
+	permission      bool
+	permissionErr   error
+	permissionCheck shared.Capability
+	permissionCalls int
+	userID          domain.UserID
+	taskID          domain.TaskID
+	calls           int
 }
 
 func (repo *getTaskTaskRepositoryFake) ReadTaskProgressSources(ctx context.Context, taskIDs []string, asOf time.Time) (dao.TaskProgressSources, error) {
@@ -68,7 +62,6 @@ func (repo *getTaskTaskRepositoryFake) ReadTaskProgressSources(ctx context.Conte
 func (repo *getTaskTaskRepositoryFake) GetByUserID(_ context.Context, userID domain.UserID, taskID domain.TaskID) (dao.Task, error) {
 	repo.calls++
 	repo.userID, repo.taskID = userID, taskID
-	*repo.accesses = append(*repo.accesses, "get-task")
 	if repo.err != nil {
 		return dao.Task{}, repo.err
 	}
@@ -78,14 +71,10 @@ func (repo *getTaskTaskRepositoryFake) GetByUserID(_ context.Context, userID dom
 	return repo.task, nil
 }
 
-type getTaskTagRepositoryFake struct {
-	TaskTagRepository
-	tags     []dao.TaskTag
-	err      error
-	userID   domain.UserID
-	taskID   domain.TaskID
-	calls    int
-	accesses *[]string
+func (repo *getTaskTaskRepositoryFake) HasPermission(_ context.Context, _ domain.UserID, _ domain.TaskID, capability shared.Capability) (bool, error) {
+	repo.permissionCalls++
+	repo.permissionCheck = capability
+	return repo.permission, repo.permissionErr
 }
 
 type getTaskProjectionFake struct{ rows []dao.ActionItem }
@@ -107,26 +96,16 @@ func (reader getTaskProjectionFake) ReadTaskListProjection(_ context.Context, _ 
 	return dao.TaskListProjectionSources{ActionItemsByTask: items}, nil
 }
 
-func (repo *getTaskTagRepositoryFake) ListByTaskAndUserID(_ context.Context, userID domain.UserID, taskID domain.TaskID) ([]dao.TaskTag, error) {
-	repo.calls++
-	repo.userID, repo.taskID = userID, taskID
-	*repo.accesses = append(*repo.accesses, "list-tags")
-	return repo.tags, repo.err
-}
-
-func TestGetTaskUseCaseExecuteReturnsOwnedTaskAndTags(t *testing.T) {
+func TestGetTaskUseCaseExecuteReturnsOwnedTaskWithCapabilitiesAndProjection(t *testing.T) {
 	userID := domain.UserID("user-1")
 	taskID := domain.TaskID("task-1")
 	wantTask := dao.Task{ID: string(taskID), UserID: string(userID), Title: "Owned task", Progress: 66}
-	wantTags := []dao.TaskTag{{ID: "tag-1", UserID: string(userID), Name: "urgent"}}
-	var accesses []string
 	taskRepo := &getTaskTaskRepositoryFake{
-		task: wantTask, accesses: &accesses,
+		task: wantTask, permission: true,
 		taskProgressSourceFake: taskProgressSourceFake{sources: dao.TaskProgressSources{
 			Counts: map[string]dao.TaskProgressCounts{string(taskID): {Total: 3, Completed: 2}},
 		}},
 	}
-	tagRepo := &getTaskTagRepositoryFake{tags: wantTags, accesses: &accesses}
 	rows := []dao.ActionItem{
 		{ID: "item-1", TaskID: string(taskID), Completed: true},
 		{ID: "item-2", TaskID: string(taskID), Completed: true},
@@ -136,24 +115,22 @@ func TestGetTaskUseCaseExecuteReturnsOwnedTaskAndTags(t *testing.T) {
 	wantTask.EstimateSource = "action_items"
 	wantTask.CanUpdate = true
 	uow := &getTaskUOWFake{repos: getTaskRepositoriesFake{
-		tasks: taskRepo, tags: tagRepo, items: getTaskActionItemsFake{getTaskProjectionFake: getTaskProjectionFake{rows: rows}}, accesses: &accesses,
+		tasks: taskRepo,
+		items: getTaskActionItemsFake{getTaskProjectionFake: getTaskProjectionFake{rows: rows}},
 	}}
 
 	got, err := NewGetTaskUseCase(uow, nil).Execute(context.Background(), userID, taskID)
 	if err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
 	}
-	if !reflect.DeepEqual(got, TaskWithTags{Task: wantTask, Tags: wantTags}) {
-		t.Errorf("Execute() = %#v, want task and tags", got)
+	if !reflect.DeepEqual(got, wantTask) {
+		t.Errorf("Execute() = %#v, want %#v", got, wantTask)
 	}
-	if uow.calls != 1 || taskRepo.calls != 1 || tagRepo.calls != 1 {
-		t.Errorf("calls = UOW:%d task:%d tags:%d, want 1 each", uow.calls, taskRepo.calls, tagRepo.calls)
+	if uow.calls != 1 || taskRepo.calls != 1 || taskRepo.permissionCalls != 1 {
+		t.Errorf("calls = UOW:%d task:%d permission:%d, want 1 each", uow.calls, taskRepo.calls, taskRepo.permissionCalls)
 	}
-	if taskRepo.userID != userID || taskRepo.taskID != taskID || tagRepo.userID != userID || tagRepo.taskID != taskID {
-		t.Errorf("repository scope = task(%q,%q), tags(%q,%q), want user %q and task %q", taskRepo.userID, taskRepo.taskID, tagRepo.userID, tagRepo.taskID, userID, taskID)
-	}
-	if !reflect.DeepEqual(accesses, []string{"tasks", "get-task", "tags", "list-tags"}) {
-		t.Errorf("repository access order = %v, want task lookup before tag listing", accesses)
+	if taskRepo.userID != userID || taskRepo.taskID != taskID || taskRepo.permissionCheck != shared.TaskUpdate() {
+		t.Errorf("repository scope/capability = (%q,%q)/%+v, want (%q,%q)/task update", taskRepo.userID, taskRepo.taskID, taskRepo.permissionCheck, userID, taskID)
 	}
 }
 
@@ -169,48 +146,20 @@ func TestGetTaskUseCaseExecuteReturnsNotFoundForMissingOrUnownedTask(t *testing.
 		{name: "task owned by another user", task: dao.Task{ID: string(taskID), UserID: "other-user"}},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			var accesses []string
-			taskRepo := &getTaskTaskRepositoryFake{task: testCase.task, err: testCase.err, accesses: &accesses}
-			tagRepo := &getTaskTagRepositoryFake{tags: []dao.TaskTag{{ID: "must-not-be-read"}}, accesses: &accesses}
-			uow := &getTaskUOWFake{repos: getTaskRepositoriesFake{
-				tasks: taskRepo, tags: tagRepo, accesses: &accesses,
-			}}
+			taskRepo := &getTaskTaskRepositoryFake{task: testCase.task, err: testCase.err}
+			uow := &getTaskUOWFake{repos: getTaskRepositoriesFake{tasks: taskRepo}}
 
 			got, err := NewGetTaskUseCase(uow, nil).Execute(context.Background(), userID, taskID)
 			if !errors.Is(err, ErrTaskNotFound) {
 				t.Errorf("Execute() error = %v, want %v", err, ErrTaskNotFound)
 			}
-			if !reflect.DeepEqual(got, TaskWithTags{}) {
+			if !reflect.DeepEqual(got, dao.Task{}) {
 				t.Errorf("Execute() = %#v, want zero result on error", got)
 			}
-			if tagRepo.calls != 0 {
-				t.Errorf("ListByTaskAndUserID() calls = %d, want 0 for missing or unowned task", tagRepo.calls)
-			}
-			if taskRepo.calls != 1 || taskRepo.userID != userID || taskRepo.taskID != taskID {
-				t.Errorf("GetByUserID() = calls %d, user %q, task %q; want 1, %q, %q", taskRepo.calls, taskRepo.userID, taskRepo.taskID, userID, taskID)
+			if taskRepo.calls != 1 || taskRepo.permissionCalls != 0 || taskRepo.userID != userID || taskRepo.taskID != taskID {
+				t.Errorf("repository calls/scope = %d/%d (%q,%q); want one lookup before authorization", taskRepo.calls, taskRepo.permissionCalls, taskRepo.userID, taskRepo.taskID)
 			}
 		})
-	}
-}
-
-func TestGetTaskUseCaseExecutePropagatesTagRepositoryError(t *testing.T) {
-	wantErr := errors.New("tag query failed")
-	var accesses []string
-	taskRepo := &getTaskTaskRepositoryFake{task: dao.Task{ID: "task-1", UserID: "user-1"}, accesses: &accesses}
-	tagRepo := &getTaskTagRepositoryFake{err: wantErr, accesses: &accesses}
-	uow := &getTaskUOWFake{repos: getTaskRepositoriesFake{
-		tasks: taskRepo, tags: tagRepo, accesses: &accesses,
-	}}
-
-	got, err := NewGetTaskUseCase(uow, nil).Execute(context.Background(), "user-1", "task-1")
-	if !errors.Is(err, wantErr) {
-		t.Errorf("Execute() error = %v, want %v", err, wantErr)
-	}
-	if !reflect.DeepEqual(got, TaskWithTags{}) {
-		t.Errorf("Execute() = %#v, want zero result on error", got)
-	}
-	if taskRepo.calls != 1 || tagRepo.calls != 1 {
-		t.Errorf("repository calls = task:%d tags:%d, want 1 each", taskRepo.calls, tagRepo.calls)
 	}
 }
 
@@ -222,7 +171,7 @@ func TestGetTaskUseCaseExecutePropagatesUOWError(t *testing.T) {
 	if !errors.Is(err, wantErr) {
 		t.Errorf("Execute() error = %v, want %v", err, wantErr)
 	}
-	if !reflect.DeepEqual(got, TaskWithTags{}) {
+	if !reflect.DeepEqual(got, dao.Task{}) {
 		t.Errorf("Execute() = %#v, want zero result on error", got)
 	}
 	if uow.calls != 1 {
@@ -232,21 +181,17 @@ func TestGetTaskUseCaseExecutePropagatesUOWError(t *testing.T) {
 
 func TestGetTaskUseCaseExecutePropagatesTaskRepositoryError(t *testing.T) {
 	wantErr := errors.New("task query failed")
-	var accesses []string
-	taskRepo := &getTaskTaskRepositoryFake{err: wantErr, accesses: &accesses}
-	tagRepo := &getTaskTagRepositoryFake{accesses: &accesses}
-	uow := &getTaskUOWFake{repos: getTaskRepositoriesFake{
-		tasks: taskRepo, tags: tagRepo, accesses: &accesses,
-	}}
+	taskRepo := &getTaskTaskRepositoryFake{err: wantErr}
+	uow := &getTaskUOWFake{repos: getTaskRepositoriesFake{tasks: taskRepo}}
 
 	got, err := NewGetTaskUseCase(uow, nil).Execute(context.Background(), "user-1", "task-1")
 	if !errors.Is(err, wantErr) {
 		t.Errorf("Execute() error = %v, want %v", err, wantErr)
 	}
-	if !reflect.DeepEqual(got, TaskWithTags{}) {
+	if !reflect.DeepEqual(got, dao.Task{}) {
 		t.Errorf("Execute() = %#v, want zero result on error", got)
 	}
-	if tagRepo.calls != 0 {
-		t.Errorf("ListByTaskAndUserID() calls = %d, want 0 after task lookup failure", tagRepo.calls)
+	if taskRepo.calls != 1 || taskRepo.permissionCalls != 0 {
+		t.Errorf("task calls = lookup:%d permission:%d; want lookup only", taskRepo.calls, taskRepo.permissionCalls)
 	}
 }

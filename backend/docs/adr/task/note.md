@@ -37,10 +37,3 @@ PUT /schedules/:id/frequency - Scheduleの繰り返しを変更・停止する (
 GET /schedules/:id/revisions - Scheduleの変更履歴を取得する (ListScheduleRevisionsUseCase)
 GET /projects/:id/schedules - ProjectのScheduleを一覧取得する (ListProjectSchedulesUseCase)
 POST /projects/:id/schedules - Project内にScheduleを作成する (CreateScheduleUseCase)
-
-GET /tags - 共通Tagカタログを一覧取得する (ListTagsUseCase)
-POST /tags - Tagを作成する (CreateTagUseCase)
-PATCH /tags/:id - Tagの名前を変更する (RenameTagUseCase)
-DELETE /tags/:id - Tagを削除する (DeleteTagUseCase)
-POST /tasks/:id/tags:add - TaskにTagを付ける (AddTagToTaskUseCase)
-POST /tasks/:id/tags:remove - TaskからTagを外す (RemoveTagFromTaskUseCase)

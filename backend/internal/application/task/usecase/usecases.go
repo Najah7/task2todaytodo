@@ -29,8 +29,3 @@ type ActionItemUseCases struct {
 	Reopen   *ReopenActionItemUseCase
 	Reorder  *ReorderActionItemUseCase
 }
-
-type TaskTagUseCases struct {
-	AddToTask      *AddTagToTaskUseCase
-	RemoveFromTask *RemoveTagFromTaskUseCase
-}

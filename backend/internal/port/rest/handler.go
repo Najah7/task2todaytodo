@@ -17,8 +17,6 @@ type Handler struct {
 	Task                *TaskHandler
 	ActionItem          *ActionItemHandler
 	Schedule            *ScheduleHandler
-	Tag                 *TagHandler
-	TaskTag             *TaskTagHandler
 	ProjectMember       *ProjectMemberHandler
 	Role                *RoleHandler
 	Timezone            *TimezoneHandler
@@ -40,8 +38,6 @@ func NewHandler(usecases application.UseCase, ids shared.ID, pageTokenKey []byte
 		Task:                NewTaskHandler(usecases.Task, ids, pageTokens),
 		ActionItem:          NewActionItemHandler(usecases.ActionItem, ids, pageTokens),
 		Schedule:            NewScheduleHandler(usecases.Schedule, pageTokens),
-		Tag:                 NewTagHandler(usecases.Tag, ids, pageTokens),
-		TaskTag:             NewTaskTagHandler(usecases.TaskTag),
 		ProjectMember:       NewProjectMemberHandler(usecases.Project),
 		Role:                NewRoleHandler(usecases.Role),
 		Timezone:            NewTimezoneHandler(usecases.Timezone),

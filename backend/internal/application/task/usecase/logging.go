@@ -36,7 +36,6 @@ func isExpectedTaskError(err error) bool {
 	for _, expected := range []error{
 		ErrTaskNotFound, ErrTaskProjectNotFound, ErrActionItemTaskNotFound, ErrActionItemNotFound,
 		ErrActionItemCompleted,
-		ErrTaskTagNotFound, ErrTaskTagAssignmentNotOwned,
 		ErrTaskPatchRequiredFieldNull,
 		ErrInvalidTaskPage, ErrActionItemPatchRequiredFieldNull, ErrActionItemPositionOutOfRange,
 		domain.ErrTaskIDEmpty,

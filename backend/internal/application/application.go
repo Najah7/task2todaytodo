@@ -24,7 +24,7 @@ func New(database settings.DatabaseSettings, ids shared.ID, logger telemetry.Log
 
 	store := NewStore(pool)
 	uow := NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
-	uc, stopUseCases := NewUseCase(store.Auth, store.Project, store.Task, store.Tag, store.Admin, uow.Project, uow.Task, uow.Schedule, ids, logger)
+	uc, stopUseCases := NewUseCase(store.Auth, store.Project, store.Task, store.Admin, uow.Project, uow.Task, uow.Schedule, ids, logger)
 	closeApp := func(ctx context.Context) error {
 		if err := stopUseCases(ctx); err != nil {
 			return fmt.Errorf("shutdown admin operations: %w", err)

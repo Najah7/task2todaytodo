@@ -7,7 +7,6 @@ type Store struct {
 	Project  ProjectStore
 	Task     TaskStore
 	Schedule ScheduleStore
-	Tag      TagStore
 	Admin    AdminStore
 }
 
@@ -17,7 +16,6 @@ func NewStore(pool *pgxpool.Pool) Store {
 		Project:  newProjectStore(pool),
 		Task:     newTaskStore(pool),
 		Schedule: newScheduleStore(pool),
-		Tag:      newTagStore(pool),
 		Admin:    newAdminStore(pool),
 	}
 }

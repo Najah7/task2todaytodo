@@ -7,11 +7,3 @@ type Assignee struct {
 	Email     string
 	IsOwner   bool
 }
-
-type ScheduleTag struct {
-	ID        string
-	UserID    string
-	Name      string
-	CreatedAt int64
-	UpdatedAt int64
-}

@@ -298,57 +298,6 @@ func TestSharedActionItemReadWriteAndDeletePermissions(t *testing.T) {
 	}
 }
 
-func TestSharedEditorCanAttachOnlyProjectOwnerTags(t *testing.T) {
-	pool := integrationPool(t)
-	ctx := t.Context()
-	fixture := newSharingFixture(t, pool)
-	editorID, viewerID := fixture.user(t), fixture.user(t)
-	fixture.addMember(t, editorID, "editor")
-	fixture.addMember(t, viewerID, "viewer")
-	taskID := fixture.task(t, fixture.ownerID, "Shared task with owner tags")
-	ownerTagID, editorTagID := ulid.Make().String(), ulid.Make().String()
-	if _, err := fixture.tx.Exec(ctx, `
-		INSERT INTO tags (id, user_id, name)
-		VALUES ($1, $2, 'Owner tag'), ($3, $4, 'Editor tag')
-	`, ownerTagID, fixture.ownerID, editorTagID, editorID); err != nil {
-		t.Fatalf("insert owner and editor tags: %v", err)
-	}
-	fixture.commit(t)
-
-	uow := sharingTestUOW{pool: pool}
-	addTag := usecase.NewAddTagToTaskUseCase(uow, nil)
-	removeTag := usecase.NewRemoveTagFromTaskUseCase(uow, nil)
-	actorID, taskDomainID := domain.UserID(editorID), domain.TaskID(taskID)
-	if err := addTag.Execute(ctx, actorID, taskDomainID, ownerTagID); err != nil {
-		t.Fatalf("shared editor attaches project owner's task tag: %v", err)
-	}
-	if err := addTag.Execute(ctx, actorID, taskDomainID, editorTagID); !errors.Is(err, usecase.ErrTaskTagAssignmentNotOwned) {
-		t.Fatalf("shared editor attaches own tag to owner's task = %v, want ownership error", err)
-	}
-	if err := addTag.Execute(ctx, domain.UserID(viewerID), taskDomainID, ownerTagID); err == nil {
-		t.Fatal("viewer successfully attached a tag to a shared task")
-	}
-	var assignmentCount int32
-	if err := pool.QueryRow(ctx, `SELECT count(*)::integer FROM task_tag_assignments WHERE task_id = $1`, taskID).Scan(&assignmentCount); err != nil {
-		t.Fatalf("count shared task tag assignments: %v", err)
-	}
-	if assignmentCount != 1 {
-		t.Fatalf("shared task has %d tag assignments after allowed and rejected adds, want only owner tag", assignmentCount)
-	}
-	if err := removeTag.Execute(ctx, actorID, taskDomainID, ownerTagID); err != nil {
-		t.Fatalf("shared editor removes project owner's task tag: %v", err)
-	}
-	if err := removeTag.Execute(ctx, domain.UserID(viewerID), taskDomainID, ownerTagID); err == nil {
-		t.Fatal("viewer successfully removed a tag from a shared task")
-	}
-	if err := pool.QueryRow(ctx, `SELECT count(*)::integer FROM task_tag_assignments WHERE task_id = $1`, taskID).Scan(&assignmentCount); err != nil {
-		t.Fatalf("count tag assignments after allowed removal: %v", err)
-	}
-	if assignmentCount != 0 {
-		t.Fatalf("shared task has %d tag assignments after editor removal, want zero", assignmentCount)
-	}
-}
-
 func TestTaskRevisionSnapshotsRecordInitialAndLatestActor(t *testing.T) {
 	pool := integrationPool(t)
 	ctx := t.Context()
@@ -789,7 +738,6 @@ func (fixture *sharingFixture) commit(t *testing.T) {
 type sharingTestRepositories struct {
 	usecase.Repositories
 	tasks        *taskrepo.TaskRepository
-	taskTags     *taskrepo.TaskTagRepository
 	actionItems  *taskrepo.ActionItemRepository
 	taskProjects usecase.TaskProjectRepository
 	lifecycle    shared.ProjectWorkLifecycle
@@ -852,10 +800,6 @@ func (repositories sharingTestRepositories) Tasks() usecase.TaskRepository {
 	return repositories.tasks
 }
 
-func (repositories sharingTestRepositories) TaskTags() usecase.TaskTagRepository {
-	return repositories.taskTags
-}
-
 func (repositories sharingTestRepositories) ActionItems() usecase.ActionItemRepository {
 	return repositories.actionItems
 }
@@ -872,7 +816,6 @@ func (uow sharingTestUOW) Do(ctx context.Context, run func(context.Context, usec
 	defer tx.Rollback(ctx)
 	repositories := sharingTestRepositories{
 		tasks:        taskrepo.NewTaskRepository(tx),
-		taskTags:     taskrepo.NewTaskTagRepository(tx),
 		actionItems:  taskrepo.NewActionItemRepository(tx),
 		taskProjects: sharingTestTaskProjects{queries: sqlc.New(tx)},
 	}

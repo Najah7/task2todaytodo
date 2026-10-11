@@ -748,18 +748,6 @@ definitions:
           type: string
         type: array
     type: object
-  rest.ScheduleBlueprintTagRequest:
-    properties:
-      tag_id:
-        type: string
-    type: object
-  rest.ScheduleBlueprintTagsResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/rest.ScheduleTagResponse'
-        type: array
-    type: object
   rest.ScheduleBlueprintUpdateRequest:
     properties:
       assignee_id:
@@ -910,59 +898,11 @@ definitions:
       title:
         type: string
     type: object
-  rest.ScheduleTagResponse:
-    properties:
-      created_at:
-        type: integer
-      id:
-        type: string
-      name:
-        type: string
-      updated_at:
-        type: integer
-    type: object
   rest.SignupRequest:
     properties:
       email:
         type: string
       password:
-        type: string
-    type: object
-  rest.TagCreateRequest:
-    properties:
-      name:
-        type: string
-    type: object
-  rest.TagListResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/rest.TagResponse'
-        type: array
-      next_page_token:
-        type: string
-    type: object
-  rest.TagRenameRequest:
-    properties:
-      name:
-        type: string
-    type: object
-  rest.TagResponse:
-    properties:
-      created_at:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      updated_at:
-        type: string
-    type: object
-  rest.TaskAssignedTagResponse:
-    properties:
-      id:
-        type: string
-      name:
         type: string
     type: object
   rest.TaskAssigneeListResponse:
@@ -1006,10 +946,6 @@ definitions:
     type: object
   rest.TaskDetailsResponse:
     properties:
-      tags:
-        items:
-          $ref: '#/definitions/rest.TaskAssignedTagResponse'
-        type: array
       task:
         $ref: '#/definitions/rest.TaskResponse'
     type: object
@@ -1167,11 +1103,6 @@ definitions:
       updated_at:
         type: integer
       user_id:
-        type: string
-    type: object
-  rest.TaskTagAssignmentRequest:
-    properties:
-      tag_id:
         type: string
     type: object
   rest.TaskUpdateRequest:
@@ -2589,78 +2520,6 @@ paths:
       summary: List schedule blueprint revisions
       tags:
       - Schedules
-  /schedule-blueprints/{id}/tags:
-    get:
-      parameters:
-      - description: Blueprint ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.ScheduleBlueprintTagsResponse'
-      security:
-      - BearerAuth: []
-      summary: List schedule blueprint tags
-      tags:
-      - Schedules
-  /schedule-blueprints/{id}/tags:add:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Blueprint ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Tag ID
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.ScheduleBlueprintTagRequest'
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-      security:
-      - BearerAuth: []
-      summary: Add tag to schedule blueprint
-      tags:
-      - Schedules
-  /schedule-blueprints/{id}/tags:remove:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Blueprint ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Tag ID
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.ScheduleBlueprintTagRequest'
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-      security:
-      - BearerAuth: []
-      summary: Remove tag from schedule blueprint
-      tags:
-      - Schedules
   /schedules:
     get:
       parameters:
@@ -2986,173 +2845,6 @@ paths:
       summary: Sign up
       tags:
       - Users
-  /tags:
-    get:
-      parameters:
-      - description: Items per page
-        in: query
-        name: page_size
-        type: integer
-      - description: Opaque next page token
-        in: query
-        name: page_token
-        type: string
-      - description: Response field mask
-        in: query
-        name: fields
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.TagListResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: List tags
-      tags:
-      - Tags
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Tag
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.TagCreateRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/rest.TagResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Create tag
-      tags:
-      - Tags
-  /tags/{id}:
-    delete:
-      parameters:
-      - description: Tag ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete tag
-      tags:
-      - Tags
-    get:
-      parameters:
-      - description: Tag ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.TagResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Get tag
-      tags:
-      - Tags
-    patch:
-      consumes:
-      - application/json
-      parameters:
-      - description: Tag ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: New tag name
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.TagRenameRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.TagResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Rename tag
-      tags:
-      - Tags
   /tasks:
     get:
       description: Returns a filtered page of tasks with counts and estimates for
@@ -3321,7 +3013,7 @@ paths:
       tags:
       - Tasks
     get:
-      description: Returns a task the caller may read and its assigned tags.
+      description: Returns a task the caller may read.
       parameters:
       - description: Task ID
         in: path
@@ -3536,86 +3228,6 @@ paths:
       security:
       - BearerAuth: []
       summary: List task revisions
-      tags:
-      - Tasks
-  /tasks/{id}/tags:add:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Task ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Tag ID
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.TaskTagAssignmentRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Add tag to task
-      tags:
-      - Tasks
-  /tasks/{id}/tags:remove:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Task ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Tag ID
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.TaskTagAssignmentRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.MessageResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Remove tag from task
       tags:
       - Tasks
   /tasks/{id}:complete:

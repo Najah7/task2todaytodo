@@ -93,7 +93,7 @@ func TestLoadResolvesResourceMetadataAndAttributes(t *testing.T) {
 			t.Errorf("ResourceAttributes[%q] = %q, want %q", name, got, want)
 		}
 	}
-	delete(env, "OTEL_SERVICE_NAME")
+	t.Setenv("OTEL_SERVICE_NAME", "")
 	cfg, err = Load()
 	if err != nil {
 		t.Fatalf("Load() without OTEL_SERVICE_NAME error = %v", err)

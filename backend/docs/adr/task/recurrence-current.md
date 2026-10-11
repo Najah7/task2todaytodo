@@ -40,4 +40,4 @@ recurrence details in older planning documents where they differ.
   `occurrence_date` and validates the requested start date against that
   selection.
 - Schedule changes, including recurrence settings, create Schedule history
-  revisions. Tag assignment changes are separate and do not create revisions.
+  revisions.

@@ -1,7 +1,6 @@
 erDiagram
     %% External references: users, projects, priority_master, roles, and project_members.
     %% Composite FK: tasks(project_id, user_id) -> projects(id, user_id).
-    %% Composite unique key: tags(user_id, name).
 
     users {
         text id PK "NOT NULL"
@@ -71,20 +70,6 @@ erDiagram
         timestamptz changed_at "NOT NULL"
     }
 
-    tags {
-        text id PK "NOT NULL"
-        text user_id FK "NOT NULL"
-        citext name "NOT NULL"
-        timestamptz created_at "NOT NULL"
-        timestamptz updated_at "NOT NULL"
-    }
-
-    task_tag_assignments {
-        text task_id PK, FK "NOT NULL"
-        text tag_id PK, FK "NOT NULL"
-        timestamptz created_at "NOT NULL"
-    }
-
     action_items {
         text id PK "NOT NULL"
         text task_id FK "NOT NULL"
@@ -106,7 +91,4 @@ erDiagram
     status_master ||..o{ tasks : status
     tasks ||--o{ task_revisions : has_revisions
     users ||..o{ task_revisions : changed_by
-    users ||..o{ tags : owns
-    tasks ||--o{ task_tag_assignments : has_tags
-    tags ||--o{ task_tag_assignments : assigned_to_tasks
     tasks ||..o{ action_items : contains

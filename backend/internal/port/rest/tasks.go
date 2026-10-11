@@ -69,14 +69,8 @@ type TaskResponse struct {
 	UpdatedAt                string  `json:"updated_at" validate:"required"`
 }
 
-type TaskAssignedTagResponse struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
 type TaskDetailsResponse struct {
-	Task TaskResponse              `json:"task"`
-	Tags []TaskAssignedTagResponse `json:"tags"`
+	Task TaskResponse `json:"task"`
 }
 
 type TaskListResponse struct {
@@ -310,10 +304,10 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusCreated, taskResponse(task))
 }
 
-// Get returns one task and its assigned tags.
+// Get returns one task.
 //
 //	@Summary		Get task
-//	@Description	Returns a task the caller may read and its assigned tags.
+//	@Description	Returns a task the caller may read.
 //	@Tags			Tasks
 //	@Produce		json
 //	@Security		BearerAuth
@@ -334,17 +328,13 @@ func (h *TaskHandler) Get(w http.ResponseWriter, r *http.Request) {
 		writeTaskError(w, errSpecTasksGetFailed, taskusecase.ErrTaskNotFound)
 		return
 	}
-	details, err := h.tasks.Get.Execute(r.Context(), userID, domain.TaskID(taskID))
+	task, err := h.tasks.Get.Execute(r.Context(), userID, domain.TaskID(taskID))
 	if err != nil {
 		writeTaskError(w, errSpecTasksGetFailed, err)
 		return
 	}
-	setResourceETag(w, details.Task.Revision)
-	tags := make([]TaskAssignedTagResponse, 0, len(details.Tags))
-	for _, tag := range details.Tags {
-		tags = append(tags, TaskAssignedTagResponse{ID: tag.ID, Name: tag.Name})
-	}
-	WriteJSON(w, http.StatusOK, TaskDetailsResponse{Task: taskResponse(details.Task), Tags: tags})
+	setResourceETag(w, task.Revision)
+	WriteJSON(w, http.StatusOK, TaskDetailsResponse{Task: taskResponse(task)})
 }
 
 // Update atomically updates Task fields.

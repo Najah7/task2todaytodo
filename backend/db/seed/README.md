@@ -6,7 +6,7 @@ Run it only against the local development database.
 
 The seed is repeatable and uses dates relative to the database's current date
 in `Asia/Tokyo`. It creates two users so authenticated list endpoints can be
-checked for user scoping. The full seed contains 20 projects, 45 tasks, 20 tags,
+checked for user scoping. The full seed contains 20 projects, 45 tasks,
 35 ActionItems, 22 concrete Schedule occurrences, one recurring Schedule
 blueprint with two effective revisions, and 15 TodoLists.
 
@@ -33,13 +33,12 @@ Open `http://localhost:8080/swagger/index.html`.
 | `GET /api/projects?page_size=2` | Work, study, and personal projects with different progress and priorities |
 | `GET /api/projects/00000000000000000000000101/tasks?page_size=2` | Tasks scoped to the product improvement project |
 | `GET /api/tasks?page_size=2` | Project and inbox tasks with different statuses and priorities |
-| `GET /api/tasks/00000000000000000000000201` | Task details and assigned tags |
+| `GET /api/tasks/00000000000000000000000201` | Task details |
 | `GET /api/tasks/00000000000000000000000201/action-items?page_size=2` | Ordered completed and incomplete ActionItems |
 | `GET /api/tasks/00000000000000000000000220/action-items` | ActionItem for generated task; use `page_size=1` to inspect pagination |
 | `GET /api/schedules?from=<UTC-RFC3339>&to=<UTC-RFC3339>&page_size=2` | Concrete and virtual occurrences in a UTC time range |
 | `GET /api/projects/00000000000000000000000101/schedules?from=<UTC-RFC3339>&to=<UTC-RFC3339>&page_size=2` | Project-scoped concrete and virtual occurrences |
 | `GET /api/schedules?from=<UTC-RFC3339>&to=<UTC-RFC3339>&page_size=2` | Occurrences visible to the authenticated user, including personal schedules |
-| `GET /api/task-tags?page_size=2` | User-owned tags |
 
 Schedule list endpoints require UTC RFC3339 `from` and `to` query values. Replace
 the placeholders with a range covering dates in the demo seed, for example
@@ -56,5 +55,5 @@ List requests also accept a `fields` mask. For example, try
 | `demo@example.com` | `Password1!` |
 | `other@example.com` | `Password1!` |
 
-The second account has a separate project, task, and tag. Login as
+The second account has a separate project and task. Login as
 `other@example.com` to inspect ownership scoping.

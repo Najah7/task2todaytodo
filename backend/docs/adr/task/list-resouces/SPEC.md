@@ -2,19 +2,18 @@
 
 ## 目的と範囲
 
-現在公開されている次の7つの List API に、同じページング契約と読み取り用 field mask を適用する。パスはいずれも `/api` 配下。レコードを条件で絞り込む `filter`、Get API、内部処理用の一覧は対象外。
+現在公開されている次の6つの List API に、同じページング契約と読み取り用 field mask を適用する。パスはいずれも `/api` 配下。レコードを条件で絞り込む `filter`、Get API、内部処理用の一覧は対象外。
 
 | List API | 表示順（同値時の `id` は cursor のために追加） |
 | --- | --- |
 | `GET /projects` | `created_at DESC, id DESC` |
 | `GET /tasks` | `created_at DESC, id DESC` |
 | `GET /projects/{id}/tasks` | `created_at DESC, id DESC` |
-| `GET /tags` | `name ASC, id ASC` |
 | `GET /tasks/{taskId}/action-items` | `position ASC, id ASC` |
 | `GET /schedules` | `start_at ASC, id ASC` |
 | `GET /projects/{id}/schedules` | `start_at ASC, id ASC` |
 
-Tag の名前順、ActionItem の手動順、Schedule の開始時刻順を維持する。`created_at + id` は作成順の3つの List に使う。他の List では、その表示順に対応する値と `id` を cursor に使う。
+ActionItem の手動順、Schedule の開始時刻順を維持する。`created_at + id` は作成順の3つの List に使う。他の List では、その表示順に対応する値と `id` を cursor に使う。
 
 ## ページング契約
 
@@ -24,7 +23,7 @@ Tag の名前順、ActionItem の手動順、Schedule の開始時刻順を維�
 - `page_token` は暗号化された URL-safe な不透明文字列で、有効期間は発行から1日。期限切れ、破損、不正な token は400とし、先頭ページからの取得を求める。
 - token は利用者、List の種類、親リソース、並び順、`fields` の指定に結び付ける。次ページではこれらを変えられない。`page_size` だけ変更できる。token 自体を認可情報として扱わず、毎回所有者を確認する。
 - ページごとに取得時点のデータを読む。固定スナップショットは提供しない。ページ取得中に項目の並べ替えや時刻変更などがあれば、続きのページで重複や取りこぼしが起こり得る。
-- 既存の `limit`、`offset`、`next_offset` は廃止する。旧リクエスト引数を送った場合は400。既存の配列や Tag 専用の一覧ラッパーも、共通の `items` ラッパーに切り替える。field mask を指定しない場合、各 item の公開項目と値は変更しない。
+- 既存の `limit`、`offset`、`next_offset` は廃止する。旧リクエスト引数を送った場合は400。既存の配列レスポンスも共通の `items` ラッパーに切り替える。field mask を指定しない場合、各 item の公開項目と値は変更しない。
 
 ## 読み取り用 field mask
 

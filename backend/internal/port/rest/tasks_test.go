@@ -216,16 +216,6 @@ func taskHandlerDAO(task domain.Task) dao.Task {
 	}
 }
 
-type taskHandlerTagRepository struct {
-	taskusecase.TaskTagRepository
-	tags []dao.TaskTag
-	err  error
-}
-
-func (repo *taskHandlerTagRepository) ListByTaskAndUserID(context.Context, domain.UserID, domain.TaskID) ([]dao.TaskTag, error) {
-	return repo.tags, repo.err
-}
-
 type taskHandlerActionItemRepository struct {
 	taskusecase.ActionItemRepository
 }
@@ -241,12 +231,10 @@ func (taskHandlerActionItemRepository) ReadTaskListProjection(context.Context, d
 type taskHandlerRepositories struct {
 	taskusecase.Repositories
 	tasks       taskusecase.TaskRepository
-	tags        taskusecase.TaskTagRepository
 	actionItems taskusecase.ActionItemRepository
 }
 
-func (repos taskHandlerRepositories) Tasks() taskusecase.TaskRepository       { return repos.tasks }
-func (repos taskHandlerRepositories) TaskTags() taskusecase.TaskTagRepository { return repos.tags }
+func (repos taskHandlerRepositories) Tasks() taskusecase.TaskRepository { return repos.tasks }
 func (repos taskHandlerRepositories) ActionItems() taskusecase.ActionItemRepository {
 	return repos.actionItems
 }
@@ -269,9 +257,8 @@ func newTaskHandlerFixture() (*TaskHandler, *taskHandlerTaskRepository, *taskHan
 		Progress: 20, Priority: dao.Priority{Value: "high"}, Status: dao.TaskStatus{Value: "open"},
 		CreatedAt: createdAt.Unix(), UpdatedAt: createdAt.Unix(), Revision: 1,
 	}}
-	tagRepo := &taskHandlerTagRepository{tags: []dao.TaskTag{{ID: "tag-1", UserID: "user-1", Name: "work"}}}
 	repos := taskHandlerRepositories{
-		tasks: taskRepo, tags: tagRepo, actionItems: taskHandlerActionItemRepository{},
+		tasks: taskRepo, actionItems: taskHandlerActionItemRepository{},
 	}
 	uow := &taskHandlerUOW{repos: repos}
 	tasks := taskusecase.TaskUseCases{
@@ -407,7 +394,7 @@ func TestTaskHandlerCreateValidatesInputAndMapsConflictAndInternalErrors(t *test
 	}
 }
 
-func TestTaskHandlerGetHidesMissingOrUnownedTaskAndReturnsTags(t *testing.T) {
+func TestTaskHandlerGetHidesMissingOrUnownedTask(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		handler, _, _ := newTaskHandlerFixture()
 		recorder := httptest.NewRecorder()
@@ -420,8 +407,8 @@ func TestTaskHandlerGetHidesMissingOrUnownedTaskAndReturnsTags(t *testing.T) {
 		if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 			t.Fatal(err)
 		}
-		if response.Task.ID != "task-1" || len(response.Tags) != 1 || response.Tags[0].Name != "work" {
-			t.Errorf("Get response = %#v, want task and assigned tag", response)
+		if response.Task.ID != "task-1" {
+			t.Errorf("Get response = %#v, want task", response)
 		}
 	})
 

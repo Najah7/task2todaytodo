@@ -26,7 +26,7 @@ internal/port/rest/fieldmask/            Read response field masks
 internal/port/adapter/                   External adapters, including ULID and UUID
 ```
 
-`<context>` means `auth`, `project`, `task`, `schedule`, `tag`, or `admin`.
+`<context>` means `auth`, `project`, `task`, `schedule`, or `admin`.
 Their HTTP handlers all live in `internal/port/rest`.
 
 ## Commands
@@ -81,7 +81,7 @@ Before changing an area below, read its guide:
 
 - `make test` runs unit tests only. Keep pure database-config and usecase tests
   in their package directories; they must not require PostgreSQL.
-- Real PostgreSQL tests live under `tests/integration/{project,task,schedule,tag,rest,admin}`
+- Real PostgreSQL tests live under `tests/integration/{project,task,schedule,rest,admin}`
   and use the `integration` build tag. Share only the guarded pool helper in
   `tests/integration/internal/testdb`.
 - `make test-integration` starts a uniquely named PostgreSQL container on a

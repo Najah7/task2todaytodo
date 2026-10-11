@@ -8,7 +8,6 @@ import (
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	tagusecase "github.com/Najah7/task2todaytodo/internal/application/tag/usecase"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
@@ -21,14 +20,11 @@ type UseCase struct {
 	Task                taskusecase.TaskUseCases
 	ActionItem          taskusecase.ActionItemUseCases
 	Schedule            scheduleusecase.ScheduleUseCases
-	Tag                 tagusecase.CatalogUseCases
-	TaskTag             taskusecase.TaskTagUseCases
 	Timezone            authusecase.TimezoneUseCases
 	Admin               adminusecase.UseCases
 }
 
-func NewUseCase(authStore AuthStore, projectStore ProjectStore, taskStore TaskStore, tagStore TagStore, adminStore AdminStore, projectUOW projectusecase.UnitOfWork, taskUOW taskusecase.UOW, scheduleUOW scheduleusecase.UOW, ID shared.ID, logger telemetry.Logger) (UseCase, func(context.Context) error) {
-	tags := NewTagUseCases(tagStore, logger)
+func NewUseCase(authStore AuthStore, projectStore ProjectStore, taskStore TaskStore, adminStore AdminStore, projectUOW projectusecase.UnitOfWork, taskUOW taskusecase.UOW, scheduleUOW scheduleusecase.UOW, ID shared.ID, logger telemetry.Logger) (UseCase, func(context.Context) error) {
 	schedules := NewScheduleUseCases(scheduleUOW, authStore, ID, logger)
 	admin, closeAdmin := NewAdminUseCases(adminStore, scheduleBackfillAdapter{usecase: schedules.Backfill}, ID, logger)
 	return UseCase{
@@ -40,8 +36,6 @@ func NewUseCase(authStore AuthStore, projectStore ProjectStore, taskStore TaskSt
 		Task:                NewTaskUseCases(taskStore, taskUOW, authStore, ID, logger),
 		ActionItem:          NewActionItemUseCases(taskUOW, logger),
 		Schedule:            schedules,
-		TaskTag:             NewTaskTagUseCases(taskUOW, logger),
-		Tag:                 tags,
 		Admin:               admin,
 	}, closeAdmin
 }

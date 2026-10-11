@@ -48,18 +48,14 @@ All routes below use the `/api` prefix and require bearer authentication.
 | `PUT /projects/{id}/members/{user_id}` | Adds a member or changes their role; requires `project_member/create` for a new entry or `project_member/update` for an existing entry |
 | `DELETE /projects/{id}/members/{user_id}` | Removes a member and reassigns their Tasks and Schedules to the Project owner atomically; requires `project_member/delete` |
 | `GET /tasks` | Lists only Tasks assigned to the caller, including shared-Project Tasks |
-| `GET /tasks/{id}` | Reads a Task and its attached Tags when Task read access is granted |
+| `GET /tasks/{id}` | Reads a Task when Task read access is granted |
 | `GET /tasks/{id}/assignees` | Lists the Project owner and current Project members eligible for assignment |
 | `PATCH /tasks/{id}/assignees` | Changes the Task's single assignee using `{ "assignee_id": "..." }` |
-| `GET /schedules` | Lists personal Schedules assigned to the caller, with each Schedule's attached Tags |
-| `GET /schedules/{id}` | Reads a Schedule and its series-wide Tags when Schedule read access is granted; a live saved occurrence ID reads the same series tags |
+| `GET /schedules` | Lists personal Schedules assigned to the caller |
+| `GET /schedules/{id}` | Reads a Schedule when Schedule read access is granted |
 | `GET /schedules/{id}/assignees` | Lists the Project owner and current members eligible for assignment |
 | `PATCH /schedules/{id}/assignees` | Changes the Schedule's single assignee using `{ "assignee_id": "..." }` |
 | `GET /schedules/{id}/revisions` | Lists Schedule snapshots, including full recurrence settings and actor |
-| `GET /tags` | Lists the caller's shared Tag catalog |
-| `POST /tags` | Creates a Tag in the caller's shared catalog |
-| `POST /tasks/{id}/tags:add` | Attaches an owned Tag to a Task |
-| `POST /schedules/{id}/tags:add` | Attaches an owned Tag to the Schedule's whole series, including when called with a live saved occurrence ID, without creating a Schedule revision |
 
 Listing eligible assignees and changing an assignee both require the matching
 `*_assignment/update` permission; resource create or update permission alone
@@ -85,7 +81,7 @@ the Project context for aggregation.
 Projects, Tasks, and Schedules start at revision `1`. Every persisted change to
 one of these entities appends a complete entity snapshot to its revision
 history, including the actor and timestamps. Schedule snapshots include all
-recurrence settings. Tag assignment changes do not update Schedule revisions.
+recurrence settings.
 History routes are `GET /api/projects/{id}/revisions`,
 `GET /api/tasks/{id}/revisions`, and `GET /api/schedules/{id}/revisions`. They
 use `page_size` and `page_token` and return `next_page_token`, ordered by

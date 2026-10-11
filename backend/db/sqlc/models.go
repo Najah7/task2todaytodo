@@ -331,12 +331,6 @@ type ScheduleRevision struct {
 	ChangedAt        pgtype.Timestamptz
 }
 
-type ScheduleTagAssignment struct {
-	BlueprintID string
-	TagID       string
-	CreatedAt   pgtype.Timestamptz
-}
-
 type StatusMaster struct {
 	Status    string
 	Label     string
@@ -349,14 +343,6 @@ type SystemUserRole struct {
 	UserID    string
 	RoleID    string
 	CreatedAt pgtype.Timestamptz
-}
-
-type Tag struct {
-	ID        string
-	UserID    string
-	Name      string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
 }
 
 type Task struct {
@@ -396,12 +382,6 @@ type TaskRevision struct {
 	UpdatedAt              pgtype.Timestamptz
 	ChangedBy              string
 	ChangedAt              pgtype.Timestamptz
-}
-
-type TaskTagAssignment struct {
-	TaskID    string
-	TagID     string
-	CreatedAt pgtype.Timestamptz
 }
 
 type TimezoneMaster struct {

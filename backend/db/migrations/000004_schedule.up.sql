@@ -165,15 +165,6 @@ CREATE TABLE schedule_backfill_checkpoints (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE schedule_tag_assignments (
-    blueprint_id text NOT NULL REFERENCES schedule_blueprints(id) ON DELETE CASCADE,
-    tag_id text NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (blueprint_id, tag_id)
-);
-CREATE INDEX idx_schedule_tag_assignments_tag_id_schedule_id
-    ON schedule_tag_assignments(tag_id, blueprint_id);
-
 CREATE FUNCTION schedule_has_permission(schedule_key text, actor_key text, resource_key text, action_key action)
 RETURNS boolean LANGUAGE sql STABLE AS $$
     SELECT EXISTS (

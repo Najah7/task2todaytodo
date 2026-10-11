@@ -10,7 +10,6 @@ TRUNCATE TABLE
     todo_list_schedules,
     todo_list_items,
     todo_lists,
-    schedule_tag_assignments,
     schedule_revisions,
     schedule_backfill_checkpoints,
     schedule_project_pause_intervals,
@@ -18,8 +17,6 @@ TRUNCATE TABLE
     schedule_blueprint_revisions,
     schedule_blueprints,
     action_items,
-    task_tag_assignments,
-    tags,
     tasks,
     projects,
     users
@@ -75,33 +72,6 @@ SELECT
     CASE WHEN n % 5 IN (2, 3) THEN 15 + ((n % 4) * 15) ELSE NULL END,
     (ARRAY['urgent', 'high', 'medium', 'low', 'someday']::text[])[(n % 5) + 1],
     (ARRAY['open', 'pending', 'waiting_on_others', 'in_progress', 'done']::text[])[(n % 5) + 1]
-FROM generate_series(0, 35) AS series(n);
-
-INSERT INTO tags (id, user_id, name) VALUES
-    ('00000000000000000000000301', '00000000000000000000000001', '重要'),
-    ('00000000000000000000000302', '00000000000000000000000001', '短時間'),
-    ('00000000000000000000000303', '00000000000000000000000001', '集中'),
-    ('00000000000000000000000304', '00000000000000000000000002', '個人用');
-
-INSERT INTO tags (id, user_id, name)
-SELECT
-    lpad((305 + n)::text, 26, '0'),
-    '00000000000000000000000001',
-    (ARRAY['定例', '調査', 'レビュー', '連絡', '作成', '確認', '学習', '生活', '今週', '来週', '朝', '午後', '軽作業', '深い作業', '待ち', 'アイデア']::text[])[n + 1]
-FROM generate_series(0, 15) AS series(n);
-
-INSERT INTO task_tag_assignments (task_id, tag_id) VALUES
-    ('00000000000000000000000201', '00000000000000000000000301'),
-    ('00000000000000000000000201', '00000000000000000000000303'),
-    ('00000000000000000000000203', '00000000000000000000000302'),
-    ('00000000000000000000000205', '00000000000000000000000303'),
-    ('00000000000000000000000207', '00000000000000000000000302'),
-    ('00000000000000000000000209', '00000000000000000000000304');
-
-INSERT INTO task_tag_assignments (task_id, tag_id)
-SELECT
-    lpad((220 + n)::text, 26, '0'),
-    lpad((305 + (n % 16))::text, 26, '0')
 FROM generate_series(0, 35) AS series(n);
 
 -- ActionItems are single persisted rows; recurrence applies to Schedules only.
@@ -259,11 +229,6 @@ SELECT schedule_id, schedule_id, revision_id, user_id, occurrence_date,
        (occurrence_date + time '09:45') AT TIME ZONE 'Asia/Tokyo',
        title, description, location, project_id, assignee_id, 'Asia/Tokyo', user_id
 FROM source;
-
-INSERT INTO schedule_tag_assignments (blueprint_id, tag_id) VALUES
-    ('00000000000000000000000501', '00000000000000000000000305'),
-    ('00000000000000000000000504', '00000000000000000000000302'),
-    ('00000000000000000000000505', '00000000000000000000000303');
 
 INSERT INTO todo_lists (id, user_id, list_date) VALUES
     ('00000000000000000000000601', '00000000000000000000000001', CURRENT_DATE),

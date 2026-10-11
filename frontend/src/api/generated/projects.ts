@@ -1420,3 +1420,373 @@ export const usePatchProjectsIdStatus = <TError = ErrorType<RestErrResponse>,
       > => {
       return useMutation(getPatchProjectsIdStatusMutationOptions(options), queryClient);
     }
+
+export const getPostProjectsIdcompleteUrl = (id: string,) => {
+
+
+
+
+  return `/api/projects/${id}:complete`
+}
+
+/**
+ * @summary Complete project
+ */
+export const postProjectsIdcomplete = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestProjectResponse> => {
+
+  return apiFetch<RestProjectResponse>(getPostProjectsIdcompleteUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPostProjectsIdcompleteMutationKey = () => ['postProjectsIdcomplete'] as const;
+
+export const getPostProjectsIdcompleteMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdcomplete>>, TError,PostProjectsIdcompleteMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdcomplete>>, TError,PostProjectsIdcompleteMutationVariables, TContext> => {
+
+const mutationKey = getPostProjectsIdcompleteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postProjectsIdcomplete>>, PostProjectsIdcompleteMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  postProjectsIdcomplete(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostProjectsIdcompleteMutationResult = NonNullable<Awaited<ReturnType<typeof postProjectsIdcomplete>>>
+
+    export type PostProjectsIdcompleteMutationError = ErrorType<RestErrResponse>
+    export type PostProjectsIdcompleteMutationVariables = {id: string}
+
+    /**
+ * @summary Complete project
+ */
+export const usePostProjectsIdcomplete = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdcomplete>>, TError,PostProjectsIdcompleteMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postProjectsIdcomplete>>,
+        TError,
+        PostProjectsIdcompleteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostProjectsIdcompleteMutationOptions(options), queryClient);
+    }
+
+export const getPostProjectsIdholdUrl = (id: string,) => {
+
+
+
+
+  return `/api/projects/${id}:hold`
+}
+
+/**
+ * @summary Hold project
+ */
+export const postProjectsIdhold = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestProjectResponse> => {
+
+  return apiFetch<RestProjectResponse>(getPostProjectsIdholdUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPostProjectsIdholdMutationKey = () => ['postProjectsIdhold'] as const;
+
+export const getPostProjectsIdholdMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdhold>>, TError,PostProjectsIdholdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdhold>>, TError,PostProjectsIdholdMutationVariables, TContext> => {
+
+const mutationKey = getPostProjectsIdholdMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postProjectsIdhold>>, PostProjectsIdholdMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  postProjectsIdhold(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostProjectsIdholdMutationResult = NonNullable<Awaited<ReturnType<typeof postProjectsIdhold>>>
+
+    export type PostProjectsIdholdMutationError = ErrorType<RestErrResponse>
+    export type PostProjectsIdholdMutationVariables = {id: string}
+
+    /**
+ * @summary Hold project
+ */
+export const usePostProjectsIdhold = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdhold>>, TError,PostProjectsIdholdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postProjectsIdhold>>,
+        TError,
+        PostProjectsIdholdMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostProjectsIdholdMutationOptions(options), queryClient);
+    }
+
+export const getPostProjectsIdreopenUrl = (id: string,) => {
+
+
+
+
+  return `/api/projects/${id}:reopen`
+}
+
+/**
+ * @summary Reopen project
+ */
+export const postProjectsIdreopen = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestProjectResponse> => {
+
+  return apiFetch<RestProjectResponse>(getPostProjectsIdreopenUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPostProjectsIdreopenMutationKey = () => ['postProjectsIdreopen'] as const;
+
+export const getPostProjectsIdreopenMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdreopen>>, TError,PostProjectsIdreopenMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdreopen>>, TError,PostProjectsIdreopenMutationVariables, TContext> => {
+
+const mutationKey = getPostProjectsIdreopenMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postProjectsIdreopen>>, PostProjectsIdreopenMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  postProjectsIdreopen(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostProjectsIdreopenMutationResult = NonNullable<Awaited<ReturnType<typeof postProjectsIdreopen>>>
+
+    export type PostProjectsIdreopenMutationError = ErrorType<RestErrResponse>
+    export type PostProjectsIdreopenMutationVariables = {id: string}
+
+    /**
+ * @summary Reopen project
+ */
+export const usePostProjectsIdreopen = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdreopen>>, TError,PostProjectsIdreopenMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postProjectsIdreopen>>,
+        TError,
+        PostProjectsIdreopenMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostProjectsIdreopenMutationOptions(options), queryClient);
+    }
+
+export const getPostProjectsIdstartUrl = (id: string,) => {
+
+
+
+
+  return `/api/projects/${id}:start`
+}
+
+/**
+ * @summary Start project
+ */
+export const postProjectsIdstart = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestProjectResponse> => {
+
+  return apiFetch<RestProjectResponse>(getPostProjectsIdstartUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPostProjectsIdstartMutationKey = () => ['postProjectsIdstart'] as const;
+
+export const getPostProjectsIdstartMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdstart>>, TError,PostProjectsIdstartMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdstart>>, TError,PostProjectsIdstartMutationVariables, TContext> => {
+
+const mutationKey = getPostProjectsIdstartMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postProjectsIdstart>>, PostProjectsIdstartMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  postProjectsIdstart(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostProjectsIdstartMutationResult = NonNullable<Awaited<ReturnType<typeof postProjectsIdstart>>>
+
+    export type PostProjectsIdstartMutationError = ErrorType<RestErrResponse>
+    export type PostProjectsIdstartMutationVariables = {id: string}
+
+    /**
+ * @summary Start project
+ */
+export const usePostProjectsIdstart = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdstart>>, TError,PostProjectsIdstartMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postProjectsIdstart>>,
+        TError,
+        PostProjectsIdstartMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostProjectsIdstartMutationOptions(options), queryClient);
+    }
+
+export const getPostProjectsIdwaitUrl = (id: string,) => {
+
+
+
+
+  return `/api/projects/${id}:wait`
+}
+
+/**
+ * @summary Wait on project
+ */
+export const postProjectsIdwait = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestProjectResponse> => {
+
+  return apiFetch<RestProjectResponse>(getPostProjectsIdwaitUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPostProjectsIdwaitMutationKey = () => ['postProjectsIdwait'] as const;
+
+export const getPostProjectsIdwaitMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdwait>>, TError,PostProjectsIdwaitMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdwait>>, TError,PostProjectsIdwaitMutationVariables, TContext> => {
+
+const mutationKey = getPostProjectsIdwaitMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postProjectsIdwait>>, PostProjectsIdwaitMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  postProjectsIdwait(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostProjectsIdwaitMutationResult = NonNullable<Awaited<ReturnType<typeof postProjectsIdwait>>>
+
+    export type PostProjectsIdwaitMutationError = ErrorType<RestErrResponse>
+    export type PostProjectsIdwaitMutationVariables = {id: string}
+
+    /**
+ * @summary Wait on project
+ */
+export const usePostProjectsIdwait = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdwait>>, TError,PostProjectsIdwaitMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postProjectsIdwait>>,
+        TError,
+        PostProjectsIdwaitMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostProjectsIdwaitMutationOptions(options), queryClient);
+    }

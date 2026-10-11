@@ -14,7 +14,7 @@ internal/application/shared/              Cross-context contracts and pure polic
 internal/application/                      Composition root and transaction wiring
 ```
 
-`<context>` is `auth`, `project`, `task`, `schedule`, `tag`, or `admin`. Keep each
+`<context>` is `auth`, `project`, `task`, `schedule`, or `admin`. Keep each
 context's domain, DAO, usecase, and repository within that context. Context
 code may depend on its own layers and on `application/shared`, as shown in the
 [backend layer map](../../AGENTS.md#layer-rule).
@@ -27,11 +27,9 @@ business-context dependencies.
 
 `application/shared` may contain contracts or pure policy shared by contexts,
 but must not depend on a business context or `port/rest`. Keep Task and Schedule
-independent. The shared Tag catalog is its own context; Task and Schedule each
-own their Tag-assignment operations and use primitive owner checks. Define
-cross-context reads and writes at the consuming usecase boundary, then inject
-their implementations through root wiring. Keep HTTP query parsing, field
-masks, cursor tokens, and response types in `port/rest`.
+independent. Define cross-context reads and writes at the consuming usecase
+boundary, then inject their implementations through root wiring. Keep HTTP
+query parsing, field masks, cursor tokens, and response types in `port/rest`.
 
 Construct context stores and use cases through `NewStore` and `NewUseCase`,
 with per-context wiring in the application root factory files. `Application`
@@ -159,8 +157,8 @@ READ:  Repository -> DAO -> UseCase/REST handler
   do not copy or bypass them in the consumer. Per-row domain reconstruction is
   unnecessary when the owner-scoped bulk command preserves required invariants
   and no additional per-entity behavior is needed. Database foreign-key
-  cascades may handle referential cleanup such as Tag-assignment join rows, but
-  the owning command must still perform required business checks.
+  cascades may handle referential cleanup, but the owning command must still
+  perform required business checks.
 - Check nullable database values before reading them. Map `NULL` to an explicit
   absent domain state. When restoring domain state from a DAO, use the correct
   VO restore constructor; do not apply input transforms to stored data.

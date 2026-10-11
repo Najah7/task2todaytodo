@@ -29,7 +29,7 @@ func projectCrossContextTestPool(t *testing.T) *pgxpool.Pool {
 func newProjectUseCases(t *testing.T, pool *pgxpool.Pool, store application.Store) *projectusecase.UseCases {
 	t.Helper()
 	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
-	usecases, stopUseCases := application.NewUseCase(store.Auth, store.Project, store.Task, store.Tag, store.Admin,
+	usecases, stopUseCases := application.NewUseCase(store.Auth, store.Project, store.Task, store.Admin,
 		uow.Project, uow.Task, uow.Schedule, projectActionItemID{}, nil)
 	testdb.RegisterShutdown(t, stopUseCases)
 	return usecases.Project

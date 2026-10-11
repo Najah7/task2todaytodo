@@ -103,22 +103,6 @@ RETURNS boolean LANGUAGE sql STABLE AS $$
     )
 $$;
 
-CREATE TABLE tags (
-    id text PRIMARY KEY CHECK (id ~ '^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$'),
-    user_id text NOT NULL REFERENCES users(id),
-    name citext NOT NULL CHECK (btrim(name::text) <> ''),
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (user_id, name)
-);
-
-CREATE TABLE task_tag_assignments (
-    task_id text NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-    tag_id text NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (task_id, tag_id)
-);
-
 CREATE TABLE action_items (
     id text PRIMARY KEY CHECK (id ~ '^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$'),
     task_id text NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
@@ -158,11 +142,7 @@ CREATE INDEX idx_tasks_user_created_id ON tasks(user_id, created_at DESC, id DES
 
 CREATE INDEX idx_tasks_project_user_created_id ON tasks(project_id, user_id, created_at DESC, id DESC);
 
-CREATE INDEX idx_tags_user_name_id ON tags(user_id, name, id);
-
 CREATE INDEX idx_action_items_task_position_id_live
     ON action_items(task_id, position, id) WHERE deleted_at IS NULL;
 
 CREATE INDEX idx_task_revisions_changed_at ON task_revisions(id, changed_at DESC, revision DESC);
-
-CREATE INDEX idx_task_tag_assignments_tag_id_task_id ON task_tag_assignments(tag_id, task_id);

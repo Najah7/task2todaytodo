@@ -25,13 +25,6 @@ func NewScheduleHandler(schedules scheduleusecase.ScheduleUseCases, tokens *pagi
 	return &ScheduleHandler{schedules: schedules, pageTokens: tokens}
 }
 
-type ScheduleTagResponse struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	CreatedAt int64  `json:"created_at"`
-	UpdatedAt int64  `json:"updated_at"`
-}
-
 type ScheduleAssigneeResponse struct {
 	ID        string `json:"id"`
 	FirstName string `json:"first_name"`
@@ -118,8 +111,6 @@ func scheduleUseCaseError(err error) (int, ErrDetail) {
 		return http.StatusBadRequest, scheduleField("scope", "invalid_scope", "Scope must be current or following")
 	case errors.Is(err, scheduleusecase.ErrScheduleAssigneeNotEligible):
 		return http.StatusBadRequest, scheduleField("assignee_id", "assignee_not_eligible", "Assignee must be the owner or an eligible Project member")
-	case errors.Is(err, scheduleusecase.ErrScheduleTagNotFound):
-		return http.StatusNotFound, scheduleField("tag_id", "not_found", "Tag was not found")
 	case errors.Is(err, scheduleusecase.ErrTimezoneNotAllowed):
 		return http.StatusBadRequest, scheduleField("timezone", "not_allowed", "Timezone is not supported")
 	case errors.Is(err, recurrence.ErrRecurrenceTimezoneInvalid):

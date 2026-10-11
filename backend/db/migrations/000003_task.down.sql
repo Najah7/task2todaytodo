@@ -1,6 +1,4 @@
 DROP TABLE IF EXISTS action_items;
-DROP TABLE IF EXISTS task_tag_assignments;
-DROP TABLE IF EXISTS tags;
 DROP TABLE IF EXISTS task_revisions;
 DROP TABLE IF EXISTS tasks;
 DROP TABLE IF EXISTS frequency_master;

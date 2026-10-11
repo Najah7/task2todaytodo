@@ -902,39 +902,6 @@ func TestProjectSchedulePermissionsAndProjectOwnerAssigneeDefault(t *testing.T) 
 		t.Fatalf("delete-only role could not delete following occurrences: %v", err)
 	}
 
-	ownedTagID, foreignTagID := ulid.Make().String(), ulid.Make().String()
-	for _, tag := range []struct{ id, owner, name string }{{ownedTagID, ownerID, "Project owner tag"}, {foreignTagID, editorID, "Editor tag"}} {
-		if _, err := pool.Exec(ctx, `INSERT INTO tags(id,user_id,name) VALUES($1,$2,$3)`, tag.id, tag.owner, tag.name); err != nil {
-			t.Fatalf("create tag catalog row: %v", err)
-		}
-	}
-	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM tags WHERE id = ANY($1::text[])`, []string{ownedTagID, foreignTagID})
-	})
-	var revisionsBeforeTags int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM schedule_blueprint_revisions WHERE blueprint_id=$1`, blueprint.ID).Scan(&revisionsBeforeTags); err != nil {
-		t.Fatal(err)
-	}
-	addTag := usecase.NewAddTagToBlueprintUseCase(uow, nil)
-	if err := addTag.Execute(ctx, editorID, blueprint.ID, ownedTagID); err != nil {
-		t.Fatalf("editor add Project owner's catalog tag: %v", err)
-	}
-	if err := addTag.Execute(ctx, editorID, blueprint.ID, foreignTagID); !errors.Is(err, usecase.ErrScheduleTagNotFound) {
-		t.Fatalf("editor add non-Project-owner catalog tag error=%v, want ErrScheduleTagNotFound", err)
-	}
-	if err := addTag.Execute(ctx, viewerID, blueprint.ID, ownedTagID); err == nil {
-		t.Fatal("viewer assigned a tag to a blueprint without schedule read permission")
-	}
-	var revisionRows, tagLinks int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM schedule_blueprint_revisions WHERE blueprint_id=$1`, blueprint.ID).Scan(&revisionRows); err != nil {
-		t.Fatal(err)
-	}
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM schedule_tag_assignments WHERE blueprint_id=$1`, blueprint.ID).Scan(&tagLinks); err != nil {
-		t.Fatal(err)
-	}
-	if tagLinks != 1 || revisionRows != revisionsBeforeTags {
-		t.Fatalf("tag links=%d revisions=%d (before tags %d); want only owned tag linked without revision bump", tagLinks, revisionRows, revisionsBeforeTags)
-	}
 }
 
 func TestCreatingRecurrenceInDoneProjectOpensAutomaticPauseInterval(t *testing.T) {

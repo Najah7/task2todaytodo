@@ -17,6 +17,7 @@ import (
 	adminusecase "github.com/Najah7/task2todaytodo/internal/application/admin/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/port/adapter"
+	"github.com/Najah7/task2todaytodo/internal/settings"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 	"github.com/Najah7/task2todaytodo/tests/integration/internal/testdb"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -69,7 +70,7 @@ func TestConcurrentBackfillAcceptReturnsOneActiveOperation(t *testing.T) {
 func TestApplicationCompositionAndCleanup(t *testing.T) {
 	testPool := testdb.Open(t)
 	conn := testPool.Config().ConnConfig
-	app, closeApp, err := application.New(config.DatabaseConfig{
+	app, closeApp, err := application.New(settings.DatabaseSettings{
 		User: conn.User, Password: conn.Password, Host: conn.Host,
 		Port: strconv.Itoa(int(conn.Port)), Name: conn.Database, SSLMode: "disable",
 	}, adapter.NewULID(), telemetry.Nop())

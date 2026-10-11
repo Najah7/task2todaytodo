@@ -1,15 +1,10 @@
 erDiagram
-    %% users, projects and tags are reference-only entities owned by other diagrams.
+    %% users and projects are reference-only entities owned by other diagrams.
     users {
         text id PK "NOT NULL"
     }
 
     projects {
-        text id PK "NOT NULL"
-        text user_id "NOT NULL"
-    }
-
-    tags {
         text id PK "NOT NULL"
         text user_id "NOT NULL"
     }
@@ -111,12 +106,6 @@ erDiagram
         timestamptz updated_at "NOT NULL"
     }
 
-    schedule_tag_assignments {
-        text blueprint_id PK, FK "NOT NULL"
-        text tag_id PK, FK "NOT NULL"
-        timestamptz created_at "NOT NULL"
-    }
-
     users ||--o{ schedule_blueprints : owns
     schedule_blueprints ||--o{ schedule_blueprint_revisions : defines
     users ||--o{ schedule_blueprint_revisions : owns
@@ -133,5 +122,3 @@ erDiagram
     schedule_blueprints ||--o{ schedule_project_pause_intervals : paused_in_project
     projects ||--o{ schedule_project_pause_intervals : pauses
     schedule_blueprint_revisions ||--o| schedule_backfill_checkpoints : backfill_checkpoint
-    schedule_blueprints ||--o{ schedule_tag_assignments : tagged
-    tags ||--o{ schedule_tag_assignments : assigned_tag

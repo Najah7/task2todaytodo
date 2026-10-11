@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 )
@@ -23,7 +22,6 @@ var (
 	ErrRescheduleDateMismatch      = errors.New("future reschedule must keep the occurrence's local date")
 	ErrPermissionDenied            = errors.New("permission denied")
 	ErrInvalidSchedulePage         = errors.New("invalid schedule page")
-	ErrScheduleTagNotFound         = errors.New("schedule tag not found")
 )
 
 type UserTimezoneReader interface {
@@ -37,9 +35,6 @@ type TimezoneValidator interface {
 type ScheduleRepository interface {
 	CheckProjectPermission(ctx context.Context, actorID domain.UserID, projectID domain.ProjectID, capability shared.Capability) (bool, error)
 	LockProjectForScheduleMutation(ctx context.Context, projectID domain.ProjectID) error
-	ListTags(ctx context.Context, actorID domain.UserID, id domain.ScheduleID) ([]dao.ScheduleTag, error)
-	AddTag(ctx context.Context, actorID domain.UserID, id domain.ScheduleID, tagID string) error
-	RemoveTag(ctx context.Context, actorID domain.UserID, id domain.ScheduleID, tagID string) error
 	DeleteProjectSchedulesByActor(ctx context.Context, actorID domain.UserID, projectID domain.ProjectID) error
 	ReassignProjectMemberSchedules(ctx context.Context, actorID domain.UserID, projectID domain.ProjectID, memberID domain.UserID) error
 }

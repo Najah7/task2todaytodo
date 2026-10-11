@@ -5,7 +5,6 @@ import (
 
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
-	tagusecase "github.com/Najah7/task2todaytodo/internal/application/tag/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/task/usecase"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
@@ -50,9 +49,6 @@ func NewScheduleUseCases(scheduleUOW scheduleusecase.UOW, authStore AuthStore, I
 		DeleteOccurrence:         scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "delete", logger, ID),
 		RescheduleOccurrence:     scheduleusecase.NewRescheduleOccurrenceUseCase(scheduleUOW, logger, ID),
 		Backfill:                 scheduleusecase.NewBackfillUseCase(scheduleUOW, ID),
-		ListBlueprintTags:        scheduleusecase.NewListBlueprintTagsUseCase(scheduleUOW, logger),
-		AddTagToBlueprint:        scheduleusecase.NewAddTagToBlueprintUseCase(scheduleUOW, logger),
-		RemoveTagFromBlueprint:   scheduleusecase.NewRemoveTagFromBlueprintUseCase(scheduleUOW, logger),
 		ListAssignees:            scheduleusecase.NewListScheduleAssigneesUseCase(scheduleUOW, logger),
 	}
 }
@@ -67,15 +63,4 @@ func NewActionItemUseCases(taskUOW usecase.UOW, logger telemetry.Logger) usecase
 		Reopen:   usecase.NewReopenActionItemUseCase(taskUOW, logger),
 		Reorder:  usecase.NewReorderActionItemUseCase(taskUOW, logger),
 	}
-}
-
-func NewTaskTagUseCases(taskUOW usecase.UOW, logger telemetry.Logger) usecase.TaskTagUseCases {
-	return usecase.TaskTagUseCases{
-		AddToTask:      usecase.NewAddTagToTaskUseCase(taskUOW, logger),
-		RemoveFromTask: usecase.NewRemoveTagFromTaskUseCase(taskUOW, logger),
-	}
-}
-
-func NewTagUseCases(tagStore TagStore, logger telemetry.Logger) tagusecase.CatalogUseCases {
-	return tagusecase.NewCatalogUseCases(tagStore.Tags, logger)
 }

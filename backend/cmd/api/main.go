@@ -169,7 +169,6 @@ func main() {
 		auth.Patch("/schedule-blueprints/{id}", handler.Schedule.UpdateBlueprint)
 		auth.Delete("/schedule-blueprints/{id}/following/{occurrence_date}", handler.Schedule.DeleteBlueprintFollowing)
 		auth.Get("/schedule-blueprints/{id}/assignees", handler.Schedule.ListAssignees)
-		auth.Get("/schedule-blueprints/{id}/tags", handler.Schedule.ListBlueprintTags)
 
 		// Schedules
 		auth.Get("/schedules", handler.Schedule.ListOccurrences)
@@ -183,16 +182,6 @@ func main() {
 		auth.Post("/schedules/{blueprint_id}/{occurrence_date}:restore", handler.Schedule.RestoreOccurrence)
 		auth.Post("/schedules/{blueprint_id}/{occurrence_date}:reschedule", handler.Schedule.RescheduleOccurrence)
 
-		// Shared Tag catalog and Task associations
-		auth.Get("/tags", handler.Tag.List)
-		auth.Post("/tags", handler.Tag.Create)
-		auth.Get("/tags/{id}", handler.Tag.Get)
-		auth.Patch("/tags/{id}", handler.Tag.Rename)
-		auth.Delete("/tags/{id}", handler.Tag.Delete)
-		auth.Post("/tasks/{id}/tags:add", handler.TaskTag.AddToTask)
-		auth.Post("/tasks/{id}/tags:remove", handler.TaskTag.RemoveFromTask)
-		auth.Post("/schedule-blueprints/{id}/tags:add", handler.Schedule.AddTagToBlueprint)
-		auth.Post("/schedule-blueprints/{id}/tags:remove", handler.Schedule.RemoveTagFromBlueprint)
 	})
 
 	srv := &http.Server{

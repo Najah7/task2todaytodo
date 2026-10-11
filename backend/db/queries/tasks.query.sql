@@ -180,14 +180,6 @@ WHERE ti.task_id = $1
 	AND ti.deleted_at IS NULL
 ORDER BY ti.position ASC;
 
--- name: GetTaskByTag :many
-SELECT t.*
-FROM tasks AS t
-JOIN task_tag_assignments AS tta ON tta.task_id = t.id
-WHERE tta.tag_id = $1
-  AND t.deleted_at IS NULL
-  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=t.project_id AND p.deleted_at IS NULL));
-
 -- name: GetTaskByStatus :many
 SELECT * FROM tasks WHERE tasks.status = $1 AND deleted_at IS NULL
   AND (project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id=tasks.project_id AND p.deleted_at IS NULL));
