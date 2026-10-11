@@ -42,6 +42,17 @@ export function TaskNavigationProvider({ children, defaultReturnTo = "/tasks" }:
 }
 
 function taskReturnPath(state: unknown, fallback: string): string {
-  if (state && typeof state === "object" && "from" in state && typeof state.from === "string" && state.from.startsWith("/tasks")) return state.from
+  if (state && typeof state === "object" && "from" in state && typeof state.from === "string" && isSafeTaskReturnPath(state.from)) return state.from
   return fallback
+}
+
+function isSafeTaskReturnPath(path: string): boolean {
+  if (!path.startsWith("/") || path.startsWith("//")) return false
+  try {
+    const parsed = new URL(path, "https://task2todaytodo.local")
+    return parsed.origin === "https://task2todaytodo.local"
+      && ["/tasks", "/inbox"].some((root) => parsed.pathname === root || parsed.pathname.startsWith(`${root}/`))
+  } catch {
+    return false
+  }
 }

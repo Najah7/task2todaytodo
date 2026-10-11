@@ -33,6 +33,7 @@ import type { TaskFormDirtyFields } from "~/features/task/converters/taskFormVal
 import { taskErrorMessageKey, taskFieldErrors } from "~/features/task/errors"
 import { getAllTaskActionItems } from "~/features/task/queries"
 import { ApiError } from "~/api/http"
+import { getListInboxQueryKey } from "~/api/generated/inbox"
 
 const actionItemCompletionMutationKey = ["tasks", "action-item-completion"] as const
 
@@ -72,6 +73,7 @@ export function TaskActionProvider({ children }: Props) {
   async function invalidateCompletionQueries(taskId: string) {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListInboxQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetProjectsQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetTasksTaskIdActionItemsQueryKey(taskId) }),
     ])
@@ -232,6 +234,7 @@ export function TaskActionProvider({ children }: Props) {
   async function invalidateTaskQueries(projectId?: string, taskId?: string) {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListInboxQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetProjectsQueryKey() }),
       ...(taskId ? [
         queryClient.invalidateQueries({ queryKey: getGetTasksIdQueryKey(taskId) }),

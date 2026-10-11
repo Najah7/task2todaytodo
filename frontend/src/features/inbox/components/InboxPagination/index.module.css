@@ -1,0 +1,8 @@
+.footer { display: flex; align-items: center; gap: var(--space-md); min-height: 3rem; padding: var(--space-sm) var(--space-lg); border-top: var(--border-width) solid var(--color-border); background: var(--color-raised); }
+.navigation { display: flex; gap: var(--space-sm); margin-left: auto; }
+.recovery { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-md); flex: 1; }
+@media (max-width: 36em) {
+  .footer { align-items: stretch; flex-direction: column; }
+  .navigation { margin-left: 0; }
+  .navigation > button { flex: 1; }
+}

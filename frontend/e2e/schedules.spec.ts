@@ -52,8 +52,9 @@ test("shows saved timed and all-day schedules across desktop, dark, and mobile l
 
   await page.goto(`/schedules?view=week&date=${date}`)
   await expect(page.getByRole("heading", { name: "スケジュール", exact: true })).toBeVisible()
-  await expect(page.getByRole("button", { name: /Design review/ })).toBeVisible()
-  await expect(page.getByRole("button", { name: /Release preparation/ })).toBeVisible()
+  const selectedDay = page.locator(`section[data-date="${date}"]`)
+  await expect(selectedDay.locator('button[title="Design review"]')).toBeVisible()
+  await expect(selectedDay.locator('button[title="Release preparation"]')).toBeVisible()
   await saveScreenshot(page, testInfo.outputPath("schedule-week-light.png"))
 
   const displaySwitch = page.getByRole("switch", { name: "表示モード" })
@@ -65,7 +66,7 @@ test("shows saved timed and all-day schedules across desktop, dark, and mobile l
   const selectedDayHeader = page.locator(`section[data-date="${date}"] header`)
   await selectedDayHeader.scrollIntoViewIfNeeded()
   await expect(selectedDayHeader).toBeInViewport()
-  await expect(page.locator('button[title="Release preparation"]')).toBeInViewport()
+  await expect(selectedDay.locator('button[title="Release preparation"]')).toBeInViewport()
   await saveScreenshot(page, testInfo.outputPath("schedule-week-mobile.png"))
 
   await page.getByRole("switch", { name: "表示モード" }).click()

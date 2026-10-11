@@ -14,6 +14,7 @@ import TaskEditPage from "~/pages/TaskEdit"
 import ScheduleList from "~/pages/ScheduleList"
 import ScheduleNewPage from "~/pages/ScheduleNew"
 import ScheduleEditPage from "~/pages/ScheduleEdit"
+import InboxPage from "~/pages/Inbox"
 
 function requireAuthentication() {
   if (!getPersonalAccessToken()?.trim()) return replace("/login")
@@ -30,7 +31,7 @@ export const router = createBrowserRouter([
     children: [
       { path: "/", element: <Navigate to={`/${DEFAULT_TAB}`} replace /> },
       { path: "/today", element: <App><PageHeading messageKey="page.today.title" /></App> },
-      { path: "/inbox", element: <App><PageHeading messageKey="page.inbox.title" /></App> },
+      { path: "/inbox", element: <App><InboxPage /></App> },
       { path: "/projects", element: <App><ProjectList /></App> },
       { path: "/projects/new", element: <App><ProjectsNewPage /></App> },
       { path: "/projects/:id/edit", element: <App><ProjectsEditPage /></App> },

@@ -16,6 +16,8 @@ export function ScheduleNavigationProvider({ children }: Props) {
   const today = Temporal.Now.plainDateISO(data.timezone || "UTC").toString()
   const state = scheduleSearchParams2state(searchParams, today)
   const routePrefill = (location.state as { schedulePrefill?: ScheduleSlotPrefill } | null)?.schedulePrefill
+  const fallbackReturnTo = `/schedules?${scheduleState2searchParams(state, searchParams).toString()}`
+  const returnTo = scheduleReturnPath(location.state, fallbackReturnTo)
 
   function change(changes: Partial<typeof state>, replace = false) {
     const next = { ...state, ...changes }
@@ -23,7 +25,7 @@ export function ScheduleNavigationProvider({ children }: Props) {
   }
 
   function navigateToList() {
-    navigate(`/schedules?${scheduleState2searchParams(state, searchParams).toString()}`, { replace: true })
+    navigate(returnTo, { replace: true })
   }
 
   const navigation = {
@@ -44,7 +46,9 @@ export function ScheduleNavigationProvider({ children }: Props) {
       })
     },
     edit: (blueprintId: string, occurrenceDate: string) => {
-      navigate(`/schedules/${encodeURIComponent(blueprintId)}/${encodeURIComponent(occurrenceDate)}/edit?${scheduleState2searchParams(state, searchParams).toString()}`)
+      navigate(`/schedules/${encodeURIComponent(blueprintId)}/${encodeURIComponent(occurrenceDate)}/edit?${scheduleState2searchParams(state, searchParams).toString()}`, {
+        state: { from: `${location.pathname}${location.search}` },
+      })
     },
     list: navigateToList,
     cancel: navigateToList,
@@ -53,6 +57,22 @@ export function ScheduleNavigationProvider({ children }: Props) {
   }
 
   return <ScheduleNavigationContext.Provider value={navigation}>{children}</ScheduleNavigationContext.Provider>
+}
+
+function scheduleReturnPath(state: unknown, fallback: string): string {
+  if (state && typeof state === "object" && "from" in state && typeof state.from === "string" && isSafeScheduleReturnPath(state.from)) return state.from
+  return fallback
+}
+
+function isSafeScheduleReturnPath(path: string): boolean {
+  if (!path.startsWith("/") || path.startsWith("//")) return false
+  try {
+    const parsed = new URL(path, "https://task2todaytodo.local")
+    return parsed.origin === "https://task2todaytodo.local"
+      && ["/schedules", "/inbox"].some((root) => parsed.pathname === root || parsed.pathname.startsWith(`${root}/`))
+  } catch {
+    return false
+  }
 }
 
 function shiftDate(value: string, view: ScheduleView, direction: number): string {

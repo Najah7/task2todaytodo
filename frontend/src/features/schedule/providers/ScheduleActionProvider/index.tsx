@@ -1,5 +1,6 @@
 import { useContext, useState, type ReactNode } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import { getListInboxQueryKey } from "~/api/generated/inbox"
 import {
   deleteScheduleBlueprintsIdFollowingOccurrenceDate,
   deleteSchedulesBlueprintIdOccurrenceDate,
@@ -40,10 +41,16 @@ export function ScheduleActionProvider({ children }: Props) {
     setBusy(true)
     try {
       await action()
-      await queryClient.invalidateQueries({ queryKey: ["schedules"] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["schedules"] }),
+        queryClient.invalidateQueries({ queryKey: getListInboxQueryKey() }),
+      ])
       notify.success(t(`schedules.notification.${notification}`))
     } catch (error) {
-      await queryClient.invalidateQueries({ queryKey: ["schedules"] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["schedules"] }),
+        queryClient.invalidateQueries({ queryKey: getListInboxQueryKey() }),
+      ])
       notify.error(t("schedules.error.requestFailed"))
       throw error
     } finally {
