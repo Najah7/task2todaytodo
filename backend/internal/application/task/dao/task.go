@@ -27,6 +27,7 @@ type Task struct {
 	ActionItemCount          int
 	ActionItemCompletedCount int
 	CanUpdate                bool
+	CanAssign                bool
 }
 
 type TaskDetails struct {

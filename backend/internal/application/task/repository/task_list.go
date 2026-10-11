@@ -30,6 +30,7 @@ func (r TaskRepository) ReadTaskListCandidates(ctx context.Context, userID domai
 	for _, row := range rows {
 		task := taskListCandidateDAO(sqlc.Task{ID: row.ID, UserID: row.UserID, ProjectID: row.ProjectID, AssigneeID: row.AssigneeID, Title: row.Title, Description: row.Description, DueDate: row.DueDate, ManualEstimatedMinutes: row.ManualEstimatedMinutes, ActualMinutes: row.ActualMinutes, Priority: row.Priority, Status: row.Status, Revision: row.Revision, DeletedAt: row.DeletedAt, ChangedBy: row.ChangedBy, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, row.ProjectName, row.ProjectStatus)
 		task.CanUpdate = row.CanUpdate
+		task.CanAssign = row.CanAssign
 		if row.DueDate.Valid {
 			remainingDays := int(row.RemainingDays)
 			task.RemainingDays = &remainingDays

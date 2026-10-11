@@ -409,6 +409,7 @@ WITH user_calendar AS (
 )
 SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at, COALESCE(p.title, '')::text AS project_name, COALESCE(p.status, '')::text AS project_status,
        task_has_permission(t.id, $1::text, 'task', 'update') AS can_update,
+       task_has_permission(t.id, $1::text, 'task_assignment', 'update') AS can_assign,
        CASE WHEN t.due_date IS NULL THEN 0::integer ELSE (t.due_date - c.today)::integer END AS remaining_days
 FROM tasks t
 LEFT JOIN projects p ON p.id = t.project_id
@@ -455,6 +456,7 @@ type ListTaskListCandidatesRow struct {
 	ProjectName            string
 	ProjectStatus          string
 	CanUpdate              bool
+	CanAssign              bool
 	RemainingDays          int32
 }
 
@@ -493,6 +495,7 @@ func (q *Queries) ListTaskListCandidates(ctx context.Context, arg ListTaskListCa
 			&i.ProjectName,
 			&i.ProjectStatus,
 			&i.CanUpdate,
+			&i.CanAssign,
 			&i.RemainingDays,
 		); err != nil {
 			return nil, err

@@ -32,6 +32,7 @@ WITH user_calendar AS (
 )
 SELECT t.*, COALESCE(p.title, '')::text AS project_name, COALESCE(p.status, '')::text AS project_status,
        task_has_permission(t.id, sqlc.arg(user_id)::text, 'task', 'update') AS can_update,
+       task_has_permission(t.id, sqlc.arg(user_id)::text, 'task_assignment', 'update') AS can_assign,
        CASE WHEN t.due_date IS NULL THEN 0::integer ELSE (t.due_date - c.today)::integer END AS remaining_days
 FROM tasks t
 LEFT JOIN projects p ON p.id = t.project_id

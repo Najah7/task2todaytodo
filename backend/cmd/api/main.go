@@ -107,6 +107,9 @@ func main() {
 		auth.Get("/admin/operations", handler.Admin.ListOperations)
 		auth.Get("/admin/operations/{id}", handler.Admin.GetOperation)
 
+		// Inbox
+		auth.Get("/inbox", handler.Inbox.List)
+
 		// Projects
 		auth.Get("/projects", handler.Project.List)
 		auth.Get("/projects/options", handler.Project.Options)

@@ -85,7 +85,10 @@ func (uc *ListOccurrencesUseCase) ExecutePage(ctx context.Context, actorID strin
 		}
 	}
 	pageItems, more := pagination.Window(filtered, request.Size)
-	now := time.Now().UTC()
+	now := request.AsOf
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
 	if err := uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		capabilitiesByOccurrence, err := repos.Blueprints().ListOccurrenceCapabilities(ctx, actorID, pageItems)
 		if err != nil {

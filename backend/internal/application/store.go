@@ -8,6 +8,7 @@ type Store struct {
 	Task     TaskStore
 	Schedule ScheduleStore
 	Admin    AdminStore
+	Inbox    InboxStore
 }
 
 func NewStore(pool *pgxpool.Pool) Store {
@@ -17,5 +18,6 @@ func NewStore(pool *pgxpool.Pool) Store {
 		Task:     newTaskStore(pool),
 		Schedule: newScheduleStore(pool),
 		Admin:    newAdminStore(pool),
+		Inbox:    newInboxStore(pool),
 	}
 }

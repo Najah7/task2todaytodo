@@ -158,6 +158,93 @@ const docTemplate = `{
                 }
             }
         },
+        "/inbox": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a paginated, read-only projection of all incomplete Tasks assigned to the caller and uncompleted, unskipped Schedule occurrences from the caller's local today through six days later, including virtual recurring occurrences. Results are ordered by original Task or Schedule blueprint creation time descending; occurrences from one blueprint are ordered by scheduled start time ascending.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Inbox"
+                ],
+                "summary": "List inbox",
+                "operationId": "listInbox",
+                "parameters": [
+                    {
+                        "enum": [
+                            "all",
+                            "task",
+                            "schedule"
+                        ],
+                        "type": "string",
+                        "description": "Item type filter",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project filter: all, no-project, or a Project ID",
+                        "name": "project_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Literal case-insensitive title substring",
+                        "name": "title",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 50, maximum 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque cursor for the next or previous page",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Response field mask",
+                        "name": "fields",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.InboxListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid filter or pagination",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list inbox",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "description": "Authenticates a user and generates an access token.",
@@ -4493,6 +4580,257 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.InboxCountsResponse": {
+            "type": "object",
+            "required": [
+                "all",
+                "schedule",
+                "task"
+            ],
+            "properties": {
+                "all": {
+                    "type": "integer"
+                },
+                "schedule": {
+                    "type": "integer"
+                },
+                "task": {
+                    "type": "integer"
+                }
+            }
+        },
+        "rest.InboxItemResponse": {
+            "type": "object",
+            "required": [
+                "created_at",
+                "id",
+                "project_id",
+                "project_name",
+                "schedule",
+                "task",
+                "title",
+                "type"
+            ],
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "project_name": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "schedule": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/rest.InboxSchedulePayloadResponse"
+                        }
+                    ],
+                    "x-nullable": true
+                },
+                "task": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/rest.InboxTaskPayloadResponse"
+                        }
+                    ],
+                    "x-nullable": true
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "task",
+                        "schedule"
+                    ]
+                }
+            }
+        },
+        "rest.InboxListResponse": {
+            "type": "object",
+            "required": [
+                "counts",
+                "items",
+                "next_page_token",
+                "previous_page_token"
+            ],
+            "properties": {
+                "counts": {
+                    "$ref": "#/definitions/rest.InboxCountsResponse"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.InboxItemResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                },
+                "previous_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.InboxSchedulePayloadResponse": {
+            "type": "object",
+            "required": [
+                "all_day",
+                "assignee_id",
+                "blueprint_id",
+                "can_assign",
+                "can_update",
+                "can_update_following",
+                "completed",
+                "description",
+                "end_at",
+                "location",
+                "occurrence_date",
+                "occurrence_id",
+                "revision",
+                "skipped",
+                "source_revision_id",
+                "start_at",
+                "timezone"
+            ],
+            "properties": {
+                "all_day": {
+                    "type": "boolean"
+                },
+                "assignee_id": {
+                    "type": "string"
+                },
+                "blueprint_id": {
+                    "type": "string"
+                },
+                "can_assign": {
+                    "type": "boolean"
+                },
+                "can_update": {
+                    "type": "boolean"
+                },
+                "can_update_following": {
+                    "type": "boolean"
+                },
+                "completed": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "occurrence_id": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "boolean"
+                },
+                "source_revision_id": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.InboxTaskPayloadResponse": {
+            "type": "object",
+            "required": [
+                "action_item_completed_count",
+                "action_item_count",
+                "actual_minutes",
+                "assignee_id",
+                "can_assign",
+                "can_update",
+                "description",
+                "due_date",
+                "estimate_source",
+                "estimated_minutes",
+                "id",
+                "priority",
+                "progress",
+                "remaining_days",
+                "revision",
+                "status"
+            ],
+            "properties": {
+                "action_item_completed_count": {
+                    "type": "integer"
+                },
+                "action_item_count": {
+                    "type": "integer"
+                },
+                "actual_minutes": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
+                "assignee_id": {
+                    "type": "string"
+                },
+                "can_assign": {
+                    "type": "boolean"
+                },
+                "can_update": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "estimate_source": {
+                    "type": "string"
+                },
+                "estimated_minutes": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
+                "id": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "progress": {
+                    "type": "integer"
+                },
+                "remaining_days": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "rest.LoginRequest": {
             "type": "object",
             "properties": {
@@ -4567,8 +4905,7 @@ const docTemplate = `{
                 "response": {
                     "type": "object",
                     "additionalProperties": {
-                        "type": "integer",
-                        "format": "int64"
+                        "type": "integer"
                     }
                 }
             }

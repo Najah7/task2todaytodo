@@ -5,6 +5,7 @@ import (
 
 	adminusecase "github.com/Najah7/task2todaytodo/internal/application/admin/usecase"
 	authusecase "github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
+	inboxusecase "github.com/Najah7/task2todaytodo/internal/application/inbox/usecase"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
@@ -21,6 +22,7 @@ type UseCase struct {
 	Schedule            scheduleusecase.ScheduleUseCases
 	Timezone            authusecase.TimezoneUseCases
 	Admin               adminusecase.UseCases
+	Inbox               inboxusecase.InboxUseCases
 }
 
 func NewUseCase(store Store, uow UOW, id IDIssuer, logger telemetry.Logger) (UseCase, func(context.Context) error) {
@@ -36,5 +38,6 @@ func NewUseCase(store Store, uow UOW, id IDIssuer, logger telemetry.Logger) (Use
 		ActionItem:          NewActionItemUseCases(uow.Task, logger),
 		Schedule:            schedules,
 		Admin:               admin,
+		Inbox:               NewInboxUseCases(store.Auth, store.Task, schedules, store.Inbox, logger),
 	}, closeAdmin
 }
