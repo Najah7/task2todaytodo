@@ -1,0 +1,9 @@
+.state {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-md);
+}
+
+.state p {
+  margin: 0;
+}

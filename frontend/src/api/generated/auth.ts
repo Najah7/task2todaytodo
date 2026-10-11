@@ -53,8 +53,31 @@ export interface RestLoginRequest {
   password?: string;
 }
 
+export interface RestPermissionResponse {
+  action?: string;
+  description?: string;
+  effect?: string;
+  id?: number;
+  resource_id?: string;
+  resource_name?: string;
+}
+
+export interface RestPermissionListResponse {
+  items?: RestPermissionResponse[];
+}
+
 export interface RestMessageResponse {
   message?: string;
+}
+
+export interface RestRoleResponse {
+  id?: string;
+  name?: string;
+  permissions?: RestPermissionResponse[];
+}
+
+export interface RestRoleListResponse {
+  items?: RestRoleResponse[];
 }
 
 export interface RestUserResponse {
@@ -67,6 +90,10 @@ export interface RestUserResponse {
 export interface RestSignupRequest {
   email?: string;
   password?: string;
+}
+
+export interface RestTimezoneListResponse {
+  items?: string[];
 }
 
 export interface RestUserInfoUpdateRequest {
@@ -190,6 +217,107 @@ export const usePostLogin = <TError = ErrorType<RestErrResponse>,
       return useMutation(getPostLoginMutationOptions(options), queryClient);
     }
 
+export const getGetPermissionsUrl = () => {
+
+
+
+
+  return `/api/permissions`
+}
+
+/**
+ * @summary List permissions
+ */
+export const getPermissions = async ( options?: Parameters<typeof apiFetch>[1]): Promise<RestPermissionListResponse> => {
+
+  return apiFetch<RestPermissionListResponse>(getGetPermissionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPermissionsQueryKey = () => {
+    return [
+    `/api/permissions`
+    ] as const;
+    }
+
+
+export const getGetPermissionsQueryOptions = <TData = Awaited<ReturnType<typeof getPermissions>>, TError = ErrorType<RestErrResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPermissions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPermissionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPermissions>>> = ({ signal }) => getPermissions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPermissions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPermissionsQueryResult = NonNullable<Awaited<ReturnType<typeof getPermissions>>>
+export type GetPermissionsQueryError = ErrorType<RestErrResponse>
+
+
+export function useGetPermissions<TData = Awaited<ReturnType<typeof getPermissions>>, TError = ErrorType<RestErrResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPermissions>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPermissions>>,
+          TError,
+          Awaited<ReturnType<typeof getPermissions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPermissions<TData = Awaited<ReturnType<typeof getPermissions>>, TError = ErrorType<RestErrResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPermissions>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPermissions>>,
+          TError,
+          Awaited<ReturnType<typeof getPermissions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPermissions<TData = Awaited<ReturnType<typeof getPermissions>>, TError = ErrorType<RestErrResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPermissions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List permissions
+ */
+
+export function useGetPermissions<TData = Awaited<ReturnType<typeof getPermissions>>, TError = ErrorType<RestErrResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPermissions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPermissionsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getDeletePersonalAccessTokenrevokeUrl = () => {
 
 
@@ -264,6 +392,107 @@ export const useDeletePersonalAccessTokenrevoke = <TError = ErrorType<RestErrRes
       > => {
       return useMutation(getDeletePersonalAccessTokenrevokeMutationOptions(options), queryClient);
     }
+
+export const getGetRolesUrl = () => {
+
+
+
+
+  return `/api/roles`
+}
+
+/**
+ * @summary List roles
+ */
+export const getRoles = async ( options?: Parameters<typeof apiFetch>[1]): Promise<RestRoleListResponse> => {
+
+  return apiFetch<RestRoleListResponse>(getGetRolesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRolesQueryKey = () => {
+    return [
+    `/api/roles`
+    ] as const;
+    }
+
+
+export const getGetRolesQueryOptions = <TData = Awaited<ReturnType<typeof getRoles>>, TError = ErrorType<RestErrResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRoles>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRolesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRoles>>> = ({ signal }) => getRoles({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRoles>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetRolesQueryResult = NonNullable<Awaited<ReturnType<typeof getRoles>>>
+export type GetRolesQueryError = ErrorType<RestErrResponse>
+
+
+export function useGetRoles<TData = Awaited<ReturnType<typeof getRoles>>, TError = ErrorType<RestErrResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRoles>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getRoles>>,
+          TError,
+          Awaited<ReturnType<typeof getRoles>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetRoles<TData = Awaited<ReturnType<typeof getRoles>>, TError = ErrorType<RestErrResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRoles>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getRoles>>,
+          TError,
+          Awaited<ReturnType<typeof getRoles>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetRoles<TData = Awaited<ReturnType<typeof getRoles>>, TError = ErrorType<RestErrResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRoles>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List roles
+ */
+
+export function useGetRoles<TData = Awaited<ReturnType<typeof getRoles>>, TError = ErrorType<RestErrResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRoles>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetRolesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getPostSignupUrl = () => {
 
@@ -353,6 +582,107 @@ export const usePostSignup = <TError = ErrorType<RestErrResponse>,
       > => {
       return useMutation(getPostSignupMutationOptions(options), queryClient);
     }
+
+export const getGetTimezonesUrl = () => {
+
+
+
+
+  return `/api/timezones`
+}
+
+/**
+ * @summary List timezones
+ */
+export const getTimezones = async ( options?: Parameters<typeof apiFetch>[1]): Promise<RestTimezoneListResponse> => {
+
+  return apiFetch<RestTimezoneListResponse>(getGetTimezonesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTimezonesQueryKey = () => {
+    return [
+    `/api/timezones`
+    ] as const;
+    }
+
+
+export const getGetTimezonesQueryOptions = <TData = Awaited<ReturnType<typeof getTimezones>>, TError = ErrorType<RestErrResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimezones>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTimezonesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTimezones>>> = ({ signal }) => getTimezones({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTimezones>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTimezonesQueryResult = NonNullable<Awaited<ReturnType<typeof getTimezones>>>
+export type GetTimezonesQueryError = ErrorType<RestErrResponse>
+
+
+export function useGetTimezones<TData = Awaited<ReturnType<typeof getTimezones>>, TError = ErrorType<RestErrResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimezones>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTimezones>>,
+          TError,
+          Awaited<ReturnType<typeof getTimezones>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTimezones<TData = Awaited<ReturnType<typeof getTimezones>>, TError = ErrorType<RestErrResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimezones>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTimezones>>,
+          TError,
+          Awaited<ReturnType<typeof getTimezones>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTimezones<TData = Awaited<ReturnType<typeof getTimezones>>, TError = ErrorType<RestErrResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimezones>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List timezones
+ */
+
+export function useGetTimezones<TData = Awaited<ReturnType<typeof getTimezones>>, TError = ErrorType<RestErrResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimezones>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTimezonesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetUsersMeUrl = () => {
 

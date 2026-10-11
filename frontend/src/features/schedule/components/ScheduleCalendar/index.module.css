@@ -1,0 +1,542 @@
+.calendar {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.rangeControls,
+.toolbarFilters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.rangeControls h2 {
+  margin: 0 0 0 var(--space-sm);
+  white-space: nowrap;
+}
+
+.arrowButton {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.toolbarFilters label:first-child {
+  color: var(--color-text-muted);
+}
+
+.toolbarFilters select {
+  max-width: 13rem;
+  min-height: 2.25rem;
+}
+
+.skippedToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--color-text-body);
+  cursor: pointer;
+}
+
+.viewSwitch {
+  display: inline-flex;
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-xs);
+}
+
+.viewSwitch button {
+  min-width: 2.5rem;
+  min-height: 2.25rem;
+  padding: 0 var(--space-sm);
+  border: 0;
+  border-right: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-body);
+  cursor: pointer;
+}
+
+.viewSwitch button:last-child {
+  border-right: 0;
+}
+
+.viewSwitch .selectedView {
+  background: var(--color-action-background);
+  color: var(--color-action-text);
+}
+
+.timeGridScroll {
+  max-height: min(72vh, 58rem);
+  min-height: 30rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.timeGrid {
+  display: grid;
+  grid-template-columns: 3.75rem repeat(var(--day-count), minmax(8.5rem, 1fr));
+  min-width: max-content;
+}
+
+.timeGutter,
+.dayColumn {
+  min-width: 0;
+}
+
+.timeGutter {
+  position: sticky;
+  left: 0;
+  z-index: 6;
+  background: var(--color-surface);
+  box-shadow: var(--border-width) 0 0 var(--color-border);
+}
+
+.gutterHeader,
+.dayHeader {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 3.5rem;
+  background: var(--color-surface);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.dayHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  border-left: var(--border-width) solid var(--color-border);
+}
+
+.dayNumber {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.today {
+  background: var(--color-action-background);
+  color: var(--color-action-text);
+}
+
+.gutterAllDay,
+.allDayRow {
+  min-height: 2.5rem;
+  height: var(--all-day-height, 2.5rem);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.gutterAllDay {
+  position: sticky;
+  top: 3.5rem;
+  z-index: 4;
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 var(--space-xs);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.allDayRow {
+  position: sticky;
+  top: 3.5rem;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.125rem;
+  background: var(--color-surface);
+  border-left: var(--border-width) solid var(--color-border);
+}
+
+.addAllDay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.allDayEvent {
+  position: relative;
+  z-index: 1;
+}
+
+.allDayEventRow {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.allDayEventRow .allDayEvent {
+  flex: 1;
+  min-width: 0;
+}
+
+.allDayEventRow .eventOperations summary {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.hourLabel,
+.hourSlot {
+  height: 3rem;
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.hourLabel {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 0 var(--space-xs);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  transform: translateY(-0.5em);
+}
+
+.dayTimeline {
+  position: relative;
+  height: 72rem;
+  border-left: var(--border-width) solid var(--color-border);
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(3rem - var(--border-width)), var(--color-border) calc(3rem - var(--border-width)), var(--color-border) 3rem);
+}
+
+.nowIndicator {
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: var(--color-attention);
+  pointer-events: none;
+}
+
+.nowIndicator::before {
+  position: absolute;
+  top: -0.25rem;
+  left: -0.25rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-attention);
+  content: "";
+}
+
+.hourSlot {
+  position: relative;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-bottom: 0;
+  background: transparent;
+  cursor: crosshair;
+}
+
+.hourSlot:hover {
+  background: var(--color-selected-background);
+}
+
+.timedEventPosition {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  min-width: 0;
+}
+
+.timedEvent {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  overflow: hidden;
+  padding: var(--space-xs);
+  border: var(--border-width) solid var(--color-selected-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-selected-background);
+  color: var(--color-selected-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.timedEvent strong,
+.timedEvent span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.allDayEvent,
+.monthEvent {
+  overflow: hidden;
+  padding: 0.15rem 0.3rem;
+  border: var(--border-width) solid var(--color-selected-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-selected-background);
+  color: var(--color-selected-text);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.completedEvent {
+  border-color: var(--color-border);
+  background: var(--color-raised);
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.skippedEvent {
+  border-style: dashed;
+  color: var(--color-text-muted);
+  opacity: 0.8;
+}
+
+.eventOperations {
+  position: relative;
+  z-index: 5;
+  flex: 0 0 auto;
+}
+
+.eventOperations summary {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: var(--radius-xs);
+  color: var(--color-text-body);
+  cursor: pointer;
+  list-style: none;
+}
+
+.eventOperations summary::-webkit-details-marker {
+  display: none;
+}
+
+.eventMenu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 10;
+  display: grid;
+  min-width: 12rem;
+  padding: var(--space-xs);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-elevated);
+  box-shadow: var(--shadow-card);
+}
+
+.eventMenu button {
+  padding: var(--space-xs) var(--space-sm);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.eventMenu button:hover:not(:disabled) {
+  background: var(--color-selected-background);
+}
+
+.eventMenu button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.weekend,
+.weekend .dayHeader,
+.weekend .dayTimeline,
+.weekend .allDayRow {
+  background-color: var(--color-weekend);
+}
+
+.monthGrid {
+  overflow: auto;
+}
+
+.weekdayHeader,
+.monthDays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(7rem, 1fr));
+  min-width: 49rem;
+}
+
+.weekdayHeader > div {
+  padding: var(--space-sm);
+  border-bottom: var(--border-width) solid var(--color-border);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.monthDay {
+  min-height: 7.5rem;
+  padding: var(--space-xs);
+  overflow: visible;
+  border-right: var(--border-width) solid var(--color-border);
+  border-bottom: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.monthDay:nth-child(7n) {
+  border-right: 0;
+}
+
+.outsideMonth {
+  background: var(--color-raised);
+  color: var(--color-text-muted);
+}
+
+.monthDay .dayNumber {
+  margin-bottom: var(--space-xs);
+}
+
+.monthEvents {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.monthEventRow {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.monthEvent {
+  flex: 1;
+  min-width: 0;
+}
+
+.monthEventRow .eventOperations summary {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.moreEvents {
+  width: 100%;
+  padding: 0.15rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.monthAdd {
+  justify-self: start;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.monthAdd:hover {
+  background: var(--color-selected-background);
+  color: var(--color-selected-text);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--space-lg);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  border-top: var(--border-width) solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 52em) {
+  .toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .toolbarFilters {
+    width: 100%;
+  }
+
+  .toolbarFilters select {
+    max-width: none;
+  }
+
+  .timeGrid {
+    grid-template-columns: 3.25rem repeat(var(--day-count), minmax(10rem, 1fr));
+  }
+}
+
+@media (max-width: 36em) {
+  .toolbar {
+    padding: var(--space-sm);
+  }
+
+  .rangeControls {
+    width: 100%;
+  }
+
+  .rangeControls h2 {
+    flex: 1;
+    font-size: var(--font-size-description);
+  }
+
+  .toolbarFilters {
+    align-items: flex-start;
+  }
+
+  .toolbarFilters > label:first-child {
+    width: 100%;
+  }
+
+  .footer {
+    padding: var(--space-sm);
+  }
+}

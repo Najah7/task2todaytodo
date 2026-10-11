@@ -11,6 +11,9 @@ import ProjectList from "~/pages/ProjectList"
 import TaskList from "~/pages/TaskList"
 import TaskNewPage from "~/pages/TaskNew"
 import TaskEditPage from "~/pages/TaskEdit"
+import ScheduleList from "~/pages/ScheduleList"
+import ScheduleNewPage from "~/pages/ScheduleNew"
+import ScheduleEditPage from "~/pages/ScheduleEdit"
 
 function requireAuthentication() {
   if (!getPersonalAccessToken()?.trim()) return replace("/login")
@@ -34,7 +37,9 @@ export const router = createBrowserRouter([
       { path: "/tasks", element: <App><TaskList /></App> },
       { path: "/tasks/new", element: <App><TaskNewPage /></App> },
       { path: "/tasks/:id/edit", element: <App><TaskEditPage /></App> },
-      { path: "/schedules", element: <App><PageHeading messageKey="page.schedules.title" /></App> },
+      { path: "/schedules", element: <App><ScheduleList /></App> },
+      { path: "/schedules/new", element: <App><ScheduleNewPage /></App> },
+      { path: "/schedules/:blueprintId/:occurrenceDate/edit", element: <App><ScheduleEditPage /></App> },
       { path: "/members", element: <App><PageHeading messageKey="page.members.title" /></App> },
       { path: "/kpi", element: <App><PageHeading messageKey="page.kpi.title" /></App> },
       { path: "/profile", element: <App><PageHeading messageKey="page.profile.title" /></App> },

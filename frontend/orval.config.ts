@@ -5,6 +5,7 @@ import { defineConfig } from "orval"
 const clientPath = fileURLToPath(new URL("./src/api/generated/auth.ts", import.meta.url))
 const projectsClientPath = fileURLToPath(new URL("./src/api/generated/projects.ts", import.meta.url))
 const tasksClientPath = fileURLToPath(new URL("./src/api/generated/tasks.ts", import.meta.url))
+const schedulesClientPath = fileURLToPath(new URL("./src/api/generated/schedules.ts", import.meta.url))
 
 async function replaceSharedHttpImport(path: string) {
   const client = await readFile(path, "utf8")
@@ -15,7 +16,7 @@ export default defineConfig({
   auth: {
     input: {
       target: "../backend/docs/swagger.json",
-      filters: { tags: ["Personal Access Tokens", "Users"] },
+      filters: { tags: ["Personal Access Tokens", "Users", "Authorization"] },
     },
     output: {
       baseUrl: "/api",
@@ -90,6 +91,33 @@ export default defineConfig({
     hooks: {
       afterAllFilesWrite: async () => {
         await replaceSharedHttpImport(tasksClientPath)
+      },
+    },
+  },
+  schedules: {
+    input: {
+      target: "../backend/docs/swagger.json",
+      filters: { tags: ["Schedules"] },
+    },
+    output: {
+      baseUrl: "/api",
+      target: schedulesClientPath,
+      tsconfig: "./tsconfig.app.json",
+      client: "react-query",
+      httpClient: "fetch",
+      override: {
+        mutator: {
+          path: "./src/api/http.ts",
+          name: "apiFetch",
+          alias: { "~": fileURLToPath(new URL("./src", import.meta.url)) },
+        },
+        fetch: { includeHttpResponseReturnType: false, forceSuccessResponse: true },
+        query: { version: 5 },
+      },
+    },
+    hooks: {
+      afterAllFilesWrite: async () => {
+        await replaceSharedHttpImport(schedulesClientPath)
       },
     },
   },
