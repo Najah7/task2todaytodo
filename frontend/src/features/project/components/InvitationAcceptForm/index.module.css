@@ -1,0 +1,6 @@
+.form { display: grid; gap: var(--space-md); }
+.email, .description { margin: 0; }
+.fields { display: grid; gap: var(--space-md); }
+.actions { display: grid; gap: var(--space-sm); }
+.error { margin: 0; color: var(--color-danger-text); }
+.linkButton { justify-self: start; padding: 0; border: 0; background: transparent; color: var(--color-text-body); text-decoration: underline; text-underline-offset: 0.15em; cursor: pointer; }

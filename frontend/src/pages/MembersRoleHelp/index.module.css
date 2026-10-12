@@ -1,0 +1,4 @@
+.page { display: grid; gap: var(--space-lg); }
+.header { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: var(--space-md); }
+.matrix { min-width: 0; overflow: hidden; }
+.state { display: grid; justify-items: start; gap: var(--space-sm); margin: 0; padding: var(--space-lg); }

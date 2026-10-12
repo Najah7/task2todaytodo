@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { createMemoryRouter, RouterProvider } from "react-router"
 import type { RestProjectListResponse, RestProjectOptionsResponse, RestProjectResponse } from "~/api/generated/projects"
+import { getGetProjectsOptionsQueryKey } from "~/api/generated/projects"
 import { LanguageProviderContext } from "~/features/i18n/languageContext"
 import { NotificationViewport } from "~/features/shared/notification"
 import ProjectList from "."
@@ -21,6 +22,8 @@ const project: RestProjectResponse = {
   end_date: "2026-10-20",
   goal: "A project",
   id: "project-1",
+  member_count: 1,
+  pending_invitation_count: 0,
   priority: { label: "High", label_jp: "高", value: "high", weight: 3 },
   progress: 25,
   remaining_days: 11,
@@ -85,6 +88,8 @@ test("rolls back an optimistic status change after a revision conflict and refet
   vi.stubGlobal("fetch", fetchMock)
 
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  client.setQueryDefaults(getGetProjectsOptionsQueryKey(), { staleTime: 60_000 })
+  client.setQueryData(getGetProjectsOptionsQueryKey(), options)
   const router = createMemoryRouter([{ path: "/projects", element: <ProjectList /> }], { initialEntries: ["/projects"] })
   render(
     <LanguageProviderContext.Provider value={{ language: "ja", setLanguage: vi.fn() }}>

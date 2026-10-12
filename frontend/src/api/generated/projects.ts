@@ -61,6 +61,8 @@ export interface RestProjectResponse {
   end_date: string | null;
   goal: string;
   id: string;
+  member_count: number;
+  pending_invitation_count: number;
   priority: RestProjectPriorityResponse;
   progress: number;
   /** @nullable */
@@ -165,21 +167,98 @@ export interface RestProjectUpdateRequestSchema {
   type?: string;
 }
 
+export type RestProjectInvitationResponseRoleId = typeof RestProjectInvitationResponseRoleId[keyof typeof RestProjectInvitationResponseRoleId];
+
+
+export const RestProjectInvitationResponseRoleId = {
+  admin: 'admin',
+  editor: 'editor',
+  viewer: 'viewer',
+} as const;
+
+export type RestProjectInvitationResponseStatus = typeof RestProjectInvitationResponseStatus[keyof typeof RestProjectInvitationResponseStatus];
+
+
+export const RestProjectInvitationResponseStatus = {
+  pending: 'pending',
+} as const;
+
+export interface RestProjectInvitationResponse {
+  email?: string;
+  expires_at?: number;
+  id?: string;
+  project_id?: string;
+  role_id?: RestProjectInvitationResponseRoleId;
+  status?: RestProjectInvitationResponseStatus;
+}
+
+export type RestProjectInvitationCreateRequestRoleId = typeof RestProjectInvitationCreateRequestRoleId[keyof typeof RestProjectInvitationCreateRequestRoleId];
+
+
+export const RestProjectInvitationCreateRequestRoleId = {
+  admin: 'admin',
+  editor: 'editor',
+  viewer: 'viewer',
+} as const;
+
+export interface RestProjectInvitationCreateRequest {
+  email: string;
+  role_id: RestProjectInvitationCreateRequestRoleId;
+}
+
+export type RestProjectMemberRoleOptionResponseId = typeof RestProjectMemberRoleOptionResponseId[keyof typeof RestProjectMemberRoleOptionResponseId];
+
+
+export const RestProjectMemberRoleOptionResponseId = {
+  admin: 'admin',
+  editor: 'editor',
+  viewer: 'viewer',
+} as const;
+
+export interface RestProjectMemberRoleOptionResponse {
+  assignable?: boolean;
+  id?: RestProjectMemberRoleOptionResponseId;
+  name?: string;
+}
+
+export type RestProjectMemberResponseStatus = typeof RestProjectMemberResponseStatus[keyof typeof RestProjectMemberResponseStatus];
+
+
+export const RestProjectMemberResponseStatus = {
+  owner: 'owner',
+  accepted: 'accepted',
+  pending: 'pending',
+  expired: 'expired',
+} as const;
+
 export interface RestProjectMemberResponse {
   added_by?: string;
+  can_edit_role?: boolean;
+  can_remove?: boolean;
   created_at?: number;
   email?: string;
+  /** @nullable */
+  expires_at?: number | null;
   first_name?: string;
+  invitation_id?: string;
   last_name?: string;
   project_id?: string;
   role_id?: string;
   role_name?: string;
+  status?: RestProjectMemberResponseStatus;
   updated_at?: number;
   user_id?: string;
 }
 
 export interface RestProjectMemberListResponse {
+  assignable_roles?: RestProjectMemberRoleOptionResponse[];
+  can_invite?: boolean;
   items?: RestProjectMemberResponse[];
+  member_count?: number;
+  next_page_token?: string;
+  pending_invitation_count?: number;
+  previous_page_token?: string;
+  total_count?: number;
 }
 
 export interface RestProjectMemberUpsertRequest {
@@ -223,6 +302,48 @@ export const RestProjectStatusRequestStatus = {
 
 export interface RestProjectStatusRequest {
   status: RestProjectStatusRequestStatus;
+}
+
+export type RestProjectMemberRoleCapabilityResponseId = typeof RestProjectMemberRoleCapabilityResponseId[keyof typeof RestProjectMemberRoleCapabilityResponseId];
+
+
+export const RestProjectMemberRoleCapabilityResponseId = {
+  projectread: 'project.read',
+  projectupdate: 'project.update',
+  projectdelete: 'project.delete',
+  taskread: 'task.read',
+  taskcreate: 'task.create',
+  taskupdate: 'task.update',
+  taskdelete: 'task.delete',
+  action_itemread: 'action_item.read',
+  action_itemcreate: 'action_item.create',
+  action_itemupdate: 'action_item.update',
+  action_itemdelete: 'action_item.delete',
+  scheduleread: 'schedule.read',
+  schedulecreate: 'schedule.create',
+  scheduleupdate: 'schedule.update',
+  scheduledelete: 'schedule.delete',
+  task_assignmentupdate: 'task_assignment.update',
+  schedule_assignmentupdate: 'schedule_assignment.update',
+  occurrenceupdate: 'occurrence.update',
+  project_memberread: 'project_member.read',
+  project_memberinvite: 'project_member.invite',
+  project_membermanage_basic: 'project_member.manage_basic',
+  project_membermanage_admin: 'project_member.manage_admin',
+} as const;
+
+export interface RestProjectMemberRoleCapabilityResponse {
+  admin?: boolean;
+  editor?: boolean;
+  id?: RestProjectMemberRoleCapabilityResponseId;
+  name?: string;
+  owner?: boolean;
+  viewer?: boolean;
+}
+
+export interface RestProjectMemberRoleCapabilitiesResponse {
+  capabilities?: RestProjectMemberRoleCapabilityResponse[];
+  roles?: RestProjectMemberRoleOptionResponse[];
 }
 
 export type GetProjectsParams = {
@@ -292,6 +413,21 @@ export const GetProjectsSortOrder = {
   asc: 'asc',
   desc: 'desc',
 } as const;
+
+export type GetProjectsIdMembersParams = {
+/**
+ * Items per page (default 50, maximum 100)
+ */
+page_size?: number;
+/**
+ * Opaque cursor for the next page
+ */
+page_token?: string;
+/**
+ * Response field mask
+ */
+fields?: string;
+};
 
 export type GetProjectsIdRevisionsParams = {
 /**
@@ -884,20 +1020,270 @@ export const usePatchProjectsId = <TError = ErrorType<RestErrResponse>,
       return useMutation(getPatchProjectsIdMutationOptions(options), queryClient);
     }
 
-export const getGetProjectsIdMembersUrl = (id: string,) => {
+export const getPostProjectsIdInvitationsUrl = (id: string,) => {
 
 
 
 
-  return `/api/projects/${id}/members`
+  return `/api/projects/${id}/invitations`
+}
+
+/**
+ * @summary Invite a project member
+ */
+export const postProjectsIdInvitations = async (id: string,
+    restProjectInvitationCreateRequest: RestProjectInvitationCreateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestProjectInvitationResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<RestProjectInvitationResponse>(getPostProjectsIdInvitationsUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restProjectInvitationCreateRequest)
+  }
+);}
+
+
+
+
+
+export const getPostProjectsIdInvitationsMutationKey = () => ['postProjectsIdInvitations'] as const;
+
+export const getPostProjectsIdInvitationsMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdInvitations>>, TError,PostProjectsIdInvitationsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdInvitations>>, TError,PostProjectsIdInvitationsMutationVariables, TContext> => {
+
+const mutationKey = getPostProjectsIdInvitationsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postProjectsIdInvitations>>, PostProjectsIdInvitationsMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  postProjectsIdInvitations(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostProjectsIdInvitationsMutationResult = NonNullable<Awaited<ReturnType<typeof postProjectsIdInvitations>>>
+    export type PostProjectsIdInvitationsMutationBody = RestProjectInvitationCreateRequest
+    export type PostProjectsIdInvitationsMutationError = ErrorType<RestErrResponse>
+    export type PostProjectsIdInvitationsMutationVariables = {id: string;data: RestProjectInvitationCreateRequest}
+
+    /**
+ * @summary Invite a project member
+ */
+export const usePostProjectsIdInvitations = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdInvitations>>, TError,PostProjectsIdInvitationsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postProjectsIdInvitations>>,
+        TError,
+        PostProjectsIdInvitationsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostProjectsIdInvitationsMutationOptions(options), queryClient);
+    }
+
+export const getDeleteProjectsIdInvitationsInvitationIdUrl = (id: string,
+    invitationId: string,) => {
+
+
+
+
+  return `/api/projects/${id}/invitations/${invitationId}`
+}
+
+/**
+ * @summary Revoke project invitation
+ */
+export const deleteProjectsIdInvitationsInvitationId = async (id: string,
+    invitationId: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteProjectsIdInvitationsInvitationIdUrl(id,invitationId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteProjectsIdInvitationsInvitationIdMutationKey = () => ['deleteProjectsIdInvitationsInvitationId'] as const;
+
+export const getDeleteProjectsIdInvitationsInvitationIdMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProjectsIdInvitationsInvitationId>>, TError,DeleteProjectsIdInvitationsInvitationIdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteProjectsIdInvitationsInvitationId>>, TError,DeleteProjectsIdInvitationsInvitationIdMutationVariables, TContext> => {
+
+const mutationKey = getDeleteProjectsIdInvitationsInvitationIdMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteProjectsIdInvitationsInvitationId>>, DeleteProjectsIdInvitationsInvitationIdMutationVariables> = (props) => {
+          const {id,invitationId} = props ?? {};
+
+          return  deleteProjectsIdInvitationsInvitationId(id,invitationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteProjectsIdInvitationsInvitationIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteProjectsIdInvitationsInvitationId>>>
+
+    export type DeleteProjectsIdInvitationsInvitationIdMutationError = ErrorType<RestErrResponse>
+    export type DeleteProjectsIdInvitationsInvitationIdMutationVariables = {id: string;invitationId: string}
+
+    /**
+ * @summary Revoke project invitation
+ */
+export const useDeleteProjectsIdInvitationsInvitationId = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProjectsIdInvitationsInvitationId>>, TError,DeleteProjectsIdInvitationsInvitationIdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteProjectsIdInvitationsInvitationId>>,
+        TError,
+        DeleteProjectsIdInvitationsInvitationIdMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteProjectsIdInvitationsInvitationIdMutationOptions(options), queryClient);
+    }
+
+export const getPostProjectsIdInvitationsInvitationIdResendUrl = (id: string,
+    invitationId: string,) => {
+
+
+
+
+  return `/api/projects/${id}/invitations/${invitationId}/resend`
+}
+
+/**
+ * @summary Resend project invitation
+ */
+export const postProjectsIdInvitationsInvitationIdResend = async (id: string,
+    invitationId: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getPostProjectsIdInvitationsInvitationIdResendUrl(id,invitationId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPostProjectsIdInvitationsInvitationIdResendMutationKey = () => ['postProjectsIdInvitationsInvitationIdResend'] as const;
+
+export const getPostProjectsIdInvitationsInvitationIdResendMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdInvitationsInvitationIdResend>>, TError,PostProjectsIdInvitationsInvitationIdResendMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdInvitationsInvitationIdResend>>, TError,PostProjectsIdInvitationsInvitationIdResendMutationVariables, TContext> => {
+
+const mutationKey = getPostProjectsIdInvitationsInvitationIdResendMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postProjectsIdInvitationsInvitationIdResend>>, PostProjectsIdInvitationsInvitationIdResendMutationVariables> = (props) => {
+          const {id,invitationId} = props ?? {};
+
+          return  postProjectsIdInvitationsInvitationIdResend(id,invitationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostProjectsIdInvitationsInvitationIdResendMutationResult = NonNullable<Awaited<ReturnType<typeof postProjectsIdInvitationsInvitationIdResend>>>
+
+    export type PostProjectsIdInvitationsInvitationIdResendMutationError = ErrorType<RestErrResponse>
+    export type PostProjectsIdInvitationsInvitationIdResendMutationVariables = {id: string;invitationId: string}
+
+    /**
+ * @summary Resend project invitation
+ */
+export const usePostProjectsIdInvitationsInvitationIdResend = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdInvitationsInvitationIdResend>>, TError,PostProjectsIdInvitationsInvitationIdResendMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postProjectsIdInvitationsInvitationIdResend>>,
+        TError,
+        PostProjectsIdInvitationsInvitationIdResendMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostProjectsIdInvitationsInvitationIdResendMutationOptions(options), queryClient);
+    }
+
+export const getGetProjectsIdMembersUrl = (id: string,
+    params?: GetProjectsIdMembersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/projects/${id}/members?${stringifiedParams}` : `/api/projects/${id}/members`
 }
 
 /**
  * @summary List project members
  */
-export const getProjectsIdMembers = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestProjectMemberListResponse> => {
+export const getProjectsIdMembers = async (id: string,
+    params?: GetProjectsIdMembersParams, options?: Parameters<typeof apiFetch>[1]): Promise<RestProjectMemberListResponse> => {
 
-  return apiFetch<RestProjectMemberListResponse>(getGetProjectsIdMembersUrl(id),
+  return apiFetch<RestProjectMemberListResponse>(getGetProjectsIdMembersUrl(id,params),
   {
     ...options,
     method: 'GET'
@@ -910,23 +1296,25 @@ export const getProjectsIdMembers = async (id: string, options?: Parameters<type
 
 
 
-export const getGetProjectsIdMembersQueryKey = (id: string,) => {
+export const getGetProjectsIdMembersQueryKey = (id: string,
+    params?: GetProjectsIdMembersParams,) => {
     return [
-    `/api/projects/${id}/members`
+    `/api/projects/${id}/members`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetProjectsIdMembersQueryOptions = <TData = Awaited<ReturnType<typeof getProjectsIdMembers>>, TError = ErrorType<RestErrResponse>>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectsIdMembers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetProjectsIdMembersQueryOptions = <TData = Awaited<ReturnType<typeof getProjectsIdMembers>>, TError = ErrorType<RestErrResponse>>(id: string,
+    params?: GetProjectsIdMembersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectsIdMembers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetProjectsIdMembersQueryKey(id);
+  const queryKey =  queryOptions?.queryKey ?? getGetProjectsIdMembersQueryKey(id,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProjectsIdMembers>>> = ({ signal }) => getProjectsIdMembers(id, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProjectsIdMembers>>> = ({ signal }) => getProjectsIdMembers(id,params, { signal, ...requestOptions });
 
 
 
@@ -940,7 +1328,8 @@ export type GetProjectsIdMembersQueryError = ErrorType<RestErrResponse>
 
 
 export function useGetProjectsIdMembers<TData = Awaited<ReturnType<typeof getProjectsIdMembers>>, TError = ErrorType<RestErrResponse>>(
- id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectsIdMembers>>, TError, TData>> & Pick<
+ id: string,
+    params: undefined |  GetProjectsIdMembersParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectsIdMembers>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getProjectsIdMembers>>,
           TError,
@@ -950,7 +1339,8 @@ export function useGetProjectsIdMembers<TData = Awaited<ReturnType<typeof getPro
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetProjectsIdMembers<TData = Awaited<ReturnType<typeof getProjectsIdMembers>>, TError = ErrorType<RestErrResponse>>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectsIdMembers>>, TError, TData>> & Pick<
+ id: string,
+    params?: GetProjectsIdMembersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectsIdMembers>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getProjectsIdMembers>>,
           TError,
@@ -960,7 +1350,8 @@ export function useGetProjectsIdMembers<TData = Awaited<ReturnType<typeof getPro
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetProjectsIdMembers<TData = Awaited<ReturnType<typeof getProjectsIdMembers>>, TError = ErrorType<RestErrResponse>>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectsIdMembers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ id: string,
+    params?: GetProjectsIdMembersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectsIdMembers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -968,11 +1359,12 @@ export function useGetProjectsIdMembers<TData = Awaited<ReturnType<typeof getPro
  */
 
 export function useGetProjectsIdMembers<TData = Awaited<ReturnType<typeof getProjectsIdMembers>>, TError = ErrorType<RestErrResponse>>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectsIdMembers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ id: string,
+    params?: GetProjectsIdMembersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectsIdMembers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetProjectsIdMembersQueryOptions(id,options)
+  const queryOptions = getGetProjectsIdMembersQueryOptions(id,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -1150,6 +1542,97 @@ export const useDeleteProjectsIdMembersUserId = <TError = ErrorType<RestErrRespo
         TContext
       > => {
       return useMutation(getDeleteProjectsIdMembersUserIdMutationOptions(options), queryClient);
+    }
+
+export const getPatchProjectsIdMembersUserIdUrl = (id: string,
+    userId: string,) => {
+
+
+
+
+  return `/api/projects/${id}/members/${userId}`
+}
+
+/**
+ * @summary Add or update a project member
+ */
+export const patchProjectsIdMembersUserId = async (id: string,
+    userId: string,
+    restProjectMemberUpsertRequest: RestProjectMemberUpsertRequest, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<void>(getPatchProjectsIdMembersUserIdUrl(id,userId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restProjectMemberUpsertRequest)
+  }
+);}
+
+
+
+
+
+export const getPatchProjectsIdMembersUserIdMutationKey = () => ['patchProjectsIdMembersUserId'] as const;
+
+export const getPatchProjectsIdMembersUserIdMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchProjectsIdMembersUserId>>, TError,PatchProjectsIdMembersUserIdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchProjectsIdMembersUserId>>, TError,PatchProjectsIdMembersUserIdMutationVariables, TContext> => {
+
+const mutationKey = getPatchProjectsIdMembersUserIdMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchProjectsIdMembersUserId>>, PatchProjectsIdMembersUserIdMutationVariables> = (props) => {
+          const {id,userId,data} = props ?? {};
+
+          return  patchProjectsIdMembersUserId(id,userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchProjectsIdMembersUserIdMutationResult = NonNullable<Awaited<ReturnType<typeof patchProjectsIdMembersUserId>>>
+    export type PatchProjectsIdMembersUserIdMutationBody = RestProjectMemberUpsertRequest
+    export type PatchProjectsIdMembersUserIdMutationError = ErrorType<RestErrResponse>
+    export type PatchProjectsIdMembersUserIdMutationVariables = {id: string;userId: string;data: RestProjectMemberUpsertRequest}
+
+    /**
+ * @summary Add or update a project member
+ */
+export const usePatchProjectsIdMembersUserId = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchProjectsIdMembersUserId>>, TError,PatchProjectsIdMembersUserIdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof patchProjectsIdMembersUserId>>,
+        TError,
+        PatchProjectsIdMembersUserIdMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPatchProjectsIdMembersUserIdMutationOptions(options), queryClient);
     }
 
 export const getPostProjectsIdRestoreUrl = (id: string,) => {
@@ -1800,3 +2283,98 @@ export const usePostProjectsIdwait = <TError = ErrorType<RestErrResponse>,
       > => {
       return useMutation(getPostProjectsIdwaitMutationOptions(options), queryClient);
     }
+
+export const getGetRolesCapabilitiesUrl = () => {
+
+
+
+
+  return `/api/roles/capabilities`
+}
+
+/**
+ * @summary List project role capabilities
+ */
+export const getRolesCapabilities = async ( options?: Parameters<typeof apiFetch>[1]): Promise<RestProjectMemberRoleCapabilitiesResponse> => {
+
+  return apiFetch<RestProjectMemberRoleCapabilitiesResponse>(getGetRolesCapabilitiesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRolesCapabilitiesQueryKey = () => {
+    return [
+    `/api/roles/capabilities`
+    ] as const;
+    }
+
+
+export const getGetRolesCapabilitiesQueryOptions = <TData = Awaited<ReturnType<typeof getRolesCapabilities>>, TError = ErrorType<RestErrResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRolesCapabilities>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRolesCapabilitiesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRolesCapabilities>>> = ({ signal }) => getRolesCapabilities({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRolesCapabilities>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetRolesCapabilitiesQueryResult = NonNullable<Awaited<ReturnType<typeof getRolesCapabilities>>>
+export type GetRolesCapabilitiesQueryError = ErrorType<RestErrResponse>
+
+
+export function useGetRolesCapabilities<TData = Awaited<ReturnType<typeof getRolesCapabilities>>, TError = ErrorType<RestErrResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRolesCapabilities>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getRolesCapabilities>>,
+          TError,
+          Awaited<ReturnType<typeof getRolesCapabilities>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetRolesCapabilities<TData = Awaited<ReturnType<typeof getRolesCapabilities>>, TError = ErrorType<RestErrResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRolesCapabilities>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getRolesCapabilities>>,
+          TError,
+          Awaited<ReturnType<typeof getRolesCapabilities>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetRolesCapabilities<TData = Awaited<ReturnType<typeof getRolesCapabilities>>, TError = ErrorType<RestErrResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRolesCapabilities>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List project role capabilities
+ */
+
+export function useGetRolesCapabilities<TData = Awaited<ReturnType<typeof getRolesCapabilities>>, TError = ErrorType<RestErrResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRolesCapabilities>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetRolesCapabilitiesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}

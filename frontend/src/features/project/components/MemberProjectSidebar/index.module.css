@@ -1,0 +1,15 @@
+.panel { width: 100%; max-height: calc(100dvh - var(--size-topbar-height) - var(--space-xxl)); padding: var(--space-xs); overflow-y: auto; align-self: start; }
+.heading { margin: 0; padding: var(--space-md) var(--space-sm); color: var(--color-text-muted); }
+.list { display: grid; gap: var(--space-xs); margin: 0; padding: 0; list-style: none; }
+.project { display: grid; grid-template-columns: 1.25rem minmax(0, 1fr) auto; align-items: center; gap: var(--space-sm); width: 100%; padding: var(--space-sm); border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-text); text-align: left; cursor: pointer; }
+.project:hover { background: var(--color-raised); }
+.selected { background: var(--color-primary-soft); font-weight: 700; }
+.folder { color: var(--color-text-muted); font-size: 1.25rem; line-height: 1; }
+.title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.counts { display: flex; align-items: center; gap: var(--space-xs); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.pending { color: var(--color-attention-foreground); }
+.empty { margin: 0; padding: var(--space-sm); color: var(--color-text-muted); }
+
+@media (max-width: 55em) {
+  .panel { max-height: 15rem; }
+}

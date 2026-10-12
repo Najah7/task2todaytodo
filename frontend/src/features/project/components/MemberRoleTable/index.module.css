@@ -1,0 +1,8 @@
+.scroll { width: 100%; overflow-x: auto; }
+.table { width: 100%; min-width: 36rem; border-collapse: collapse; }
+.table th, .table td { padding: var(--space-md); border-bottom: var(--border-width) solid var(--color-border); text-align: left; }
+.table thead { background: var(--color-raised); }
+.table thead th:not(:first-child), .cell { text-align: center; }
+.table tbody tr:last-child th, .table tbody tr:last-child td { border-bottom: 0; }
+.table tbody th { font-weight: 400; }
+.cell { font-size: 1.2rem; }

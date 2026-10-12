@@ -36,7 +36,9 @@ export default function LoginForm() {
     setEmailUnverified(false)
     setResendComplete(false)
     try {
-      await logIn(data)
+      const hasInvitationToken = new URLSearchParams(location.hash.slice(1)).has("token")
+      const destination = hasInvitationToken ? `/invitations${location.search}${location.hash}` : "/today"
+      await logIn(data, destination)
     } catch (cause) {
       if (cause instanceof ApiError) {
         const details = (cause.data as RestErrResponse | undefined)?.error?.details ?? []

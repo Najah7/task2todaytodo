@@ -26,8 +26,9 @@ import type {
 
 import { apiFetch } from "~/api/http";
 import type { ErrorType } from "~/api/http";
-export interface RestAuthLinkResult {
-  message?: string;
+export interface RestPersonalAccessTokenResponse {
+  expires_at?: string;
+  personal_access_token?: string;
 }
 
 export interface RestAllocationConflictMetadata {
@@ -70,14 +71,62 @@ export interface RestEmailAddressRequest {
   email?: string;
 }
 
-export interface RestPersonalAccessTokenResponse {
-  expires_at?: string;
-  personal_access_token?: string;
+export interface RestProjectInvitationAcceptanceRequest {
+  password?: string;
+  token?: string;
+}
+
+export type RestProjectInvitationPreviewResponseRecipientStatus = typeof RestProjectInvitationPreviewResponseRecipientStatus[keyof typeof RestProjectInvitationPreviewResponseRecipientStatus];
+
+
+export const RestProjectInvitationPreviewResponseRecipientStatus = {
+  new: 'new',
+  unverified: 'unverified',
+  verified: 'verified',
+} as const;
+
+export type RestProjectInvitationPreviewResponseRoleId = typeof RestProjectInvitationPreviewResponseRoleId[keyof typeof RestProjectInvitationPreviewResponseRoleId];
+
+
+export const RestProjectInvitationPreviewResponseRoleId = {
+  admin: 'admin',
+  editor: 'editor',
+  viewer: 'viewer',
+} as const;
+
+export type RestProjectInvitationPreviewResponseStatus = typeof RestProjectInvitationPreviewResponseStatus[keyof typeof RestProjectInvitationPreviewResponseStatus];
+
+
+export const RestProjectInvitationPreviewResponseStatus = {
+  pending: 'pending',
+  expired: 'expired',
+  accepted: 'accepted',
+  revoked: 'revoked',
+  project_deleted: 'project_deleted',
+} as const;
+
+export interface RestProjectInvitationPreviewResponse {
+  email?: string;
+  expires_at?: number;
+  project_id?: string;
+  project_title?: string;
+  recipient_status?: RestProjectInvitationPreviewResponseRecipientStatus;
+  role_id?: RestProjectInvitationPreviewResponseRoleId;
+  role_name?: string;
+  status?: RestProjectInvitationPreviewResponseStatus;
+}
+
+export interface RestProjectInvitationPreviewRequest {
+  token: string;
 }
 
 export interface RestLoginRequest {
   email?: string;
   password?: string;
+}
+
+export interface RestAuthLinkResult {
+  message?: string;
 }
 
 export interface RestPasswordResetConfirmRequest {
@@ -188,7 +237,7 @@ export const getPostEmailVerificationConfirmUrl = () => {
 /**
  * @summary Confirm email address
  */
-export const postEmailVerificationConfirm = async (restEmailVerificationConfirmRequest: RestEmailVerificationConfirmRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestAuthLinkResult> => {
+export const postEmailVerificationConfirm = async (restEmailVerificationConfirmRequest: RestEmailVerificationConfirmRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestPersonalAccessTokenResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -204,7 +253,7 @@ export const postEmailVerificationConfirm = async (restEmailVerificationConfirmR
     }
     return headers;
   };
-return apiFetch<RestAuthLinkResult>(getPostEmailVerificationConfirmUrl(),
+return apiFetch<RestPersonalAccessTokenResponse>(getPostEmailVerificationConfirmUrl(),
   {
     ...options,
     method: 'POST',
@@ -351,6 +400,182 @@ export const usePostEmailVerificationResend = <TError = ErrorType<RestErrRespons
         TContext
       > => {
       return useMutation(getPostEmailVerificationResendMutationOptions(options), queryClient);
+    }
+
+export const getPostInvitationsAcceptUrl = () => {
+
+
+
+
+  return `/api/invitations/accept`
+}
+
+/**
+ * @summary Accept project invitation
+ */
+export const postInvitationsAccept = async (restProjectInvitationAcceptanceRequest: RestProjectInvitationAcceptanceRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestPersonalAccessTokenResponse | void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<RestPersonalAccessTokenResponse | void>(getPostInvitationsAcceptUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restProjectInvitationAcceptanceRequest)
+  }
+);}
+
+
+
+
+
+export const getPostInvitationsAcceptMutationKey = () => ['postInvitationsAccept'] as const;
+
+export const getPostInvitationsAcceptMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postInvitationsAccept>>, TError,PostInvitationsAcceptMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postInvitationsAccept>>, TError,PostInvitationsAcceptMutationVariables, TContext> => {
+
+const mutationKey = getPostInvitationsAcceptMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postInvitationsAccept>>, PostInvitationsAcceptMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  postInvitationsAccept(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostInvitationsAcceptMutationResult = NonNullable<Awaited<ReturnType<typeof postInvitationsAccept>>>
+    export type PostInvitationsAcceptMutationBody = RestProjectInvitationAcceptanceRequest
+    export type PostInvitationsAcceptMutationError = ErrorType<RestErrResponse>
+    export type PostInvitationsAcceptMutationVariables = {data: RestProjectInvitationAcceptanceRequest}
+
+    /**
+ * @summary Accept project invitation
+ */
+export const usePostInvitationsAccept = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postInvitationsAccept>>, TError,PostInvitationsAcceptMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postInvitationsAccept>>,
+        TError,
+        PostInvitationsAcceptMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostInvitationsAcceptMutationOptions(options), queryClient);
+    }
+
+export const getPostInvitationsPreviewUrl = () => {
+
+
+
+
+  return `/api/invitations/preview`
+}
+
+/**
+ * @summary Preview project invitation
+ */
+export const postInvitationsPreview = async (restProjectInvitationPreviewRequest: RestProjectInvitationPreviewRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestProjectInvitationPreviewResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<RestProjectInvitationPreviewResponse>(getPostInvitationsPreviewUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restProjectInvitationPreviewRequest)
+  }
+);}
+
+
+
+
+
+export const getPostInvitationsPreviewMutationKey = () => ['postInvitationsPreview'] as const;
+
+export const getPostInvitationsPreviewMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postInvitationsPreview>>, TError,PostInvitationsPreviewMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postInvitationsPreview>>, TError,PostInvitationsPreviewMutationVariables, TContext> => {
+
+const mutationKey = getPostInvitationsPreviewMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postInvitationsPreview>>, PostInvitationsPreviewMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  postInvitationsPreview(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostInvitationsPreviewMutationResult = NonNullable<Awaited<ReturnType<typeof postInvitationsPreview>>>
+    export type PostInvitationsPreviewMutationBody = RestProjectInvitationPreviewRequest
+    export type PostInvitationsPreviewMutationError = ErrorType<RestErrResponse>
+    export type PostInvitationsPreviewMutationVariables = {data: RestProjectInvitationPreviewRequest}
+
+    /**
+ * @summary Preview project invitation
+ */
+export const usePostInvitationsPreview = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postInvitationsPreview>>, TError,PostInvitationsPreviewMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postInvitationsPreview>>,
+        TError,
+        PostInvitationsPreviewMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostInvitationsPreviewMutationOptions(options), queryClient);
     }
 
 export const getPostLoginUrl = () => {

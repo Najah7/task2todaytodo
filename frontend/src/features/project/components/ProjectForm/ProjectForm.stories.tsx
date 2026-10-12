@@ -31,6 +31,8 @@ const project: RestProjectResponse = {
   end_date: "2026-10-31",
   goal: "Publish the report",
   id: "project-1",
+  member_count: 1,
+  pending_invitation_count: 0,
   priority: { label: "High", label_jp: "高", value: "high", weight: 3 },
   progress: 0,
   remaining_days: 21,

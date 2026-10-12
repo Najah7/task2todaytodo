@@ -22,6 +22,9 @@ import WeeklyPlanPage from "~/pages/WeeklyPlan"
 import WeeklyPlanEditPage from "~/pages/WeeklyPlanEdit"
 import ProfileSleepSettings from "~/pages/ProfileSleep"
 import TodayPage from "~/pages/Today"
+import MembersPage from "~/pages/Members"
+import MembersRoleHelpPage from "~/pages/MembersRoleHelp"
+import InvitationAcceptancePage from "~/pages/InvitationAcceptance"
 
 function requireAuthentication() {
   if (!getPersonalAccessToken()?.trim()) return replace("/login")
@@ -34,6 +37,7 @@ export const router = createBrowserRouter([
   { path: "/verify-email", element: <VerifyEmailPage /> },
   { path: "/request-password-reset", element: <RequestPasswordResetPage /> },
   { path: "/reset-password", element: <ResetPasswordPage /> },
+  { path: "/invitations", element: <InvitationAcceptancePage /> },
   {
     loader: requireAuthentication,
     shouldRevalidate: () => true,
@@ -53,7 +57,8 @@ export const router = createBrowserRouter([
       { path: "/schedules/:ruleId/:occurrenceDate/edit", element: <App><ScheduleEditPage /></App> },
       { path: "/weekly-plan", element: <App><WeeklyPlanPage /></App> },
       { path: "/weekly-plan/edit", element: <App><WeeklyPlanEditPage /></App> },
-      { path: "/members", element: <App><PageHeading messageKey="page.members.title" /></App> },
+      { path: "/members", element: <App><MembersPage /></App> },
+      { path: "/members/roles", element: <App><MembersRoleHelpPage /></App> },
       { path: "/kpi", element: <App><PageHeading messageKey="page.kpi.title" /></App> },
       { path: "/profile", element: <App><ProfileSleepSettings /></App> },
       { path: "*", element: <App><PageHeading messageKey="page.notFound.title" /></App> },
@@ -63,6 +68,10 @@ export const router = createBrowserRouter([
 
 if (typeof window !== "undefined") {
   window.addEventListener("auth:unauthorized", () => {
-    void router.navigate("/login", { replace: true })
+    const { search, hash } = window.location
+    const destination = new URLSearchParams(hash.slice(1)).has("token")
+      ? { pathname: "/login", search, hash }
+      : "/login"
+    void router.navigate(destination, { replace: true })
   })
 }

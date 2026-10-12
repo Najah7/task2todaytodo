@@ -18,6 +18,8 @@ export const projectListStoryProject: RestProjectResponse = {
   end_date: "2026-10-15",
   goal: "Ship the October release",
   id: "proj-october-release",
+  member_count: 1,
+  pending_invitation_count: 0,
   priority: { label: "High", label_jp: "高", value: "high", weight: 3 },
   progress: 62,
   remaining_days: 6,

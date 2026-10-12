@@ -27,6 +27,8 @@ const project: RestProjectResponse = {
   end_date: null,
   goal: "Initial goal",
   id: "project-1",
+  member_count: 1,
+  pending_invitation_count: 0,
   priority: { label: "Low", label_jp: "低", value: "low", weight: 1 },
   progress: 0,
   remaining_days: null,

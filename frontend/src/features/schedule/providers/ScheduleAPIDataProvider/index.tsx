@@ -89,7 +89,7 @@ export function ScheduleAPIDataProvider({ children, list = false, ruleId, occurr
   const membersQuery = useQuery({
     queryKey: getGetProjectsIdMembersQueryKey(selectedProjectId || ""),
     enabled: Boolean(selectedProjectId && !list),
-    queryFn: ({ signal }) => getProjectsIdMembers(selectedProjectId!, { signal }),
+    queryFn: ({ signal }) => getProjectsIdMembers(selectedProjectId!, undefined, { signal }),
   })
   const projectQuery = useQuery({
     queryKey: getGetProjectsIdQueryKey(selectedProjectId || ""),

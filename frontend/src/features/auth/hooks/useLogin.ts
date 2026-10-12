@@ -9,7 +9,7 @@ export function useLogin() {
   const queryClient = useQueryClient()
   const mutation = usePostLogin({ mutation: { retry: false, gcTime: 0 } })
 
-  async function logIn(data: RestLoginRequest) {
+  async function logIn(data: RestLoginRequest, destination = "/today") {
     const response = await mutation.mutateAsync({ data })
     if (typeof response?.personal_access_token !== "string" || !response.personal_access_token.trim()) {
       throw new SessionError("auth.error.tokenMissing")
@@ -21,7 +21,7 @@ export function useLogin() {
     }
     await queryClient.cancelQueries()
     queryClient.clear()
-    navigate("/today", { replace: true })
+    navigate(destination, { replace: true })
   }
 
   return { logIn, isPending: mutation.isPending }

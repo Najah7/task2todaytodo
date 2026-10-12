@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate } from "react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -7,6 +8,7 @@ import PasswordField from "~/features/auth/components/PasswordField"
 import { postEmailVerificationConfirm } from "~/api/generated/auth"
 import { getAuthLinkErrorMessage } from "~/features/auth/errors"
 import { useEmailActionToken } from "~/features/auth/hooks/useEmailActionToken"
+import { savePersonalAccessToken } from "~/features/auth/lib/localStorage"
 import { useI18n, type MessageKey } from "~/features/i18n/hooks"
 import { verifyEmailSchema, type VerifyEmailFormValues } from "./schema"
 import controls from "~/styles/controls.module.css"
@@ -15,6 +17,7 @@ import styles from "./index.module.css"
 export default function VerifyEmailForm() {
   const i18n = useI18n()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const token = useEmailActionToken()
   const [visible, setVisible] = useState(false)
   const [error, setError] = useState<MessageKey | null>(null)
@@ -27,8 +30,15 @@ export default function VerifyEmailForm() {
     if (!token || isSubmitting) return
     setError(null)
     try {
-      await postEmailVerificationConfirm({ token, password })
-      navigate("/login?verified=1", { replace: true })
+      const result = await postEmailVerificationConfirm({ token, password })
+      if ("personal_access_token" in result && typeof result.personal_access_token === "string" && result.personal_access_token.trim()) {
+        savePersonalAccessToken(result.personal_access_token)
+        await queryClient.cancelQueries()
+        queryClient.clear()
+        navigate("/today", { replace: true })
+      } else {
+        navigate("/login?verified=1", { replace: true })
+      }
     } catch (cause) {
       setError(getAuthLinkErrorMessage(cause, "auth.emailVerification.invalidLink"))
     }

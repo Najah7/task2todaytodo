@@ -240,7 +240,7 @@ function useProjectMembers(projectId: string) {
   return useQuery({
     queryKey: getGetProjectsIdMembersQueryKey(projectId || ""),
     enabled: Boolean(projectId),
-    queryFn: ({ signal }) => getProjectsIdMembers(projectId, { signal }),
+    queryFn: ({ signal }) => getProjectsIdMembers(projectId, undefined, { signal }),
   })
 }
 

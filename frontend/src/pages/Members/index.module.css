@@ -1,0 +1,25 @@
+.page { display: grid; gap: var(--space-lg); }
+.pageHeader { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: var(--space-md); }
+.headerActions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-sm); }
+.content { display: grid; grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr); align-items: start; gap: var(--space-lg); }
+.rosterArea { min-width: 0; }
+.rosterCard { overflow: hidden; }
+.rosterHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-md); padding: var(--space-md) var(--space-lg); border-bottom: var(--border-width) solid var(--color-border); }
+.rosterHeader > div { display: grid; gap: var(--space-xs); min-width: 0; }
+.rosterHeader h2, .rosterHeader p { margin: 0; }
+.rosterHeader h2 { overflow: hidden; text-overflow: ellipsis; }
+.rosterHeader p { color: var(--color-text-muted); }
+.state { display: grid; justify-items: start; gap: var(--space-sm); margin: 0; padding: var(--space-lg); }
+.empty { margin: 0; padding: var(--space-xl); color: var(--color-text-muted); }
+.pagination { display: flex; align-items: center; justify-content: center; gap: var(--space-md); padding: var(--space-md); border-top: var(--border-width) solid var(--color-border); }
+
+@media (max-width: 55em) {
+  .content { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 38em) {
+  .headerActions { width: 100%; }
+  .headerActions > button, .headerActions > a { flex: 1; }
+  .rosterHeader { align-items: stretch; }
+  .rosterHeader > button { width: 100%; }
+}

@@ -1,0 +1,5 @@
+.content { display: grid; gap: var(--space-sm); }
+.project, .role, .state { margin: 0; }
+.project { font-weight: 700; }
+.role { color: var(--color-text-body); }
+.state { display: grid; gap: var(--space-sm); padding: var(--space-lg); color: var(--color-text-body); }
