@@ -4,11 +4,14 @@ import { expect, test } from "@playwright/test"
 import { createAccount, fillCredentials } from "./helpers/auth.ts"
 
 test("quick-creates a Task and multi-day all-day Schedule, filters, edits, and completes both", async ({ page, request }, testInfo) => {
+  test.setTimeout(60_000)
   const credentials = await createAccount(request)
   await page.goto("/login")
   await fillCredentials(page, credentials)
+  const initialTodayResponse = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/today-todo" && response.request().method() === "GET")
   await page.getByRole("button", { name: "ログイン", exact: true }).click()
   await expect(page).toHaveURL("/today")
+  expect((await initialTodayResponse).status()).toBe(200)
 
   const token = await page.evaluate(() => localStorage.getItem("personal_access_token"))
   expect(token).toBeTruthy()
@@ -38,11 +41,12 @@ test("quick-creates a Task and multi-day all-day Schedule, filters, edits, and c
   const quickCreate = page.getByRole("form", { name: "すぐに追加" })
   const taskTitle = "Inbox quick Task"
   await quickCreate.getByLabel("タスク名", { exact: true }).fill(taskTitle)
+  await quickCreate.getByLabel("見積り", { exact: true }).fill("0:30")
   await quickCreate.getByRole("combobox", { name: "プロジェクト", exact: true }).selectOption(project.id)
   await quickCreate.getByRole("button", { name: "追加", exact: true }).click()
   const taskRow = page.getByRole("listitem").filter({ hasText: taskTitle })
   await expect(taskRow).toBeVisible()
-  await expect(taskRow.getByRole("button", { name: "今日に追加", exact: true })).toBeDisabled()
+  await expect(taskRow.getByRole("button", { name: "今日に登録", exact: true })).toBeEnabled()
 
   const scheduleTitle = "Inbox multi-day all-day Schedule"
   await quickCreate.getByRole("tab", { name: "予定", exact: true }).click()
@@ -53,6 +57,9 @@ test("quick-creates a Task and multi-day all-day Schedule, filters, edits, and c
   await quickCreate.getByLabel("終日", { exact: true }).check()
   await saveScreenshot(page, testInfo.outputPath("inbox-quick-create-schedule.png"))
   await quickCreate.getByRole("button", { name: "追加", exact: true }).click()
+  const scheduleImpact = page.getByRole("alertdialog")
+  await expect(scheduleImpact).toBeVisible()
+  await scheduleImpact.getByRole("button", { name: "再生成する", exact: true }).click()
   const scheduleRow = page.getByRole("listitem").filter({ hasText: scheduleTitle })
   await expect(scheduleRow).toBeVisible()
   await expect(scheduleRow).toContainText("終日")
@@ -117,6 +124,10 @@ test("quick-creates a Task and multi-day all-day Schedule, filters, edits, and c
   const revisedTaskRow = page.getByRole("listitem").filter({ hasText: revisedTaskTitle })
   await expect(revisedTaskRow).toBeVisible()
   await revisedTaskRow.getByRole("button", { name: /完了/ }).click()
+  const taskCompletion = page.getByRole("dialog", { name: "実績時間を入力" })
+  await expect(taskCompletion).toBeVisible()
+  await taskCompletion.getByLabel("実績時間（分）", { exact: true }).fill("0")
+  await taskCompletion.getByRole("button", { name: "実績を保存して完了", exact: true }).click()
   await expect(revisedTaskRow).toHaveCount(0)
 
   await filterTabs.getByRole("tab", { name: /^予定/ }).click()
@@ -163,6 +174,7 @@ test("shows a virtual recurring Schedule, edits that occurrence, and completes i
       frequency: "daily",
       interval: 1,
       weekdays: [],
+      confirm_todo_regeneration: true,
     },
   })
   expect(create.status()).toBe(201)

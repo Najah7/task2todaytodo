@@ -10,7 +10,7 @@ export function applyTaskFormSaveResult(
   setActionItemErrors: Dispatch<SetStateAction<Record<string, MessageKey>>>,
 ): void {
   for (const [name, value] of Object.entries(result.taskResetValues ?? {})) {
-    form.resetField(name as "title" | "description" | "dueDate" | "priority" | "projectId" | "manualEstimate", { defaultValue: value as never })
+    form.resetField(name as "title" | "description" | "dueDate" | "priority" | "projectId" | "manualEstimate" | "actualMinutes", { defaultValue: value as never })
   }
   for (const item of result.actionItems ?? []) {
     setActionItemErrors((current) => {
@@ -27,7 +27,7 @@ export function applyTaskFormSaveResult(
     }
     if (item.savedFields) {
       for (const [field, value] of Object.entries(item.savedFields)) {
-        form.resetField(`actionItems.${item.index}.${field}` as `actionItems.${number}.${"title" | "estimatedMinutes" | "priority"}`, { defaultValue: value as never })
+        form.resetField(`actionItems.${item.index}.${field}` as `actionItems.${number}.${"title" | "estimatedMinutes" | "actualMinutes" | "priority"}`, { defaultValue: value as never })
       }
     }
     if (item.deletionSucceeded) {
@@ -50,11 +50,11 @@ export function setTaskServerFieldErrors(form: UseFormReturn<TaskFormValues>, er
   return unknownField
 }
 
-function serverFieldPath(path: string): "title" | "projectId" | "dueDate" | "description" | "priority" | "manualEstimate" | `actionItems.${number}.${"title" | "estimatedMinutes" | "priority"}` | undefined {
-  const fields = { title: "title", project_id: "projectId", due_date: "dueDate", description: "description", priority: "priority", manual_estimated_minutes: "manualEstimate" } as const
+function serverFieldPath(path: string): "title" | "projectId" | "dueDate" | "description" | "priority" | "manualEstimate" | "actualMinutes" | `actionItems.${number}.${"title" | "estimatedMinutes" | "actualMinutes" | "priority"}` | undefined {
+  const fields = { title: "title", project_id: "projectId", due_date: "dueDate", description: "description", priority: "priority", manual_estimated_minutes: "manualEstimate", actual_minutes: "actualMinutes" } as const
   if (path in fields) return fields[path as keyof typeof fields]
-  const actionItemMatch = path.match(/^action_items\.(\d+)\.(title|estimated_minutes|priority)$/)
+  const actionItemMatch = path.match(/^action_items\.(\d+)\.(title|estimated_minutes|actual_minutes|priority)$/)
   if (!actionItemMatch) return undefined
-  const field = actionItemMatch[2] === "estimated_minutes" ? "estimatedMinutes" : actionItemMatch[2]
-  return `actionItems.${actionItemMatch[1]}.${field}` as `actionItems.${number}.${"title" | "estimatedMinutes" | "priority"}`
+  const field = actionItemMatch[2] === "estimated_minutes" ? "estimatedMinutes" : actionItemMatch[2] === "actual_minutes" ? "actualMinutes" : actionItemMatch[2]
+  return `actionItems.${actionItemMatch[1]}.${field}` as `actionItems.${number}.${"title" | "estimatedMinutes" | "actualMinutes" | "priority"}`
 }

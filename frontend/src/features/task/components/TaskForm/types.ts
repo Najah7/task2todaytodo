@@ -34,6 +34,7 @@ export type TaskFormProps = {
   onSubmit: FormEventHandler<HTMLFormElement>
   onCancel: () => void
   discardConfirmation: TaskFormConfirmation
+  regenerationConfirmation: TaskFormConfirmation
   conflict?: TaskFormConflict
 }
 

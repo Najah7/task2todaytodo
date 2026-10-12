@@ -44,9 +44,12 @@ export interface RestProjectTaskResponse {
   action_item_count?: number;
   actual_minutes?: number;
   assignee_id?: string;
+  can_add_action_item?: boolean;
+  can_add_to_today?: boolean;
   created_at?: number;
   description?: string;
   due_date?: string;
+  estimate_editable?: boolean;
   estimate_source?: string;
   estimated_minutes?: number;
   id?: string;
@@ -55,6 +58,7 @@ export interface RestProjectTaskResponse {
   progress?: number;
   project_id?: string;
   revision?: number;
+  started?: boolean;
   status?: RestProjectTaskStatusResponse;
   title?: string;
   updated_at?: number;
@@ -113,11 +117,14 @@ export interface RestTaskResponse {
   /** @nullable */
   actual_minutes: number | null;
   assignee_id: string;
+  can_add_action_item: boolean;
+  can_add_to_today: boolean;
   can_update: boolean;
   created_at: string;
   description: string;
   /** @nullable */
   due_date: string | null;
+  estimate_editable: boolean;
   estimate_source: string;
   /** @nullable */
   estimated_minutes: number | null;
@@ -133,6 +140,7 @@ export interface RestTaskResponse {
   /** @nullable */
   remaining_days: number | null;
   revision: number;
+  started: boolean;
   status: string;
   title: string;
   updated_at: string;
@@ -154,8 +162,11 @@ export interface RestTaskListResponse {
 export interface RestTaskCreateRequest {
   description?: string;
   due_date?: string;
-  /** @nullable */
-  manual_estimated_minutes?: number | null;
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  manual_estimated_minutes: number;
   priority?: string;
   title?: string;
 }
@@ -167,6 +178,7 @@ export interface RestTaskDetailsResponse {
 export interface RestTaskUpdateRequest {
   /** @nullable */
   actual_minutes?: number | null;
+  confirm_todo_regeneration?: boolean;
   /** @nullable */
   description?: string | null;
   /** @nullable */
@@ -224,16 +236,36 @@ export interface RestMessageResponse {
   message?: string;
 }
 
+export interface RestTaskCompleteRequest {
+  /**
+     * @minimum 0
+     * @maximum 2147483647
+     * @nullable
+     */
+  actual_minutes?: number | null;
+}
+
 export interface RestActionItemResponse {
+  /**
+     * @minimum 0
+     * @maximum 2147483647
+     * @nullable
+     */
+  actual_minutes?: number | null;
   completed?: boolean;
   created_at?: number;
   description?: string;
   due_date?: string;
-  /** @nullable */
-  estimated_minutes: number | null;
+  estimate_editable?: boolean;
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  estimated_minutes: number;
   id?: string;
   position?: number;
   priority?: string;
+  started?: boolean;
   task_id?: string;
   title?: string;
   updated_at?: number;
@@ -245,21 +277,53 @@ export interface RestActionItemListResponse {
 }
 
 export interface RestActionItemCreateRequest {
+  confirm_todo_regeneration?: boolean;
   description?: string;
   due_date?: string;
-  /** @nullable */
-  estimated_minutes?: number | null;
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  estimated_minutes: number;
   priority?: string;
   title?: string;
 }
 
+export interface RestActionItemDeleteRequest {
+  confirm_todo_regeneration?: boolean;
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  manual_estimated_minutes?: number;
+}
+
 export interface RestActionItemUpdateRequest {
+  /**
+     * @minimum 0
+     * @maximum 2147483647
+     * @nullable
+     */
+  actual_minutes?: number | null;
+  confirm_todo_regeneration?: boolean;
   description?: string;
   due_date?: string;
-  /** @nullable */
-  estimated_minutes?: number | null;
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  estimated_minutes?: number;
   priority?: string;
   title?: string;
+}
+
+export interface RestActionItemCompleteRequest {
+  /**
+     * @minimum 0
+     * @maximum 2147483647
+     * @nullable
+     */
+  actual_minutes?: number | null;
 }
 
 export interface RestActionItemReorderRequest {
@@ -1571,14 +1635,29 @@ export const getPostTasksIdcompleteUrl = (id: string,) => {
  * Marks task done while preserving its ActionItems.
  * @summary Complete task
  */
-export const postTasksIdcomplete = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
+export const postTasksIdcomplete = async (id: string,
+    restTaskCompleteRequest?: RestTaskCompleteRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
 
-  return apiFetch<RestMessageResponse>(getPostTasksIdcompleteUrl(id),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<RestMessageResponse>(getPostTasksIdcompleteUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restTaskCompleteRequest)
   }
 );}
 
@@ -1603,9 +1682,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof postTasksIdcomplete>>, PostTasksIdcompleteMutationVariables> = (props) => {
-          const {id} = props ?? {};
+          const {id,data} = props ?? {};
 
-          return  postTasksIdcomplete(id,requestOptions)
+          return  postTasksIdcomplete(id,data,requestOptions)
         }
 
 
@@ -1616,9 +1695,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PostTasksIdcompleteMutationResult = NonNullable<Awaited<ReturnType<typeof postTasksIdcomplete>>>
-
+    export type PostTasksIdcompleteMutationBody = RestTaskCompleteRequest | undefined
     export type PostTasksIdcompleteMutationError = ErrorType<RestErrResponse>
-    export type PostTasksIdcompleteMutationVariables = {id: string}
+    export type PostTasksIdcompleteMutationVariables = {id: string;data?: RestTaskCompleteRequest}
 
     /**
  * @summary Complete task
@@ -2151,18 +2230,33 @@ export const getDeleteTasksTaskIdActionItemsIdUrl = (taskId: string,
 }
 
 /**
- * Deletes a saved ActionItem.
+ * Deletes a saved ActionItem. When removing the final child of a Task, an optional body atomically supplies the childless Task's manual estimate and regeneration confirmation.
  * @summary Delete action item
  */
 export const deleteTasksTaskIdActionItemsId = async (taskId: string,
-    id: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+    id: string,
+    restActionItemDeleteRequest?: RestActionItemDeleteRequest, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
 
-  return apiFetch<void>(getDeleteTasksTaskIdActionItemsIdUrl(taskId,id),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<void>(getDeleteTasksTaskIdActionItemsIdUrl(taskId,id),
   {
     ...options,
-    method: 'DELETE'
-
-
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restActionItemDeleteRequest)
   }
 );}
 
@@ -2187,9 +2281,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTasksTaskIdActionItemsId>>, DeleteTasksTaskIdActionItemsIdMutationVariables> = (props) => {
-          const {taskId,id} = props ?? {};
+          const {taskId,id,data} = props ?? {};
 
-          return  deleteTasksTaskIdActionItemsId(taskId,id,requestOptions)
+          return  deleteTasksTaskIdActionItemsId(taskId,id,data,requestOptions)
         }
 
 
@@ -2200,9 +2294,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type DeleteTasksTaskIdActionItemsIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTasksTaskIdActionItemsId>>>
-
+    export type DeleteTasksTaskIdActionItemsIdMutationBody = RestActionItemDeleteRequest | undefined
     export type DeleteTasksTaskIdActionItemsIdMutationError = ErrorType<RestErrResponse>
-    export type DeleteTasksTaskIdActionItemsIdMutationVariables = {taskId: string;id: string}
+    export type DeleteTasksTaskIdActionItemsIdMutationVariables = {taskId: string;id: string;data?: RestActionItemDeleteRequest}
 
     /**
  * @summary Delete action item
@@ -2324,14 +2418,29 @@ export const getPostTasksTaskIdActionItemsIdcompleteUrl = (taskId: string,
  * @summary Complete action item
  */
 export const postTasksTaskIdActionItemsIdcomplete = async (taskId: string,
-    id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
+    id: string,
+    restActionItemCompleteRequest?: RestActionItemCompleteRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestMessageResponse> => {
 
-  return apiFetch<RestMessageResponse>(getPostTasksTaskIdActionItemsIdcompleteUrl(taskId,id),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<RestMessageResponse>(getPostTasksTaskIdActionItemsIdcompleteUrl(taskId,id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restActionItemCompleteRequest)
   }
 );}
 
@@ -2356,9 +2465,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdcomplete>>, PostTasksTaskIdActionItemsIdcompleteMutationVariables> = (props) => {
-          const {taskId,id} = props ?? {};
+          const {taskId,id,data} = props ?? {};
 
-          return  postTasksTaskIdActionItemsIdcomplete(taskId,id,requestOptions)
+          return  postTasksTaskIdActionItemsIdcomplete(taskId,id,data,requestOptions)
         }
 
 
@@ -2369,9 +2478,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PostTasksTaskIdActionItemsIdcompleteMutationResult = NonNullable<Awaited<ReturnType<typeof postTasksTaskIdActionItemsIdcomplete>>>
-
+    export type PostTasksTaskIdActionItemsIdcompleteMutationBody = RestActionItemCompleteRequest | undefined
     export type PostTasksTaskIdActionItemsIdcompleteMutationError = ErrorType<RestErrResponse>
-    export type PostTasksTaskIdActionItemsIdcompleteMutationVariables = {taskId: string;id: string}
+    export type PostTasksTaskIdActionItemsIdcompleteMutationVariables = {taskId: string;id: string;data?: RestActionItemCompleteRequest}
 
     /**
  * @summary Complete action item

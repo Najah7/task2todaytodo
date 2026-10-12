@@ -1,5 +1,6 @@
 import { useContext, useState } from "react"
 import { useQueries, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import {
   GetTasksStatus,
   getGetTasksTaskIdActionItemsQueryKey,
@@ -12,17 +13,22 @@ import { getAllTaskActionItems } from "~/features/task/queries"
 import { TaskAPIDataContext } from "~/features/task/providers/TaskAPIDataProvider/context"
 import { TaskActionContext } from "~/features/task/providers/TaskActionProvider/context"
 import { TaskNavigationContext } from "~/features/task/providers/TaskNavigationProvider/context"
-import type { TaskActionItemRowView, TaskActionItemsQueryState } from "./types"
+import { getGetTodayTodoQueryOptions } from "~/api/generated/todo"
+import { todoItems2registrationTimeLabels } from "~/features/todo/converters/todoItems2registrationTimeLabels"
+import type { TaskActionItemRowView, TaskActionItemsQueryState, TaskListRowView } from "./types"
 
 export function useTaskListTable() {
   const i18n = useI18n()
   const { language } = useLanguage()
   const { tasksQuery } = useContext(TaskAPIDataContext)!
-  const { busy, retry, updateActionItemCompletion } = useContext(TaskActionContext)!
+  const { busy, retry, updateActionItemCompletion, addActionItemToToday, addTaskToToday, updateTaskCompletion } = useContext(TaskActionContext)!
   const { edit } = useContext(TaskNavigationContext)!
   const [expandedIds, setExpandedIds] = useState<string[]>([])
   const [busyActionItemKey, setBusyActionItemKey] = useState<string>()
+  const [pendingCompletion, setPendingCompletion] = useState<TaskActionItemRowView>()
+  const [pendingTaskCompletion, setPendingTaskCompletion] = useState<TaskListRowView>()
   const queryClient = useQueryClient()
+  const todayQuery = useQuery({ ...getGetTodayTodoQueryOptions(), retry: false })
   const visibleExpandedIds = expandedIds.filter((taskId) => tasksQuery.data?.items?.some((task) => task.id === taskId))
   const actionItemQueries = useQueries({
     queries: visibleExpandedIds.map((taskId) => ({
@@ -38,6 +44,7 @@ export function useTaskListTable() {
     return [taskId, status]
   })) as Record<string, TaskActionItemsQueryState | undefined>
   const getStatusLabel = (status: string) => i18n(taskStatusLabel(status))
+  const registrations = todoItems2registrationTimeLabels(todayQuery.data?.items, todayQuery.data?.timezone || "UTC", language === "ja" ? "ja-JP" : "en-US")
   const rows = tasks2taskListRowViews((tasksQuery.data?.items ?? []).map((task) => ({
     task,
     actionItems: taskItemsById[task.id ?? ""] ?? [],
@@ -45,7 +52,13 @@ export function useTaskListTable() {
     unassignedProject: i18n("tasks.project.unassigned"),
     noDeadline: i18n("tasks.deadline.none"),
     getStatusLabel,
-  })))
+  }))).map((row) => ({
+    ...row,
+    todayRegistration: registrations.has(row.id) ? { timeLabel: registrations.get(row.id)! } : null,
+    actionItems: row.actionItems.map((item) => registrations.has(item.id)
+      ? { ...item, todayRegistration: { timeLabel: registrations.get(item.id)! } }
+      : item),
+  }))
   const summary = taskListResponses2summaryViews([tasksQuery.data], language, i18n)[0]!
   function toggleExpanded(taskId: string) {
     setExpandedIds((current) => current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId])
@@ -53,12 +66,46 @@ export function useTaskListTable() {
 
   function toggleActionItem(item: TaskActionItemRowView) {
     if (busy || busyActionItemKey) return
+    if (!item.completed) {
+      setPendingCompletion(item)
+      return
+    }
     setBusyActionItemKey(item.id)
     void updateActionItemCompletion({
       taskId: item.taskId,
       actionItemId: item.id,
-      completed: !item.completed,
+      completed: false,
     }).catch(() => undefined).finally(() => setBusyActionItemKey(undefined))
+  }
+
+  function completePendingActionItem(actualMinutes?: number) {
+    const item = pendingCompletion
+    if (!item || busy || busyActionItemKey) return
+    setBusyActionItemKey(item.id)
+    void updateActionItemCompletion({ taskId: item.taskId, actionItemId: item.id, completed: true, ...(actualMinutes === undefined ? {} : { actualMinutes }) })
+      .then(() => setPendingCompletion(undefined))
+      .catch(() => undefined)
+      .finally(() => {
+        setBusyActionItemKey(undefined)
+      })
+  }
+
+  function completePendingTask(actualMinutes?: number) {
+    const task = pendingTaskCompletion
+    if (!task || busy || busyActionItemKey) return
+    setBusyActionItemKey(task.id)
+    void updateTaskCompletion({ taskId: task.id, revision: task.revision, completed: true, ...(actualMinutes === undefined ? {} : { actualMinutes }) })
+      .then(() => setPendingTaskCompletion(undefined))
+      .catch(() => undefined)
+      .finally(() => setBusyActionItemKey(undefined))
+  }
+
+  function reopenTask(task: TaskListRowView) {
+    if (busy || busyActionItemKey) return
+    setBusyActionItemKey(task.id)
+    void updateTaskCompletion({ taskId: task.id, revision: task.revision, completed: false })
+      .catch(() => undefined)
+      .finally(() => setBusyActionItemKey(undefined))
   }
 
   return {
@@ -66,11 +113,21 @@ export function useTaskListTable() {
     summary,
     expandedIds,
     busyActionItemKey,
+    pendingCompletion,
+    pendingTaskCompletion,
     actionItemsQueryStates,
     loading: tasksQuery.isLoading,
     error: Boolean(tasksQuery.error && !tasksQuery.data),
     toggleExpanded,
     toggleActionItem,
+    addActionItemToToday,
+    completePendingActionItem,
+    completePendingTask,
+    requestTaskCompletion: (task: TaskListRowView) => setPendingTaskCompletion(task),
+    reopenTask,
+    cancelPendingCompletion: () => setPendingCompletion(undefined),
+    cancelPendingTaskCompletion: () => setPendingTaskCompletion(undefined),
+    addTaskToToday,
     retryActionItems: (taskId: string) => void queryClient.invalidateQueries({ queryKey: getGetTasksTaskIdActionItemsQueryKey(taskId) }),
     retry,
     edit,

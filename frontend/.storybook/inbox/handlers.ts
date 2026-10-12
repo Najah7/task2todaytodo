@@ -12,7 +12,7 @@ export const inboxStoryResponse: RestInboxListResponse = {
       project_name: "Webサイト改善",
       created_at: "2026-10-11T08:00:00Z",
       task: {
-        id: "task-1", assignee_id: "user-story", can_assign: true, can_update: true,
+        id: "task-1", assignee_id: "user-story", can_assign: true, can_update: true, can_add_action_item: true, can_add_to_today: false, estimate_editable: false, started: false,
         description: "", due_date: "2026-10-15", estimated_minutes: 90, actual_minutes: null,
         estimate_source: "manual", priority: "medium", progress: 0, remaining_days: 3,
         action_item_completed_count: 0, action_item_count: 2, revision: 1, status: "open",
@@ -42,7 +42,7 @@ export const inboxStoryResponse: RestInboxListResponse = {
       project_name: null,
       created_at: "2026-10-09T08:00:00Z",
       task: {
-        id: "task-2", assignee_id: "user-story", can_assign: true, can_update: false,
+        id: "task-2", assignee_id: "user-story", can_assign: true, can_update: false, can_add_action_item: false, can_add_to_today: false, estimate_editable: false, started: false,
         description: "", due_date: null, estimated_minutes: null, actual_minutes: null,
         estimate_source: "action_items", priority: "low", progress: 0, remaining_days: null,
         action_item_completed_count: 0, action_item_count: 1, revision: 1, status: "open",

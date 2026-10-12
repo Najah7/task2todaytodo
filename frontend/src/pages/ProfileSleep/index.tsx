@@ -13,6 +13,7 @@ import { notify } from "~/features/shared/notification"
 import PageHeading from "~/features/shared/components/PageHeading"
 import controls from "~/styles/controls.module.css"
 import styles from "./index.module.css"
+import MinimumGapSettings from "./MinimumGapSettings"
 
 const schema = z.object({ wake: z.string().regex(/^\d{2}:\d{2}$/), bedtime: z.string().regex(/^\d{2}:\d{2}$/) })
 type Values = z.infer<typeof schema>
@@ -63,5 +64,6 @@ export default function ProfileSleepSettings() {
         <button type="submit" className={controls.button + " " + controls.primaryButton} disabled={isSubmitting || !isDirty}>{i18n("weeklyPlan.sleep.profileSave")}</button>
       </form>}
     </section>
+    {!userQuery.isLoading && !userQuery.isError && userQuery.data && <MinimumGapSettings minimumGapMinutes={userQuery.data.minimum_gap_minutes ?? 0} />}
   </>
 }

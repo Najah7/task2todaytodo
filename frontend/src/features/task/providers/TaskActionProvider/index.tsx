@@ -9,6 +9,8 @@ import {
   patchTasksId,
   postTasksTaskIdActionItemsIdcomplete,
   postTasksTaskIdActionItemsIdreopen,
+  postTasksIdcomplete,
+  postTasksIdreopen,
   postProjectsIdTasks,
   postTasks,
 } from "~/api/generated/tasks"
@@ -23,6 +25,7 @@ import {
   type TaskFormSaveResult,
   type TaskFormSubmissionError,
   type UpdateActionItemCompletionInput,
+  type UpdateTaskCompletionInput,
 } from "./context"
 import { taskCreateFormValues2requests } from "~/features/task/converters/taskCreateFormValues2request"
 import { taskAndActionItems2formValues } from "~/features/task/converters/taskAndActionItems2formValues"
@@ -32,8 +35,11 @@ import { minutesToDurationText, type TaskFormValues } from "~/features/task/comp
 import type { TaskFormDirtyFields } from "~/features/task/converters/taskFormValues2updateRequest"
 import { taskErrorMessageKey, taskFieldErrors } from "~/features/task/errors"
 import { getAllTaskActionItems } from "~/features/task/queries"
-import { ApiError } from "~/api/http"
+import { ApiError, isTodoRegenerationRequired } from "~/api/http"
 import { getListInboxQueryKey } from "~/api/generated/inbox"
+import { getGetTodayTodoQueryKey } from "~/api/generated/todo"
+import { addActionItemToToday, addTaskToToday as addTaskToday, isAllDayScheduleBlocksActionItems, makeActionItemUrgent, makeTaskUrgent, showAddedToTodayToast } from "~/features/todo/actions/addActionItemToToday"
+import type { TaskActionItemSaveOperation } from "~/features/task/converters/taskFormValues2updateRequest"
 
 const actionItemCompletionMutationKey = ["tasks", "action-item-completion"] as const
 
@@ -43,21 +49,25 @@ export function TaskActionProvider({ children }: Props) {
   const data = useContext(TaskAPIDataContext)!
   const queryClient = useQueryClient()
   const i18n = useI18n()
-  const [createdTask, setCreatedTask] = useState<{ id: string; revision?: number }>()
+  const [createdTask, setCreatedTask] = useState<{ id: string; revision?: number; manualEstimatedMinutes?: number | null }>()
   const [needsRevisionRefresh, setNeedsRevisionRefresh] = useState(false)
   const baselineRevision = useRef<number | undefined>(undefined)
+  const baselineManualEstimate = useRef<number | null | undefined>(undefined)
+  const pendingActionItemConfirmation = useRef<{ taskId: string; operations: TaskActionItemSaveOperation[] } | null>(null)
+  const pendingTaskUpdateConfirmation = useRef<{ taskId: string; request: ReturnType<typeof taskFormValues2taskUpdateRequest> } | null>(null)
 
   useEffect(() => {
     if (data.taskId && data.state === "ready" && baselineRevision.current === undefined && data.task) {
       baselineRevision.current = data.task.revision
+      baselineManualEstimate.current = data.task.manual_estimated_minutes
     }
   }, [data.state, data.task, data.taskId])
 
   const completionMutation = useMutation({
     mutationKey: actionItemCompletionMutationKey,
-    mutationFn: ({ taskId, actionItemId, completed }: UpdateActionItemCompletionInput) => {
+    mutationFn: ({ taskId, actionItemId, completed, actualMinutes }: UpdateActionItemCompletionInput) => {
       return completed
-        ? postTasksTaskIdActionItemsIdcomplete(taskId, actionItemId)
+        ? postTasksTaskIdActionItemsIdcomplete(taskId, actionItemId, actualMinutes === undefined ? undefined : { actual_minutes: actualMinutes })
         : postTasksTaskIdActionItemsIdreopen(taskId, actionItemId)
     },
     onSuccess: async (_response, input) => {
@@ -70,22 +80,40 @@ export function TaskActionProvider({ children }: Props) {
     },
   })
 
+  const taskCompletionMutation = useMutation({
+    mutationKey: actionItemCompletionMutationKey,
+    mutationFn: ({ taskId, revision, completed, actualMinutes }: UpdateTaskCompletionInput) => {
+      return completed
+        ? postTasksIdcomplete(taskId, actualMinutes === undefined ? undefined : { actual_minutes: actualMinutes }, { headers: { "If-Match": `"${revision}"` } })
+        : postTasksIdreopen(taskId, { headers: { "If-Match": `"${revision}"` } })
+    },
+    onSuccess: async (_response, input) => {
+      notify.success(i18n("tasks.toast.updated"))
+      await invalidateCompletionQueries(input.taskId)
+    },
+    onError: async (_error, input) => {
+      notify.error(i18n("tasks.form.genericError"))
+      await invalidateCompletionQueries(input.taskId)
+    },
+  })
+
   async function invalidateCompletionQueries(taskId: string) {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetTodayTodoQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getListInboxQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetProjectsQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetTasksTaskIdActionItemsQueryKey(taskId) }),
     ])
   }
 
-  async function submit(values: TaskFormValues, dirtyFields: TaskFormDirtyFields): Promise<TaskFormSaveResult> {
+  async function submit(values: TaskFormValues, dirtyFields: TaskFormDirtyFields, confirmTodoRegeneration = false): Promise<TaskFormSaveResult> {
     return data.taskId
-      ? submitEdit(values, dirtyFields)
-      : submitCreate(values, dirtyFields)
+      ? submitEdit(values, dirtyFields, confirmTodoRegeneration)
+      : submitCreate(values, dirtyFields, confirmTodoRegeneration)
   }
 
-  async function submitCreate(values: TaskFormValues, dirtyFields: TaskFormDirtyFields): Promise<TaskFormSaveResult> {
+  async function submitCreate(values: TaskFormValues, dirtyFields: TaskFormDirtyFields, confirmTodoRegeneration: boolean): Promise<TaskFormSaveResult> {
     let task = createdTask
     const result: TaskFormSaveResult = { complete: true, actionItems: [] }
     let savedAnything = false
@@ -95,7 +123,12 @@ export function TaskActionProvider({ children }: Props) {
       try {
         const latest = await getTasksId(task.id)
         if (!latest.task) throw new Error("Task response missing")
-        task = { ...task, revision: latest.task.revision }
+        if (task.manualEstimatedMinutes !== latest.task.manual_estimated_minutes) {
+          result.complete = false
+          result.conflict = true
+          return result
+        }
+        task = { ...task, revision: latest.task.revision, manualEstimatedMinutes: latest.task.manual_estimated_minutes }
         setCreatedTask(task)
         setNeedsRevisionRefresh(false)
       } catch {
@@ -111,24 +144,40 @@ export function TaskActionProvider({ children }: Props) {
         const created = values.projectId
           ? await postProjectsIdTasks(values.projectId, request)
           : await postTasks(request)
-        task = { id: created.id ?? "", revision: created.revision }
+        task = { id: created.id ?? "", revision: created.revision, manualEstimatedMinutes: created.manual_estimated_minutes }
         if (!task.id) throw new Error("Task create response missing id")
         setCreatedTask(task)
         result.taskSaved = true
         result.taskResetValues = taskFormTaskValues(values, created)
         savedAnything = true
       } else {
-        const request = taskFormValues2taskUpdateRequest(values, dirtyFields)
+        const draftRequest = taskFormValues2taskUpdateRequest(values, dirtyFields)
+        const pendingRequest = pendingTaskUpdateConfirmation.current
+        const usePendingRequest = confirmTodoRegeneration && pendingRequest?.taskId === task.id && sameTaskUpdateRequest(pendingRequest.request, draftRequest)
+        if (pendingRequest?.taskId === task.id && !sameTaskUpdateRequest(pendingRequest.request, draftRequest)) pendingTaskUpdateConfirmation.current = null
+        const request = usePendingRequest
+          ? { ...pendingRequest!.request, confirm_todo_regeneration: true }
+          : draftRequest
         if (Object.keys(request).length) {
           if (task.revision === undefined) {
             const latest = await getTasksId(task.id)
             if (!latest.task) throw new Error("Task response missing")
-            task = { ...task, revision: latest.task.revision }
+            task = { ...task, revision: latest.task.revision, manualEstimatedMinutes: latest.task.manual_estimated_minutes }
             setCreatedTask(task)
             setNeedsRevisionRefresh(false)
           }
-          const updated = await patchTasksId(task.id, request, { headers: { "If-Match": `"${task.revision}"` } })
-          task = { ...task, revision: updated.revision }
+          let updated
+          try {
+            updated = await patchTasksId(task.id, request, { headers: { "If-Match": `"${task.revision}"` } })
+          } catch (cause) {
+            if (isTodoRegenerationRequired(cause)) {
+              pendingTaskUpdateConfirmation.current = { taskId: task.id, request: draftRequest }
+              return { complete: false, regenerationConfirmationRequired: true, actionItems: [] }
+            }
+            throwSubmissionFailure(cause, i18n, true)
+          }
+          pendingTaskUpdateConfirmation.current = null
+          task = { ...task, revision: updated.revision, manualEstimatedMinutes: updated.manual_estimated_minutes }
           setCreatedTask(task)
           result.taskSaved = true
           result.taskResetValues = taskFormTaskValues(values, updated)
@@ -139,20 +188,32 @@ export function TaskActionProvider({ children }: Props) {
       throwSubmissionFailure(cause, i18n)
     }
 
-    const operations = taskFormValues2actionItemSaveOperations(values, dirtyFields)
-    const itemResult = await saveTaskActionItems(task.id, operations)
+    const operations = confirmTodoRegeneration && pendingActionItemConfirmation.current?.taskId === task.id
+      ? pendingActionItemConfirmation.current.operations
+      : taskFormValues2actionItemSaveOperations(values, dirtyFields)
+    const itemResult = await saveTaskActionItems(task.id, operations, confirmTodoRegeneration, task.revision, task.manualEstimatedMinutes)
     result.actionItems = itemResult.outcomes
+    result.regenerationConfirmationRequired = itemResult.regenerationConfirmationRequired
+    result.conflict = itemResult.revisionConflict
+    pendingActionItemConfirmation.current = itemResult.pendingOperations?.length
+      ? { taskId: task.id, operations: itemResult.pendingOperations }
+      : null
     savedAnything ||= itemResult.hasSavedItems
     actionItemsSaved = itemResult.hasSavedItems
-    if (itemResult.outcomes.some((outcome) => outcome.error)) result.complete = false
+    if (itemResult.outcomes.some((outcome) => outcome.error) || itemResult.regenerationConfirmationRequired || itemResult.revisionConflict) result.complete = false
 
-    if (actionItemsSaved) {
+    if (actionItemsSaved && !itemResult.revisionConflict) {
       try {
         const latest = await getTasksId(task.id)
         if (!latest.task) throw new Error("Task response missing")
-        task = { ...task, revision: latest.task.revision }
-        setCreatedTask(task)
-        setNeedsRevisionRefresh(false)
+        if (hasPendingManualEstimateDelete(itemResult.pendingOperations) && task.manualEstimatedMinutes !== latest.task.manual_estimated_minutes) {
+          result.complete = false
+          result.conflict = true
+        } else {
+          task = { ...task, revision: latest.task.revision, manualEstimatedMinutes: latest.task.manual_estimated_minutes }
+          setCreatedTask(task)
+          setNeedsRevisionRefresh(false)
+        }
       } catch {
         setNeedsRevisionRefresh(true)
         result.complete = false
@@ -166,21 +227,32 @@ export function TaskActionProvider({ children }: Props) {
     return result
   }
 
-  async function submitEdit(values: TaskFormValues, dirtyFields: TaskFormDirtyFields): Promise<TaskFormSaveResult> {
+  async function submitEdit(values: TaskFormValues, dirtyFields: TaskFormDirtyFields, confirmTodoRegeneration: boolean): Promise<TaskFormSaveResult> {
     const task = data.task
     let revision = baselineRevision.current
     if (!task || revision === undefined) return { complete: false }
     const result: TaskFormSaveResult = { complete: true, actionItems: [] }
     let savedAnything = false
-    const taskRequest = taskFormValues2taskUpdateRequest(values, dirtyFields)
+    const draftTaskRequest = taskFormValues2taskUpdateRequest(values, dirtyFields)
+    const pendingRequest = pendingTaskUpdateConfirmation.current
+    const usePendingRequest = confirmTodoRegeneration && pendingRequest?.taskId === task.id && sameTaskUpdateRequest(pendingRequest.request, draftTaskRequest)
+    if (pendingRequest?.taskId === task.id && !sameTaskUpdateRequest(pendingRequest.request, draftTaskRequest)) pendingTaskUpdateConfirmation.current = null
+    const taskRequest = usePendingRequest
+      ? { ...pendingRequest!.request, confirm_todo_regeneration: true }
+      : draftTaskRequest
 
     if (needsRevisionRefresh) {
       try {
         const latest = await getTasksId(task.id)
         if (!latest.task) throw new Error("Task response missing")
+        if (baselineManualEstimate.current !== latest.task.manual_estimated_minutes) {
+          result.complete = false
+          result.conflict = true
+          return result
+        }
         revision = latest.task.revision
-        baselineRevision.current = revision
         queryClient.setQueryData(getGetTasksIdQueryKey(task.id), latest)
+        baselineRevision.current = revision
         setNeedsRevisionRefresh(false)
       } catch {
         result.complete = false
@@ -192,29 +264,49 @@ export function TaskActionProvider({ children }: Props) {
     if (Object.keys(taskRequest).length) {
       try {
         const updated = await patchTasksId(task.id, taskRequest, { headers: { "If-Match": `"${revision}"` } })
+        pendingTaskUpdateConfirmation.current = null
         queryClient.setQueryData(getGetTasksIdQueryKey(task.id), { ...data.taskQuery.data, task: updated })
+        revision = updated.revision
         baselineRevision.current = updated.revision
+        baselineManualEstimate.current = updated.manual_estimated_minutes
         result.taskSaved = true
         result.taskResetValues = taskFormTaskValues(values, updated)
         savedAnything = true
       } catch (cause) {
+        if (isTodoRegenerationRequired(cause)) {
+          pendingTaskUpdateConfirmation.current = { taskId: task.id, request: draftTaskRequest }
+          return { complete: false, regenerationConfirmationRequired: true, actionItems: [] }
+        }
         throwSubmissionFailure(cause, i18n, true)
       }
     }
 
-    const operations = taskFormValues2actionItemSaveOperations(values, dirtyFields)
-    const itemResult = await saveTaskActionItems(task.id, operations)
+    const operations = confirmTodoRegeneration && pendingActionItemConfirmation.current?.taskId === task.id
+      ? pendingActionItemConfirmation.current.operations
+      : taskFormValues2actionItemSaveOperations(values, dirtyFields)
+    const itemResult = await saveTaskActionItems(task.id, operations, confirmTodoRegeneration, revision, baselineManualEstimate.current)
     result.actionItems = itemResult.outcomes
+    result.regenerationConfirmationRequired = itemResult.regenerationConfirmationRequired
+    result.conflict = itemResult.revisionConflict
+    pendingActionItemConfirmation.current = itemResult.pendingOperations?.length
+      ? { taskId: task.id, operations: itemResult.pendingOperations }
+      : null
     savedAnything ||= itemResult.hasSavedItems
-    if (itemResult.outcomes.some((outcome) => outcome.error)) result.complete = false
+    if (itemResult.outcomes.some((outcome) => outcome.error) || itemResult.regenerationConfirmationRequired || itemResult.revisionConflict) result.complete = false
 
-    if (itemResult.hasSavedItems) {
+    if (itemResult.hasSavedItems && !itemResult.revisionConflict) {
       try {
         const latest = await getTasksId(task.id)
         if (!latest.task) throw new Error("Task response missing")
-        queryClient.setQueryData(getGetTasksIdQueryKey(task.id), latest)
-        baselineRevision.current = latest.task.revision
-        setNeedsRevisionRefresh(false)
+        if (hasPendingManualEstimateDelete(itemResult.pendingOperations) && baselineManualEstimate.current !== latest.task.manual_estimated_minutes) {
+          result.complete = false
+          result.conflict = true
+        } else {
+          queryClient.setQueryData(getGetTasksIdQueryKey(task.id), latest)
+          baselineRevision.current = latest.task.revision
+          baselineManualEstimate.current = latest.task.manual_estimated_minutes
+          setNeedsRevisionRefresh(false)
+        }
       } catch {
         setNeedsRevisionRefresh(true)
         result.complete = false
@@ -234,6 +326,7 @@ export function TaskActionProvider({ children }: Props) {
   async function invalidateTaskQueries(projectId?: string, taskId?: string) {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetTodayTodoQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getListInboxQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetProjectsQueryKey() }),
       ...(taskId ? [
@@ -280,6 +373,7 @@ export function TaskActionProvider({ children }: Props) {
       queryClient.setQueryData(getGetTasksIdQueryKey(task.id), latestTaskDetails)
       queryClient.setQueryData([...getGetTasksTaskIdActionItemsQueryKey(task.id, { page_size: 100 }), "all-pages"], latestItems)
       baselineRevision.current = latest.revision
+      baselineManualEstimate.current = latest.manual_estimated_minutes
       setNeedsRevisionRefresh(false)
       return snapshot
     } catch (cause) {
@@ -297,6 +391,31 @@ export function TaskActionProvider({ children }: Props) {
     retryOptions,
     ...(data.taskId ? { reloadLatest } : {}),
     updateActionItemCompletion: (input) => completionMutation.mutateAsync(input).then(() => undefined),
+    updateTaskCompletion: (input) => taskCompletionMutation.mutateAsync(input).then(() => undefined),
+    addTaskToToday: async (taskId, priority) => {
+      try {
+        const snapshot = await addTaskToday(taskId)
+        queryClient.setQueryData(getGetTodayTodoQueryKey(), snapshot)
+        await Promise.all([invalidateTaskQueries(undefined, taskId), queryClient.invalidateQueries({ queryKey: getGetTodayTodoQueryKey() })])
+        showAddedToTodayToast(i18n, priority, () => {
+          void makeTaskUrgent(i18n, taskId).then(() => invalidateTaskQueries(undefined, taskId))
+        })
+      } catch (error) {
+        notify.error(i18n(isAllDayScheduleBlocksActionItems(error) ? "today.toast.allDayBlocks" : "today.error"))
+      }
+    },
+    addActionItemToToday: async (taskId, actionItemId, priority) => {
+      try {
+        const snapshot = await addActionItemToToday(actionItemId)
+        queryClient.setQueryData(getGetTodayTodoQueryKey(), snapshot)
+        await Promise.all([invalidateTaskQueries(undefined, taskId), queryClient.invalidateQueries({ queryKey: getGetTodayTodoQueryKey() })])
+        showAddedToTodayToast(i18n, priority, () => {
+          void makeActionItemUrgent(i18n, taskId, actionItemId).then(() => invalidateTaskQueries(undefined, taskId))
+        })
+      } catch (error) {
+        notify.error(i18n(isAllDayScheduleBlocksActionItems(error) ? "today.toast.allDayBlocks" : "today.error"))
+      }
+    },
   }
 
   return <TaskActionContext.Provider value={actions}>{children}</TaskActionContext.Provider>
@@ -309,6 +428,7 @@ function taskFormTaskValues(values: TaskFormValues, response: {
   priority?: string | { value?: string }
   project_id?: string | null
   manual_estimated_minutes?: number | null
+  actual_minutes?: number | null
 }): NonNullable<TaskFormSaveResult["taskResetValues"]> {
   return {
     title: response.title ?? values.title,
@@ -317,15 +437,12 @@ function taskFormTaskValues(values: TaskFormValues, response: {
     priority: typeof response.priority === "string" ? response.priority : response.priority?.value ?? values.priority,
     projectId: response.project_id ?? values.projectId,
     manualEstimate: response.manual_estimated_minutes === null ? "" : response.manual_estimated_minutes === undefined ? values.manualEstimate : minutesToDurationText(response.manual_estimated_minutes),
+    actualMinutes: response.actual_minutes === null ? "" : response.actual_minutes === undefined ? values.actualMinutes : String(response.actual_minutes),
   }
 }
 
 function throwSubmissionFailure(cause: unknown, i18n: ReturnType<typeof useI18n>, detectConflict = false): never {
-  if (detectConflict && cause instanceof ApiError && cause.status === 409) {
-    const error = new Error("Task revision conflict") as TaskFormSubmissionError
-    error.conflict = true
-    throw error
-  }
+  if (detectConflict && isTaskRevisionConflict(cause)) throw createTaskRevisionConflict()
   const rawErrors = taskFieldErrors(cause)
   if (rawErrors) {
     const error = new Error("Task validation failed") as TaskFormSubmissionError
@@ -334,4 +451,26 @@ function throwSubmissionFailure(cause: unknown, i18n: ReturnType<typeof useI18n>
   }
   notify.error(i18n(taskErrorMessageKey(cause)))
   throw cause
+}
+
+function isTaskRevisionConflict(cause: unknown): boolean {
+  if (!(cause instanceof ApiError)) return false
+  if (cause.status === 412) return true
+  if (cause.status !== 409 || typeof cause.data !== "object" || cause.data === null) return false
+  const details = (cause.data as { error?: { details?: unknown } }).error?.details
+  return Array.isArray(details) && details.some((detail) => typeof detail === "object" && detail !== null && ["revision_mismatch", "revision_conflict", "task_revision_conflict", "precondition_failed"].includes(String((detail as { code?: unknown }).code)))
+}
+
+function createTaskRevisionConflict(): TaskFormSubmissionError {
+  return Object.assign(new Error("Task revision changed"), { conflict: true as const })
+}
+
+function hasPendingManualEstimateDelete(operations: TaskActionItemSaveOperation[] | undefined): boolean {
+  return operations?.some((operation) => operation.type === "delete" && operation.manualEstimatedMinutes !== undefined) ?? false
+}
+
+function sameTaskUpdateRequest(left: ReturnType<typeof taskFormValues2taskUpdateRequest>, right: ReturnType<typeof taskFormValues2taskUpdateRequest>): boolean {
+  const leftEntries = Object.entries(left).sort(([a], [b]) => a.localeCompare(b))
+  const rightEntries = Object.entries(right).sort(([a], [b]) => a.localeCompare(b))
+  return JSON.stringify(leftEntries) === JSON.stringify(rightEntries)
 }

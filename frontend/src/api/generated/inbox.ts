@@ -55,11 +55,14 @@ export interface RestInboxTaskPayloadResponse {
   /** @nullable */
   actual_minutes: number | null;
   assignee_id: string;
+  can_add_action_item: boolean;
+  can_add_to_today: boolean;
   can_assign: boolean;
   can_update: boolean;
   description: string;
   /** @nullable */
   due_date: string | null;
+  estimate_editable: boolean;
   estimate_source: string;
   /** @nullable */
   estimated_minutes: number | null;
@@ -69,6 +72,7 @@ export interface RestInboxTaskPayloadResponse {
   /** @nullable */
   remaining_days: number | null;
   revision: number;
+  started: boolean;
   status: string;
 }
 

@@ -33,6 +33,9 @@ function baseActions(submit: TaskActions["submit"], reloadLatest?: TaskActions["
     retry: vi.fn(async () => {}),
     retryOptions: vi.fn(async () => {}),
     updateActionItemCompletion: vi.fn(async () => {}),
+    addActionItemToToday: vi.fn(async () => {}),
+    updateTaskCompletion: vi.fn(async () => {}),
+    addTaskToToday: vi.fn(async () => {}),
     ...(reloadLatest ? { reloadLatest } : {}),
   }
 }
@@ -91,8 +94,9 @@ function EditReady() {
 function editData(values: Partial<TaskFormValues> = {}): TaskAPIData {
   const task = {
     id: "task-1", title: values.title ?? "Existing task", project_id: null, project_name: null,
-    due_date: null, description: "", priority: "medium", manual_estimated_minutes: null,
-    estimate_source: "manual", revision: 3, can_update: true,
+    due_date: null, description: "", priority: "medium", manual_estimated_minutes: 60,
+    estimate_source: "manual", revision: 3, can_update: true, status: values.taskCompleted ? "done" : "open", actual_minutes: values.actualMinutes ? Number(values.actualMinutes) : null,
+    started: false, estimate_editable: true, can_add_action_item: true, can_add_to_today: true,
   }
   const actionItems = (values.actionItems ?? []).map((item, index) => ({
     id: item.id ?? `item-${index}`, title: item.title,
@@ -144,6 +148,7 @@ test("retries only failed ActionItems after applying successful row IDs and defa
   fireEvent.change(within(form).getByLabelText("見積り 1"), { target: { value: "0:30" } })
   fireEvent.click(within(form).getByRole("button", { name: "アクションアイテムを追加" }))
   fireEvent.change(within(form).getByLabelText("アクションアイテム名 2"), { target: { value: "Retry item" } })
+  fireEvent.change(within(form).getByLabelText("見積り 2"), { target: { value: "0:15" } })
   fireEvent.click(within(form).getByRole("button", { name: "追加する" }))
   expect(await within(form).findByText("タスクは保存済みです。未保存のアクションアイテムだけ再試行してください。")).toBeTruthy()
   expect(await within(form).findByText("アクションアイテムを保存できませんでした。")).toBeTruthy()
@@ -162,6 +167,7 @@ test("does not validate an ActionItem row marked for deletion", async () => {
   fireEvent.click(within(form).getByRole("button", { name: "アクションアイテムを追加" }))
   fireEvent.change(within(form).getByLabelText("見積り 1"), { target: { value: "not a duration" } })
   fireEvent.click(within(form).getByRole("button", { name: "アクションアイテム 1 を削除" }))
+  fireEvent.change(within(form).getByPlaceholderText("30 / 1:30"), { target: { value: "0:30" } })
   fireEvent.click(within(form).getByRole("button", { name: "追加する" }))
   await waitFor(() => expect(submit).toHaveBeenCalledOnce())
   expect(within(form).queryByLabelText("見積り 1")).toBeNull()
@@ -172,6 +178,7 @@ test("shows unmapped API validation errors in the form", async () => {
   renderHookForm({ submit })
   const form = screen.getByRole("form")
   fireEvent.change(within(form).getByLabelText(/^タスク名/), { target: { value: "Task" } })
+  fireEvent.change(within(form).getByPlaceholderText("30 / 1:30"), { target: { value: "0:30" } })
   fireEvent.click(within(form).getByRole("button", { name: "追加する" }))
   expect(await within(form).findByText("タスクを保存できませんでした。入力内容を確認してください。"))
 })
@@ -181,6 +188,7 @@ test("does not present a Task request failure as an ActionItem partial save", as
   renderHookForm({ submit })
   const form = screen.getByRole("form")
   fireEvent.change(within(form).getByLabelText(/^タスク名/), { target: { value: "Keep draft" } })
+  fireEvent.change(within(form).getByPlaceholderText("30 / 1:30"), { target: { value: "0:30" } })
   fireEvent.click(within(form).getByRole("button", { name: "追加する" }))
   await waitFor(() => expect(submit).toHaveBeenCalledOnce())
   expect(within(form).queryByText("一部の変更を保存できませんでした。エラー項目を修正または再試行してください。")).toBeNull()
@@ -204,6 +212,13 @@ test("background Task refetch does not replace edit draft", () => {
   fireEvent.change(within(form).getByLabelText(/^タスク名/), { target: { value: "Keep this draft" } })
   updateData(editData({ title: "Background server update" }))
   expect((within(form).getByLabelText(/^タスク名/) as HTMLInputElement).value).toBe("Keep this draft")
+})
+
+test("shows editable actual time for a completed childless Task", () => {
+  renderHookForm({ mode: "edit", data: editData({ taskCompleted: true, actualMinutes: "0" }) })
+  const actual = screen.getByLabelText("実績（分）") as HTMLInputElement
+  expect(actual.value).toBe("0")
+  expect(actual.disabled).toBe(false)
 })
 
 test("reloads latest edit values and clears save feedback", async () => {

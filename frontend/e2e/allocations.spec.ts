@@ -93,7 +93,7 @@ test("configures a weekly allocation, edits its future rule, guards drafts, and 
   await activeProjectsLoaded
   const wake = page.getByLabel("起床時刻", { exact: true })
   await wake.fill("10:30")
-  await page.getByRole("button", { name: "設定を保存", exact: true }).click()
+  await page.locator("form").filter({ hasText: "起床時刻" }).getByRole("button", { name: "設定を保存", exact: true }).click()
   await expect(page.getByText(/Weekly E2E projectの割り当て.*睡眠時間と重なっています。/)).toBeVisible()
   await expect(wake).toHaveValue("10:30")
 

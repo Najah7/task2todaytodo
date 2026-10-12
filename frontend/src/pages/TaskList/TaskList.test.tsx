@@ -105,6 +105,7 @@ test("completes an expanded action item, keeps its row busy, and preserves serve
   await screen.findByText("Review the release notes")
   const complete = screen.getByRole("button", { name: "Mark action item complete" })
   fireEvent.click(complete)
+  fireEvent.click(screen.getByRole("button", { name: "Complete without time" }))
 
   await completionStarted
   await waitFor(() => expect((screen.getByRole("button", { name: "Mark action item complete" }) as HTMLButtonElement).disabled).toBe(true))

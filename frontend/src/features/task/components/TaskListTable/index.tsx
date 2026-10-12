@@ -1,4 +1,5 @@
 import { useI18n } from "~/features/i18n/hooks"
+import ActionItemActualMinutesDialog from "~/features/shared/components/ActionItemActualMinutesDialog"
 import controls from "~/styles/controls.module.css"
 import styles from "./index.module.css"
 import type { TaskActionItemRowView, TaskActionItemsQueryState, TaskListRowView } from "./types"
@@ -6,7 +7,7 @@ import { useTaskListTable } from "./useTaskListTable"
 
 export default function TaskListTable() {
   const i18n = useI18n()
-  const { rows, summary, expandedIds, busyActionItemKey, actionItemsQueryStates, loading, error, toggleExpanded, toggleActionItem, retryActionItems, retry, edit } = useTaskListTable()
+  const { rows, summary, expandedIds, busyActionItemKey, pendingCompletion, pendingTaskCompletion, completePendingActionItem, completePendingTask, cancelPendingCompletion, cancelPendingTaskCompletion, requestTaskCompletion, reopenTask, actionItemsQueryStates, loading, error, toggleExpanded, toggleActionItem, addActionItemToToday, addTaskToToday, retryActionItems, retry, edit } = useTaskListTable()
   const expanded = new Set(expandedIds)
   if (loading) return <p className={`${styles.listMessage} text-body`} role="status">{i18n("tasks.loading")}</p>
   if (error) return (
@@ -16,7 +17,8 @@ export default function TaskListTable() {
     </div>
   )
   if (rows.length === 0) return <p className={`${styles.listMessage} text-body`}>{i18n("tasks.empty")}</p>
-  return (
+  return <>
+    <ActionItemActualMinutesDialog open={Boolean(pendingCompletion || pendingTaskCompletion)} busy={Boolean((pendingCompletion && busyActionItemKey === pendingCompletion.id) || (pendingTaskCompletion && busyActionItemKey === pendingTaskCompletion.id))} onComplete={pendingTaskCompletion ? completePendingTask : completePendingActionItem} onCancel={pendingTaskCompletion ? cancelPendingTaskCompletion : cancelPendingCompletion} />
     <div className={styles.scroll} role="region" aria-label={i18n("page.tasks.title")} tabIndex={0}>
       <table className={styles.table}>
         <caption className={styles.srOnly}>{i18n("page.tasks.title")}</caption>
@@ -43,6 +45,10 @@ export default function TaskListTable() {
                 actionItemsQueryState={actionItemsQueryStates[task.id]}
                 onToggleExpanded={toggleExpanded}
                 onToggleActionItem={toggleActionItem}
+                onAddActionItemToToday={addActionItemToToday}
+                onAddTaskToToday={addTaskToToday}
+                onCompleteTask={requestTaskCompletion}
+                onReopenTask={reopenTask}
                 onRetryActionItems={retryActionItems}
                 onEdit={edit}
               />
@@ -67,16 +73,20 @@ export default function TaskListTable() {
         </tfoot>
       </table>
     </div>
-  )
+  </>
 }
 
-function TaskRows({ task, expanded, busyActionItemKey, actionItemsQueryState, onToggleExpanded, onToggleActionItem, onRetryActionItems, onEdit }: {
+function TaskRows({ task, expanded, busyActionItemKey, actionItemsQueryState, onToggleExpanded, onToggleActionItem, onAddActionItemToToday, onAddTaskToToday, onCompleteTask, onReopenTask, onRetryActionItems, onEdit }: {
   task: TaskListRowView
   expanded: boolean
   busyActionItemKey?: string
   actionItemsQueryState?: TaskActionItemsQueryState
   onToggleExpanded: (taskId: string) => void
   onToggleActionItem: (item: TaskActionItemRowView) => void
+  onAddActionItemToToday: (taskId: string, actionItemId: string, priority?: string) => Promise<void>
+  onAddTaskToToday: (taskId: string, priority?: string) => Promise<void>
+  onCompleteTask: (task: TaskListRowView) => void
+  onReopenTask: (task: TaskListRowView) => void
   onRetryActionItems: (taskId: string) => void
   onEdit: (taskId: string) => void
 }) {
@@ -106,7 +116,11 @@ function TaskRows({ task, expanded, busyActionItemKey, actionItemsQueryState, on
         </td>
         <td className={`${styles.numeric} text-numeric`}>{task.estimateLabel}</td>
         <td><span className={styles[`due_${task.dueDateTone}`]}>{task.dueDateLabel}</span></td>
-        <td>{task.canUpdate && <button className={`${styles.editButton} text-button-small`} type="button" aria-label={i18n("tasks.editTask", { title: task.title })} onClick={() => onEdit(task.id)}>{i18n("tasks.edit")}</button>}</td>
+        <td>
+          {task.actionItemCount === 0 && task.canUpdate && <button className={styles.checkButton} type="button" disabled={busyActionItemKey === task.id} aria-label={i18n(task.completed ? "tasks.task.reopen" : "tasks.task.complete", { title: task.title })} aria-pressed={task.completed} onClick={() => task.completed ? onReopenTask(task) : onCompleteTask(task)}><span aria-hidden="true">{task.completed ? "✓" : ""}</span></button>}
+          {task.actionItemCount === 0 && task.canAddToToday && (task.todayRegistration ? <RegisteredTime timeLabel={task.todayRegistration.timeLabel} /> : <button className={`${styles.registerButton} text-button-small`} type="button" disabled={busyActionItemKey === task.id} onClick={() => void onAddTaskToToday(task.id, task.priority)}>{i18n("tasks.actionItem.registerToday")}</button>)}
+          {task.canUpdate && <button className={`${styles.editButton} text-button-small`} type="button" aria-label={i18n("tasks.editTask", { title: task.title })} onClick={() => onEdit(task.id)}>{i18n("tasks.edit")}</button>}
+        </td>
       </tr>
       {expanded && task.actionItemCount > 0 && (
         <tr className={styles.expandedRow}>
@@ -119,7 +133,7 @@ function TaskRows({ task, expanded, busyActionItemKey, actionItemsQueryState, on
             ) : task.actionItems.length === 0 ? <p className={`${styles.detailsMessage} text-body`}>{i18n("tasks.actionItem.none")}</p> : (
               <div className={styles.actionItems}>
                 {task.actionItems.map((item) => (
-                  <ActionItemRow key={item.id} item={item} busy={busyActionItemKey === item.id} onToggle={onToggleActionItem} />
+                  <ActionItemRow key={item.id} item={item} busy={busyActionItemKey === item.id} onToggle={onToggleActionItem} onAddToToday={onAddActionItemToToday} />
                 ))}
               </div>
             )}
@@ -130,7 +144,7 @@ function TaskRows({ task, expanded, busyActionItemKey, actionItemsQueryState, on
   )
 }
 
-function ActionItemRow({ item, busy, onToggle }: { item: TaskActionItemRowView; busy: boolean; onToggle: (item: TaskActionItemRowView) => void }) {
+function ActionItemRow({ item, busy, onToggle, onAddToToday }: { item: TaskActionItemRowView; busy: boolean; onToggle: (item: TaskActionItemRowView) => void; onAddToToday: (taskId: string, actionItemId: string, priority?: string) => Promise<void> }) {
   const i18n = useI18n()
   return (
     <div className={`${styles.actionItem} ${item.completed ? styles.completedActionItem : ""}`}>
@@ -141,9 +155,9 @@ function ActionItemRow({ item, busy, onToggle }: { item: TaskActionItemRowView; 
       <span className={`${styles.itemEstimate} text-numeric`}>{item.estimateLabel}</span>
       {item.todayRegistration ? (
         <RegisteredTime timeLabel={item.todayRegistration.timeLabel} />
-      ) : (
-        <button className={`${styles.registerButton} text-button-small`} type="button" disabled aria-disabled="true">{i18n("tasks.actionItem.registerToday")}</button>
-      )}
+      ) : !item.completed ? (
+        <button className={`${styles.registerButton} text-button-small`} type="button" disabled={busy || !item.id} onClick={() => void onAddToToday(item.taskId, item.id, item.priority)}>{i18n("tasks.actionItem.registerToday")}</button>
+      ) : <span />}
     </div>
   )
 }

@@ -20,3 +20,5 @@
   justify-self: start;
   margin-top: var(--space-sm);
 }
+
+.error { margin: 0; color: var(--color-danger-foreground); }

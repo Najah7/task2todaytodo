@@ -4,6 +4,7 @@ export type TaskActionItemRowView = {
   title: string
   estimateLabel: string
   completed: boolean
+  priority?: string
   todayRegistration: { timeLabel: string } | null
 }
 
@@ -11,6 +12,14 @@ export type TaskListRowView = {
   id: string
   title: string
   canUpdate: boolean
+  canAddToToday: boolean
+  canAddActionItem: boolean
+  estimateEditable: boolean
+  started: boolean
+  completed: boolean
+  revision: number
+  priority?: string
+  todayRegistration: { timeLabel: string } | null
   projectLabel: string
   statusLabel: string
   statusTone: "open" | "active" | "waiting" | "done"

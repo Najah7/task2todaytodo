@@ -20,6 +20,7 @@ export function useTaskCreateForm(): TaskFormController {
   const [taskWasSaved, setTaskWasSaved] = useState(false)
   const [partialSaveMessage, setPartialSaveMessage] = useState<TaskFormController["viewProps"]["partialSaveMessage"]>()
   const [serverError, setServerError] = useState(false)
+  const [confirmRegeneration, setConfirmRegeneration] = useState(false)
   const initialProjectId = navigation.state.projectId ?? ""
   const projects = data.projectsQuery.data ?? []
   const projectOptions = projects.map((project) => ({ value: project.id, label: project.title }))
@@ -36,13 +37,22 @@ export function useTaskCreateForm(): TaskFormController {
   })
   const dirtyGuard = useFormDraftGuard(form.formState.isDirty)
 
-  async function submit(values: TaskFormValues) {
+  async function submit(values: TaskFormValues, confirm = false) {
     setServerError(false)
     setPartialSaveMessage(undefined)
     try {
-      const result = await actions.submit(values, form.formState.dirtyFields as TaskFormDirtyFields)
+      const result = await actions.submit(values, form.formState.dirtyFields as TaskFormDirtyFields, confirm)
       applyTaskFormSaveResult(form, result, setActionItemErrors)
+      if (result.conflict) {
+        setServerError(true)
+        setPartialSaveMessage("tasks.form.partialSave")
+        return
+      }
       if (result.taskSaved) setTaskWasSaved(true)
+      if (result.regenerationConfirmationRequired) {
+        setConfirmRegeneration(true)
+        return
+      }
       if (!result.complete) {
         setPartialSaveMessage(result.revisionRefreshError
           ? "tasks.form.revisionRefreshError"
@@ -54,6 +64,7 @@ export function useTaskCreateForm(): TaskFormController {
       dirtyGuard.markClean()
       form.reset(form.getValues())
       actions.saveComplete()
+      setConfirmRegeneration(false)
       navigation.afterSave()
     } catch (cause) {
       if (cause && typeof cause === "object" && "fieldErrors" in cause) {
@@ -81,12 +92,17 @@ export function useTaskCreateForm(): TaskFormController {
       delete next[key]
       return next
     }),
-    onSubmit: form.handleSubmit(submit),
+    onSubmit: form.handleSubmit((values) => submit(values)),
     onCancel: navigation.cancel,
     discardConfirmation: {
       open: dirtyGuard.dialogOpen,
       onConfirm: dirtyGuard.leave,
       onCancel: dirtyGuard.stay,
+    },
+    regenerationConfirmation: {
+      open: confirmRegeneration,
+      onConfirm: () => { void form.handleSubmit((values) => submit(values, true))() },
+      onCancel: () => setConfirmRegeneration(false),
     },
   }
   return { form, viewProps }

@@ -5,8 +5,10 @@ async function signIn(page: import("@playwright/test").Page, request: import("@p
   const credentials = await createAccount(request)
   await page.goto("/login")
   await fillCredentials(page, credentials)
+  const todayResponse = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/today-todo" && response.request().method() === "GET")
   await page.getByRole("button", { name: "ログイン", exact: true }).click()
   await expect(page).toHaveURL("/today")
+  expect((await todayResponse).status()).toBe(200)
 }
 
 test("creates a Task with an ActionItem and reflects completion in list progress", async ({ page, request }) => {
@@ -39,7 +41,7 @@ test("creates a Task with an ActionItem and reflects completion in list progress
   expect(createdTask).toMatchObject({ title: "E2E project plan", priority: "high", estimated_minutes: 60, estimate_source: "action_items" })
   const actionItems = await page.request.get(`/api/tasks/${createdTask.id}/action-items`, { headers })
   expect(actionItems.status()).toBe(200)
-  expect((await actionItems.json()).items[0]).toMatchObject({ title: "Write first draft", priority: "medium", estimated_minutes: 60 })
+  expect((await actionItems.json()).items[0]).toMatchObject({ title: "Write first draft", priority: "medium", estimated_minutes: 60, completed: false, started: false, estimate_editable: true })
 
   await taskRow.getByRole("button", { name: "タスクを編集: E2E project plan", exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/tasks/${createdTask.id}/edit$`))
@@ -100,16 +102,31 @@ test("creates a Task with an ActionItem and reflects completion in list progress
 
   await page.getByRole("button", { name: "E2E revised planのアクションアイテムを表示", exact: true }).click()
   await expect(page.getByText("External child edit", { exact: true })).toBeVisible()
-  await expect(page.getByRole("button", { name: "今日に登録", exact: true })).toBeDisabled()
+  await expect(page.getByRole("button", { name: "今日に登録", exact: true })).toBeEnabled()
   const progress = page.getByRole("progressbar", { name: "アクションアイテムの進捗" }).first()
   await expect(progress).toHaveAttribute("aria-valuetext", "0 / 1")
 
   const completeButton = page.getByRole("button", { name: "アクションアイテムを完了にする", exact: true })
   await completeButton.click()
+  const actualDialog = page.getByRole("dialog")
+  await expect(actualDialog).toBeVisible()
+  await actualDialog.getByLabel("実績時間（分）", { exact: true }).fill("42")
+  await actualDialog.getByRole("button", { name: "実績を保存して完了", exact: true }).click()
   await expect(progress).toHaveAttribute("aria-valuetext", "1 / 1")
   await expect(progress).toHaveAttribute("aria-valuenow", "100")
   await expect(page.getByText("アクションアイテムの状態を更新しました。", { exact: true })).toBeVisible()
 
+  await page.getByRole("button", { name: "タスクを編集: E2E revised plan", exact: true }).click()
+  const completedEditForm = page.getByRole("form", { name: "タスクを編集" })
+  await expect(completedEditForm.getByLabel(/^見積り 1/)).toBeDisabled()
+  await completedEditForm.getByLabel(/^実績（分） 1/).fill("48")
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click()
+  await expect(page).toHaveURL("/tasks")
+  const actualAfterEdit = await page.request.get(`/api/tasks/${createdTask.id}/action-items`, { headers })
+  expect(actualAfterEdit.status()).toBe(200)
+  expect((await actualAfterEdit.json()).items[0]).toMatchObject({ actual_minutes: 48, estimated_minutes: 75 })
+
+  await page.getByRole("button", { name: "E2E revised planのアクションアイテムを表示", exact: true }).click()
   await page.getByRole("button", { name: "アクションアイテムを未完了に戻す", exact: true }).click()
   await expect(progress).toHaveAttribute("aria-valuetext", "0 / 1")
   await expect(progress).toHaveAttribute("aria-valuenow", "0")
@@ -123,6 +140,92 @@ test("creates a Task with an ActionItem and reflects completion in list progress
   await expect(page.getByText("条件に一致するタスクはありません。", { exact: true })).toBeVisible()
   await page.getByRole("button", { name: /^未着手/ }).click()
   await expect(revisedTaskRow).toBeVisible()
+})
+
+test("confirms first-child and last-child changes for a manually planned direct Task", async ({ page, request }) => {
+  test.setTimeout(120_000)
+  await signIn(page, request)
+  const token = await page.evaluate(() => localStorage.getItem("personal_access_token"))
+  expect(token).toBeTruthy()
+  const headers = { Authorization: `Bearer ${token}` }
+  const initialToday = await request.get("/api/today-todo", { headers })
+  expect(initialToday.status()).toBe(200)
+  const projectResponse = await request.post("/api/projects", {
+    headers,
+    data: { title: "Structural confirmation project", goal: "", description: "", type: "other", priority: "medium", start_date: null, end_date: null },
+  })
+  expect(projectResponse.status()).toBe(201)
+  const project = await projectResponse.json() as { id: string }
+  const taskResponse = await request.post(`/api/projects/${project.id}/tasks`, {
+    headers,
+    data: { title: "Structural direct Task", description: "", priority: "medium", due_date: null, manual_estimated_minutes: 30 },
+  })
+  expect(taskResponse.status()).toBe(201)
+  const task = await taskResponse.json() as { id: string }
+
+  await page.goto("/tasks")
+  const taskRow = page.getByRole("row").filter({ hasText: "Structural direct Task" })
+  await taskRow.getByRole("button", { name: "今日に登録", exact: true }).click()
+  await expect(page.getByText("今日のリストに追加しました。", { exact: true })).toBeVisible()
+  await taskRow.getByRole("button", { name: "タスクを編集: Structural direct Task", exact: true }).click()
+  await page.getByRole("button", { name: "アクションアイテムを追加", exact: true }).click()
+  await page.getByLabel("アクションアイテム名 1", { exact: true }).fill("Structural child")
+  await page.getByLabel("見積り 1", { exact: true }).fill("0:45")
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click()
+
+  const firstChildConfirmation = page.getByRole("alertdialog", { name: "今日のリストを更新しますか？" })
+  await expect(firstChildConfirmation).toBeVisible()
+  await expect(firstChildConfirmation).toContainText("未着手のTask・ActionItemの手動追加や並び順")
+  await firstChildConfirmation.getByRole("button", { name: "編集を続ける", exact: true }).click()
+  const childrenAfterCancel = await request.get(`/api/tasks/${task.id}/action-items`, { headers })
+  expect(childrenAfterCancel.status()).toBe(200)
+  expect((await childrenAfterCancel.json()).items).toHaveLength(0)
+  const todayAfterCancel = await request.get("/api/today-todo", { headers })
+  expect((await todayAfterCancel.json()).items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "task", task_id: task.id })]))
+
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click()
+  const createConfirmedChild = page.waitForResponse((response) =>
+    response.request().method() === "POST" && response.url().endsWith(`/api/tasks/${task.id}/action-items`) && response.status() === 201,
+  )
+  await page.getByRole("alertdialog", { name: "今日のリストを更新しますか？" }).getByRole("button", { name: "今日のリストを再生成", exact: true }).click()
+  await createConfirmedChild
+  const childrenAfterConfirm = await request.get(`/api/tasks/${task.id}/action-items`, { headers })
+  expect(childrenAfterConfirm.status()).toBe(200)
+  const child = (await childrenAfterConfirm.json()).items[0] as { id: string; title: string }
+  expect(child.title).toBe("Structural child")
+
+  await page.goto("/tasks")
+  const childBearingRow = page.getByRole("row").filter({ hasText: "Structural direct Task" })
+  await childBearingRow.getByRole("button", { name: "Structural direct Taskのアクションアイテムを表示", exact: true }).click()
+  const childRow = page.getByRole("row").filter({ hasText: "Structural child" })
+  await expect(childRow.getByRole("button", { name: "今日に登録", exact: true })).toBeEnabled()
+  await childRow.getByRole("button", { name: "今日に登録", exact: true }).click()
+  await expect(page.getByText("今日のリストに追加しました。", { exact: true })).toBeVisible()
+
+  await childBearingRow.getByRole("button", { name: "タスクを編集: Structural direct Task", exact: true }).click()
+  await page.getByLabel("アクションアイテム 1 を削除", { exact: true }).click()
+  await page.getByLabel(/見積り/).fill("1:00")
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click()
+  const lastChildConfirmation = page.getByRole("alertdialog", { name: "今日のリストを更新しますか？" })
+  await expect(lastChildConfirmation).toBeVisible()
+  await expect(lastChildConfirmation).toContainText("未着手のTask・ActionItemの手動追加や並び順")
+  await lastChildConfirmation.getByRole("button", { name: "編集を続ける", exact: true }).click()
+  const childAfterDeleteCancel = await request.get(`/api/tasks/${task.id}/action-items`, { headers })
+  expect((await childAfterDeleteCancel.json()).items).toHaveLength(1)
+  const taskAfterDeleteCancel = await request.get(`/api/tasks/${task.id}`, { headers })
+  expect((await taskAfterDeleteCancel.json()).task).toMatchObject({ manual_estimated_minutes: 30, action_item_count: 1 })
+
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click()
+  const deleteConfirmedChild = page.waitForResponse((response) =>
+    response.request().method() === "DELETE" && response.url().endsWith(`/api/tasks/${task.id}/action-items/${child.id}`) && response.status() >= 200 && response.status() < 300,
+  )
+  await page.getByRole("alertdialog", { name: "今日のリストを更新しますか？" }).getByRole("button", { name: "今日のリストを再生成", exact: true }).click()
+  await deleteConfirmedChild
+  const childrenAfterLastDelete = await request.get(`/api/tasks/${task.id}/action-items`, { headers })
+  expect(childrenAfterLastDelete.status()).toBe(200)
+  expect((await childrenAfterLastDelete.json()).items).toHaveLength(0)
+  const taskAfterLastDelete = await request.get(`/api/tasks/${task.id}`, { headers })
+  expect((await taskAfterLastDelete.json()).task).toMatchObject({ manual_estimated_minutes: 60, action_item_count: 0, estimate_source: "manual" })
 })
 
 test("retries failed ActionItem deletion without duplicating successful saves", async ({ page, request }) => {

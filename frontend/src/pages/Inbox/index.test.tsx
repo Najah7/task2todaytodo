@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest"
 import { cleanup, render, screen } from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type { UseQueryResult } from "@tanstack/react-query"
 import type { RestInboxListResponse } from "~/api/generated/inbox"
 import type { RestProjectResponse } from "~/api/generated/projects"
@@ -12,6 +13,7 @@ import type { InboxActions } from "~/features/inbox/providers/InboxActionProvide
 import { InboxNavigationContext } from "~/features/inbox/providers/InboxNavigationProvider/context"
 import type { InboxNavigation } from "~/features/inbox/providers/InboxNavigationProvider/context"
 import { ListInboxType } from "~/api/generated/inbox"
+import { getGetTodayTodoQueryKey } from "~/api/generated/todo"
 import { InboxPageContent } from "."
 
 afterEach(cleanup)
@@ -63,6 +65,10 @@ const query = <T,>(overrides: Record<string, unknown> = {}) => ({
 const actions: InboxActions = {
   busy: false,
   complete: vi.fn(),
+  completeActionItem: vi.fn(),
+  reopenActionItem: vi.fn(),
+  addActionItemToToday: vi.fn(),
+  addTaskToToday: vi.fn(),
   createSchedule: vi.fn(),
   createTask: vi.fn(),
   retry: vi.fn(),
@@ -84,17 +90,22 @@ const navigation: InboxNavigation = {
 }
 
 function renderInbox(data: InboxAPIData) {
-  return render(
-    <LanguageProviderContext.Provider value={{ language: "en", setLanguage: vi.fn() }}>
-      <InboxAPIDataContext.Provider value={data}>
-        <InboxActionContext.Provider value={actions}>
-          <InboxNavigationContext.Provider value={navigation}>
-            <InboxPageContent />
-          </InboxNavigationContext.Provider>
-        </InboxActionContext.Provider>
-      </InboxAPIDataContext.Provider>
-    </LanguageProviderContext.Provider>,
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+  client.setQueryData(getGetTodayTodoQueryKey(), { items: [], timezone: "UTC" })
+  const view = render(
+    <QueryClientProvider client={client}>
+      <LanguageProviderContext.Provider value={{ language: "en", setLanguage: vi.fn() }}>
+        <InboxAPIDataContext.Provider value={data}>
+          <InboxActionContext.Provider value={actions}>
+            <InboxNavigationContext.Provider value={navigation}>
+              <InboxPageContent />
+            </InboxNavigationContext.Provider>
+          </InboxActionContext.Provider>
+        </InboxAPIDataContext.Provider>
+      </LanguageProviderContext.Provider>
+    </QueryClientProvider>,
   )
+  return { ...view, client }
 }
 
 test("waits for the user timezone before rendering cached schedule rows", () => {
@@ -114,22 +125,24 @@ test("waits for the user timezone before rendering cached schedule rows", () => 
   expect(screen.queryByText("Standup")).toBeNull()
 
   view.rerender(
-    <LanguageProviderContext.Provider value={{ language: "en", setLanguage: vi.fn() }}>
-      <InboxAPIDataContext.Provider value={{
-        ...data,
-        state: "ready",
-        user: { user_id: "user-1", timezone: "Asia/Tokyo" } as RestUserResponse,
-        userQuery: query<RestUserResponse>({ data: { user_id: "user-1", timezone: "Asia/Tokyo" } }),
-        timezone: "Asia/Tokyo",
-        userId: "user-1",
-      }}>
-        <InboxActionContext.Provider value={actions}>
-          <InboxNavigationContext.Provider value={navigation}>
-            <InboxPageContent />
-          </InboxNavigationContext.Provider>
-        </InboxActionContext.Provider>
-      </InboxAPIDataContext.Provider>
-    </LanguageProviderContext.Provider>,
+    <QueryClientProvider client={view.client}>
+      <LanguageProviderContext.Provider value={{ language: "en", setLanguage: vi.fn() }}>
+        <InboxAPIDataContext.Provider value={{
+          ...data,
+          state: "ready",
+          user: { user_id: "user-1", timezone: "Asia/Tokyo" } as RestUserResponse,
+          userQuery: query<RestUserResponse>({ data: { user_id: "user-1", timezone: "Asia/Tokyo" } }),
+          timezone: "Asia/Tokyo",
+          userId: "user-1",
+        }}>
+          <InboxActionContext.Provider value={actions}>
+            <InboxNavigationContext.Provider value={navigation}>
+              <InboxPageContent />
+            </InboxNavigationContext.Provider>
+          </InboxActionContext.Provider>
+        </InboxAPIDataContext.Provider>
+      </LanguageProviderContext.Provider>
+    </QueryClientProvider>,
   )
 
   expect(screen.getByRole("list", { name: "Inbox list" }).textContent).toContain("Standup")

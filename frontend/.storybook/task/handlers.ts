@@ -7,14 +7,14 @@ export const taskListStoryResponse: RestTaskListResponse = {
   estimated_minutes_total: 225,
   items: [
     {
-      action_item_completed_count: 2, action_item_count: 5, actual_minutes: null, assignee_id: "user-story", can_update: true,
+      action_item_completed_count: 2, action_item_count: 5, actual_minutes: null, assignee_id: "user-story", can_add_action_item: false, can_add_to_today: false, estimate_editable: false, started: true, can_update: true,
       created_at: "2026-10-01T00:00:00Z", description: "", due_date: "2026-10-30", estimate_source: "action_items",
       estimated_minutes: 180, id: "task-1", manual_estimated_minutes: null, priority: "high", progress: 40,
       project_id: "project-1", project_name: "Webサイト改善", remaining_days: 20, revision: 1, status: "in_progress",
       title: "オンボーディングを改善する", updated_at: "2026-10-01T00:00:00Z", user_id: "user-story",
     },
     {
-      action_item_completed_count: 0, action_item_count: 1, actual_minutes: null, assignee_id: "user-story", can_update: false,
+      action_item_completed_count: 0, action_item_count: 1, actual_minutes: null, assignee_id: "user-story", can_add_action_item: false, can_add_to_today: false, estimate_editable: false, started: false, can_update: false,
       created_at: "2026-10-01T00:00:00Z", description: "", due_date: "2026-10-10", estimate_source: "manual",
       estimated_minutes: 15, id: "task-2", manual_estimated_minutes: 15, priority: "medium", progress: 0,
       project_id: null, project_name: null, remaining_days: 0, revision: 1, status: "open",

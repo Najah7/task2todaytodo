@@ -22,7 +22,7 @@ function renderQuickCreate({ busy = false, createTask = vi.fn().mockResolvedValu
   const userQuery = { data: { user_id: "user-1", timezone: "Asia/Tokyo" }, isPending: false, error: null } as unknown as UseQueryResult<never>
   const inboxQuery = { data: inbox, isPending: false, isLoading: false, error: null } as unknown as UseQueryResult<RestInboxListResponse>
   const data: InboxAPIData = { state: "ready", inbox, inboxQuery, projects: [], projectsQuery, user: { user_id: "user-1", timezone: "Asia/Tokyo" }, userQuery, timezone: "Asia/Tokyo", userId: "user-1" }
-  const actions: InboxActions = { busy, createTask, createSchedule, complete: vi.fn(), retry: vi.fn(), retryOptions: vi.fn() }
+  const actions: InboxActions = { busy, createTask, createSchedule, complete: vi.fn(), completeActionItem: vi.fn(), reopenActionItem: vi.fn(), addActionItemToToday: vi.fn(), addTaskToToday: vi.fn(), retry: vi.fn(), retryOptions: vi.fn() }
   const navigation: InboxNavigation = {
     state: { type: "all", projectId: "all", title: "" }, currentURL: "/inbox", selectType: vi.fn(), selectProject: vi.fn(), changeTitle: vi.fn(), first: vi.fn(), previous: vi.fn(), next: vi.fn(), editTask: vi.fn(), editSchedule: vi.fn(), editItem: vi.fn(),
   }
@@ -37,7 +37,7 @@ function renderQuickCreate({ busy = false, createTask = vi.fn().mockResolvedValu
 }
 
 describe("InboxQuickCreate", () => {
-  it("validates required title and submits task with optional project", async () => {
+  it("requires a positive estimate and submits a Task with its manual estimate", async () => {
     const { createTask } = renderQuickCreate()
     fireEvent.click(screen.getByRole("button", { name: "追加" }))
     expect(await screen.findByText("タスク名を入力してください。")).toBeTruthy()
@@ -45,7 +45,15 @@ describe("InboxQuickCreate", () => {
 
     fireEvent.change(screen.getByRole("textbox", { name: "タスク名" }), { target: { value: "Read inbox" } })
     fireEvent.click(screen.getByRole("button", { name: "追加" }))
-    await waitFor(() => expect(createTask).toHaveBeenCalledWith({ title: "Read inbox", projectId: "" }))
+    expect(await screen.findByText("1分以上の時間を、分数（30）または時間:分（1:30）で入力してください。")).toBeTruthy()
+    expect(createTask).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText("見積り"), { target: { value: "0" } })
+    fireEvent.click(screen.getByRole("button", { name: "追加" }))
+    expect(await screen.findByText("1分以上の時間を、分数（30）または時間:分（1:30）で入力してください。")).toBeTruthy()
+    expect(createTask).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText("見積り"), { target: { value: "0:30" } })
+    fireEvent.click(screen.getByRole("button", { name: "追加" }))
+    await waitFor(() => expect(createTask).toHaveBeenCalledWith({ title: "Read inbox", projectId: "", estimatedMinutes: 30 }))
   })
 
   it("validates schedule date relationships before submit", async () => {
@@ -69,6 +77,7 @@ describe("InboxQuickCreate", () => {
     const { navigation } = renderQuickCreate({ createTask })
     const title = screen.getByRole("textbox", { name: "タスク名" }) as HTMLInputElement
     fireEvent.change(title, { target: { value: "Draft item" } })
+    fireEvent.change(screen.getByLabelText("見積り"), { target: { value: "0:30" } })
     fireEvent.click(screen.getByRole("button", { name: "追加" }))
     await waitFor(() => expect(createTask).toHaveBeenCalledTimes(1))
     expect(title.value).toBe("Draft item")

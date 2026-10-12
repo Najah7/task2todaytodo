@@ -7,6 +7,12 @@ export const notify = {
   error(message: string) {
     toast.error(message)
   },
+  warning(message: string) {
+    toast.warning(message)
+  },
+  action(message: string, label: string, onClick: () => void) {
+    toast(message, { action: { label, onClick } })
+  },
 }
 
 export { default as NotificationViewport } from "./NotificationViewport"

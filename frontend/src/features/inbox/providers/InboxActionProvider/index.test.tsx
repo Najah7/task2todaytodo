@@ -34,6 +34,10 @@ const taskItem: RestInboxItemResponse = {
     status: "todo",
     action_item_count: 0,
     action_item_completed_count: 0,
+    can_add_action_item: true,
+    can_add_to_today: true,
+    estimate_editable: true,
+    started: false,
     revision: 7,
     can_update: true,
     can_assign: true,
@@ -75,17 +79,30 @@ afterEach(() => {
 })
 
 describe("InboxActionProvider", () => {
+  it("creates a childless Task with its positive manual estimate", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "task-2" }), { status: 201 }))
+    vi.stubGlobal("fetch", fetchMock)
+    const { result } = renderActions()
+
+    await act(async () => result.current!.createTask({ title: "Direct work", projectId: "", estimatedMinutes: 45 }))
+
+    const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe("/api/tasks")
+    expect(JSON.parse(String(request.body))).toEqual({ title: "Direct work", manual_estimated_minutes: 45 })
+  })
+
   it("completes a task with its current revision", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: "ok" }), { status: 200 }))
     vi.stubGlobal("fetch", fetchMock)
     const { result } = renderActions()
 
-    await act(async () => result.current!.complete(taskItem))
+    await act(async () => result.current!.complete(taskItem, 0))
 
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe("/api/tasks/task-1:complete")
     expect(request.method).toBe("POST")
     expect(new Headers(request.headers).get("If-Match")).toBe('"7"')
+    expect(JSON.parse(String(request.body))).toEqual({ actual_minutes: 0 })
   })
 
   it("completes a virtual schedule occurrence with revision zero and its rule/date key", async () => {

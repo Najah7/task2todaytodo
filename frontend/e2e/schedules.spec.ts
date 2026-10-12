@@ -3,6 +3,13 @@ import { dirname } from "node:path"
 import { expect, test } from "@playwright/test"
 import { createAccount, fillCredentials } from "./helpers/auth.ts"
 
+async function confirmTodayRegeneration(page: import("@playwright/test").Page) {
+  const dialog = page.getByRole("alertdialog", { name: "今日のリストを更新しますか？" })
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText("未着手のTask・ActionItemの手動追加や並び順")
+  await dialog.getByRole("button", { name: "再生成する", exact: true }).click()
+}
+
 test("shows saved timed and all-day schedules across desktop, dark, and mobile layouts", async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   const credentials = await createAccount(request)
@@ -45,6 +52,7 @@ test("shows saved timed and all-day schedules across desktop, dark, and mobile l
         frequency: "once",
         interval: 0,
         weekdays: [],
+        confirm_todo_regeneration: true,
       },
     })
     expect(response.status()).toBe(201)
@@ -105,6 +113,8 @@ test("creates, edits, completes, skips, restores, and deletes a schedule", async
   expect(userResponse.status()).toBe(200)
   const user = await userResponse.json() as { timezone: string }
   const date = localDate(new Date(), user.timezone)
+  const todayResponse = await page.request.get("/api/today-todo", { headers })
+  expect(todayResponse.status()).toBe(200)
   await page.goto(`/schedules?view=week&date=${date}`)
 
   await page.getByRole("button", { name: "予定を作成", exact: true }).click()
@@ -115,6 +125,7 @@ test("creates, edits, completes, skips, restores, and deletes a schedule", async
   await page.getByLabel("開始時刻", { exact: true }).fill("10:00")
   await page.getByLabel("終了時刻", { exact: true }).fill("11:00")
   await page.getByRole("button", { name: "作成する", exact: true }).click()
+  await confirmTodayRegeneration(page)
   await expect(page.getByText("予定を作成しました。", { exact: true })).toBeVisible()
   const scheduleButton = page.locator('button[title="UI schedule"]').first()
   await expect(scheduleButton).toBeVisible()
@@ -137,15 +148,18 @@ test("creates, edits, completes, skips, restores, and deletes a schedule", async
   await page.getByText("スキップした予定を表示", { exact: true }).click()
   await operations.click()
   await page.getByRole("button", { name: "スキップ", exact: true }).click()
+  await confirmTodayRegeneration(page)
   await expect(page.getByText("予定をスキップしました。", { exact: true })).toBeVisible()
   await operations.click()
   await page.getByRole("button", { name: "スキップを解除", exact: true }).click()
+  await confirmTodayRegeneration(page)
   await expect(page.getByText("スキップを解除しました。", { exact: true })).toBeVisible()
 
   await operations.click()
   await page.getByRole("button", { name: "この予定だけを削除", exact: true }).click()
   const dialog = page.getByRole("alertdialog", { name: "予定を削除しますか？" })
   await dialog.getByRole("button", { name: "削除する", exact: true }).click()
+  await confirmTodayRegeneration(page)
   await expect(page.getByText("予定を削除しました。", { exact: true })).toBeVisible()
   await expect(page.locator('button[title="UI schedule revised"]')).toHaveCount(0)
 
@@ -155,6 +169,7 @@ test("creates, edits, completes, skips, restores, and deletes a schedule", async
   await page.getByLabel("終了日", { exact: true }).fill(date)
   await page.getByLabel("終日", { exact: true }).check()
   await page.getByRole("button", { name: "作成する", exact: true }).click()
+  await confirmTodayRegeneration(page)
   await expect(page.locator('button[title="UI all-day"]')).toBeVisible()
 })
 
@@ -188,6 +203,7 @@ test("edits and deletes a recurring schedule from the selected occurrence onward
       interval: 1,
       weekdays: [],
       end_date: shiftDate(date, 5),
+      confirm_todo_regeneration: true,
     },
   })
   expect(response.status()).toBe(201)
@@ -278,6 +294,7 @@ test("filters Project schedules and opens the correct day from month overflow", 
         frequency: "once",
         interval: 0,
         weekdays: [],
+        confirm_todo_regeneration: true,
       },
     })
     expect(response.status()).toBe(201)

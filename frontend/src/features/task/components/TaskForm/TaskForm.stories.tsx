@@ -32,6 +32,7 @@ function TaskFormStory(props: StoryProps) {
     onSubmit: form.handleSubmit(() => {}),
     onCancel: () => {},
     discardConfirmation: { open: false, onConfirm: () => {}, onCancel: () => {} },
+      regenerationConfirmation: { open: false, onConfirm: () => {}, onCancel: () => {} },
     ...(props.hasConflict ? { conflict: {
       onRequestReload: () => {},
       reloading: false,

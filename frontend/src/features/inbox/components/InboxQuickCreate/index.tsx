@@ -8,6 +8,7 @@ import { useI18n } from "~/features/i18n/hooks"
 import { InboxActionContext } from "~/features/inbox/providers/InboxActionProvider/context"
 import { InboxAPIDataContext } from "~/features/inbox/providers/InboxAPIDataProvider/context"
 import { InboxNavigationContext } from "~/features/inbox/providers/InboxNavigationProvider/context"
+import { durationTextToMinutes } from "~/features/task/components/TaskForm/schema"
 import { emptyInboxQuickCreateValues, inboxQuickCreateSchema, type InboxQuickCreateValues } from "./schema"
 import controls from "~/styles/controls.module.css"
 import styles from "./index.module.css"
@@ -35,12 +36,13 @@ export default function InboxQuickCreate() {
     resolver: zodResolver(inboxQuickCreateSchema),
     defaultValues: {
       ...emptyInboxQuickCreateValues,
+      formType: type,
       timezone,
       startDate: today,
       endDate: today,
     },
   })
-  const { register, reset, trigger, getValues, watch, formState: { errors } } = form
+  const { register, reset, trigger, getValues, watch, setValue, formState: { errors } } = form
   const busy = actions.busy || submitting
   const allDay = watch("allDay")
   const projectOptions = data.projects ?? []
@@ -53,22 +55,23 @@ export default function InboxQuickCreate() {
   const endTimeError = errors.endTime?.message && !(errors.endDate?.message === "schedules.form.endBeforeStart" && errors.endTime.message === "schedules.form.endBeforeStart")
     ? i18n(errors.endTime.message as MessageKey)
     : undefined
+  const taskEstimateError = errors.taskEstimate?.message ? i18n(errors.taskEstimate.message as MessageKey) : undefined
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (busy) return
     setSubmitting(true)
     try {
-      if (!await trigger(type === "task" ? "title" : undefined)) return
+      if (!await trigger(type === "task" ? ["title", "taskEstimate"] : undefined)) return
       const values = getValues()
       if (type === "task") {
-        await actions.createTask({ title: values.title.trim(), projectId: values.projectId })
+        await actions.createTask({ title: values.title.trim(), projectId: values.projectId, estimatedMinutes: durationTextToMinutes(values.taskEstimate) ?? 0 })
       } else {
         await actions.createSchedule({ ...values, title: values.title.trim(), timezone })
       }
       first()
       const currentDate = todayInTimezone(timezone)
-      reset({ ...emptyInboxQuickCreateValues, timezone, startDate: currentDate, endDate: currentDate })
+      reset({ ...emptyInboxQuickCreateValues, formType: type, timezone, startDate: currentDate, endDate: currentDate })
     } catch {
       // Action provider reports the failure; keep the user's draft in the form.
     } finally {
@@ -86,7 +89,7 @@ export default function InboxQuickCreate() {
             type="button"
             role="tab"
             aria-selected={type === value}
-            onClick={() => setType(value)}
+            onClick={() => { setType(value); setValue("formType", value, { shouldDirty: true }) }}
             disabled={busy}
           >{i18n(`inbox.quickCreate.${value}`)}</button>)}
         </div>
@@ -105,7 +108,11 @@ export default function InboxQuickCreate() {
           {i18n(busy ? "inbox.quickCreate.adding" : "inbox.quickCreate.add")}
         </button>
       </div>
-      {(titleError || type === "schedule") && <div className={styles.detailRow}>
+      {(titleError || taskEstimateError || type === "schedule" || type === "task") && <div className={styles.detailRow}>
+        {type === "task" && <Field label="inbox.quickCreate.estimate" htmlFor="inbox-task-estimate" error={taskEstimateError}>
+          <input {...register("taskEstimate")} className={`${controls.input} ${styles.timeInput}`} id="inbox-task-estimate" placeholder="30 / 1:30" inputMode="numeric" disabled={busy} aria-invalid={Boolean(taskEstimateError)} aria-describedby={taskEstimateError ? "inbox-task-estimate-error" : undefined} />
+          <span className="text-caption">{i18n("inbox.quickCreate.estimateHint")}</span>
+        </Field>}
         {type === "schedule" && <>
           <Field label="inbox.quickCreate.startDate" htmlFor="inbox-start-date" error={startDateError}>
             <input {...register("startDate")} className={`${controls.input} ${styles.dateInput}`} id="inbox-start-date" type="date" disabled={busy} aria-invalid={Boolean(startDateError)} />
@@ -130,9 +137,9 @@ export default function InboxQuickCreate() {
 
 function Field({ label, htmlFor, error, children }: { label: MessageKey; htmlFor: string; error?: string; children: React.ReactNode }) {
   const i18n = useI18n()
-  return <label className={styles.field} htmlFor={htmlFor}>
-    <span className="text-label">{i18n(label)}</span>
+  return <div className={styles.field}>
+    <label className="text-label" htmlFor={htmlFor}>{i18n(label)}</label>
     {children}
-    {error && <span className={styles.fieldError} role="alert">{error}</span>}
-  </label>
+    {error && <span className={styles.fieldError} id={`${htmlFor}-error`} role="alert">{error}</span>}
+  </div>
 }

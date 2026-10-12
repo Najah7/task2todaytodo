@@ -23,8 +23,8 @@ export type ScheduleReloadSnapshot = {
 
 export type ScheduleActions = {
   busy: boolean
-  create: (values: ScheduleFormValues) => Promise<void>
-  update: (input: ScheduleEditInput) => Promise<void>
+  create: (values: ScheduleFormValues, confirmRegeneration?: boolean) => Promise<void>
+  update: (input: ScheduleEditInput, confirmRegeneration?: boolean) => Promise<void>
   complete: (event: ScheduleEvent) => Promise<void>
   reopen: (event: ScheduleEvent) => Promise<void>
   skip: (event: ScheduleEvent) => Promise<void>

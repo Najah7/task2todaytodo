@@ -14,13 +14,14 @@ export function taskFieldErrors(error: unknown): Record<string, unknown> | undef
   return Object.keys(mapped).length ? mapped : undefined
 }
 
-export function actionItemFieldErrors(error: unknown): Partial<Record<"title" | "estimatedMinutes" | "priority", "tasks.form.requiredActionItemTitle" | "tasks.form.invalidEstimate" | "tasks.form.invalidPriority" | "tasks.form.invalidField">> | undefined {
+export function actionItemFieldErrors(error: unknown): Partial<Record<"title" | "estimatedMinutes" | "actualMinutes" | "priority", "tasks.form.requiredActionItemTitle" | "tasks.form.invalidEstimate" | "tasks.form.invalidActualMinutes" | "tasks.form.invalidPriority" | "tasks.form.invalidField">> | undefined {
   if (!(error instanceof ApiError) || error.status !== 400) return undefined
   const details = (error.data as RestErrResponse | undefined)?.error?.details ?? []
-  const fields: Partial<Record<"title" | "estimatedMinutes" | "priority", "tasks.form.requiredActionItemTitle" | "tasks.form.invalidEstimate" | "tasks.form.invalidPriority" | "tasks.form.invalidField">> = {}
+  const fields: Partial<Record<"title" | "estimatedMinutes" | "actualMinutes" | "priority", "tasks.form.requiredActionItemTitle" | "tasks.form.invalidEstimate" | "tasks.form.invalidActualMinutes" | "tasks.form.invalidPriority" | "tasks.form.invalidField">> = {}
   for (const detail of details) {
     if (detail.field === "title") fields.title = detail.code === "title_required" ? "tasks.form.requiredActionItemTitle" : "tasks.form.invalidField"
     else if (detail.field === "estimated_minutes") fields.estimatedMinutes = detail.code === "invalid_minutes" ? "tasks.form.invalidEstimate" : "tasks.form.invalidField"
+    else if (detail.field === "actual_minutes") fields.actualMinutes = detail.code === "invalid_minutes" ? "tasks.form.invalidActualMinutes" : "tasks.form.invalidField"
     else if (detail.field === "priority") fields.priority = detail.code === "invalid_priority" ? "tasks.form.invalidPriority" : "tasks.form.invalidField"
   }
   return Object.keys(fields).length ? fields : undefined

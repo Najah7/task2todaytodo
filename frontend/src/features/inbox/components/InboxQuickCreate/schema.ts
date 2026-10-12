@@ -2,8 +2,10 @@ import { z } from "zod"
 import { emptyScheduleFormValues, scheduleCreateSchema } from "~/features/schedule/components/ScheduleForm/schema"
 
 export const inboxQuickCreateSchema = z.object({
+  formType: z.enum(["task", "schedule"]),
   title: z.string().trim().min(1, "tasks.form.requiredTitle"),
   projectId: z.string(),
+  taskEstimate: z.string(),
   startDate: z.string(),
   endDate: z.string(),
   startTime: z.string(),
@@ -11,6 +13,19 @@ export const inboxQuickCreateSchema = z.object({
   allDay: z.boolean(),
   timezone: z.string(),
 }).superRefine((values, context) => {
+  if (values.formType === "task") {
+    const estimate = values.taskEstimate.trim()
+    if (!/^\d+(?::[0-5]\d)?$/.test(estimate)) {
+      context.addIssue({ code: "custom", path: ["taskEstimate"], message: "tasks.form.invalidEstimate" })
+    } else {
+      const [hours, minutes = "0"] = estimate.split(":")
+      const total = estimate.includes(":") ? Number(hours) * 60 + Number(minutes) : Number(hours)
+      if (!Number.isSafeInteger(total) || total < 1 || total > 2_147_483_647) {
+        context.addIssue({ code: "custom", path: ["taskEstimate"], message: "tasks.form.invalidEstimate" })
+      }
+    }
+    return
+  }
   const schedule = scheduleCreateSchema.safeParse({
     ...emptyScheduleFormValues,
     ...values,
@@ -34,8 +49,10 @@ export const inboxQuickCreateSchema = z.object({
 export type InboxQuickCreateValues = z.infer<typeof inboxQuickCreateSchema>
 
 export const emptyInboxQuickCreateValues: InboxQuickCreateValues = {
+  formType: "task",
   title: "",
   projectId: "",
+  taskEstimate: "",
   startDate: "",
   endDate: "",
   startTime: "09:00",

@@ -18,6 +18,7 @@ import InboxPage from "~/pages/Inbox"
 import WeeklyPlanPage from "~/pages/WeeklyPlan"
 import WeeklyPlanEditPage from "~/pages/WeeklyPlanEdit"
 import ProfileSleepSettings from "~/pages/ProfileSleep"
+import TodayPage from "~/pages/Today"
 
 function requireAuthentication() {
   if (!getPersonalAccessToken()?.trim()) return replace("/login")
@@ -33,7 +34,7 @@ export const router = createBrowserRouter([
     element: <Outlet />,
     children: [
       { path: "/", element: <Navigate to={`/${DEFAULT_TAB}`} replace /> },
-      { path: "/today", element: <App><PageHeading messageKey="page.today.title" /></App> },
+      { path: "/today", element: <App><TodayPage /></App> },
       { path: "/inbox", element: <App><InboxPage /></App> },
       { path: "/projects", element: <App><ProjectList /></App> },
       { path: "/projects/new", element: <App><ProjectsNewPage /></App> },

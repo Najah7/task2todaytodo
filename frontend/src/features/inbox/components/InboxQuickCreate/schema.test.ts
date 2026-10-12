@@ -3,6 +3,7 @@ import { emptyInboxQuickCreateValues, inboxQuickCreateSchema } from "~/features/
 
 const valid = {
   ...emptyInboxQuickCreateValues,
+  formType: "schedule" as const,
   title: "Planning",
   startDate: "2026-10-12",
   endDate: "2026-10-12",
