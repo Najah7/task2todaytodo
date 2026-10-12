@@ -45,8 +45,8 @@ export function ScheduleNavigationProvider({ children }: Props) {
         state: prefill ? { schedulePrefill: prefill } : undefined,
       })
     },
-    edit: (blueprintId: string, occurrenceDate: string) => {
-      navigate(`/schedules/${encodeURIComponent(blueprintId)}/${encodeURIComponent(occurrenceDate)}/edit?${scheduleState2searchParams(state, searchParams).toString()}`, {
+    edit: (ruleId: string, occurrenceDate: string) => {
+      navigate(`/schedules/${encodeURIComponent(ruleId)}/${encodeURIComponent(occurrenceDate)}/edit?${scheduleState2searchParams(state, searchParams).toString()}`, {
         state: { from: `${location.pathname}${location.search}` },
       })
     },

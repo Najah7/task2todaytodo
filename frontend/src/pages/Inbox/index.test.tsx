@@ -26,7 +26,7 @@ const inbox = {
     schedule: {
       all_day: false,
       assignee_id: "user-1",
-      blueprint_id: "blueprint-1",
+      rule_id: "rule-1",
       can_assign: false,
       can_update: true,
       can_update_following: false,

@@ -31,7 +31,6 @@ export interface RestInboxCountsResponse {
 export interface RestInboxSchedulePayloadResponse {
   all_day: boolean;
   assignee_id: string;
-  blueprint_id: string;
   can_assign: boolean;
   can_update: boolean;
   can_update_following: boolean;
@@ -43,6 +42,7 @@ export interface RestInboxSchedulePayloadResponse {
   /** @nullable */
   occurrence_id: string | null;
   revision: number;
+  rule_id: string;
   skipped: boolean;
   source_revision_id: string;
   start_at: string;
@@ -100,10 +100,20 @@ export interface RestInboxListResponse {
   previous_page_token: string;
 }
 
+export interface RestAllocationConflictMetadata {
+  end_at?: string;
+  kind?: string;
+  occurrence_date?: string;
+  project_id?: string;
+  rule_id?: string;
+  start_at?: string;
+}
+
 export interface RestErrDetail {
   code?: string;
   field?: string;
   message?: string;
+  metadata?: RestAllocationConflictMetadata;
 }
 
 export interface RestErr {
@@ -188,7 +198,7 @@ export const getListInboxUrl = (params?: ListInboxParams,) => {
 }
 
 /**
- * Returns a paginated, read-only projection of all incomplete Tasks assigned to the caller and uncompleted, unskipped Schedule occurrences from the caller's local today through six days later, including virtual recurring occurrences. Results are ordered by original Task or Schedule blueprint creation time descending; occurrences from one blueprint are ordered by scheduled start time ascending.
+ * Returns a paginated, read-only projection of all incomplete Tasks assigned to the caller and uncompleted, unskipped Schedule occurrences from the caller's local today through six days later, including virtual recurring occurrences. Results are ordered by original Task or Schedule rule creation time descending; occurrences from one rule are ordered by scheduled start time ascending.
  * @summary List inbox
  */
 export const listInbox = async (params?: ListInboxParams, options?: Parameters<typeof apiFetch>[1]): Promise<RestInboxListResponse> => {

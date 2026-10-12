@@ -142,7 +142,7 @@ function ScheduleEventOperations({ event, busy, onEdit, onDelete }: { event: Sch
   )
 }
 
-function MonthGrid({ dates, events, timezone, language, busy, onDay, onAdd, onEvent, onDelete }: { dates: Date[]; events: ScheduleEvent[]; timezone: string; language: string; busy: boolean; onDay: (date: string) => void; onAdd: (date: string) => void; onEvent: (blueprintId: string, occurrenceDate: string) => void; onDelete: (event: ScheduleEvent, scope: "current" | "following") => void }) {
+function MonthGrid({ dates, events, timezone, language, busy, onDay, onAdd, onEvent, onDelete }: { dates: Date[]; events: ScheduleEvent[]; timezone: string; language: string; busy: boolean; onDay: (date: string) => void; onAdd: (date: string) => void; onEvent: (ruleId: string, occurrenceDate: string) => void; onDelete: (event: ScheduleEvent, scope: "current" | "following") => void }) {
   const i18n = useI18n()
   const weekdays = dates.slice(0, 7)
   const currentMonth = dates[Math.floor(dates.length / 2)]?.getUTCMonth()
@@ -157,9 +157,9 @@ function MonthGrid({ dates, events, timezone, language, busy, onDay, onAdd, onEv
           return <section key={key} className={`${styles.monthDay} ${day.getUTCDay() === 0 || day.getUTCDay() === 6 ? styles.weekend : ""} ${day.getUTCMonth() !== currentMonth ? styles.outsideMonth : ""}`} aria-label={formatDate(day, language, { dateStyle: "full" })}>
             <button className={`${styles.dayNumber} ${key === today ? styles.today : ""} ${controls.focusRing} text-detail`} type="button" aria-current={key === today ? "date" : undefined} onClick={() => onDay(key)}>{day.getUTCDate()}</button>
             <div className={styles.monthEvents}>
-              {dayEvents.slice(0, 3).map((event) => <div className={styles.monthEventRow} key={`${event.blueprintId}:${event.occurrenceDate}`}>
-                <button className={`${styles.monthEvent} ${event.state === "completed" ? styles.completedEvent : ""} ${event.state === "skipped" ? styles.skippedEvent : ""} ${controls.focusRing} text-caption`} type="button" onClick={() => onEvent(event.blueprintId, event.occurrenceDate)} title={event.title}>{event.allDay ? `${i18n("schedules.allDay")} · ` : `${zonedTime(event.start, timezone)} · `}{event.title}</button>
-                <ScheduleEventOperations event={event} busy={busy} onEdit={() => onEvent(event.blueprintId, event.occurrenceDate)} onDelete={(scope) => onDelete(event, scope)} />
+              {dayEvents.slice(0, 3).map((event) => <div className={styles.monthEventRow} key={`${event.ruleId}:${event.occurrenceDate}`}>
+                <button className={`${styles.monthEvent} ${event.state === "completed" ? styles.completedEvent : ""} ${event.state === "skipped" ? styles.skippedEvent : ""} ${controls.focusRing} text-caption`} type="button" onClick={() => onEvent(event.ruleId, event.occurrenceDate)} title={event.title}>{event.allDay ? `${i18n("schedules.allDay")} · ` : `${zonedTime(event.start, timezone)} · `}{event.title}</button>
+                <ScheduleEventOperations event={event} busy={busy} onEdit={() => onEvent(event.ruleId, event.occurrenceDate)} onDelete={(scope) => onDelete(event, scope)} />
               </div>)}
               {dayEvents.length > 3 && <button className={`${styles.moreEvents} ${controls.focusRing} text-caption`} type="button" onClick={() => onDay(key)}>+{dayEvents.length - 3} {i18n("schedules.more")}</button>}
               <button className={`${styles.monthAdd} ${controls.focusRing} text-caption`} type="button" onClick={() => onAdd(key)} aria-label={`${i18n("schedules.addOnDate", { date: formatDate(day, language, { dateStyle: "medium" })})}`}>+</button>
@@ -171,7 +171,7 @@ function MonthGrid({ dates, events, timezone, language, busy, onDay, onAdd, onEv
   )
 }
 
-function TimeGrid({ dates, events, timezone, language, scrollRef, busy, onSlot, onAllDay, onEvent, onHeaderDate, onDelete }: { dates: Date[]; events: ScheduleEvent[]; timezone: string; language: string; scrollRef: RefObject<HTMLDivElement | null>; busy: boolean; onSlot: (date: Date, hour: number) => void; onAllDay: (date: Date) => void; onEvent: (blueprintId: string, occurrenceDate: string) => void; onHeaderDate: (date: string) => void; onDelete: (event: ScheduleEvent, scope: "current" | "following") => void }) {
+function TimeGrid({ dates, events, timezone, language, scrollRef, busy, onSlot, onAllDay, onEvent, onHeaderDate, onDelete }: { dates: Date[]; events: ScheduleEvent[]; timezone: string; language: string; scrollRef: RefObject<HTMLDivElement | null>; busy: boolean; onSlot: (date: Date, hour: number) => void; onAllDay: (date: Date) => void; onEvent: (ruleId: string, occurrenceDate: string) => void; onHeaderDate: (date: string) => void; onDelete: (event: ScheduleEvent, scope: "current" | "following") => void }) {
   const i18n = useI18n()
   const today = zonedDateKey(new Date(), timezone)
   const nowMinutes = timeMinutes(zonedTime(new Date(), timezone))
@@ -196,9 +196,9 @@ function TimeGrid({ dates, events, timezone, language, scrollRef, busy, onSlot, 
               <button className={`${styles.dayNumber} ${isToday ? styles.today : ""} ${controls.focusRing} text-body-strong`} type="button" aria-current={isToday ? "date" : undefined} onClick={() => onHeaderDate(key)}>{day.getUTCDate()}</button>
             </header>
             <div className={styles.allDayRow}>
-              {allDayEvents.map((event) => <div className={styles.allDayEventRow} key={`${event.blueprintId}:${event.occurrenceDate}`}>
-                <button className={`${styles.allDayEvent} ${event.state === "completed" ? styles.completedEvent : ""} ${event.state === "skipped" ? styles.skippedEvent : ""} ${controls.focusRing} text-caption`} type="button" title={event.title} onClick={() => onEvent(event.blueprintId, event.occurrenceDate)}>{event.title}</button>
-                <ScheduleEventOperations event={event} busy={busy} onEdit={() => onEvent(event.blueprintId, event.occurrenceDate)} onDelete={(scope) => onDelete(event, scope)} />
+              {allDayEvents.map((event) => <div className={styles.allDayEventRow} key={`${event.ruleId}:${event.occurrenceDate}`}>
+                <button className={`${styles.allDayEvent} ${event.state === "completed" ? styles.completedEvent : ""} ${event.state === "skipped" ? styles.skippedEvent : ""} ${controls.focusRing} text-caption`} type="button" title={event.title} onClick={() => onEvent(event.ruleId, event.occurrenceDate)}>{event.title}</button>
+                <ScheduleEventOperations event={event} busy={busy} onEdit={() => onEvent(event.ruleId, event.occurrenceDate)} onDelete={(scope) => onDelete(event, scope)} />
               </div>)}
               <button className={`${styles.addAllDay} ${controls.focusRing} text-caption`} type="button" aria-label={`${formatDate(day, language, { dateStyle: "medium" })}: ${i18n("schedules.allDay")}`} onClick={() => onAllDay(day)} />
             </div>
@@ -206,12 +206,12 @@ function TimeGrid({ dates, events, timezone, language, scrollRef, busy, onSlot, 
               {Array.from({ length: 24 }, (_, hour) => <button key={hour} className={`${styles.hourSlot} ${controls.focusRing}`} type="button" aria-label={`${formatDate(day, language, { dateStyle: "medium" })} ${String(hour).padStart(2, "0")}:00`} onClick={() => onSlot(day, hour)} />)}
               {key === today && <div className={styles.nowIndicator} style={{ top: `${nowMinutes / 60 * hourHeightRem}rem` }} aria-label={`${i18n("schedules.now")} ${zonedTime(new Date(), timezone)}`} />}
               {layouts.map(({ event, start, end, lane, lanes }) => <div
-                key={`${event.blueprintId}:${event.occurrenceDate}`}
+                key={`${event.ruleId}:${event.occurrenceDate}`}
                 className={styles.timedEventPosition}
                 style={{ top: `${start / 60 * hourHeightRem}rem`, height: `max(1.5rem, ${Math.max(20, end - start) / 60 * hourHeightRem}rem)`, left: `calc(${lane} * 100% / ${lanes} + 0.125rem)`, width: `calc(100% / ${lanes} - 0.25rem)` }}
               >
-                <button className={`${styles.timedEvent} ${event.state === "completed" ? styles.completedEvent : ""} ${event.state === "skipped" ? styles.skippedEvent : ""} ${controls.focusRing}`} type="button" title={event.title} onClick={() => onEvent(event.blueprintId, event.occurrenceDate)}><strong className="text-caption">{event.title}</strong><span className="text-caption">{zonedTime(event.start, timezone)}–{zonedTime(event.end, timezone)}</span></button>
-                <ScheduleEventOperations event={event} busy={busy} onEdit={() => onEvent(event.blueprintId, event.occurrenceDate)} onDelete={(scope) => onDelete(event, scope)} />
+                <button className={`${styles.timedEvent} ${event.state === "completed" ? styles.completedEvent : ""} ${event.state === "skipped" ? styles.skippedEvent : ""} ${controls.focusRing}`} type="button" title={event.title} onClick={() => onEvent(event.ruleId, event.occurrenceDate)}><strong className="text-caption">{event.title}</strong><span className="text-caption">{zonedTime(event.start, timezone)}–{zonedTime(event.end, timezone)}</span></button>
+                <ScheduleEventOperations event={event} busy={busy} onEdit={() => onEvent(event.ruleId, event.occurrenceDate)} onDelete={(scope) => onDelete(event, scope)} />
               </div>)}
             </div>
           </section>

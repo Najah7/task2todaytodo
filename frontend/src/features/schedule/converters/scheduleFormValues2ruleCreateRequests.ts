@@ -1,8 +1,8 @@
-import type { RestScheduleBlueprintCreateRequest } from "~/api/generated/schedules"
-import { addCalendarDays } from "~/features/schedule/lib/dateTime"
+import type { RestScheduleRuleCreateRequest } from "~/api/generated/schedules"
+import { addCalendarDays } from "~/features/shared/calendar/dateTime"
 import type { ScheduleFormValues } from "~/features/schedule/components/ScheduleForm/schema"
 
-export function scheduleFormValues2blueprintCreateRequests(values: ScheduleFormValues[]): RestScheduleBlueprintCreateRequest[] {
+export function scheduleFormValues2ruleCreateRequests(values: ScheduleFormValues[]): RestScheduleRuleCreateRequest[] {
   return values.map((item) => {
     const once = item.frequency === "once"
     const endDate = item.allDay ? addCalendarDays(item.endDate, 1) : item.endDate

@@ -93,7 +93,7 @@ export function useScheduleEditForm(): ScheduleFormController {
   const navigation = useContext(ScheduleNavigationContext)!
   const event = data.event!
   const t = useI18n()
-  const initialValues = scheduleEvents2formValues([event], data.blueprintRevision ? [data.blueprintRevision] : [])[0]
+  const initialValues = scheduleEvents2formValues([event], data.ruleRevision ? [data.ruleRevision] : [])[0]
   const form = useForm<ScheduleFormValues>({ resolver: zodResolver(scheduleCreateSchema), defaultValues: initialValues })
   const baselineValues = useRef(initialValues)
   const selectedProjectId = form.watch("projectId")
@@ -108,17 +108,17 @@ export function useScheduleEditForm(): ScheduleFormController {
   const assigneeOptions = data.assigneeOptionsProjectId === selectedProjectId ? data.assigneeOptions : fallbackAssigneeOptions
   const dirtyGuard = useFormDraftGuard(form.formState.isDirty)
   const occurrenceRevision = useRef(event.revision)
-  const blueprintRevision = useRef(data.blueprintRevisionNumber || 0)
+  const ruleRevision = useRef(data.ruleRevisionNumber || 0)
   const [hasConflict, setHasConflict] = useState(false)
   const [confirmReload, setConfirmReload] = useState(false)
   const [reloading, setReloading] = useState(false)
   const [serverError, setServerError] = useState<ScheduleFormController["viewProps"]["serverError"]>()
   const [followingAvailable, setFollowingAvailable] = useState(
     event.permissions.canUpdateFollowing
-      && !data.blueprintAccessDenied
-      && Boolean(data.blueprintRevision)
-      && Number.isInteger(data.blueprintRevisionNumber)
-      && (data.blueprintRevisionNumber || 0) > 0,
+      && !data.ruleAccessDenied
+      && Boolean(data.ruleRevision)
+      && Number.isInteger(data.ruleRevisionNumber)
+      && (data.ruleRevisionNumber || 0) > 0,
   )
   const onProjectChange = (projectId: string) => {
     form.setValue("projectId", projectId, { shouldDirty: true, shouldValidate: true })
@@ -129,10 +129,10 @@ export function useScheduleEditForm(): ScheduleFormController {
     setServerError(undefined)
     try {
       await actions.update({
-        blueprintId: event.blueprintId,
+        ruleId: event.ruleId,
         occurrenceDate: event.occurrenceDate,
         revision: occurrenceRevision.current,
-        blueprintRevision: blueprintRevision.current,
+        ruleRevision: ruleRevision.current,
         scope: values.scope,
         values,
         baselineValues: baselineValues.current,
@@ -160,7 +160,7 @@ export function useScheduleEditForm(): ScheduleFormController {
       form.reset(snapshot.values)
       baselineValues.current = snapshot.values
       occurrenceRevision.current = snapshot.occurrenceRevision
-      if (snapshot.blueprintRevision !== undefined) blueprintRevision.current = snapshot.blueprintRevision
+      if (snapshot.ruleRevision !== undefined) ruleRevision.current = snapshot.ruleRevision
       setFollowingAvailable(snapshot.followingAvailable)
       setServerError(undefined)
       setHasConflict(false)

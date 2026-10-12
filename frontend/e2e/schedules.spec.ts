@@ -34,7 +34,7 @@ test("shows saved timed and all-day schedules across desktop, dark, and mobile l
       location: "",
     },
   ]) {
-    const response = await page.request.post("/api/schedule-blueprints", {
+    const response = await page.request.post("/api/schedule-rules", {
       headers,
       data: {
         ...schedule,
@@ -172,7 +172,7 @@ test("edits and deletes a recurring schedule from the selected occurrence onward
   expect(userResponse.status()).toBe(200)
   const user = await userResponse.json() as { user_id: string; timezone: string }
   const date = shiftDate(localDate(new Date(), user.timezone), 1)
-  const response = await page.request.post("/api/schedule-blueprints", {
+  const response = await page.request.post("/api/schedule-rules", {
     headers,
     data: {
       title: "Recurring agenda",
@@ -263,7 +263,7 @@ test("filters Project schedules and opens the correct day from month overflow", 
   const project = await projectResponse.json() as { id: string }
 
   for (let index = 1; index <= 4; index++) {
-    const response = await page.request.post("/api/schedule-blueprints", {
+    const response = await page.request.post("/api/schedule-rules", {
       headers,
       data: {
         title: `Project review ${index}`,

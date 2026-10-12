@@ -15,6 +15,9 @@ import ScheduleList from "~/pages/ScheduleList"
 import ScheduleNewPage from "~/pages/ScheduleNew"
 import ScheduleEditPage from "~/pages/ScheduleEdit"
 import InboxPage from "~/pages/Inbox"
+import WeeklyPlanPage from "~/pages/WeeklyPlan"
+import WeeklyPlanEditPage from "~/pages/WeeklyPlanEdit"
+import ProfileSleepSettings from "~/pages/ProfileSleep"
 
 function requireAuthentication() {
   if (!getPersonalAccessToken()?.trim()) return replace("/login")
@@ -40,10 +43,12 @@ export const router = createBrowserRouter([
       { path: "/tasks/:id/edit", element: <App><TaskEditPage /></App> },
       { path: "/schedules", element: <App><ScheduleList /></App> },
       { path: "/schedules/new", element: <App><ScheduleNewPage /></App> },
-      { path: "/schedules/:blueprintId/:occurrenceDate/edit", element: <App><ScheduleEditPage /></App> },
+      { path: "/schedules/:ruleId/:occurrenceDate/edit", element: <App><ScheduleEditPage /></App> },
+      { path: "/weekly-plan", element: <App><WeeklyPlanPage /></App> },
+      { path: "/weekly-plan/edit", element: <App><WeeklyPlanEditPage /></App> },
       { path: "/members", element: <App><PageHeading messageKey="page.members.title" /></App> },
       { path: "/kpi", element: <App><PageHeading messageKey="page.kpi.title" /></App> },
-      { path: "/profile", element: <App><PageHeading messageKey="page.profile.title" /></App> },
+      { path: "/profile", element: <App><ProfileSleepSettings /></App> },
       { path: "*", element: <App><PageHeading messageKey="page.notFound.title" /></App> },
     ],
   },

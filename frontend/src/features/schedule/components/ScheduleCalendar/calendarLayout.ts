@@ -1,6 +1,9 @@
 import { scheduleRange } from "~/features/schedule/lib/scheduleRange"
 import type { ScheduleEvent } from "~/features/schedule/providers/ScheduleAPIDataProvider/context"
 import type { ScheduleView } from "~/features/schedule/providers/ScheduleNavigationProvider/context"
+import { zonedTime } from "~/features/shared/calendar/zonedTime"
+
+export { zonedTime }
 
 const minutesPerDay = 24 * 60
 
@@ -32,12 +35,6 @@ export function zonedDateKey(value: Date, timezone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(value)
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "00"
   return `${part("year")}-${part("month")}-${part("day")}`
-}
-
-export function zonedTime(value: Date, timezone: string) {
-  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(value)
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "00"
-  return `${part("hour")}:${part("minute")}`
 }
 
 export function timeMinutes(value: string) {

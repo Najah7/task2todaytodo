@@ -1,5 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill"
-import { localDateStartInstant, plainDate } from "~/features/schedule/lib/dateTime"
+import { localDateStartInstant, plainDate } from "~/features/shared/calendar/dateTime"
 import type { ScheduleView } from "~/features/schedule/providers/ScheduleNavigationProvider/context"
 
 export type ScheduleVisibleRange = {

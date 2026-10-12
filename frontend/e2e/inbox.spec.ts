@@ -74,7 +74,7 @@ test("quick-creates a Task and multi-day all-day Schedule, filters, edits, and c
       title: string
       project_id: string | null
       task: { id: string; revision: number } | null
-      schedule: { blueprint_id: string; occurrence_date: string; all_day: boolean; start_at: string; end_at: string; revision: number } | null
+      schedule: { rule_id: string; occurrence_date: string; all_day: boolean; start_at: string; end_at: string; revision: number } | null
     }>
   }
   const createdTask = inbox.items.find((item) => item.title === taskTitle)
@@ -125,7 +125,7 @@ test("quick-creates a Task and multi-day all-day Schedule, filters, edits, and c
   await activeScheduleRow.getByRole("button", { name: /完了/ }).click()
   await expect(activeScheduleRow).toHaveCount(0)
   const occurrenceResponse = await page.request.get(
-    `/api/schedules/${createdSchedule?.schedule?.blueprint_id}/${createdSchedule?.schedule?.occurrence_date}`,
+    `/api/schedules/${createdSchedule?.schedule?.rule_id}/${createdSchedule?.schedule?.occurrence_date}`,
     { headers },
   )
   expect(occurrenceResponse.status()).toBe(200)
@@ -148,7 +148,7 @@ test("shows a virtual recurring Schedule, edits that occurrence, and completes i
   const today = localDate(new Date(), user.timezone)
   const tomorrow = shiftDate(today, 1)
   const recurringTitle = "Virtual Inbox occurrence"
-  const create = await page.request.post("/api/schedule-blueprints", {
+  const create = await page.request.post("/api/schedule-rules", {
     headers,
     data: {
       title: recurringTitle,
@@ -166,16 +166,16 @@ test("shows a virtual recurring Schedule, edits that occurrence, and completes i
     },
   })
   expect(create.status()).toBe(201)
-  const blueprint = await create.json() as { id: string }
+  const rule = await create.json() as { id: string }
 
   const initialInbox = await page.request.get("/api/inbox?type=schedule", { headers })
   expect(initialInbox.status()).toBe(200)
   const initialItems = (await initialInbox.json()).items as Array<{
     title: string
-    schedule: { blueprint_id: string; occurrence_date: string; occurrence_id: string | null; revision: number } | null
+    schedule: { rule_id: string; occurrence_date: string; occurrence_id: string | null; revision: number } | null
   }>
   const virtual = initialItems.find((item) =>
-    item.schedule?.blueprint_id === blueprint.id && item.schedule.occurrence_date === tomorrow)
+    item.schedule?.rule_id === rule.id && item.schedule.occurrence_date === tomorrow)
   expect(virtual?.schedule).toMatchObject({ occurrence_id: null, occurrence_date: tomorrow })
 
   await page.goto("/inbox?type=schedule")
@@ -185,7 +185,7 @@ test("shows a virtual recurring Schedule, edits that occurrence, and completes i
   const virtualRow = recurringRows.nth(1)
   await expect(virtualRow).toBeVisible()
   await virtualRow.getByRole("button", { name: /編集/ }).click()
-  await expect(page).toHaveURL(new RegExp(`/schedules/${blueprint.id}/${tomorrow}/edit`))
+  await expect(page).toHaveURL(new RegExp(`/schedules/${rule.id}/${tomorrow}/edit`))
   await page.getByLabel("タイトル", { exact: true }).fill("Edited virtual occurrence")
   await page.getByRole("button", { name: "保存する", exact: true }).click()
   await expect(page).toHaveURL((url) => url.pathname === "/inbox" && url.searchParams.get("type") === "schedule")
@@ -196,17 +196,17 @@ test("shows a virtual recurring Schedule, edits that occurrence, and completes i
   expect(afterEdit.status()).toBe(200)
   const editedItems = (await afterEdit.json()).items as Array<{
     title: string
-    schedule: { blueprint_id: string; occurrence_date: string; occurrence_id: string | null; revision: number } | null
+    schedule: { rule_id: string; occurrence_date: string; occurrence_id: string | null; revision: number } | null
   }>
   const editedOccurrence = editedItems.find((item) =>
-    item.schedule?.blueprint_id === blueprint.id && item.schedule.occurrence_date === tomorrow)
+    item.schedule?.rule_id === rule.id && item.schedule.occurrence_date === tomorrow)
   expect(editedOccurrence).toMatchObject({ title: "Edited virtual occurrence" })
   expect(editedOccurrence?.schedule?.occurrence_id).toBeTruthy()
   expect(editedOccurrence?.schedule?.revision).toBeGreaterThan(0)
 
   await editedRow.getByRole("button", { name: /完了/ }).click()
   await expect(editedRow).toHaveCount(0)
-  const completed = await page.request.get(`/api/schedules/${blueprint.id}/${tomorrow}`, { headers })
+  const completed = await page.request.get(`/api/schedules/${rule.id}/${tomorrow}`, { headers })
   expect(completed.status()).toBe(200)
   expect(await completed.json()).toMatchObject({ completed: true, title: "Edited virtual occurrence" })
 })

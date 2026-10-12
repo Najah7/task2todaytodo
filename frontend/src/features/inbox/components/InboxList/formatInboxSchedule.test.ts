@@ -4,7 +4,7 @@ import { formatInboxSchedule } from "./formatInboxSchedule"
 
 function schedule(overrides: Partial<RestInboxSchedulePayloadResponse> = {}): RestInboxSchedulePayloadResponse {
   return {
-    all_day: true, assignee_id: "user-1", blueprint_id: "schedule-1", can_assign: true, can_update: true,
+    all_day: true, assignee_id: "user-1", rule_id: "schedule-1", can_assign: true, can_update: true,
     can_update_following: true, completed: false, description: "", end_at: "2026-10-13T15:00:00Z", location: "",
     occurrence_date: "2026-10-13", occurrence_id: null, revision: 1, skipped: false, source_revision_id: "rev-1",
     start_at: "2026-10-12T15:00:00Z", timezone: "Asia/Tokyo", ...overrides,

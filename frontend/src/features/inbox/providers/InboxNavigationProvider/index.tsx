@@ -42,8 +42,8 @@ export function InboxNavigationProvider({ children }: Props) {
     navigate(`/tasks/${encodeURIComponent(taskId)}/edit`, { state: { from: currentURL } })
   }
 
-  function editSchedule(blueprintId: string, occurrenceDate: string) {
-    navigate(`/schedules/${encodeURIComponent(blueprintId)}/${encodeURIComponent(occurrenceDate)}/edit`, { state: { from: currentURL } })
+  function editSchedule(ruleId: string, occurrenceDate: string) {
+    navigate(`/schedules/${encodeURIComponent(ruleId)}/${encodeURIComponent(occurrenceDate)}/edit`, { state: { from: currentURL } })
   }
 
   const navigation: InboxNavigation = {
@@ -59,7 +59,7 @@ export function InboxNavigationProvider({ children }: Props) {
     editSchedule,
     editItem: (item) => {
       if (item.type === "task" && item.task) editTask(item.task.id)
-      else if (item.type === "schedule" && item.schedule) editSchedule(item.schedule.blueprint_id, item.schedule.occurrence_date)
+      else if (item.type === "schedule" && item.schedule) editSchedule(item.schedule.rule_id, item.schedule.occurrence_date)
     },
   }
 

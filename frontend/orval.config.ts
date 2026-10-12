@@ -7,6 +7,7 @@ const projectsClientPath = fileURLToPath(new URL("./src/api/generated/projects.t
 const tasksClientPath = fileURLToPath(new URL("./src/api/generated/tasks.ts", import.meta.url))
 const schedulesClientPath = fileURLToPath(new URL("./src/api/generated/schedules.ts", import.meta.url))
 const inboxClientPath = fileURLToPath(new URL("./src/api/generated/inbox.ts", import.meta.url))
+const allocationsClientPath = fileURLToPath(new URL("./src/api/generated/allocations.ts", import.meta.url))
 
 async function replaceSharedHttpImport(path: string) {
   const client = await readFile(path, "utf8")
@@ -146,6 +147,33 @@ export default defineConfig({
     hooks: {
       afterAllFilesWrite: async () => {
         await replaceSharedHttpImport(inboxClientPath)
+      },
+    },
+  },
+  allocations: {
+    input: {
+      target: "../backend/docs/swagger.json",
+      filters: { tags: ["Allocations"] },
+    },
+    output: {
+      baseUrl: "/api",
+      target: allocationsClientPath,
+      tsconfig: "./tsconfig.app.json",
+      client: "react-query",
+      httpClient: "fetch",
+      override: {
+        mutator: {
+          path: "./src/api/http.ts",
+          name: "apiFetch",
+          alias: { "~": fileURLToPath(new URL("./src", import.meta.url)) },
+        },
+        fetch: { includeHttpResponseReturnType: false, forceSuccessResponse: true },
+        query: { version: 5 },
+      },
+    },
+    hooks: {
+      afterAllFilesWrite: async () => {
+        await replaceSharedHttpImport(allocationsClientPath)
       },
     },
   },

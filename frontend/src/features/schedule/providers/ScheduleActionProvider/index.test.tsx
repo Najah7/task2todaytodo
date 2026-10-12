@@ -12,7 +12,7 @@ vi.mock("~/features/shared/notification", () => ({ notify: { success: vi.fn(), e
 
 const event: ScheduleEvent = {
   id: "virtual-event",
-  blueprintId: "blueprint-1",
+  ruleId: "rule-1",
   occurrenceDate: "2026-10-10",
   title: "Event",
   description: "",

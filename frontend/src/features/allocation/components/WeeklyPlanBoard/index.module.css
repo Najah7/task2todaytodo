@@ -1,0 +1,459 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.28fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-lg);
+}
+
+.projectPanel,
+.calendarPanel {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.projectHeader,
+.calendarToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.projectHeader {
+  justify-content: space-between;
+}
+
+.projectHeader h2 {
+  margin: 0;
+}
+
+.textButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.projectList {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: var(--space-md);
+  list-style: none;
+}
+
+.projectListItem {
+  min-width: 0;
+}
+
+.projectCard {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+  padding: var(--space-sm);
+  border: var(--border-width) solid var(--color-border);
+  border-left: 0.2rem solid var(--allocation-color);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.projectCard[aria-pressed="true"] {
+  outline: var(--focus-width) solid var(--allocation-color);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.projectName {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-xs);
+  overflow-wrap: anywhere;
+}
+
+.projectDot {
+  width: 0.65rem;
+  height: 0.65rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--allocation-color);
+}
+
+.meter {
+  grid-column: 1 / -1;
+  height: 0.35rem;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--color-border-strong);
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--allocation-color);
+}
+
+.projectCard p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.totals {
+  margin: 0;
+  border-top: var(--border-width) solid var(--color-border);
+}
+
+.pausedRules {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0 var(--space-md) var(--space-sm);
+  list-style: none;
+}
+
+.pausedRules li {
+  padding: var(--space-sm);
+  border: var(--border-width) solid var(--color-danger-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-danger-soft);
+}
+
+.pausedRules p {
+  margin: 0 0 var(--space-xs);
+  color: var(--color-danger-text);
+}
+
+.totals div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.totals dt,
+.totals dd {
+  margin: 0;
+}
+
+.totals dd {
+  font-weight: 700;
+}
+
+.underTarget {
+  color: var(--color-danger-text);
+}
+
+.targetReached {
+  color: var(--color-success-text);
+}
+
+.todoHelp {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  color: var(--color-text-body);
+}
+
+.todoHelp p {
+  margin: 0;
+}
+
+.todoHelp button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.calendarToolbar h2 {
+  margin: 0 auto;
+  text-align: center;
+}
+
+.calendarToolbar button {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 42rem) {
+  .calendarToolbar {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: var(--space-xs);
+    padding: var(--space-sm);
+  }
+
+  .calendarToolbar h2 {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    margin: 0;
+    white-space: nowrap;
+    font-size: var(--font-size-caption);
+  }
+
+  .calendarToolbar > button:first-child {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .calendarToolbar > button:nth-child(2) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .calendarToolbar > button:nth-child(3) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+}
+
+.calendarScroll {
+  overflow: auto;
+  max-height: min(74vh, 58rem);
+}
+
+.calendarGrid {
+  position: relative;
+  --calendar-header-height: 6.5rem;
+  --calendar-hour-height: 3rem;
+  display: grid;
+  min-width: 58rem;
+  grid-template-columns: 4rem repeat(7, minmax(6rem, 1fr));
+  align-items: stretch;
+}
+
+.timeHeader,
+.dayHeader {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  height: var(--calendar-header-height);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.timeHeader {
+  left: 0;
+  z-index: 5;
+  display: flex;
+  align-items: end;
+  padding: var(--space-xs);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  writing-mode: vertical-rl;
+}
+
+.dayColumn {
+  position: relative;
+  min-width: 0;
+  border-left: var(--border-width) solid var(--color-border);
+}
+
+.dayHeader {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.1rem;
+  padding: var(--space-xs);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.dayHeader .sleepSettings {
+  display: grid;
+  justify-items: center;
+  max-width: 100%;
+  padding: 0.1rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  line-height: 1.2;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.dayHeader strong {
+  color: var(--color-text);
+}
+
+.dayTimeline {
+  position: relative;
+  height: 72rem;
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(3rem - var(--border-width)), var(--color-border) calc(3rem - var(--border-width)), var(--color-border) 3rem);
+}
+
+.hourSlot {
+  display: block;
+  width: 100%;
+  height: 3rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: crosshair;
+}
+
+.hourSlot:focus-visible {
+  outline: var(--focus-width) solid var(--color-primary);
+  outline-offset: calc(-1 * var(--focus-width));
+}
+
+.allocationBlock {
+  position: absolute;
+  z-index: 2;
+  right: 0.15rem;
+  left: 0.15rem;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 0.1rem;
+  overflow: hidden;
+  padding: var(--space-xs);
+  border: 0;
+  border-left: 0.2rem solid var(--allocation-color);
+  border-radius: var(--radius-xs);
+  background: var(--allocation-soft);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sleepBlock {
+  position: absolute;
+  z-index: 0;
+  right: 0;
+  left: 0;
+  background: var(--color-sleep);
+  pointer-events: none;
+}
+
+.dragSelection {
+  position: absolute;
+  z-index: 3;
+  right: 0.15rem;
+  left: 0.15rem;
+  border: var(--border-width) dashed var(--color-primary);
+  background: var(--color-selected-background);
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.helpOverlay {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-md);
+  background: var(--color-overlay);
+}
+
+.helpDialog {
+  width: min(100%, 32rem);
+  padding: var(--space-lg);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.allocationBlock strong,
+.allocationBlock span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sleepSettings {
+  display: block;
+  width: 100%;
+  padding: var(--space-xs);
+  border: 0;
+  border-top: var(--border-width) solid var(--color-border);
+  background: var(--color-raised);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.timeGutter {
+  position: absolute;
+  z-index: 1;
+  top: var(--calendar-header-height);
+  bottom: 0;
+  left: 0;
+  width: 4rem;
+  background: var(--color-surface);
+  pointer-events: none;
+}
+
+.timeGutter span {
+  position: absolute;
+  right: var(--space-xs);
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.calendarLegend {
+  display: flex;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border-top: var(--border-width) solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.calendarLegend span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.legendAllocation::before,
+.legendSleep::before {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: var(--radius-xs);
+  content: "";
+}
+
+.legendAllocation::before {
+  background: var(--color-project-1);
+}
+
+.legendSleep::before {
+  background: var(--color-sleep);
+}
+
+@media (max-width: 58em) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .projectPanel {
+    order: 1;
+  }
+
+  .calendarPanel {
+    order: 2;
+  }
+}

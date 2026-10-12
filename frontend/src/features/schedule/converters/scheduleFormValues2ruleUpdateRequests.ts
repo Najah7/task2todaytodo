@@ -1,13 +1,13 @@
-import type { RestScheduleBlueprintUpdateRequest } from "~/api/generated/schedules"
-import { scheduleFormValues2blueprintCreateRequests } from "~/features/schedule/converters/scheduleFormValues2blueprintCreateRequests"
+import type { RestScheduleRuleUpdateRequest } from "~/api/generated/schedules"
+import { scheduleFormValues2ruleCreateRequests } from "~/features/schedule/converters/scheduleFormValues2ruleCreateRequests"
 import type { ScheduleFormValues } from "~/features/schedule/components/ScheduleForm/schema"
 
-export function scheduleFormValues2blueprintUpdateRequests(values: ScheduleFormValues[], baselines: ScheduleFormValues[] = []): RestScheduleBlueprintUpdateRequest[] {
+export function scheduleFormValues2ruleUpdateRequests(values: ScheduleFormValues[], baselines: ScheduleFormValues[] = []): RestScheduleRuleUpdateRequest[] {
   return values.map((item, index) => {
     const baseline = baselines[index]
-    const createRequest = { ...scheduleFormValues2blueprintCreateRequests([item])[0] }
+    const createRequest = { ...scheduleFormValues2ruleCreateRequests([item])[0] }
     delete createRequest.assignee_id
-    const request: RestScheduleBlueprintUpdateRequest = { occurrence_date: item.recurrenceAnchorDate, scope: "following" }
+    const request: RestScheduleRuleUpdateRequest = { occurrence_date: item.recurrenceAnchorDate, scope: "following" }
     if (!baseline || item.title !== baseline.title) request.title = item.title.trim()
     if (!baseline || item.description !== baseline.description) request.description = item.description
     if (!baseline || item.location !== baseline.location) request.location = item.location

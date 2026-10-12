@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from "react-router"
 import { describe, expect, it, vi } from "vitest"
 import { ApiError } from "~/api/http"
 import { getProjectsId, getProjectsIdMembers } from "~/api/generated/projects"
-import { getProjectsIdSchedules, getScheduleBlueprintsId, getScheduleBlueprintsIdAssignees, getScheduleBlueprintsIdRevisions, getSchedulesBlueprintIdOccurrenceDate } from "~/api/generated/schedules"
+import { getProjectsIdSchedules, getScheduleRulesId, getScheduleRulesIdAssignees, getScheduleRulesIdRevisions, getSchedulesRuleIdOccurrenceDate } from "~/api/generated/schedules"
 import { LanguageProviderContext } from "~/features/i18n/languageContext"
 import { ScheduleAPIDataContext, type ScheduleAPIData } from "~/features/schedule/providers/ScheduleAPIDataProvider/context"
 import { ScheduleAPIDataProvider } from "~/features/schedule/providers/ScheduleAPIDataProvider"
@@ -28,14 +28,14 @@ vi.mock("~/api/generated/projects", () => ({
   getGetProjectsIdQueryKey: (id: string) => ["projects", id],
 }))
 vi.mock("~/api/generated/schedules", () => ({
-  getGetScheduleBlueprintsIdAssigneesQueryKey: (id: string) => ["schedules", "assignees", id],
+  getGetScheduleRulesIdAssigneesQueryKey: (id: string) => ["schedules", "assignees", id],
   getProjectsIdSchedules: vi.fn(),
-  getScheduleBlueprintsId: vi.fn(),
-  getScheduleBlueprintsIdAssignees: vi.fn(),
-  getScheduleBlueprintsIdRevisions: vi.fn(),
+  getScheduleRulesId: vi.fn(),
+  getScheduleRulesIdAssignees: vi.fn(),
+  getScheduleRulesIdRevisions: vi.fn(),
   getSchedules: vi.fn(async () => { throw new Error("background schedules refresh failed") }),
-  getSchedulesBlueprintIdOccurrenceDate: vi.fn(),
-  getGetScheduleBlueprintsIdQueryKey: (id: string) => ["schedules", "blueprint", id],
+  getSchedulesRuleIdOccurrenceDate: vi.fn(),
+  getGetScheduleRulesIdQueryKey: (id: string) => ["schedules", "rule", id],
 }))
 vi.mock("~/features/shared/notification", () => ({ notify: { success: vi.fn(), error: vi.fn() } }))
 
@@ -44,7 +44,7 @@ describe("ScheduleAPIDataProvider", () => {
     const anchor = "2026-10-11"
     const range = scheduleRange(anchor, "week", "UTC")
     const occurrence = {
-      id: "event-1", blueprint_id: "blueprint-1", occurrence_date: "2026-10-10", title: "Cached event",
+      id: "event-1", rule_id: "rule-1", occurrence_date: "2026-10-10", title: "Cached event",
       start_at: "2026-10-10T09:00:00Z", end_at: "2026-10-10T10:00:00Z", timezone: "UTC",
       local_start: "2026-10-10T09:00:00", local_end: "2026-10-10T10:00:00", revision: 1,
     }
@@ -74,14 +74,14 @@ describe("ScheduleAPIDataProvider", () => {
     await act(async () => queryClient.clear())
   })
 
-  it("keeps current-scope editing ready when Project members and optional blueprint data are forbidden", async () => {
+  it("keeps current-scope editing ready when Project members and optional rule data are forbidden", async () => {
     vi.mocked(getProjectsIdMembers).mockRejectedValue(new ApiError(403, {}))
     vi.mocked(getProjectsId).mockRejectedValue(new ApiError(403, {}))
-    vi.mocked(getScheduleBlueprintsId).mockRejectedValue(new ApiError(403, {}))
-    vi.mocked(getScheduleBlueprintsIdRevisions).mockRejectedValue(new ApiError(403, {}))
-    vi.mocked(getScheduleBlueprintsIdAssignees).mockRejectedValue(new ApiError(403, {}))
-    vi.mocked(getSchedulesBlueprintIdOccurrenceDate).mockResolvedValue({
-      id: "override-1", blueprint_id: "blueprint-1", occurrence_date: "2026-10-10", project_id: "project-1",
+    vi.mocked(getScheduleRulesId).mockRejectedValue(new ApiError(403, {}))
+    vi.mocked(getScheduleRulesIdRevisions).mockRejectedValue(new ApiError(403, {}))
+    vi.mocked(getScheduleRulesIdAssignees).mockRejectedValue(new ApiError(403, {}))
+    vi.mocked(getSchedulesRuleIdOccurrenceDate).mockResolvedValue({
+      id: "override-1", rule_id: "rule-1", occurrence_date: "2026-10-10", project_id: "project-1",
       title: "Saved override", start_at: "2026-10-10T09:00:00Z", end_at: "2026-10-10T10:00:00Z",
       timezone: "UTC", revision: 2, can_update: true, can_assign: true,
     })
@@ -95,9 +95,9 @@ describe("ScheduleAPIDataProvider", () => {
       return null
     }
     const router = createMemoryRouter([{
-      path: "/schedules/:blueprintId/:occurrenceDate/edit",
-      element: <ScheduleAPIDataProvider blueprintId="blueprint-1" occurrenceDate="2026-10-10"><Capture /></ScheduleAPIDataProvider>,
-    }], { initialEntries: ["/schedules/blueprint-1/2026-10-10/edit"] })
+      path: "/schedules/:ruleId/:occurrenceDate/edit",
+      element: <ScheduleAPIDataProvider ruleId="rule-1" occurrenceDate="2026-10-10"><Capture /></ScheduleAPIDataProvider>,
+    }], { initialEntries: ["/schedules/rule-1/2026-10-10/edit"] })
     render(<QueryClientProvider client={queryClient}>
       <LanguageProviderContext.Provider value={{ language: "en", setLanguage: () => undefined }}>
         <RouterProvider router={router} />
@@ -107,18 +107,18 @@ describe("ScheduleAPIDataProvider", () => {
     await waitFor(() => expect(data?.state).toBe("ready"))
     expect(data?.state).toBe("ready")
     expect(data?.event?.title).toBe("Saved override")
-    expect(data?.blueprintAccessDenied).toBe(true)
+    expect(data?.ruleAccessDenied).toBe(true)
     await act(async () => queryClient.clear())
   })
 
-  it("waits for the initial blueprint and history before mounting the edit form", async () => {
-    let resolveBlueprint!: (value: { revision: number; project_id: string }) => void
+  it("waits for the initial rule and history before mounting the edit form", async () => {
+    let resolveRule!: (value: { revision: number; project_id: string }) => void
     let resolveRevisions!: (value: { items: Array<Record<string, unknown>> }) => void
-    vi.mocked(getScheduleBlueprintsId).mockReturnValue(new Promise((resolve) => { resolveBlueprint = resolve }) as ReturnType<typeof getScheduleBlueprintsId>)
-    vi.mocked(getScheduleBlueprintsIdRevisions).mockReturnValue(new Promise((resolve) => { resolveRevisions = resolve }) as ReturnType<typeof getScheduleBlueprintsIdRevisions>)
-    vi.mocked(getScheduleBlueprintsIdAssignees).mockResolvedValue({ items: [] })
-    vi.mocked(getSchedulesBlueprintIdOccurrenceDate).mockResolvedValue({
-      id: "occurrence-1", blueprint_id: "blueprint-1", occurrence_date: "2026-10-10", title: "Source event",
+    vi.mocked(getScheduleRulesId).mockReturnValue(new Promise((resolve) => { resolveRule = resolve }) as ReturnType<typeof getScheduleRulesId>)
+    vi.mocked(getScheduleRulesIdRevisions).mockReturnValue(new Promise((resolve) => { resolveRevisions = resolve }) as ReturnType<typeof getScheduleRulesIdRevisions>)
+    vi.mocked(getScheduleRulesIdAssignees).mockResolvedValue({ items: [] })
+    vi.mocked(getSchedulesRuleIdOccurrenceDate).mockResolvedValue({
+      id: "occurrence-1", rule_id: "rule-1", occurrence_date: "2026-10-10", title: "Source event",
       start_at: "2026-10-10T09:00:00Z", end_at: "2026-10-10T10:00:00Z", timezone: "UTC", revision: 2,
       source_revision_id: "revision-4", can_update: true, can_update_following: true,
     })
@@ -137,8 +137,8 @@ describe("ScheduleAPIDataProvider", () => {
       return null
     }
     const router = createMemoryRouter([{
-      path: "/schedules/:blueprintId/:occurrenceDate/edit",
-      element: <ScheduleAPIDataProvider blueprintId="blueprint-1" occurrenceDate="2026-10-10">
+      path: "/schedules/:ruleId/:occurrenceDate/edit",
+      element: <ScheduleAPIDataProvider ruleId="rule-1" occurrenceDate="2026-10-10">
         <ScheduleNavigationProvider>
           <ScheduleActionProvider>
             <Capture />
@@ -146,7 +146,7 @@ describe("ScheduleAPIDataProvider", () => {
           </ScheduleActionProvider>
         </ScheduleNavigationProvider>
       </ScheduleAPIDataProvider>,
-    }], { initialEntries: ["/schedules/blueprint-1/2026-10-10/edit"] })
+    }], { initialEntries: ["/schedules/rule-1/2026-10-10/edit"] })
     render(<QueryClientProvider client={queryClient}>
       <LanguageProviderContext.Provider value={{ language: "en", setLanguage: () => undefined }}>
         <RouterProvider router={router} />
@@ -158,7 +158,7 @@ describe("ScheduleAPIDataProvider", () => {
     expect(controller).toBeUndefined()
 
     await act(async () => {
-      resolveBlueprint({ revision: 4, project_id: "" })
+      resolveRule({ revision: 4, project_id: "" })
       resolveRevisions({ items: [{
         revision_id: "revision-4", revision: 4, effective_from: "2026-01-01", title: "Source event",
         description: "", location: "", project_id: "", assignee_id: "", timezone: "Asia/Tokyo", all_day: false,
@@ -178,7 +178,7 @@ describe("ScheduleAPIDataProvider", () => {
 
   it("fetches every page of Project schedules with the generated pagination parameters", async () => {
     const first = {
-      id: "event-1", blueprint_id: "blueprint-1", occurrence_date: "2026-10-10", title: "First page",
+      id: "event-1", rule_id: "rule-1", occurrence_date: "2026-10-10", title: "First page",
       start_at: "2026-10-10T09:00:00Z", end_at: "2026-10-10T10:00:00Z", timezone: "UTC",
     }
     const second = { ...first, id: "event-2", title: "Second page" }

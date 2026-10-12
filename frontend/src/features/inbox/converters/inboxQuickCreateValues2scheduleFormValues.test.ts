@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { inboxQuickCreateValues2scheduleFormValues } from "~/features/inbox/converters/inboxQuickCreateValues2scheduleFormValues"
 import { emptyInboxQuickCreateValues } from "~/features/inbox/components/InboxQuickCreate/schema"
-import { scheduleFormValues2blueprintCreateRequests } from "~/features/schedule/converters/scheduleFormValues2blueprintCreateRequests"
+import { scheduleFormValues2ruleCreateRequests } from "~/features/schedule/converters/scheduleFormValues2ruleCreateRequests"
 
 describe("inboxQuickCreateValues2scheduleFormValues", () => {
   it("reuses schedule request conversion for one-off and inclusive all-day date ranges", () => {
@@ -14,7 +14,7 @@ describe("inboxQuickCreateValues2scheduleFormValues", () => {
       allDay: true,
       timezone: "Asia/Tokyo",
     }], ["user-1"])
-    const [request] = scheduleFormValues2blueprintCreateRequests([values])
+    const [request] = scheduleFormValues2ruleCreateRequests([values])
 
     expect(request).toMatchObject({
       title: "Away",

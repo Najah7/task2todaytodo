@@ -12,7 +12,7 @@ import { useScheduleEditForm } from "~/features/schedule/hooks/useScheduleEditFo
 
 const event: ScheduleEvent = {
   id: "schedule-1",
-  blueprintId: "blueprint-1",
+  ruleId: "rule-1",
   occurrenceDate: "2026-10-10",
   title: "Original title",
   description: "",
@@ -58,17 +58,17 @@ describe("useScheduleEditForm", () => {
       localStart: "2026-10-10T09:00:00", localEnd: "2026-10-10T10:00:00", frequency: "weekly" as const,
       interval: 1, weekdays: ["SA"], endDate: "",
     }
-    const data = { event: { ...event, sourceRevisionId: "source-revision-1" }, timezone: "UTC", timezones: ["UTC"], projectOptions: [], blueprintRevision: revision, blueprintRevisionNumber: 4, blueprintAccessDenied: false } as unknown as ScheduleAPIData
+    const data = { event: { ...event, sourceRevisionId: "source-revision-1" }, timezone: "UTC", timezones: ["UTC"], projectOptions: [], ruleRevision: revision, ruleRevisionNumber: 4, ruleAccessDenied: false } as unknown as ScheduleAPIData
     const reloadLatest = vi.fn().mockImplementation(async (_event, _scope, values) => ({
       values,
       occurrenceRevision: 10,
-      blueprintRevision: undefined,
+      ruleRevision: undefined,
       followingAvailable: false,
     }))
     const actions = { busy: false, update, reloadLatest } as unknown as ScheduleActions
     const navigation = { afterSave: vi.fn(), cancel: vi.fn() } as unknown as ScheduleNavigation
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const router = createMemoryRouter([{ path: "/schedules/:id/edit", element: <Harness /> }], { initialEntries: ["/schedules/blueprint-1/edit"] })
+    const router = createMemoryRouter([{ path: "/schedules/:id/edit", element: <Harness /> }], { initialEntries: ["/schedules/rule-1/edit"] })
     function Wrapper({ children }: { children: ReactNode }) {
       return <QueryClientProvider client={queryClient}>
         <LanguageProviderContext.Provider value={{ language: "en", setLanguage: () => undefined }}>
@@ -95,7 +95,7 @@ describe("useScheduleEditForm", () => {
 
     await act(async () => controller!.viewProps.onSubmit())
 
-    expect(update).toHaveBeenCalledWith(expect.objectContaining({ revision: 9, blueprintRevision: 4, scope: "following" }))
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ revision: 9, ruleRevision: 4, scope: "following" }))
     expect(controller?.form.getValues("title")).toBe("Draft title")
     expect(controller?.viewProps.hasConflict).toBe(true)
 

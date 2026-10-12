@@ -10,7 +10,7 @@ import { useI18n } from "~/features/i18n/hooks"
 import { notify } from "~/features/shared/notification"
 import { inboxSearchParams2state, inboxState2apiParams } from "~/features/inbox/converters/inboxSearchParams"
 import { InboxAPIDataContext, type InboxAPIDataLoadState } from "./context"
-import { fetchActiveProjects } from "./fetchActiveProjects"
+import { fetchActiveProjects } from "~/features/project/providers/ProjectAPIDataProvider/fetchActiveProjects"
 
 type Props = { children: ReactNode }
 

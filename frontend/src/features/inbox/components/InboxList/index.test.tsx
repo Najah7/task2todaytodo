@@ -17,7 +17,7 @@ const taskItem: RestInboxItemResponse = {
 const scheduleItem: RestInboxItemResponse = {
   id: "schedule-1", type: "schedule", title: "Team review", project_id: null, project_name: null, created_at: "2026-10-12T00:00:00Z",
   task: null,
-  schedule: { all_day: false, assignee_id: "user-1", blueprint_id: "blueprint-1", can_assign: true, can_update: false, can_update_following: true, completed: false, description: "", end_at: "2026-10-13T10:00:00Z", location: "", occurrence_date: "2026-10-13", occurrence_id: null, revision: 2, skipped: false, source_revision_id: "rev-1", start_at: "2026-10-13T09:00:00Z", timezone: "Asia/Tokyo" },
+  schedule: { all_day: false, assignee_id: "user-1", rule_id: "rule-1", can_assign: true, can_update: false, can_update_following: true, completed: false, description: "", end_at: "2026-10-13T10:00:00Z", location: "", occurrence_date: "2026-10-13", occurrence_id: null, revision: 2, skipped: false, source_revision_id: "rev-1", start_at: "2026-10-13T09:00:00Z", timezone: "Asia/Tokyo" },
 }
 
 afterEach(cleanup)

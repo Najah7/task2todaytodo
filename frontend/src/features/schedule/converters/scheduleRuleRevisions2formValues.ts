@@ -1,9 +1,9 @@
 import type { ScheduleFormValues } from "~/features/schedule/components/ScheduleForm/schema"
-import { addCalendarDays } from "~/features/schedule/lib/dateTime"
-import type { ScheduleBlueprintRevision } from "~/features/schedule/providers/ScheduleAPIDataProvider/context"
+import { addCalendarDays } from "~/features/shared/calendar/dateTime"
+import type { ScheduleRuleRevision } from "~/features/schedule/providers/ScheduleAPIDataProvider/context"
 
-export function scheduleBlueprintRevisions2formValues(
-  revisions: ScheduleBlueprintRevision[],
+export function scheduleRuleRevisions2formValues(
+  revisions: ScheduleRuleRevision[],
   selectedOccurrenceDate?: string,
 ): ScheduleFormValues[] {
   return revisions.map((revision) => {

@@ -7,9 +7,9 @@ import { ScheduleAPIDataProvider } from "~/features/schedule/providers/ScheduleA
 import { ScheduleNavigationProvider } from "~/features/schedule/providers/ScheduleNavigationProvider"
 
 export default function ScheduleEditPage() {
-  const { blueprintId = "", occurrenceDate = "" } = useParams()
-  const key = `${blueprintId}:${occurrenceDate}`
-  return <ScheduleAPIDataProvider key={key} blueprintId={blueprintId} occurrenceDate={occurrenceDate}>
+  const { ruleId = "", occurrenceDate = "" } = useParams()
+  const key = `${ruleId}:${occurrenceDate}`
+  return <ScheduleAPIDataProvider key={key} ruleId={ruleId} occurrenceDate={occurrenceDate}>
     <ScheduleNavigationProvider>
       <ScheduleActionProvider>
         <ScheduleFormBoundary heading="schedules.form.editTitle" loadError="schedules.form.loadError">

@@ -66,10 +66,20 @@ export interface RestProjectTaskPageResponse {
   next_page_token?: string;
 }
 
+export interface RestAllocationConflictMetadata {
+  end_at?: string;
+  kind?: string;
+  occurrence_date?: string;
+  project_id?: string;
+  rule_id?: string;
+  start_at?: string;
+}
+
 export interface RestErrDetail {
   code?: string;
   field?: string;
   message?: string;
+  metadata?: RestAllocationConflictMetadata;
 }
 
 export interface RestErr {

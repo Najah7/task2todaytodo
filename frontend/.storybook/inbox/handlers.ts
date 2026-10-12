@@ -28,7 +28,7 @@ export const inboxStoryResponse: RestInboxListResponse = {
       created_at: "2026-10-10T08:00:00Z",
       task: null,
       schedule: {
-        all_day: false, assignee_id: "user-story", blueprint_id: "schedule-1", can_assign: true,
+        all_day: false, assignee_id: "user-story", rule_id: "schedule-1", can_assign: true,
         can_update: true, can_update_following: true, completed: false, description: "", end_at: "2026-10-13T10:30:00Z",
         location: "", occurrence_date: "2026-10-13", occurrence_id: null, revision: 1, skipped: false,
         source_revision_id: "revision-1", start_at: "2026-10-13T09:30:00Z", timezone: "Asia/Tokyo",
@@ -72,7 +72,7 @@ export const inboxStoryHandlers = [
   http.get("*/api/users/me", () => HttpResponse.json({ user_id: "user-story", timezone: "Asia/Tokyo", email: "story@example.test", user_name: "Story" })),
   http.post("*/api/tasks", () => HttpResponse.json({ id: "task-created" }, { status: 201 })),
   http.post("*/api/projects/:projectId/tasks", () => HttpResponse.json({ id: "task-created" }, { status: 201 })),
-  http.post("*/api/schedules/blueprints", () => HttpResponse.json({ id: "schedule-created" }, { status: 201 })),
+  http.post("*/api/schedule-rules", () => HttpResponse.json({ id: "schedule-created" }, { status: 201 })),
   http.post(/\/api\/tasks\/[^/]+:complete$/, () => HttpResponse.json({ message: "Task completed" })),
   http.post(/\/api\/schedules\/[^/]+\/[^/]+:complete$/, () => new HttpResponse(null, { status: 204 })),
 ]

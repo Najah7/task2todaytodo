@@ -5,7 +5,7 @@ import { calendarDates, dateKey, eventsOnDate, formatDate, timedLayouts } from "
 function event(overrides: Partial<ScheduleEvent>): ScheduleEvent {
   return {
     id: "01J00000000000000000000000",
-    blueprintId: "01J00000000000000000000001",
+    ruleId: "01J00000000000000000000001",
     occurrenceDate: "2026-10-13",
     title: "Review",
     description: "",
@@ -22,7 +22,7 @@ function event(overrides: Partial<ScheduleEvent>): ScheduleEvent {
     projectTitle: "",
     assigneeId: "",
     revision: 1,
-    blueprintRevision: 1,
+    ruleRevision: 1,
     state: "scheduled",
     persisted: true,
     permissions: { canUpdate: true, canDelete: true, canComplete: true, canSkip: true, canRestore: false, canUpdateFollowing: true, canDeleteFollowing: true, canAssign: true },

@@ -1,0 +1,114 @@
+.form {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.projectList {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.project {
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.projectHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.projectHeader h2 {
+  margin: 0;
+}
+
+.remove {
+  justify-self: end;
+  border: 0;
+  background: transparent;
+  color: var(--color-danger-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.slots {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.slot {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+  padding: var(--space-sm);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+}
+
+.slot select,
+.slot input[type="time"] {
+  width: 100%;
+}
+
+.nextDay {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.paused {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--space-xs);
+  color: var(--color-danger-text);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger-text);
+}
+
+.saved {
+  margin: 0;
+  color: var(--color-success-text);
+}
+
+.addSlot {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+@media (min-width: 52em) {
+  .projectList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}

@@ -42,7 +42,7 @@ const taskItem: RestInboxItemResponse = {
 
 const virtualScheduleItem: RestInboxItemResponse = {
   type: "schedule",
-  id: "blueprint-2/2026-10-13",
+  id: "rule-2/2026-10-13",
   title: "Focus time",
   project_id: null,
   project_name: null,
@@ -50,7 +50,7 @@ const virtualScheduleItem: RestInboxItemResponse = {
   task: null,
   schedule: {
     occurrence_id: null,
-    blueprint_id: "blueprint-2",
+    rule_id: "rule-2",
     occurrence_date: "2026-10-13",
     source_revision_id: "revision-1",
     assignee_id: "user-1",
@@ -88,7 +88,7 @@ describe("InboxActionProvider", () => {
     expect(new Headers(request.headers).get("If-Match")).toBe('"7"')
   })
 
-  it("completes a virtual schedule occurrence with revision zero and its blueprint/date key", async () => {
+  it("completes a virtual schedule occurrence with revision zero and its rule/date key", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
     vi.stubGlobal("fetch", fetchMock)
     const { result } = renderActions()
@@ -96,7 +96,7 @@ describe("InboxActionProvider", () => {
     await act(async () => result.current!.complete(virtualScheduleItem))
 
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe("/api/schedules/blueprint-2/2026-10-13:complete")
+    expect(url).toBe("/api/schedules/rule-2/2026-10-13:complete")
     expect(request.method).toBe("POST")
     expect(new Headers(request.headers).get("If-Match")).toBe('"0"')
   })
@@ -116,7 +116,7 @@ describe("InboxActionProvider", () => {
   })
 
   it("creates a one-off multi-day all-day schedule using the shared schedule request conversion", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "blueprint-3" }), { status: 201 }))
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "rule-3" }), { status: 201 }))
     vi.stubGlobal("fetch", fetchMock)
     const { result } = renderActions()
 
@@ -131,7 +131,7 @@ describe("InboxActionProvider", () => {
     }))
 
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe("/api/schedule-blueprints")
+    expect(url).toBe("/api/schedule-rules")
     expect(JSON.parse(String(request.body))).toMatchObject({
       title: "Conference",
       project_id: "project-1",

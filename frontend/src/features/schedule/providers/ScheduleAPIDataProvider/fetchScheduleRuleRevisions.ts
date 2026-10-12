@@ -1,12 +1,12 @@
-import { getScheduleBlueprintsIdRevisions, type RestScheduleBlueprintRevisionResponse } from "~/api/generated/schedules"
-import type { ScheduleBlueprintRevision } from "./context"
+import { getScheduleRulesIdRevisions, type RestScheduleRuleRevisionResponse } from "~/api/generated/schedules"
+import type { ScheduleRuleRevision } from "./context"
 
-export async function fetchScheduleBlueprintRevisions(blueprintId: string, signal?: AbortSignal): Promise<ScheduleBlueprintRevision[]> {
-  const revisions: RestScheduleBlueprintRevisionResponse[] = []
+export async function fetchScheduleRuleRevisions(ruleId: string, signal?: AbortSignal): Promise<ScheduleRuleRevision[]> {
+  const revisions: RestScheduleRuleRevisionResponse[] = []
   let pageToken: string | undefined
   do {
-    const response = await getScheduleBlueprintsIdRevisions(
-      blueprintId,
+    const response = await getScheduleRulesIdRevisions(
+      ruleId,
       { page_size: 100, page_token: pageToken },
       signal ? { signal } : undefined,
     )
@@ -29,7 +29,7 @@ export async function fetchScheduleBlueprintRevisions(blueprintId: string, signa
     allDay: revision.all_day === true,
     localStart: revision.local_start || "",
     localEnd: revision.local_end || "",
-    frequency: (revision.frequency || "once") as ScheduleBlueprintRevision["frequency"],
+    frequency: (revision.frequency || "once") as ScheduleRuleRevision["frequency"],
     interval: revision.interval || 1,
     weekdays: revision.weekdays || [],
     endDate: revision.end_date || "",

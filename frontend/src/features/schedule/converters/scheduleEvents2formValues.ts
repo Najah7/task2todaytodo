@@ -1,9 +1,9 @@
 import type { ScheduleFormValues } from "~/features/schedule/components/ScheduleForm/schema"
-import type { ScheduleBlueprintRevision, ScheduleEvent } from "~/features/schedule/providers/ScheduleAPIDataProvider/context"
+import type { ScheduleRuleRevision, ScheduleEvent } from "~/features/schedule/providers/ScheduleAPIDataProvider/context"
 
 export function scheduleEvents2formValues(
   events: ScheduleEvent[],
-  revisions: ScheduleBlueprintRevision[] = [],
+  revisions: ScheduleRuleRevision[] = [],
 ): ScheduleFormValues[] {
   return events.map((event) => {
     const revision = revisions.find((item) => item.revisionId === event.sourceRevisionId)

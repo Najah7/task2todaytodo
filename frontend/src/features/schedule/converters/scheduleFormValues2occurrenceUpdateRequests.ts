@@ -1,5 +1,5 @@
 import type { RestScheduleOccurrenceUpdateRequest } from "~/api/generated/schedules"
-import { addCalendarDays, localDateTimeText, localDateTimeToInstant } from "~/features/schedule/lib/dateTime"
+import { addCalendarDays, localDateTimeText, localDateTimeToInstant } from "~/features/shared/calendar/dateTime"
 import type { ScheduleFormValues } from "~/features/schedule/components/ScheduleForm/schema"
 
 export function scheduleFormValues2occurrenceUpdateRequests(values: ScheduleFormValues[], baselines: ScheduleFormValues[] = []): RestScheduleOccurrenceUpdateRequest[] {

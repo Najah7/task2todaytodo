@@ -1,0 +1,22 @@
+.section {
+  max-width: 36rem;
+  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.section h2,
+.section p {
+  margin-top: 0;
+}
+
+.form {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.form button {
+  justify-self: start;
+  margin-top: var(--space-sm);
+}

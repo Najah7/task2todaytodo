@@ -29,7 +29,6 @@ import type { ErrorType } from "~/api/http";
 export interface RestScheduleOccurrenceResponse {
   all_day?: boolean;
   assignee_id?: string;
-  blueprint_id?: string;
   can_assign?: boolean;
   can_delete?: boolean;
   can_delete_following?: boolean;
@@ -42,12 +41,12 @@ export interface RestScheduleOccurrenceResponse {
   description?: string;
   end_at?: string;
   id?: string;
-  is_override?: boolean;
   location?: string;
   occurrence_date?: string;
   persisted?: boolean;
   project_id?: string;
   revision?: number;
+  rule_id?: string;
   skipped?: boolean;
   source_revision_id?: string;
   start_at?: string;
@@ -62,7 +61,7 @@ export interface RestScheduleOccurrenceListResponse {
   next_page_token?: string;
 }
 
-export interface RestScheduleBlueprintResponse {
+export interface RestScheduleRuleResponse {
   all_day?: boolean;
   assignee_id?: string;
   created_at?: number;
@@ -86,7 +85,7 @@ export interface RestScheduleBlueprintResponse {
   weekdays?: string[];
 }
 
-export interface RestScheduleBlueprintCreateRequest {
+export interface RestScheduleRuleCreateRequest {
   all_day?: boolean;
   assignee_id?: string;
   description?: string;
@@ -102,7 +101,7 @@ export interface RestScheduleBlueprintCreateRequest {
   weekdays?: string[];
 }
 
-export interface RestScheduleBlueprintUpdateRequest {
+export interface RestScheduleRuleUpdateRequest {
   all_day?: boolean;
   assignee_id?: string;
   description?: string;
@@ -134,7 +133,7 @@ export interface RestScheduleAssigneeListResponse {
   items?: RestScheduleAssigneeResponse[];
 }
 
-export interface RestScheduleBlueprintRevisionResponse {
+export interface RestScheduleRuleRevisionResponse {
   all_day?: boolean;
   assignee_id?: string;
   changed_at?: number;
@@ -163,8 +162,8 @@ export interface RestScheduleBlueprintRevisionResponse {
   weekdays?: string[];
 }
 
-export interface RestListEnvelopeRestScheduleBlueprintRevisionResponse {
-  items?: RestScheduleBlueprintRevisionResponse[];
+export interface RestListEnvelopeRestScheduleRuleRevisionResponse {
+  items?: RestScheduleRuleRevisionResponse[];
   next_page_token?: string;
 }
 
@@ -189,7 +188,6 @@ export interface RestScheduleOccurrenceRevisionResponse {
   deleted_at?: number;
   description?: string;
   end_at?: string;
-  is_override?: boolean;
   location?: string;
   occurrence_date?: string;
   project_id?: string;
@@ -235,7 +233,7 @@ page_size?: number;
 page_token?: string;
 };
 
-export type GetScheduleBlueprintsIdRevisionsParams = {
+export type GetScheduleRulesIdRevisionsParams = {
 /**
  * Items per page
  */
@@ -269,7 +267,7 @@ page_size?: number;
 page_token?: string;
 };
 
-export type GetSchedulesBlueprintIdOccurrenceDateRevisionsParams = {
+export type GetSchedulesRuleIdOccurrenceDateRevisionsParams = {
 /**
  * Items per page
  */
@@ -424,10 +422,10 @@ export const getPostProjectsIdSchedulesUrl = (id: string,) => {
 }
 
 /**
- * @summary Create Project schedule blueprint
+ * @summary Create Project schedule rule
  */
 export const postProjectsIdSchedules = async (id: string,
-    restScheduleBlueprintCreateRequest: RestScheduleBlueprintCreateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestScheduleBlueprintResponse> => {
+    restScheduleRuleCreateRequest: RestScheduleRuleCreateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestScheduleRuleResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -443,12 +441,12 @@ export const postProjectsIdSchedules = async (id: string,
     }
     return headers;
   };
-return apiFetch<RestScheduleBlueprintResponse>(getPostProjectsIdSchedulesUrl(id),
+return apiFetch<RestScheduleRuleResponse>(getPostProjectsIdSchedulesUrl(id),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(restScheduleBlueprintCreateRequest)
+    body: JSON.stringify(restScheduleRuleCreateRequest)
   }
 );}
 
@@ -486,12 +484,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PostProjectsIdSchedulesMutationResult = NonNullable<Awaited<ReturnType<typeof postProjectsIdSchedules>>>
-    export type PostProjectsIdSchedulesMutationBody = RestScheduleBlueprintCreateRequest
+    export type PostProjectsIdSchedulesMutationBody = RestScheduleRuleCreateRequest
     export type PostProjectsIdSchedulesMutationError = ErrorType<unknown>
-    export type PostProjectsIdSchedulesMutationVariables = {id: string;data: RestScheduleBlueprintCreateRequest}
+    export type PostProjectsIdSchedulesMutationVariables = {id: string;data: RestScheduleRuleCreateRequest}
 
     /**
- * @summary Create Project schedule blueprint
+ * @summary Create Project schedule rule
  */
 export const usePostProjectsIdSchedules = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postProjectsIdSchedules>>, TError,PostProjectsIdSchedulesMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
@@ -504,18 +502,18 @@ export const usePostProjectsIdSchedules = <TError = ErrorType<unknown>,
       return useMutation(getPostProjectsIdSchedulesMutationOptions(options), queryClient);
     }
 
-export const getPostScheduleBlueprintsUrl = () => {
+export const getPostScheduleRulesUrl = () => {
 
 
 
 
-  return `/api/schedule-blueprints`
+  return `/api/schedule-rules`
 }
 
 /**
- * @summary Create schedule blueprint
+ * @summary Create schedule rule
  */
-export const postScheduleBlueprints = async (restScheduleBlueprintCreateRequest: RestScheduleBlueprintCreateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestScheduleBlueprintResponse> => {
+export const postScheduleRules = async (restScheduleRuleCreateRequest: RestScheduleRuleCreateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestScheduleRuleResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -531,12 +529,12 @@ export const postScheduleBlueprints = async (restScheduleBlueprintCreateRequest:
     }
     return headers;
   };
-return apiFetch<RestScheduleBlueprintResponse>(getPostScheduleBlueprintsUrl(),
+return apiFetch<RestScheduleRuleResponse>(getPostScheduleRulesUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(restScheduleBlueprintCreateRequest)
+    body: JSON.stringify(restScheduleRuleCreateRequest)
   }
 );}
 
@@ -544,13 +542,13 @@ return apiFetch<RestScheduleBlueprintResponse>(getPostScheduleBlueprintsUrl(),
 
 
 
-export const getPostScheduleBlueprintsMutationKey = () => ['postScheduleBlueprints'] as const;
+export const getPostScheduleRulesMutationKey = () => ['postScheduleRules'] as const;
 
-export const getPostScheduleBlueprintsMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postScheduleBlueprints>>, TError,PostScheduleBlueprintsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof postScheduleBlueprints>>, TError,PostScheduleBlueprintsMutationVariables, TContext> => {
+export const getPostScheduleRulesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postScheduleRules>>, TError,PostScheduleRulesMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postScheduleRules>>, TError,PostScheduleRulesMutationVariables, TContext> => {
 
-const mutationKey = getPostScheduleBlueprintsMutationKey();
+const mutationKey = getPostScheduleRulesMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -560,10 +558,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postScheduleBlueprints>>, PostScheduleBlueprintsMutationVariables> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postScheduleRules>>, PostScheduleRulesMutationVariables> = (props) => {
           const {data} = props ?? {};
 
-          return  postScheduleBlueprints(data,requestOptions)
+          return  postScheduleRules(data,requestOptions)
         }
 
 
@@ -573,39 +571,39 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type PostScheduleBlueprintsMutationResult = NonNullable<Awaited<ReturnType<typeof postScheduleBlueprints>>>
-    export type PostScheduleBlueprintsMutationBody = RestScheduleBlueprintCreateRequest
-    export type PostScheduleBlueprintsMutationError = ErrorType<unknown>
-    export type PostScheduleBlueprintsMutationVariables = {data: RestScheduleBlueprintCreateRequest}
+    export type PostScheduleRulesMutationResult = NonNullable<Awaited<ReturnType<typeof postScheduleRules>>>
+    export type PostScheduleRulesMutationBody = RestScheduleRuleCreateRequest
+    export type PostScheduleRulesMutationError = ErrorType<unknown>
+    export type PostScheduleRulesMutationVariables = {data: RestScheduleRuleCreateRequest}
 
     /**
- * @summary Create schedule blueprint
+ * @summary Create schedule rule
  */
-export const usePostScheduleBlueprints = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postScheduleBlueprints>>, TError,PostScheduleBlueprintsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const usePostScheduleRules = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postScheduleRules>>, TError,PostScheduleRulesMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postScheduleBlueprints>>,
+        Awaited<ReturnType<typeof postScheduleRules>>,
         TError,
-        PostScheduleBlueprintsMutationVariables,
+        PostScheduleRulesMutationVariables,
         TContext
       > => {
-      return useMutation(getPostScheduleBlueprintsMutationOptions(options), queryClient);
+      return useMutation(getPostScheduleRulesMutationOptions(options), queryClient);
     }
 
-export const getGetScheduleBlueprintsIdUrl = (id: string,) => {
+export const getGetScheduleRulesIdUrl = (id: string,) => {
 
 
 
 
-  return `/api/schedule-blueprints/${id}`
+  return `/api/schedule-rules/${id}`
 }
 
 /**
- * @summary Get schedule blueprint
+ * @summary Get schedule rule
  */
-export const getScheduleBlueprintsId = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestScheduleBlueprintResponse> => {
+export const getScheduleRulesId = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestScheduleRuleResponse> => {
 
-  return apiFetch<RestScheduleBlueprintResponse>(getGetScheduleBlueprintsIdUrl(id),
+  return apiFetch<RestScheduleRuleResponse>(getGetScheduleRulesIdUrl(id),
   {
     ...options,
     method: 'GET'
@@ -618,69 +616,69 @@ export const getScheduleBlueprintsId = async (id: string, options?: Parameters<t
 
 
 
-export const getGetScheduleBlueprintsIdQueryKey = (id: string,) => {
+export const getGetScheduleRulesIdQueryKey = (id: string,) => {
     return [
-    `/api/schedule-blueprints/${id}`
+    `/api/schedule-rules/${id}`
     ] as const;
     }
 
 
-export const getGetScheduleBlueprintsIdQueryOptions = <TData = Awaited<ReturnType<typeof getScheduleBlueprintsId>>, TError = ErrorType<unknown>>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsId>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetScheduleRulesIdQueryOptions = <TData = Awaited<ReturnType<typeof getScheduleRulesId>>, TError = ErrorType<unknown>>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesId>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetScheduleBlueprintsIdQueryKey(id);
+  const queryKey =  queryOptions?.queryKey ?? getGetScheduleRulesIdQueryKey(id);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getScheduleBlueprintsId>>> = ({ signal }) => getScheduleBlueprintsId(id, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getScheduleRulesId>>> = ({ signal }) => getScheduleRulesId(id, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsId>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesId>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetScheduleBlueprintsIdQueryResult = NonNullable<Awaited<ReturnType<typeof getScheduleBlueprintsId>>>
-export type GetScheduleBlueprintsIdQueryError = ErrorType<unknown>
+export type GetScheduleRulesIdQueryResult = NonNullable<Awaited<ReturnType<typeof getScheduleRulesId>>>
+export type GetScheduleRulesIdQueryError = ErrorType<unknown>
 
 
-export function useGetScheduleBlueprintsId<TData = Awaited<ReturnType<typeof getScheduleBlueprintsId>>, TError = ErrorType<unknown>>(
- id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsId>>, TError, TData>> & Pick<
+export function useGetScheduleRulesId<TData = Awaited<ReturnType<typeof getScheduleRulesId>>, TError = ErrorType<unknown>>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesId>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getScheduleBlueprintsId>>,
+          Awaited<ReturnType<typeof getScheduleRulesId>>,
           TError,
-          Awaited<ReturnType<typeof getScheduleBlueprintsId>>
+          Awaited<ReturnType<typeof getScheduleRulesId>>
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetScheduleBlueprintsId<TData = Awaited<ReturnType<typeof getScheduleBlueprintsId>>, TError = ErrorType<unknown>>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsId>>, TError, TData>> & Pick<
+export function useGetScheduleRulesId<TData = Awaited<ReturnType<typeof getScheduleRulesId>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesId>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getScheduleBlueprintsId>>,
+          Awaited<ReturnType<typeof getScheduleRulesId>>,
           TError,
-          Awaited<ReturnType<typeof getScheduleBlueprintsId>>
+          Awaited<ReturnType<typeof getScheduleRulesId>>
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetScheduleBlueprintsId<TData = Awaited<ReturnType<typeof getScheduleBlueprintsId>>, TError = ErrorType<unknown>>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsId>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export function useGetScheduleRulesId<TData = Awaited<ReturnType<typeof getScheduleRulesId>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesId>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Get schedule blueprint
+ * @summary Get schedule rule
  */
 
-export function useGetScheduleBlueprintsId<TData = Awaited<ReturnType<typeof getScheduleBlueprintsId>>, TError = ErrorType<unknown>>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsId>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export function useGetScheduleRulesId<TData = Awaited<ReturnType<typeof getScheduleRulesId>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesId>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetScheduleBlueprintsIdQueryOptions(id,options)
+  const queryOptions = getGetScheduleRulesIdQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -693,19 +691,19 @@ export function useGetScheduleBlueprintsId<TData = Awaited<ReturnType<typeof get
 
 
 
-export const getPatchScheduleBlueprintsIdUrl = (id: string,) => {
+export const getPatchScheduleRulesIdUrl = (id: string,) => {
 
 
 
 
-  return `/api/schedule-blueprints/${id}`
+  return `/api/schedule-rules/${id}`
 }
 
 /**
- * @summary Update schedule blueprint
+ * @summary Update schedule rule
  */
-export const patchScheduleBlueprintsId = async (id: string,
-    restScheduleBlueprintUpdateRequest: RestScheduleBlueprintUpdateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestScheduleBlueprintResponse> => {
+export const patchScheduleRulesId = async (id: string,
+    restScheduleRuleUpdateRequest: RestScheduleRuleUpdateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestScheduleRuleResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -721,12 +719,12 @@ export const patchScheduleBlueprintsId = async (id: string,
     }
     return headers;
   };
-return apiFetch<RestScheduleBlueprintResponse>(getPatchScheduleBlueprintsIdUrl(id),
+return apiFetch<RestScheduleRuleResponse>(getPatchScheduleRulesIdUrl(id),
   {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(restScheduleBlueprintUpdateRequest)
+    body: JSON.stringify(restScheduleRuleUpdateRequest)
   }
 );}
 
@@ -734,13 +732,13 @@ return apiFetch<RestScheduleBlueprintResponse>(getPatchScheduleBlueprintsIdUrl(i
 
 
 
-export const getPatchScheduleBlueprintsIdMutationKey = () => ['patchScheduleBlueprintsId'] as const;
+export const getPatchScheduleRulesIdMutationKey = () => ['patchScheduleRulesId'] as const;
 
-export const getPatchScheduleBlueprintsIdMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchScheduleBlueprintsId>>, TError,PatchScheduleBlueprintsIdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof patchScheduleBlueprintsId>>, TError,PatchScheduleBlueprintsIdMutationVariables, TContext> => {
+export const getPatchScheduleRulesIdMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchScheduleRulesId>>, TError,PatchScheduleRulesIdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchScheduleRulesId>>, TError,PatchScheduleRulesIdMutationVariables, TContext> => {
 
-const mutationKey = getPatchScheduleBlueprintsIdMutationKey();
+const mutationKey = getPatchScheduleRulesIdMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -750,10 +748,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchScheduleBlueprintsId>>, PatchScheduleBlueprintsIdMutationVariables> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchScheduleRulesId>>, PatchScheduleRulesIdMutationVariables> = (props) => {
           const {id,data} = props ?? {};
 
-          return  patchScheduleBlueprintsId(id,data,requestOptions)
+          return  patchScheduleRulesId(id,data,requestOptions)
         }
 
 
@@ -763,39 +761,39 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type PatchScheduleBlueprintsIdMutationResult = NonNullable<Awaited<ReturnType<typeof patchScheduleBlueprintsId>>>
-    export type PatchScheduleBlueprintsIdMutationBody = RestScheduleBlueprintUpdateRequest
-    export type PatchScheduleBlueprintsIdMutationError = ErrorType<unknown>
-    export type PatchScheduleBlueprintsIdMutationVariables = {id: string;data: RestScheduleBlueprintUpdateRequest}
+    export type PatchScheduleRulesIdMutationResult = NonNullable<Awaited<ReturnType<typeof patchScheduleRulesId>>>
+    export type PatchScheduleRulesIdMutationBody = RestScheduleRuleUpdateRequest
+    export type PatchScheduleRulesIdMutationError = ErrorType<unknown>
+    export type PatchScheduleRulesIdMutationVariables = {id: string;data: RestScheduleRuleUpdateRequest}
 
     /**
- * @summary Update schedule blueprint
+ * @summary Update schedule rule
  */
-export const usePatchScheduleBlueprintsId = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchScheduleBlueprintsId>>, TError,PatchScheduleBlueprintsIdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const usePatchScheduleRulesId = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchScheduleRulesId>>, TError,PatchScheduleRulesIdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof patchScheduleBlueprintsId>>,
+        Awaited<ReturnType<typeof patchScheduleRulesId>>,
         TError,
-        PatchScheduleBlueprintsIdMutationVariables,
+        PatchScheduleRulesIdMutationVariables,
         TContext
       > => {
-      return useMutation(getPatchScheduleBlueprintsIdMutationOptions(options), queryClient);
+      return useMutation(getPatchScheduleRulesIdMutationOptions(options), queryClient);
     }
 
-export const getGetScheduleBlueprintsIdAssigneesUrl = (id: string,) => {
+export const getGetScheduleRulesIdAssigneesUrl = (id: string,) => {
 
 
 
 
-  return `/api/schedule-blueprints/${id}/assignees`
+  return `/api/schedule-rules/${id}/assignees`
 }
 
 /**
  * @summary List schedule assignees
  */
-export const getScheduleBlueprintsIdAssignees = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestScheduleAssigneeListResponse> => {
+export const getScheduleRulesIdAssignees = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestScheduleAssigneeListResponse> => {
 
-  return apiFetch<RestScheduleAssigneeListResponse>(getGetScheduleBlueprintsIdAssigneesUrl(id),
+  return apiFetch<RestScheduleAssigneeListResponse>(getGetScheduleRulesIdAssigneesUrl(id),
   {
     ...options,
     method: 'GET'
@@ -808,69 +806,69 @@ export const getScheduleBlueprintsIdAssignees = async (id: string, options?: Par
 
 
 
-export const getGetScheduleBlueprintsIdAssigneesQueryKey = (id: string,) => {
+export const getGetScheduleRulesIdAssigneesQueryKey = (id: string,) => {
     return [
-    `/api/schedule-blueprints/${id}/assignees`
+    `/api/schedule-rules/${id}/assignees`
     ] as const;
     }
 
 
-export const getGetScheduleBlueprintsIdAssigneesQueryOptions = <TData = Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>, TError = ErrorType<unknown>>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetScheduleRulesIdAssigneesQueryOptions = <TData = Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>, TError = ErrorType<unknown>>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetScheduleBlueprintsIdAssigneesQueryKey(id);
+  const queryKey =  queryOptions?.queryKey ?? getGetScheduleRulesIdAssigneesQueryKey(id);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>> = ({ signal }) => getScheduleBlueprintsIdAssignees(id, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>> = ({ signal }) => getScheduleRulesIdAssignees(id, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetScheduleBlueprintsIdAssigneesQueryResult = NonNullable<Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>>
-export type GetScheduleBlueprintsIdAssigneesQueryError = ErrorType<unknown>
+export type GetScheduleRulesIdAssigneesQueryResult = NonNullable<Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>>
+export type GetScheduleRulesIdAssigneesQueryError = ErrorType<unknown>
 
 
-export function useGetScheduleBlueprintsIdAssignees<TData = Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>, TError = ErrorType<unknown>>(
- id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>, TError, TData>> & Pick<
+export function useGetScheduleRulesIdAssignees<TData = Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>, TError = ErrorType<unknown>>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>,
+          Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>,
           TError,
-          Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>
+          Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetScheduleBlueprintsIdAssignees<TData = Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>, TError = ErrorType<unknown>>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>, TError, TData>> & Pick<
+export function useGetScheduleRulesIdAssignees<TData = Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>,
+          Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>,
           TError,
-          Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>
+          Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetScheduleBlueprintsIdAssignees<TData = Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>, TError = ErrorType<unknown>>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export function useGetScheduleRulesIdAssignees<TData = Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary List schedule assignees
  */
 
-export function useGetScheduleBlueprintsIdAssignees<TData = Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>, TError = ErrorType<unknown>>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsIdAssignees>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export function useGetScheduleRulesIdAssignees<TData = Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesIdAssignees>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetScheduleBlueprintsIdAssigneesQueryOptions(id,options)
+  const queryOptions = getGetScheduleRulesIdAssigneesQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -883,22 +881,22 @@ export function useGetScheduleBlueprintsIdAssignees<TData = Awaited<ReturnType<t
 
 
 
-export const getDeleteScheduleBlueprintsIdFollowingOccurrenceDateUrl = (id: string,
+export const getDeleteScheduleRulesIdFollowingOccurrenceDateUrl = (id: string,
     occurrenceDate: string,) => {
 
 
 
 
-  return `/api/schedule-blueprints/${id}/following/${occurrenceDate}`
+  return `/api/schedule-rules/${id}/following/${occurrenceDate}`
 }
 
 /**
  * @summary Delete following schedule occurrences
  */
-export const deleteScheduleBlueprintsIdFollowingOccurrenceDate = async (id: string,
+export const deleteScheduleRulesIdFollowingOccurrenceDate = async (id: string,
     occurrenceDate: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
 
-  return apiFetch<void>(getDeleteScheduleBlueprintsIdFollowingOccurrenceDateUrl(id,occurrenceDate),
+  return apiFetch<void>(getDeleteScheduleRulesIdFollowingOccurrenceDateUrl(id,occurrenceDate),
   {
     ...options,
     method: 'DELETE'
@@ -911,13 +909,13 @@ export const deleteScheduleBlueprintsIdFollowingOccurrenceDate = async (id: stri
 
 
 
-export const getDeleteScheduleBlueprintsIdFollowingOccurrenceDateMutationKey = () => ['deleteScheduleBlueprintsIdFollowingOccurrenceDate'] as const;
+export const getDeleteScheduleRulesIdFollowingOccurrenceDateMutationKey = () => ['deleteScheduleRulesIdFollowingOccurrenceDate'] as const;
 
-export const getDeleteScheduleBlueprintsIdFollowingOccurrenceDateMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteScheduleBlueprintsIdFollowingOccurrenceDate>>, TError,DeleteScheduleBlueprintsIdFollowingOccurrenceDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteScheduleBlueprintsIdFollowingOccurrenceDate>>, TError,DeleteScheduleBlueprintsIdFollowingOccurrenceDateMutationVariables, TContext> => {
+export const getDeleteScheduleRulesIdFollowingOccurrenceDateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteScheduleRulesIdFollowingOccurrenceDate>>, TError,DeleteScheduleRulesIdFollowingOccurrenceDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteScheduleRulesIdFollowingOccurrenceDate>>, TError,DeleteScheduleRulesIdFollowingOccurrenceDateMutationVariables, TContext> => {
 
-const mutationKey = getDeleteScheduleBlueprintsIdFollowingOccurrenceDateMutationKey();
+const mutationKey = getDeleteScheduleRulesIdFollowingOccurrenceDateMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -927,10 +925,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteScheduleBlueprintsIdFollowingOccurrenceDate>>, DeleteScheduleBlueprintsIdFollowingOccurrenceDateMutationVariables> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteScheduleRulesIdFollowingOccurrenceDate>>, DeleteScheduleRulesIdFollowingOccurrenceDateMutationVariables> = (props) => {
           const {id,occurrenceDate} = props ?? {};
 
-          return  deleteScheduleBlueprintsIdFollowingOccurrenceDate(id,occurrenceDate,requestOptions)
+          return  deleteScheduleRulesIdFollowingOccurrenceDate(id,occurrenceDate,requestOptions)
         }
 
 
@@ -940,27 +938,27 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type DeleteScheduleBlueprintsIdFollowingOccurrenceDateMutationResult = NonNullable<Awaited<ReturnType<typeof deleteScheduleBlueprintsIdFollowingOccurrenceDate>>>
+    export type DeleteScheduleRulesIdFollowingOccurrenceDateMutationResult = NonNullable<Awaited<ReturnType<typeof deleteScheduleRulesIdFollowingOccurrenceDate>>>
 
-    export type DeleteScheduleBlueprintsIdFollowingOccurrenceDateMutationError = ErrorType<unknown>
-    export type DeleteScheduleBlueprintsIdFollowingOccurrenceDateMutationVariables = {id: string;occurrenceDate: string}
+    export type DeleteScheduleRulesIdFollowingOccurrenceDateMutationError = ErrorType<unknown>
+    export type DeleteScheduleRulesIdFollowingOccurrenceDateMutationVariables = {id: string;occurrenceDate: string}
 
     /**
  * @summary Delete following schedule occurrences
  */
-export const useDeleteScheduleBlueprintsIdFollowingOccurrenceDate = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteScheduleBlueprintsIdFollowingOccurrenceDate>>, TError,DeleteScheduleBlueprintsIdFollowingOccurrenceDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const useDeleteScheduleRulesIdFollowingOccurrenceDate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteScheduleRulesIdFollowingOccurrenceDate>>, TError,DeleteScheduleRulesIdFollowingOccurrenceDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof deleteScheduleBlueprintsIdFollowingOccurrenceDate>>,
+        Awaited<ReturnType<typeof deleteScheduleRulesIdFollowingOccurrenceDate>>,
         TError,
-        DeleteScheduleBlueprintsIdFollowingOccurrenceDateMutationVariables,
+        DeleteScheduleRulesIdFollowingOccurrenceDateMutationVariables,
         TContext
       > => {
-      return useMutation(getDeleteScheduleBlueprintsIdFollowingOccurrenceDateMutationOptions(options), queryClient);
+      return useMutation(getDeleteScheduleRulesIdFollowingOccurrenceDateMutationOptions(options), queryClient);
     }
 
-export const getGetScheduleBlueprintsIdRevisionsUrl = (id: string,
-    params?: GetScheduleBlueprintsIdRevisionsParams,) => {
+export const getGetScheduleRulesIdRevisionsUrl = (id: string,
+    params?: GetScheduleRulesIdRevisionsParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -972,16 +970,16 @@ export const getGetScheduleBlueprintsIdRevisionsUrl = (id: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/schedule-blueprints/${id}/revisions?${stringifiedParams}` : `/api/schedule-blueprints/${id}/revisions`
+  return stringifiedParams.length > 0 ? `/api/schedule-rules/${id}/revisions?${stringifiedParams}` : `/api/schedule-rules/${id}/revisions`
 }
 
 /**
- * @summary List schedule blueprint revisions
+ * @summary List schedule rule revisions
  */
-export const getScheduleBlueprintsIdRevisions = async (id: string,
-    params?: GetScheduleBlueprintsIdRevisionsParams, options?: Parameters<typeof apiFetch>[1]): Promise<RestListEnvelopeRestScheduleBlueprintRevisionResponse> => {
+export const getScheduleRulesIdRevisions = async (id: string,
+    params?: GetScheduleRulesIdRevisionsParams, options?: Parameters<typeof apiFetch>[1]): Promise<RestListEnvelopeRestScheduleRuleRevisionResponse> => {
 
-  return apiFetch<RestListEnvelopeRestScheduleBlueprintRevisionResponse>(getGetScheduleBlueprintsIdRevisionsUrl(id,params),
+  return apiFetch<RestListEnvelopeRestScheduleRuleRevisionResponse>(getGetScheduleRulesIdRevisionsUrl(id,params),
   {
     ...options,
     method: 'GET'
@@ -994,75 +992,75 @@ export const getScheduleBlueprintsIdRevisions = async (id: string,
 
 
 
-export const getGetScheduleBlueprintsIdRevisionsQueryKey = (id: string,
-    params?: GetScheduleBlueprintsIdRevisionsParams,) => {
+export const getGetScheduleRulesIdRevisionsQueryKey = (id: string,
+    params?: GetScheduleRulesIdRevisionsParams,) => {
     return [
-    `/api/schedule-blueprints/${id}/revisions`, ...(params ? [params] : [])
+    `/api/schedule-rules/${id}/revisions`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetScheduleBlueprintsIdRevisionsQueryOptions = <TData = Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>, TError = ErrorType<unknown>>(id: string,
-    params?: GetScheduleBlueprintsIdRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetScheduleRulesIdRevisionsQueryOptions = <TData = Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>, TError = ErrorType<unknown>>(id: string,
+    params?: GetScheduleRulesIdRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetScheduleBlueprintsIdRevisionsQueryKey(id,params);
+  const queryKey =  queryOptions?.queryKey ?? getGetScheduleRulesIdRevisionsQueryKey(id,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>> = ({ signal }) => getScheduleBlueprintsIdRevisions(id,params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>> = ({ signal }) => getScheduleRulesIdRevisions(id,params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetScheduleBlueprintsIdRevisionsQueryResult = NonNullable<Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>>
-export type GetScheduleBlueprintsIdRevisionsQueryError = ErrorType<unknown>
+export type GetScheduleRulesIdRevisionsQueryResult = NonNullable<Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>>
+export type GetScheduleRulesIdRevisionsQueryError = ErrorType<unknown>
 
 
-export function useGetScheduleBlueprintsIdRevisions<TData = Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>, TError = ErrorType<unknown>>(
+export function useGetScheduleRulesIdRevisions<TData = Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>, TError = ErrorType<unknown>>(
  id: string,
-    params: undefined |  GetScheduleBlueprintsIdRevisionsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>, TError, TData>> & Pick<
+    params: undefined |  GetScheduleRulesIdRevisionsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>,
+          Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>,
           TError,
-          Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>
+          Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetScheduleBlueprintsIdRevisions<TData = Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>, TError = ErrorType<unknown>>(
+export function useGetScheduleRulesIdRevisions<TData = Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>, TError = ErrorType<unknown>>(
  id: string,
-    params?: GetScheduleBlueprintsIdRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>, TError, TData>> & Pick<
+    params?: GetScheduleRulesIdRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>,
+          Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>,
           TError,
-          Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>
+          Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetScheduleBlueprintsIdRevisions<TData = Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>, TError = ErrorType<unknown>>(
+export function useGetScheduleRulesIdRevisions<TData = Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>, TError = ErrorType<unknown>>(
  id: string,
-    params?: GetScheduleBlueprintsIdRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+    params?: GetScheduleRulesIdRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary List schedule blueprint revisions
+ * @summary List schedule rule revisions
  */
 
-export function useGetScheduleBlueprintsIdRevisions<TData = Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>, TError = ErrorType<unknown>>(
+export function useGetScheduleRulesIdRevisions<TData = Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>, TError = ErrorType<unknown>>(
  id: string,
-    params?: GetScheduleBlueprintsIdRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleBlueprintsIdRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+    params?: GetScheduleRulesIdRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleRulesIdRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetScheduleBlueprintsIdRevisionsQueryOptions(id,params,options)
+  const queryOptions = getGetScheduleRulesIdRevisionsQueryOptions(id,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -1183,22 +1181,22 @@ export function useGetSchedules<TData = Awaited<ReturnType<typeof getSchedules>>
 
 
 
-export const getGetSchedulesBlueprintIdOccurrenceDateUrl = (blueprintId: string,
+export const getGetSchedulesRuleIdOccurrenceDateUrl = (ruleId: string,
     occurrenceDate: string,) => {
 
 
 
 
-  return `/api/schedules/${blueprintId}/${occurrenceDate}`
+  return `/api/schedules/${ruleId}/${occurrenceDate}`
 }
 
 /**
  * @summary Get schedule occurrence
  */
-export const getSchedulesBlueprintIdOccurrenceDate = async (blueprintId: string,
+export const getSchedulesRuleIdOccurrenceDate = async (ruleId: string,
     occurrenceDate: string, options?: Parameters<typeof apiFetch>[1]): Promise<RestScheduleOccurrenceResponse> => {
 
-  return apiFetch<RestScheduleOccurrenceResponse>(getGetSchedulesBlueprintIdOccurrenceDateUrl(blueprintId,occurrenceDate),
+  return apiFetch<RestScheduleOccurrenceResponse>(getGetSchedulesRuleIdOccurrenceDateUrl(ruleId,occurrenceDate),
   {
     ...options,
     method: 'GET'
@@ -1211,75 +1209,75 @@ export const getSchedulesBlueprintIdOccurrenceDate = async (blueprintId: string,
 
 
 
-export const getGetSchedulesBlueprintIdOccurrenceDateQueryKey = (blueprintId: string,
+export const getGetSchedulesRuleIdOccurrenceDateQueryKey = (ruleId: string,
     occurrenceDate: string,) => {
     return [
-    `/api/schedules/${blueprintId}/${occurrenceDate}`
+    `/api/schedules/${ruleId}/${occurrenceDate}`
     ] as const;
     }
 
 
-export const getGetSchedulesBlueprintIdOccurrenceDateQueryOptions = <TData = Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>, TError = ErrorType<unknown>>(blueprintId: string,
-    occurrenceDate: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetSchedulesRuleIdOccurrenceDateQueryOptions = <TData = Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>, TError = ErrorType<unknown>>(ruleId: string,
+    occurrenceDate: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetSchedulesBlueprintIdOccurrenceDateQueryKey(blueprintId,occurrenceDate);
+  const queryKey =  queryOptions?.queryKey ?? getGetSchedulesRuleIdOccurrenceDateQueryKey(ruleId,occurrenceDate);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>> = ({ signal }) => getSchedulesBlueprintIdOccurrenceDate(blueprintId,occurrenceDate, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>> = ({ signal }) => getSchedulesRuleIdOccurrenceDate(ruleId,occurrenceDate, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: blueprintId !== null && blueprintId !== undefined && occurrenceDate !== null && occurrenceDate !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: ruleId !== null && ruleId !== undefined && occurrenceDate !== null && occurrenceDate !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetSchedulesBlueprintIdOccurrenceDateQueryResult = NonNullable<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>>
-export type GetSchedulesBlueprintIdOccurrenceDateQueryError = ErrorType<unknown>
+export type GetSchedulesRuleIdOccurrenceDateQueryResult = NonNullable<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>>
+export type GetSchedulesRuleIdOccurrenceDateQueryError = ErrorType<unknown>
 
 
-export function useGetSchedulesBlueprintIdOccurrenceDate<TData = Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>, TError = ErrorType<unknown>>(
- blueprintId: string,
-    occurrenceDate: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>, TError, TData>> & Pick<
+export function useGetSchedulesRuleIdOccurrenceDate<TData = Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>, TError = ErrorType<unknown>>(
+ ruleId: string,
+    occurrenceDate: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>,
+          Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>,
           TError,
-          Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>
+          Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetSchedulesBlueprintIdOccurrenceDate<TData = Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>, TError = ErrorType<unknown>>(
- blueprintId: string,
-    occurrenceDate: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>, TError, TData>> & Pick<
+export function useGetSchedulesRuleIdOccurrenceDate<TData = Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>, TError = ErrorType<unknown>>(
+ ruleId: string,
+    occurrenceDate: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>,
+          Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>,
           TError,
-          Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>
+          Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetSchedulesBlueprintIdOccurrenceDate<TData = Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>, TError = ErrorType<unknown>>(
- blueprintId: string,
-    occurrenceDate: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export function useGetSchedulesRuleIdOccurrenceDate<TData = Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>, TError = ErrorType<unknown>>(
+ ruleId: string,
+    occurrenceDate: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary Get schedule occurrence
  */
 
-export function useGetSchedulesBlueprintIdOccurrenceDate<TData = Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>, TError = ErrorType<unknown>>(
- blueprintId: string,
-    occurrenceDate: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDate>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export function useGetSchedulesRuleIdOccurrenceDate<TData = Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>, TError = ErrorType<unknown>>(
+ ruleId: string,
+    occurrenceDate: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDate>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetSchedulesBlueprintIdOccurrenceDateQueryOptions(blueprintId,occurrenceDate,options)
+  const queryOptions = getGetSchedulesRuleIdOccurrenceDateQueryOptions(ruleId,occurrenceDate,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -1292,22 +1290,22 @@ export function useGetSchedulesBlueprintIdOccurrenceDate<TData = Awaited<ReturnT
 
 
 
-export const getDeleteSchedulesBlueprintIdOccurrenceDateUrl = (blueprintId: string,
+export const getDeleteSchedulesRuleIdOccurrenceDateUrl = (ruleId: string,
     occurrenceDate: string,) => {
 
 
 
 
-  return `/api/schedules/${blueprintId}/${occurrenceDate}`
+  return `/api/schedules/${ruleId}/${occurrenceDate}`
 }
 
 /**
  * @summary Delete schedule occurrence
  */
-export const deleteSchedulesBlueprintIdOccurrenceDate = async (blueprintId: string,
+export const deleteSchedulesRuleIdOccurrenceDate = async (ruleId: string,
     occurrenceDate: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
 
-  return apiFetch<void>(getDeleteSchedulesBlueprintIdOccurrenceDateUrl(blueprintId,occurrenceDate),
+  return apiFetch<void>(getDeleteSchedulesRuleIdOccurrenceDateUrl(ruleId,occurrenceDate),
   {
     ...options,
     method: 'DELETE'
@@ -1320,13 +1318,13 @@ export const deleteSchedulesBlueprintIdOccurrenceDate = async (blueprintId: stri
 
 
 
-export const getDeleteSchedulesBlueprintIdOccurrenceDateMutationKey = () => ['deleteSchedulesBlueprintIdOccurrenceDate'] as const;
+export const getDeleteSchedulesRuleIdOccurrenceDateMutationKey = () => ['deleteSchedulesRuleIdOccurrenceDate'] as const;
 
-export const getDeleteSchedulesBlueprintIdOccurrenceDateMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSchedulesBlueprintIdOccurrenceDate>>, TError,DeleteSchedulesBlueprintIdOccurrenceDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteSchedulesBlueprintIdOccurrenceDate>>, TError,DeleteSchedulesBlueprintIdOccurrenceDateMutationVariables, TContext> => {
+export const getDeleteSchedulesRuleIdOccurrenceDateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSchedulesRuleIdOccurrenceDate>>, TError,DeleteSchedulesRuleIdOccurrenceDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteSchedulesRuleIdOccurrenceDate>>, TError,DeleteSchedulesRuleIdOccurrenceDateMutationVariables, TContext> => {
 
-const mutationKey = getDeleteSchedulesBlueprintIdOccurrenceDateMutationKey();
+const mutationKey = getDeleteSchedulesRuleIdOccurrenceDateMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1336,10 +1334,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSchedulesBlueprintIdOccurrenceDate>>, DeleteSchedulesBlueprintIdOccurrenceDateMutationVariables> = (props) => {
-          const {blueprintId,occurrenceDate} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSchedulesRuleIdOccurrenceDate>>, DeleteSchedulesRuleIdOccurrenceDateMutationVariables> = (props) => {
+          const {ruleId,occurrenceDate} = props ?? {};
 
-          return  deleteSchedulesBlueprintIdOccurrenceDate(blueprintId,occurrenceDate,requestOptions)
+          return  deleteSchedulesRuleIdOccurrenceDate(ruleId,occurrenceDate,requestOptions)
         }
 
 
@@ -1349,38 +1347,38 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type DeleteSchedulesBlueprintIdOccurrenceDateMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSchedulesBlueprintIdOccurrenceDate>>>
+    export type DeleteSchedulesRuleIdOccurrenceDateMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSchedulesRuleIdOccurrenceDate>>>
 
-    export type DeleteSchedulesBlueprintIdOccurrenceDateMutationError = ErrorType<unknown>
-    export type DeleteSchedulesBlueprintIdOccurrenceDateMutationVariables = {blueprintId: string;occurrenceDate: string}
+    export type DeleteSchedulesRuleIdOccurrenceDateMutationError = ErrorType<unknown>
+    export type DeleteSchedulesRuleIdOccurrenceDateMutationVariables = {ruleId: string;occurrenceDate: string}
 
     /**
  * @summary Delete schedule occurrence
  */
-export const useDeleteSchedulesBlueprintIdOccurrenceDate = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSchedulesBlueprintIdOccurrenceDate>>, TError,DeleteSchedulesBlueprintIdOccurrenceDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const useDeleteSchedulesRuleIdOccurrenceDate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSchedulesRuleIdOccurrenceDate>>, TError,DeleteSchedulesRuleIdOccurrenceDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof deleteSchedulesBlueprintIdOccurrenceDate>>,
+        Awaited<ReturnType<typeof deleteSchedulesRuleIdOccurrenceDate>>,
         TError,
-        DeleteSchedulesBlueprintIdOccurrenceDateMutationVariables,
+        DeleteSchedulesRuleIdOccurrenceDateMutationVariables,
         TContext
       > => {
-      return useMutation(getDeleteSchedulesBlueprintIdOccurrenceDateMutationOptions(options), queryClient);
+      return useMutation(getDeleteSchedulesRuleIdOccurrenceDateMutationOptions(options), queryClient);
     }
 
-export const getPatchSchedulesBlueprintIdOccurrenceDateUrl = (blueprintId: string,
+export const getPatchSchedulesRuleIdOccurrenceDateUrl = (ruleId: string,
     occurrenceDate: string,) => {
 
 
 
 
-  return `/api/schedules/${blueprintId}/${occurrenceDate}`
+  return `/api/schedules/${ruleId}/${occurrenceDate}`
 }
 
 /**
  * @summary Update schedule occurrence
  */
-export const patchSchedulesBlueprintIdOccurrenceDate = async (blueprintId: string,
+export const patchSchedulesRuleIdOccurrenceDate = async (ruleId: string,
     occurrenceDate: string,
     restScheduleOccurrenceUpdateRequest: RestScheduleOccurrenceUpdateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestScheduleOccurrenceResponse> => {
 
@@ -1398,7 +1396,7 @@ export const patchSchedulesBlueprintIdOccurrenceDate = async (blueprintId: strin
     }
     return headers;
   };
-return apiFetch<RestScheduleOccurrenceResponse>(getPatchSchedulesBlueprintIdOccurrenceDateUrl(blueprintId,occurrenceDate),
+return apiFetch<RestScheduleOccurrenceResponse>(getPatchSchedulesRuleIdOccurrenceDateUrl(ruleId,occurrenceDate),
   {
     ...options,
     method: 'PATCH',
@@ -1411,13 +1409,13 @@ return apiFetch<RestScheduleOccurrenceResponse>(getPatchSchedulesBlueprintIdOccu
 
 
 
-export const getPatchSchedulesBlueprintIdOccurrenceDateMutationKey = () => ['patchSchedulesBlueprintIdOccurrenceDate'] as const;
+export const getPatchSchedulesRuleIdOccurrenceDateMutationKey = () => ['patchSchedulesRuleIdOccurrenceDate'] as const;
 
-export const getPatchSchedulesBlueprintIdOccurrenceDateMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchSchedulesBlueprintIdOccurrenceDate>>, TError,PatchSchedulesBlueprintIdOccurrenceDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof patchSchedulesBlueprintIdOccurrenceDate>>, TError,PatchSchedulesBlueprintIdOccurrenceDateMutationVariables, TContext> => {
+export const getPatchSchedulesRuleIdOccurrenceDateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchSchedulesRuleIdOccurrenceDate>>, TError,PatchSchedulesRuleIdOccurrenceDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchSchedulesRuleIdOccurrenceDate>>, TError,PatchSchedulesRuleIdOccurrenceDateMutationVariables, TContext> => {
 
-const mutationKey = getPatchSchedulesBlueprintIdOccurrenceDateMutationKey();
+const mutationKey = getPatchSchedulesRuleIdOccurrenceDateMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1427,10 +1425,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchSchedulesBlueprintIdOccurrenceDate>>, PatchSchedulesBlueprintIdOccurrenceDateMutationVariables> = (props) => {
-          const {blueprintId,occurrenceDate,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchSchedulesRuleIdOccurrenceDate>>, PatchSchedulesRuleIdOccurrenceDateMutationVariables> = (props) => {
+          const {ruleId,occurrenceDate,data} = props ?? {};
 
-          return  patchSchedulesBlueprintIdOccurrenceDate(blueprintId,occurrenceDate,data,requestOptions)
+          return  patchSchedulesRuleIdOccurrenceDate(ruleId,occurrenceDate,data,requestOptions)
         }
 
 
@@ -1440,28 +1438,28 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type PatchSchedulesBlueprintIdOccurrenceDateMutationResult = NonNullable<Awaited<ReturnType<typeof patchSchedulesBlueprintIdOccurrenceDate>>>
-    export type PatchSchedulesBlueprintIdOccurrenceDateMutationBody = RestScheduleOccurrenceUpdateRequest
-    export type PatchSchedulesBlueprintIdOccurrenceDateMutationError = ErrorType<unknown>
-    export type PatchSchedulesBlueprintIdOccurrenceDateMutationVariables = {blueprintId: string;occurrenceDate: string;data: RestScheduleOccurrenceUpdateRequest}
+    export type PatchSchedulesRuleIdOccurrenceDateMutationResult = NonNullable<Awaited<ReturnType<typeof patchSchedulesRuleIdOccurrenceDate>>>
+    export type PatchSchedulesRuleIdOccurrenceDateMutationBody = RestScheduleOccurrenceUpdateRequest
+    export type PatchSchedulesRuleIdOccurrenceDateMutationError = ErrorType<unknown>
+    export type PatchSchedulesRuleIdOccurrenceDateMutationVariables = {ruleId: string;occurrenceDate: string;data: RestScheduleOccurrenceUpdateRequest}
 
     /**
  * @summary Update schedule occurrence
  */
-export const usePatchSchedulesBlueprintIdOccurrenceDate = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchSchedulesBlueprintIdOccurrenceDate>>, TError,PatchSchedulesBlueprintIdOccurrenceDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const usePatchSchedulesRuleIdOccurrenceDate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchSchedulesRuleIdOccurrenceDate>>, TError,PatchSchedulesRuleIdOccurrenceDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof patchSchedulesBlueprintIdOccurrenceDate>>,
+        Awaited<ReturnType<typeof patchSchedulesRuleIdOccurrenceDate>>,
         TError,
-        PatchSchedulesBlueprintIdOccurrenceDateMutationVariables,
+        PatchSchedulesRuleIdOccurrenceDateMutationVariables,
         TContext
       > => {
-      return useMutation(getPatchSchedulesBlueprintIdOccurrenceDateMutationOptions(options), queryClient);
+      return useMutation(getPatchSchedulesRuleIdOccurrenceDateMutationOptions(options), queryClient);
     }
 
-export const getGetSchedulesBlueprintIdOccurrenceDateRevisionsUrl = (blueprintId: string,
+export const getGetSchedulesRuleIdOccurrenceDateRevisionsUrl = (ruleId: string,
     occurrenceDate: string,
-    params?: GetSchedulesBlueprintIdOccurrenceDateRevisionsParams,) => {
+    params?: GetSchedulesRuleIdOccurrenceDateRevisionsParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1473,17 +1471,17 @@ export const getGetSchedulesBlueprintIdOccurrenceDateRevisionsUrl = (blueprintId
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/schedules/${blueprintId}/${occurrenceDate}/revisions?${stringifiedParams}` : `/api/schedules/${blueprintId}/${occurrenceDate}/revisions`
+  return stringifiedParams.length > 0 ? `/api/schedules/${ruleId}/${occurrenceDate}/revisions?${stringifiedParams}` : `/api/schedules/${ruleId}/${occurrenceDate}/revisions`
 }
 
 /**
  * @summary List schedule occurrence revisions
  */
-export const getSchedulesBlueprintIdOccurrenceDateRevisions = async (blueprintId: string,
+export const getSchedulesRuleIdOccurrenceDateRevisions = async (ruleId: string,
     occurrenceDate: string,
-    params?: GetSchedulesBlueprintIdOccurrenceDateRevisionsParams, options?: Parameters<typeof apiFetch>[1]): Promise<RestListEnvelopeRestScheduleOccurrenceRevisionResponse> => {
+    params?: GetSchedulesRuleIdOccurrenceDateRevisionsParams, options?: Parameters<typeof apiFetch>[1]): Promise<RestListEnvelopeRestScheduleOccurrenceRevisionResponse> => {
 
-  return apiFetch<RestListEnvelopeRestScheduleOccurrenceRevisionResponse>(getGetSchedulesBlueprintIdOccurrenceDateRevisionsUrl(blueprintId,occurrenceDate,params),
+  return apiFetch<RestListEnvelopeRestScheduleOccurrenceRevisionResponse>(getGetSchedulesRuleIdOccurrenceDateRevisionsUrl(ruleId,occurrenceDate,params),
   {
     ...options,
     method: 'GET'
@@ -1496,81 +1494,81 @@ export const getSchedulesBlueprintIdOccurrenceDateRevisions = async (blueprintId
 
 
 
-export const getGetSchedulesBlueprintIdOccurrenceDateRevisionsQueryKey = (blueprintId: string,
+export const getGetSchedulesRuleIdOccurrenceDateRevisionsQueryKey = (ruleId: string,
     occurrenceDate: string,
-    params?: GetSchedulesBlueprintIdOccurrenceDateRevisionsParams,) => {
+    params?: GetSchedulesRuleIdOccurrenceDateRevisionsParams,) => {
     return [
-    `/api/schedules/${blueprintId}/${occurrenceDate}/revisions`, ...(params ? [params] : [])
+    `/api/schedules/${ruleId}/${occurrenceDate}/revisions`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetSchedulesBlueprintIdOccurrenceDateRevisionsQueryOptions = <TData = Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>, TError = ErrorType<unknown>>(blueprintId: string,
+export const getGetSchedulesRuleIdOccurrenceDateRevisionsQueryOptions = <TData = Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>, TError = ErrorType<unknown>>(ruleId: string,
     occurrenceDate: string,
-    params?: GetSchedulesBlueprintIdOccurrenceDateRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+    params?: GetSchedulesRuleIdOccurrenceDateRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetSchedulesBlueprintIdOccurrenceDateRevisionsQueryKey(blueprintId,occurrenceDate,params);
+  const queryKey =  queryOptions?.queryKey ?? getGetSchedulesRuleIdOccurrenceDateRevisionsQueryKey(ruleId,occurrenceDate,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>> = ({ signal }) => getSchedulesBlueprintIdOccurrenceDateRevisions(blueprintId,occurrenceDate,params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>> = ({ signal }) => getSchedulesRuleIdOccurrenceDateRevisions(ruleId,occurrenceDate,params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: blueprintId !== null && blueprintId !== undefined && occurrenceDate !== null && occurrenceDate !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: ruleId !== null && ruleId !== undefined && occurrenceDate !== null && occurrenceDate !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetSchedulesBlueprintIdOccurrenceDateRevisionsQueryResult = NonNullable<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>>
-export type GetSchedulesBlueprintIdOccurrenceDateRevisionsQueryError = ErrorType<unknown>
+export type GetSchedulesRuleIdOccurrenceDateRevisionsQueryResult = NonNullable<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>>
+export type GetSchedulesRuleIdOccurrenceDateRevisionsQueryError = ErrorType<unknown>
 
 
-export function useGetSchedulesBlueprintIdOccurrenceDateRevisions<TData = Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>, TError = ErrorType<unknown>>(
- blueprintId: string,
+export function useGetSchedulesRuleIdOccurrenceDateRevisions<TData = Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>, TError = ErrorType<unknown>>(
+ ruleId: string,
     occurrenceDate: string,
-    params: undefined |  GetSchedulesBlueprintIdOccurrenceDateRevisionsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>, TError, TData>> & Pick<
+    params: undefined |  GetSchedulesRuleIdOccurrenceDateRevisionsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>,
+          Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>,
           TError,
-          Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>
+          Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetSchedulesBlueprintIdOccurrenceDateRevisions<TData = Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>, TError = ErrorType<unknown>>(
- blueprintId: string,
+export function useGetSchedulesRuleIdOccurrenceDateRevisions<TData = Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>, TError = ErrorType<unknown>>(
+ ruleId: string,
     occurrenceDate: string,
-    params?: GetSchedulesBlueprintIdOccurrenceDateRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>, TError, TData>> & Pick<
+    params?: GetSchedulesRuleIdOccurrenceDateRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>,
+          Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>,
           TError,
-          Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>
+          Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetSchedulesBlueprintIdOccurrenceDateRevisions<TData = Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>, TError = ErrorType<unknown>>(
- blueprintId: string,
+export function useGetSchedulesRuleIdOccurrenceDateRevisions<TData = Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>, TError = ErrorType<unknown>>(
+ ruleId: string,
     occurrenceDate: string,
-    params?: GetSchedulesBlueprintIdOccurrenceDateRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+    params?: GetSchedulesRuleIdOccurrenceDateRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary List schedule occurrence revisions
  */
 
-export function useGetSchedulesBlueprintIdOccurrenceDateRevisions<TData = Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>, TError = ErrorType<unknown>>(
- blueprintId: string,
+export function useGetSchedulesRuleIdOccurrenceDateRevisions<TData = Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>, TError = ErrorType<unknown>>(
+ ruleId: string,
     occurrenceDate: string,
-    params?: GetSchedulesBlueprintIdOccurrenceDateRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesBlueprintIdOccurrenceDateRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+    params?: GetSchedulesRuleIdOccurrenceDateRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulesRuleIdOccurrenceDateRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetSchedulesBlueprintIdOccurrenceDateRevisionsQueryOptions(blueprintId,occurrenceDate,params,options)
+  const queryOptions = getGetSchedulesRuleIdOccurrenceDateRevisionsQueryOptions(ruleId,occurrenceDate,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -1583,22 +1581,22 @@ export function useGetSchedulesBlueprintIdOccurrenceDateRevisions<TData = Awaite
 
 
 
-export const getPostSchedulesBlueprintIdOccurrenceDatecompleteUrl = (blueprintId: string,
+export const getPostSchedulesRuleIdOccurrenceDatecompleteUrl = (ruleId: string,
     occurrenceDate: string,) => {
 
 
 
 
-  return `/api/schedules/${blueprintId}/${occurrenceDate}:complete`
+  return `/api/schedules/${ruleId}/${occurrenceDate}:complete`
 }
 
 /**
  * @summary Complete schedule occurrence
  */
-export const postSchedulesBlueprintIdOccurrenceDatecomplete = async (blueprintId: string,
+export const postSchedulesRuleIdOccurrenceDatecomplete = async (ruleId: string,
     occurrenceDate: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
 
-  return apiFetch<void>(getPostSchedulesBlueprintIdOccurrenceDatecompleteUrl(blueprintId,occurrenceDate),
+  return apiFetch<void>(getPostSchedulesRuleIdOccurrenceDatecompleteUrl(ruleId,occurrenceDate),
   {
     ...options,
     method: 'POST'
@@ -1611,13 +1609,13 @@ export const postSchedulesBlueprintIdOccurrenceDatecomplete = async (blueprintId
 
 
 
-export const getPostSchedulesBlueprintIdOccurrenceDatecompleteMutationKey = () => ['postSchedulesBlueprintIdOccurrenceDatecomplete'] as const;
+export const getPostSchedulesRuleIdOccurrenceDatecompleteMutationKey = () => ['postSchedulesRuleIdOccurrenceDatecomplete'] as const;
 
-export const getPostSchedulesBlueprintIdOccurrenceDatecompleteMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatecomplete>>, TError,PostSchedulesBlueprintIdOccurrenceDatecompleteMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatecomplete>>, TError,PostSchedulesBlueprintIdOccurrenceDatecompleteMutationVariables, TContext> => {
+export const getPostSchedulesRuleIdOccurrenceDatecompleteMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatecomplete>>, TError,PostSchedulesRuleIdOccurrenceDatecompleteMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatecomplete>>, TError,PostSchedulesRuleIdOccurrenceDatecompleteMutationVariables, TContext> => {
 
-const mutationKey = getPostSchedulesBlueprintIdOccurrenceDatecompleteMutationKey();
+const mutationKey = getPostSchedulesRuleIdOccurrenceDatecompleteMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1627,10 +1625,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatecomplete>>, PostSchedulesBlueprintIdOccurrenceDatecompleteMutationVariables> = (props) => {
-          const {blueprintId,occurrenceDate} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatecomplete>>, PostSchedulesRuleIdOccurrenceDatecompleteMutationVariables> = (props) => {
+          const {ruleId,occurrenceDate} = props ?? {};
 
-          return  postSchedulesBlueprintIdOccurrenceDatecomplete(blueprintId,occurrenceDate,requestOptions)
+          return  postSchedulesRuleIdOccurrenceDatecomplete(ruleId,occurrenceDate,requestOptions)
         }
 
 
@@ -1640,41 +1638,41 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type PostSchedulesBlueprintIdOccurrenceDatecompleteMutationResult = NonNullable<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatecomplete>>>
+    export type PostSchedulesRuleIdOccurrenceDatecompleteMutationResult = NonNullable<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatecomplete>>>
 
-    export type PostSchedulesBlueprintIdOccurrenceDatecompleteMutationError = ErrorType<unknown>
-    export type PostSchedulesBlueprintIdOccurrenceDatecompleteMutationVariables = {blueprintId: string;occurrenceDate: string}
+    export type PostSchedulesRuleIdOccurrenceDatecompleteMutationError = ErrorType<unknown>
+    export type PostSchedulesRuleIdOccurrenceDatecompleteMutationVariables = {ruleId: string;occurrenceDate: string}
 
     /**
  * @summary Complete schedule occurrence
  */
-export const usePostSchedulesBlueprintIdOccurrenceDatecomplete = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatecomplete>>, TError,PostSchedulesBlueprintIdOccurrenceDatecompleteMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const usePostSchedulesRuleIdOccurrenceDatecomplete = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatecomplete>>, TError,PostSchedulesRuleIdOccurrenceDatecompleteMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatecomplete>>,
+        Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatecomplete>>,
         TError,
-        PostSchedulesBlueprintIdOccurrenceDatecompleteMutationVariables,
+        PostSchedulesRuleIdOccurrenceDatecompleteMutationVariables,
         TContext
       > => {
-      return useMutation(getPostSchedulesBlueprintIdOccurrenceDatecompleteMutationOptions(options), queryClient);
+      return useMutation(getPostSchedulesRuleIdOccurrenceDatecompleteMutationOptions(options), queryClient);
     }
 
-export const getPostSchedulesBlueprintIdOccurrenceDatereopenUrl = (blueprintId: string,
+export const getPostSchedulesRuleIdOccurrenceDatereopenUrl = (ruleId: string,
     occurrenceDate: string,) => {
 
 
 
 
-  return `/api/schedules/${blueprintId}/${occurrenceDate}:reopen`
+  return `/api/schedules/${ruleId}/${occurrenceDate}:reopen`
 }
 
 /**
  * @summary Reopen schedule occurrence
  */
-export const postSchedulesBlueprintIdOccurrenceDatereopen = async (blueprintId: string,
+export const postSchedulesRuleIdOccurrenceDatereopen = async (ruleId: string,
     occurrenceDate: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
 
-  return apiFetch<void>(getPostSchedulesBlueprintIdOccurrenceDatereopenUrl(blueprintId,occurrenceDate),
+  return apiFetch<void>(getPostSchedulesRuleIdOccurrenceDatereopenUrl(ruleId,occurrenceDate),
   {
     ...options,
     method: 'POST'
@@ -1687,13 +1685,13 @@ export const postSchedulesBlueprintIdOccurrenceDatereopen = async (blueprintId: 
 
 
 
-export const getPostSchedulesBlueprintIdOccurrenceDatereopenMutationKey = () => ['postSchedulesBlueprintIdOccurrenceDatereopen'] as const;
+export const getPostSchedulesRuleIdOccurrenceDatereopenMutationKey = () => ['postSchedulesRuleIdOccurrenceDatereopen'] as const;
 
-export const getPostSchedulesBlueprintIdOccurrenceDatereopenMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatereopen>>, TError,PostSchedulesBlueprintIdOccurrenceDatereopenMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatereopen>>, TError,PostSchedulesBlueprintIdOccurrenceDatereopenMutationVariables, TContext> => {
+export const getPostSchedulesRuleIdOccurrenceDatereopenMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatereopen>>, TError,PostSchedulesRuleIdOccurrenceDatereopenMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatereopen>>, TError,PostSchedulesRuleIdOccurrenceDatereopenMutationVariables, TContext> => {
 
-const mutationKey = getPostSchedulesBlueprintIdOccurrenceDatereopenMutationKey();
+const mutationKey = getPostSchedulesRuleIdOccurrenceDatereopenMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1703,10 +1701,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatereopen>>, PostSchedulesBlueprintIdOccurrenceDatereopenMutationVariables> = (props) => {
-          const {blueprintId,occurrenceDate} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatereopen>>, PostSchedulesRuleIdOccurrenceDatereopenMutationVariables> = (props) => {
+          const {ruleId,occurrenceDate} = props ?? {};
 
-          return  postSchedulesBlueprintIdOccurrenceDatereopen(blueprintId,occurrenceDate,requestOptions)
+          return  postSchedulesRuleIdOccurrenceDatereopen(ruleId,occurrenceDate,requestOptions)
         }
 
 
@@ -1716,38 +1714,38 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type PostSchedulesBlueprintIdOccurrenceDatereopenMutationResult = NonNullable<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatereopen>>>
+    export type PostSchedulesRuleIdOccurrenceDatereopenMutationResult = NonNullable<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatereopen>>>
 
-    export type PostSchedulesBlueprintIdOccurrenceDatereopenMutationError = ErrorType<unknown>
-    export type PostSchedulesBlueprintIdOccurrenceDatereopenMutationVariables = {blueprintId: string;occurrenceDate: string}
+    export type PostSchedulesRuleIdOccurrenceDatereopenMutationError = ErrorType<unknown>
+    export type PostSchedulesRuleIdOccurrenceDatereopenMutationVariables = {ruleId: string;occurrenceDate: string}
 
     /**
  * @summary Reopen schedule occurrence
  */
-export const usePostSchedulesBlueprintIdOccurrenceDatereopen = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatereopen>>, TError,PostSchedulesBlueprintIdOccurrenceDatereopenMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const usePostSchedulesRuleIdOccurrenceDatereopen = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatereopen>>, TError,PostSchedulesRuleIdOccurrenceDatereopenMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatereopen>>,
+        Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatereopen>>,
         TError,
-        PostSchedulesBlueprintIdOccurrenceDatereopenMutationVariables,
+        PostSchedulesRuleIdOccurrenceDatereopenMutationVariables,
         TContext
       > => {
-      return useMutation(getPostSchedulesBlueprintIdOccurrenceDatereopenMutationOptions(options), queryClient);
+      return useMutation(getPostSchedulesRuleIdOccurrenceDatereopenMutationOptions(options), queryClient);
     }
 
-export const getPostSchedulesBlueprintIdOccurrenceDaterescheduleUrl = (blueprintId: string,
+export const getPostSchedulesRuleIdOccurrenceDaterescheduleUrl = (ruleId: string,
     occurrenceDate: string,) => {
 
 
 
 
-  return `/api/schedules/${blueprintId}/${occurrenceDate}:reschedule`
+  return `/api/schedules/${ruleId}/${occurrenceDate}:reschedule`
 }
 
 /**
  * @summary Reschedule occurrence
  */
-export const postSchedulesBlueprintIdOccurrenceDatereschedule = async (blueprintId: string,
+export const postSchedulesRuleIdOccurrenceDatereschedule = async (ruleId: string,
     occurrenceDate: string,
     restScheduleOccurrenceRescheduleRequest: RestScheduleOccurrenceRescheduleRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestScheduleOccurrenceResponse> => {
 
@@ -1765,7 +1763,7 @@ export const postSchedulesBlueprintIdOccurrenceDatereschedule = async (blueprint
     }
     return headers;
   };
-return apiFetch<RestScheduleOccurrenceResponse>(getPostSchedulesBlueprintIdOccurrenceDaterescheduleUrl(blueprintId,occurrenceDate),
+return apiFetch<RestScheduleOccurrenceResponse>(getPostSchedulesRuleIdOccurrenceDaterescheduleUrl(ruleId,occurrenceDate),
   {
     ...options,
     method: 'POST',
@@ -1778,13 +1776,13 @@ return apiFetch<RestScheduleOccurrenceResponse>(getPostSchedulesBlueprintIdOccur
 
 
 
-export const getPostSchedulesBlueprintIdOccurrenceDaterescheduleMutationKey = () => ['postSchedulesBlueprintIdOccurrenceDatereschedule'] as const;
+export const getPostSchedulesRuleIdOccurrenceDaterescheduleMutationKey = () => ['postSchedulesRuleIdOccurrenceDatereschedule'] as const;
 
-export const getPostSchedulesBlueprintIdOccurrenceDaterescheduleMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatereschedule>>, TError,PostSchedulesBlueprintIdOccurrenceDaterescheduleMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatereschedule>>, TError,PostSchedulesBlueprintIdOccurrenceDaterescheduleMutationVariables, TContext> => {
+export const getPostSchedulesRuleIdOccurrenceDaterescheduleMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatereschedule>>, TError,PostSchedulesRuleIdOccurrenceDaterescheduleMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatereschedule>>, TError,PostSchedulesRuleIdOccurrenceDaterescheduleMutationVariables, TContext> => {
 
-const mutationKey = getPostSchedulesBlueprintIdOccurrenceDaterescheduleMutationKey();
+const mutationKey = getPostSchedulesRuleIdOccurrenceDaterescheduleMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1794,10 +1792,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatereschedule>>, PostSchedulesBlueprintIdOccurrenceDaterescheduleMutationVariables> = (props) => {
-          const {blueprintId,occurrenceDate,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatereschedule>>, PostSchedulesRuleIdOccurrenceDaterescheduleMutationVariables> = (props) => {
+          const {ruleId,occurrenceDate,data} = props ?? {};
 
-          return  postSchedulesBlueprintIdOccurrenceDatereschedule(blueprintId,occurrenceDate,data,requestOptions)
+          return  postSchedulesRuleIdOccurrenceDatereschedule(ruleId,occurrenceDate,data,requestOptions)
         }
 
 
@@ -1807,41 +1805,41 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type PostSchedulesBlueprintIdOccurrenceDaterescheduleMutationResult = NonNullable<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatereschedule>>>
-    export type PostSchedulesBlueprintIdOccurrenceDaterescheduleMutationBody = RestScheduleOccurrenceRescheduleRequest
-    export type PostSchedulesBlueprintIdOccurrenceDaterescheduleMutationError = ErrorType<unknown>
-    export type PostSchedulesBlueprintIdOccurrenceDaterescheduleMutationVariables = {blueprintId: string;occurrenceDate: string;data: RestScheduleOccurrenceRescheduleRequest}
+    export type PostSchedulesRuleIdOccurrenceDaterescheduleMutationResult = NonNullable<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatereschedule>>>
+    export type PostSchedulesRuleIdOccurrenceDaterescheduleMutationBody = RestScheduleOccurrenceRescheduleRequest
+    export type PostSchedulesRuleIdOccurrenceDaterescheduleMutationError = ErrorType<unknown>
+    export type PostSchedulesRuleIdOccurrenceDaterescheduleMutationVariables = {ruleId: string;occurrenceDate: string;data: RestScheduleOccurrenceRescheduleRequest}
 
     /**
  * @summary Reschedule occurrence
  */
-export const usePostSchedulesBlueprintIdOccurrenceDatereschedule = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatereschedule>>, TError,PostSchedulesBlueprintIdOccurrenceDaterescheduleMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const usePostSchedulesRuleIdOccurrenceDatereschedule = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatereschedule>>, TError,PostSchedulesRuleIdOccurrenceDaterescheduleMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDatereschedule>>,
+        Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDatereschedule>>,
         TError,
-        PostSchedulesBlueprintIdOccurrenceDaterescheduleMutationVariables,
+        PostSchedulesRuleIdOccurrenceDaterescheduleMutationVariables,
         TContext
       > => {
-      return useMutation(getPostSchedulesBlueprintIdOccurrenceDaterescheduleMutationOptions(options), queryClient);
+      return useMutation(getPostSchedulesRuleIdOccurrenceDaterescheduleMutationOptions(options), queryClient);
     }
 
-export const getPostSchedulesBlueprintIdOccurrenceDaterestoreUrl = (blueprintId: string,
+export const getPostSchedulesRuleIdOccurrenceDaterestoreUrl = (ruleId: string,
     occurrenceDate: string,) => {
 
 
 
 
-  return `/api/schedules/${blueprintId}/${occurrenceDate}:restore`
+  return `/api/schedules/${ruleId}/${occurrenceDate}:restore`
 }
 
 /**
  * @summary Restore schedule occurrence
  */
-export const postSchedulesBlueprintIdOccurrenceDaterestore = async (blueprintId: string,
+export const postSchedulesRuleIdOccurrenceDaterestore = async (ruleId: string,
     occurrenceDate: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
 
-  return apiFetch<void>(getPostSchedulesBlueprintIdOccurrenceDaterestoreUrl(blueprintId,occurrenceDate),
+  return apiFetch<void>(getPostSchedulesRuleIdOccurrenceDaterestoreUrl(ruleId,occurrenceDate),
   {
     ...options,
     method: 'POST'
@@ -1854,13 +1852,13 @@ export const postSchedulesBlueprintIdOccurrenceDaterestore = async (blueprintId:
 
 
 
-export const getPostSchedulesBlueprintIdOccurrenceDaterestoreMutationKey = () => ['postSchedulesBlueprintIdOccurrenceDaterestore'] as const;
+export const getPostSchedulesRuleIdOccurrenceDaterestoreMutationKey = () => ['postSchedulesRuleIdOccurrenceDaterestore'] as const;
 
-export const getPostSchedulesBlueprintIdOccurrenceDaterestoreMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDaterestore>>, TError,PostSchedulesBlueprintIdOccurrenceDaterestoreMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDaterestore>>, TError,PostSchedulesBlueprintIdOccurrenceDaterestoreMutationVariables, TContext> => {
+export const getPostSchedulesRuleIdOccurrenceDaterestoreMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDaterestore>>, TError,PostSchedulesRuleIdOccurrenceDaterestoreMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDaterestore>>, TError,PostSchedulesRuleIdOccurrenceDaterestoreMutationVariables, TContext> => {
 
-const mutationKey = getPostSchedulesBlueprintIdOccurrenceDaterestoreMutationKey();
+const mutationKey = getPostSchedulesRuleIdOccurrenceDaterestoreMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1870,10 +1868,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDaterestore>>, PostSchedulesBlueprintIdOccurrenceDaterestoreMutationVariables> = (props) => {
-          const {blueprintId,occurrenceDate} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDaterestore>>, PostSchedulesRuleIdOccurrenceDaterestoreMutationVariables> = (props) => {
+          const {ruleId,occurrenceDate} = props ?? {};
 
-          return  postSchedulesBlueprintIdOccurrenceDaterestore(blueprintId,occurrenceDate,requestOptions)
+          return  postSchedulesRuleIdOccurrenceDaterestore(ruleId,occurrenceDate,requestOptions)
         }
 
 
@@ -1883,41 +1881,41 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type PostSchedulesBlueprintIdOccurrenceDaterestoreMutationResult = NonNullable<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDaterestore>>>
+    export type PostSchedulesRuleIdOccurrenceDaterestoreMutationResult = NonNullable<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDaterestore>>>
 
-    export type PostSchedulesBlueprintIdOccurrenceDaterestoreMutationError = ErrorType<unknown>
-    export type PostSchedulesBlueprintIdOccurrenceDaterestoreMutationVariables = {blueprintId: string;occurrenceDate: string}
+    export type PostSchedulesRuleIdOccurrenceDaterestoreMutationError = ErrorType<unknown>
+    export type PostSchedulesRuleIdOccurrenceDaterestoreMutationVariables = {ruleId: string;occurrenceDate: string}
 
     /**
  * @summary Restore schedule occurrence
  */
-export const usePostSchedulesBlueprintIdOccurrenceDaterestore = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDaterestore>>, TError,PostSchedulesBlueprintIdOccurrenceDaterestoreMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const usePostSchedulesRuleIdOccurrenceDaterestore = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDaterestore>>, TError,PostSchedulesRuleIdOccurrenceDaterestoreMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDaterestore>>,
+        Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDaterestore>>,
         TError,
-        PostSchedulesBlueprintIdOccurrenceDaterestoreMutationVariables,
+        PostSchedulesRuleIdOccurrenceDaterestoreMutationVariables,
         TContext
       > => {
-      return useMutation(getPostSchedulesBlueprintIdOccurrenceDaterestoreMutationOptions(options), queryClient);
+      return useMutation(getPostSchedulesRuleIdOccurrenceDaterestoreMutationOptions(options), queryClient);
     }
 
-export const getPostSchedulesBlueprintIdOccurrenceDateskipUrl = (blueprintId: string,
+export const getPostSchedulesRuleIdOccurrenceDateskipUrl = (ruleId: string,
     occurrenceDate: string,) => {
 
 
 
 
-  return `/api/schedules/${blueprintId}/${occurrenceDate}:skip`
+  return `/api/schedules/${ruleId}/${occurrenceDate}:skip`
 }
 
 /**
  * @summary Skip schedule occurrence
  */
-export const postSchedulesBlueprintIdOccurrenceDateskip = async (blueprintId: string,
+export const postSchedulesRuleIdOccurrenceDateskip = async (ruleId: string,
     occurrenceDate: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
 
-  return apiFetch<void>(getPostSchedulesBlueprintIdOccurrenceDateskipUrl(blueprintId,occurrenceDate),
+  return apiFetch<void>(getPostSchedulesRuleIdOccurrenceDateskipUrl(ruleId,occurrenceDate),
   {
     ...options,
     method: 'POST'
@@ -1930,13 +1928,13 @@ export const postSchedulesBlueprintIdOccurrenceDateskip = async (blueprintId: st
 
 
 
-export const getPostSchedulesBlueprintIdOccurrenceDateskipMutationKey = () => ['postSchedulesBlueprintIdOccurrenceDateskip'] as const;
+export const getPostSchedulesRuleIdOccurrenceDateskipMutationKey = () => ['postSchedulesRuleIdOccurrenceDateskip'] as const;
 
-export const getPostSchedulesBlueprintIdOccurrenceDateskipMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDateskip>>, TError,PostSchedulesBlueprintIdOccurrenceDateskipMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDateskip>>, TError,PostSchedulesBlueprintIdOccurrenceDateskipMutationVariables, TContext> => {
+export const getPostSchedulesRuleIdOccurrenceDateskipMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDateskip>>, TError,PostSchedulesRuleIdOccurrenceDateskipMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDateskip>>, TError,PostSchedulesRuleIdOccurrenceDateskipMutationVariables, TContext> => {
 
-const mutationKey = getPostSchedulesBlueprintIdOccurrenceDateskipMutationKey();
+const mutationKey = getPostSchedulesRuleIdOccurrenceDateskipMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1946,10 +1944,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDateskip>>, PostSchedulesBlueprintIdOccurrenceDateskipMutationVariables> = (props) => {
-          const {blueprintId,occurrenceDate} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDateskip>>, PostSchedulesRuleIdOccurrenceDateskipMutationVariables> = (props) => {
+          const {ruleId,occurrenceDate} = props ?? {};
 
-          return  postSchedulesBlueprintIdOccurrenceDateskip(blueprintId,occurrenceDate,requestOptions)
+          return  postSchedulesRuleIdOccurrenceDateskip(ruleId,occurrenceDate,requestOptions)
         }
 
 
@@ -1959,21 +1957,21 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type PostSchedulesBlueprintIdOccurrenceDateskipMutationResult = NonNullable<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDateskip>>>
+    export type PostSchedulesRuleIdOccurrenceDateskipMutationResult = NonNullable<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDateskip>>>
 
-    export type PostSchedulesBlueprintIdOccurrenceDateskipMutationError = ErrorType<unknown>
-    export type PostSchedulesBlueprintIdOccurrenceDateskipMutationVariables = {blueprintId: string;occurrenceDate: string}
+    export type PostSchedulesRuleIdOccurrenceDateskipMutationError = ErrorType<unknown>
+    export type PostSchedulesRuleIdOccurrenceDateskipMutationVariables = {ruleId: string;occurrenceDate: string}
 
     /**
  * @summary Skip schedule occurrence
  */
-export const usePostSchedulesBlueprintIdOccurrenceDateskip = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDateskip>>, TError,PostSchedulesBlueprintIdOccurrenceDateskipMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const usePostSchedulesRuleIdOccurrenceDateskip = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDateskip>>, TError,PostSchedulesRuleIdOccurrenceDateskipMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postSchedulesBlueprintIdOccurrenceDateskip>>,
+        Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDateskip>>,
         TError,
-        PostSchedulesBlueprintIdOccurrenceDateskipMutationVariables,
+        PostSchedulesRuleIdOccurrenceDateskipMutationVariables,
         TContext
       > => {
-      return useMutation(getPostSchedulesBlueprintIdOccurrenceDateskipMutationOptions(options), queryClient);
+      return useMutation(getPostSchedulesRuleIdOccurrenceDateskipMutationOptions(options), queryClient);
     }

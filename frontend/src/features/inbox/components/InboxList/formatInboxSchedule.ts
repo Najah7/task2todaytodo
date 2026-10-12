@@ -1,5 +1,5 @@
 import type { RestInboxSchedulePayloadResponse } from "~/api/generated/inbox"
-import { addCalendarDays, instantToLocalDate } from "~/features/schedule/lib/dateTime"
+import { addCalendarDays, instantToLocalDate } from "~/features/shared/calendar/dateTime"
 
 function formatLocalDate(value: string, locale: string) {
   const date = new Date(`${value}T12:00:00Z`)

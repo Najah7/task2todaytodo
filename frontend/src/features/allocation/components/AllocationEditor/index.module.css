@@ -1,0 +1,127 @@
+.overlay {
+  position: fixed;
+  z-index: 8;
+  inset: 0;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  padding: var(--space-md);
+  background: var(--color-overlay);
+}
+
+.dialog {
+  width: min(100%, 29rem);
+  max-height: 90dvh;
+  overflow: auto;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.header h2 {
+  margin: 0;
+}
+
+.close {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.fields {
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 0;
+}
+
+.fields select,
+.fields > input {
+  width: 100%;
+}
+
+.checkbox {
+  display: flex;
+  align-items: start;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.checkbox span {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.checkbox small {
+  color: var(--color-text-muted);
+}
+
+.scope {
+  display: grid;
+  gap: var(--space-sm);
+  margin: var(--space-sm) 0 0;
+  padding: var(--space-sm);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+}
+
+.scope label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-top: var(--border-width) solid var(--color-border);
+}
+
+.deleteButton {
+  margin-right: auto;
+  padding: var(--space-sm) var(--space-md);
+  border: 0;
+  background: transparent;
+  color: var(--color-danger-text);
+  cursor: pointer;
+}
+
+.deleteFollowing {
+  padding: 0 var(--space-md) var(--space-md);
+  text-align: right;
+}
+
+.deleteFollowing button {
+  border: 0;
+  background: transparent;
+  color: var(--color-danger-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--color-danger-text);
+}
+
+@media (min-width: 42em) {
+  .overlay {
+    align-items: center;
+  }
+}

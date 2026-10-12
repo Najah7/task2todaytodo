@@ -8,13 +8,13 @@ import { getGetUsersMeQueryKey, getUsersMe } from "~/api/generated/auth"
 import { getTimezones } from "~/api/generated/auth"
 import { useI18n } from "~/features/i18n/hooks"
 import {
-  getGetScheduleBlueprintsIdQueryKey,
-  getGetScheduleBlueprintsIdAssigneesQueryKey,
+  getGetScheduleRulesIdQueryKey,
+  getGetScheduleRulesIdAssigneesQueryKey,
   getProjectsIdSchedules,
-  getScheduleBlueprintsId,
-  getScheduleBlueprintsIdAssignees,
+  getScheduleRulesId,
+  getScheduleRulesIdAssignees,
   getSchedules,
-  getSchedulesBlueprintIdOccurrenceDate,
+  getSchedulesRuleIdOccurrenceDate,
   type GetProjectsIdSchedulesParams,
   type GetSchedulesParams,
   type RestScheduleOccurrenceResponse,
@@ -33,13 +33,13 @@ import { projectMembers2assigneeOptions } from "~/features/schedule/converters/p
 import { scheduleAssignees2options } from "~/features/schedule/converters/scheduleAssignees2options"
 import { scheduleRange, scheduleEventOverlapsRange } from "~/features/schedule/lib/scheduleRange"
 import { scheduleSearchParams2state } from "~/features/schedule/converters/scheduleSearchParams"
-import { ScheduleAPIDataContext, type ScheduleBlueprintRevision } from "./context"
-import { selectEffectiveBlueprintRevision } from "./selectEffectiveBlueprintRevision"
-import { fetchScheduleBlueprintRevisions } from "./fetchScheduleBlueprintRevisions"
+import { ScheduleAPIDataContext, type ScheduleRuleRevision } from "./context"
+import { selectEffectiveRuleRevision } from "./selectEffectiveRuleRevision"
+import { fetchScheduleRuleRevisions } from "./fetchScheduleRuleRevisions"
 
-type Props = { children: ReactNode; list?: boolean; blueprintId?: string; occurrenceDate?: string }
+type Props = { children: ReactNode; list?: boolean; ruleId?: string; occurrenceDate?: string }
 
-export function ScheduleAPIDataProvider({ children, list = false, blueprintId, occurrenceDate }: Props) {
+export function ScheduleAPIDataProvider({ children, list = false, ruleId, occurrenceDate }: Props) {
   const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const t = useI18n()
@@ -63,29 +63,29 @@ export function ScheduleAPIDataProvider({ children, list = false, blueprintId, o
       signal,
     ),
   })
-  const blueprintQuery = useQuery({
-    queryKey: getGetScheduleBlueprintsIdQueryKey(blueprintId || ""),
-    enabled: Boolean(blueprintId),
-    queryFn: ({ signal }) => getScheduleBlueprintsId(blueprintId!, { signal }),
+  const ruleQuery = useQuery({
+    queryKey: getGetScheduleRulesIdQueryKey(ruleId || ""),
+    enabled: Boolean(ruleId),
+    queryFn: ({ signal }) => getScheduleRulesId(ruleId!, { signal }),
   })
   const occurrenceQuery = useQuery({
-    queryKey: ["schedules", "occurrence", blueprintId, occurrenceDate],
-    enabled: Boolean(blueprintId && occurrenceDate && !list),
-    queryFn: ({ signal }) => getSchedulesBlueprintIdOccurrenceDate(blueprintId!, occurrenceDate!, { signal }),
+    queryKey: ["schedules", "occurrence", ruleId, occurrenceDate],
+    enabled: Boolean(ruleId && occurrenceDate && !list),
+    queryFn: ({ signal }) => getSchedulesRuleIdOccurrenceDate(ruleId!, occurrenceDate!, { signal }),
   })
-  const revisionsQuery = useQuery<ScheduleBlueprintRevision[]>({
-    queryKey: ["schedules", "blueprint-revisions", blueprintId],
-    enabled: Boolean(blueprintId),
-    queryFn: ({ signal }) => fetchScheduleBlueprintRevisions(blueprintId!, signal),
+  const revisionsQuery = useQuery<ScheduleRuleRevision[]>({
+    queryKey: ["schedules", "rule-revisions", ruleId],
+    enabled: Boolean(ruleId),
+    queryFn: ({ signal }) => fetchScheduleRuleRevisions(ruleId!, signal),
   })
   const assigneesQuery = useQuery({
-    queryKey: getGetScheduleBlueprintsIdAssigneesQueryKey(blueprintId || ""),
-    enabled: Boolean(blueprintId && !list && (occurrenceQuery.data?.can_assign || occurrenceQuery.data?.can_update_following)),
-    queryFn: ({ signal }) => getScheduleBlueprintsIdAssignees(blueprintId!, { signal }),
+    queryKey: getGetScheduleRulesIdAssigneesQueryKey(ruleId || ""),
+    enabled: Boolean(ruleId && !list && (occurrenceQuery.data?.can_assign || occurrenceQuery.data?.can_update_following)),
+    queryFn: ({ signal }) => getScheduleRulesIdAssignees(ruleId!, { signal }),
   })
 
-  const blueprint = blueprintQuery.data
-  const selectedProjectId = occurrenceQuery.data?.project_id || blueprint?.project_id || navigation.projectId
+  const rule = ruleQuery.data
+  const selectedProjectId = occurrenceQuery.data?.project_id || rule?.project_id || navigation.projectId
   const membersQuery = useQuery({
     queryKey: getGetProjectsIdMembersQueryKey(selectedProjectId || ""),
     enabled: Boolean(selectedProjectId && !list),
@@ -98,19 +98,19 @@ export function ScheduleAPIDataProvider({ children, list = false, blueprintId, o
   })
 
   const projectOptions = useMemo(() => (projectsQuery.data || []).map((project) => ({ id: project.id, title: project.title, ownerId: project.user_id })), [projectsQuery.data])
-  const assigneeOptions = useMemo(() => assigneesQuery.data && selectedProjectId === blueprint?.project_id
+  const assigneeOptions = useMemo(() => assigneesQuery.data && selectedProjectId === rule?.project_id
     ? scheduleAssignees2options(assigneesQuery.data.items || [], userQuery.data, t("schedules.projectOwner"))
     : projectMembers2assigneeOptions(membersQuery.data?.items || [], projectQuery.data, userQuery.data, t("schedules.projectOwner"), projectOptions.find((item) => item.id === selectedProjectId)?.ownerId, t("schedules.currentUser")),
-  [assigneesQuery.data, blueprint?.project_id, membersQuery.data, projectOptions, projectQuery.data, selectedProjectId, t, userQuery.data])
+  [assigneesQuery.data, rule?.project_id, membersQuery.data, projectOptions, projectQuery.data, selectedProjectId, t, userQuery.data])
   const revisions = revisionsQuery.data || []
   const occurrence = occurrenceQuery.data
   const rawEvent = occurrence ? scheduleOccurrences2events([occurrence], projectOptions)[0] : undefined
   const effectiveRevision = occurrence
-    ? selectEffectiveBlueprintRevision(revisions, occurrenceDate || occurrence.occurrence_date || "", occurrence.source_revision_id)
+    ? selectEffectiveRuleRevision(revisions, occurrenceDate || occurrence.occurrence_date || "", occurrence.source_revision_id)
     : undefined
   const event = rawEvent ? {
     ...rawEvent,
-    blueprintRevision: blueprint?.revision,
+    ruleRevision: rule?.revision,
     ...(effectiveRevision ? { recurrence: {
       frequency: effectiveRevision.frequency,
       interval: effectiveRevision.interval,
@@ -126,17 +126,17 @@ export function ScheduleAPIDataProvider({ children, list = false, blueprintId, o
 
   const relevantQueries: UseQueryResult<unknown>[] = [userQuery, timezoneQuery, projectsQuery]
   if (list) relevantQueries.push(scheduleQuery)
-  if (blueprintId && occurrenceDate && !list) relevantQueries.push(occurrenceQuery)
+  if (ruleId && occurrenceDate && !list) relevantQueries.push(occurrenceQuery)
   const optionalQueries = [
-    ...(blueprintId ? [blueprintQuery, revisionsQuery] : []),
+    ...(ruleId ? [ruleQuery, revisionsQuery] : []),
     ...(selectedProjectId && !list ? [membersQuery, projectQuery] : []),
-    ...(blueprintId && !list ? [assigneesQuery] : []),
+    ...(ruleId && !list ? [assigneesQuery] : []),
   ]
   const reportableQueries = [...relevantQueries, ...optionalQueries]
-  const blueprintAccessDenied = Boolean(!list && event && [blueprintQuery, revisionsQuery].some((query) => query.data === undefined && query.isError && isForbidden(query.error)))
+  const ruleAccessDenied = Boolean(!list && event && [ruleQuery, revisionsQuery].some((query) => query.data === undefined && query.isError && isForbidden(query.error)))
   const errorQuery = relevantQueries.find((query) => query.isError && query.data === undefined)
   const forbidden = Boolean(errorQuery && isForbidden(errorQuery.error))
-  const optionalInitialLoadPending = Boolean(blueprintId && !list && (!blueprintQuery.isFetched || !revisionsQuery.isFetched))
+  const optionalInitialLoadPending = Boolean(ruleId && !list && (!ruleQuery.isFetched || !revisionsQuery.isFetched))
   const loading = optionalInitialLoadPending || relevantQueries.some((query) => query.data === undefined && query.isPending)
   const state: "loading" | "error" | "forbidden" | "ready" = forbidden ? "forbidden" : errorQuery ? "error" : loading ? "loading" : "ready"
   const reportedErrors = useRef(new Set<string>())
@@ -153,23 +153,23 @@ export function ScheduleAPIDataProvider({ children, list = false, blueprintId, o
   const value = {
     state,
     list,
-    blueprintId,
+    ruleId,
     occurrenceDate,
     events: visibleEvents,
     event,
-    blueprintRevision: effectiveRevision,
-    blueprintRevisionNumber: blueprint?.revision || 0,
-    blueprintAccessDenied,
+    ruleRevision: effectiveRevision,
+    ruleRevisionNumber: rule?.revision || 0,
+    ruleAccessDenied,
     projectOptions,
     assigneeOptions,
-    assigneeOptionsProjectId: assigneesQuery.data && selectedProjectId === blueprint?.project_id ? selectedProjectId : undefined,
+    assigneeOptionsProjectId: assigneesQuery.data && selectedProjectId === rule?.project_id ? selectedProjectId : undefined,
     timezone,
     userId: userQuery.data?.user_id || "",
     userName: userQuery.data?.user_name || "",
     timezones: timezoneQuery.data?.items || [],
     showSkipped: navigation.showSkipped,
     scheduleQuery: scheduleQuery as UseQueryResult<unknown>,
-    blueprintQuery: blueprintQuery as UseQueryResult<unknown>,
+    ruleQuery: ruleQuery as UseQueryResult<unknown>,
     occurrenceQuery: occurrenceQuery as UseQueryResult<unknown>,
     userQuery: userQuery as UseQueryResult<unknown>,
     timezonesQuery: timezoneQuery as UseQueryResult<unknown>,

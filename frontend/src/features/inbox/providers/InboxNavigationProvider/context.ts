@@ -12,7 +12,7 @@ export type InboxNavigation = {
   previous: (pageToken?: string) => void
   next: (pageToken?: string) => void
   editTask: (taskId: string) => void
-  editSchedule: (blueprintId: string, occurrenceDate: string) => void
+  editSchedule: (ruleId: string, occurrenceDate: string) => void
   editItem: (item: RestInboxItemResponse) => void
 }
 

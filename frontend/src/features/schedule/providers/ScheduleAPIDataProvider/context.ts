@@ -17,7 +17,7 @@ export type ScheduleEventPermissions = {
 
 export type ScheduleEvent = {
   id: string
-  blueprintId: string
+  ruleId: string
   occurrenceDate: string
   title: string
   description: string
@@ -35,7 +35,7 @@ export type ScheduleEvent = {
   assigneeId: string
   sourceRevisionId?: string
   revision: number
-  blueprintRevision?: number
+  ruleRevision?: number
   state: "scheduled" | "completed" | "skipped"
   persisted: boolean
   permissions: ScheduleEventPermissions
@@ -50,7 +50,7 @@ export type ScheduleEvent = {
 export type ScheduleProjectOption = { id: string; title: string; ownerId?: string }
 export type ScheduleAssigneeOption = { id: string; displayName: string }
 
-export type ScheduleBlueprintRevision = {
+export type ScheduleRuleRevision = {
   revisionId: string
   revision: number
   effectiveFrom: string
@@ -75,13 +75,13 @@ export type ScheduleBlueprintRevision = {
 export type ScheduleAPIData = {
   state: ScheduleAPIDataLoadState
   list: boolean
-  blueprintId?: string
+  ruleId?: string
   occurrenceDate?: string
   events: ScheduleEvent[]
   event?: ScheduleEvent
-  blueprintRevision?: ScheduleBlueprintRevision
-  blueprintRevisionNumber?: number
-  blueprintAccessDenied: boolean
+  ruleRevision?: ScheduleRuleRevision
+  ruleRevisionNumber?: number
+  ruleAccessDenied: boolean
   projectOptions: ScheduleProjectOption[]
   assigneeOptions: ScheduleAssigneeOption[]
   assigneeOptionsProjectId?: string
@@ -91,7 +91,7 @@ export type ScheduleAPIData = {
   timezones: string[]
   showSkipped: boolean
   scheduleQuery: UseQueryResult<unknown>
-  blueprintQuery: UseQueryResult<unknown>
+  ruleQuery: UseQueryResult<unknown>
   occurrenceQuery: UseQueryResult<unknown>
   userQuery: UseQueryResult<unknown>
   timezonesQuery: UseQueryResult<unknown>

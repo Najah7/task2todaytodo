@@ -2,12 +2,12 @@ import { useContext, useState, type ReactNode } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { getGetProjectsIdTasksQueryKey, getGetTasksQueryKey, postProjectsIdTasks, postTasks, postTasksIdcomplete } from "~/api/generated/tasks"
 import { getGetProjectsIdQueryKey, getGetProjectsQueryKey } from "~/api/generated/projects"
-import { postScheduleBlueprints, postSchedulesBlueprintIdOccurrenceDatecomplete } from "~/api/generated/schedules"
+import { postScheduleRules, postSchedulesRuleIdOccurrenceDatecomplete } from "~/api/generated/schedules"
 import { getListInboxQueryKey } from "~/api/generated/inbox"
 import { useI18n } from "~/features/i18n/hooks"
 import { notify } from "~/features/shared/notification"
 import { inboxQuickCreateValues2scheduleFormValues } from "~/features/inbox/converters/inboxQuickCreateValues2scheduleFormValues"
-import { scheduleFormValues2blueprintCreateRequests } from "~/features/schedule/converters/scheduleFormValues2blueprintCreateRequests"
+import { scheduleFormValues2ruleCreateRequests } from "~/features/schedule/converters/scheduleFormValues2ruleCreateRequests"
 import { InboxAPIDataContext } from "~/features/inbox/providers/InboxAPIDataProvider/context"
 import type { InboxQuickCreateValues } from "~/features/inbox/components/InboxQuickCreate/schema"
 import type { RestInboxItemResponse } from "~/api/generated/inbox"
@@ -62,8 +62,8 @@ export function InboxActionProvider({ children }: Props) {
       const assigneeId = data.userId
       if (!assigneeId) throw new Error("Current user is not loaded")
       const scheduleValues = inboxQuickCreateValues2scheduleFormValues([values], [assigneeId])[0]!
-      const request = scheduleFormValues2blueprintCreateRequests([scheduleValues])[0]!
-      await postScheduleBlueprints(request)
+      const request = scheduleFormValues2ruleCreateRequests([scheduleValues])[0]!
+      await postScheduleRules(request)
       await Promise.all([invalidateCommon(), invalidateProject(values.projectId)])
       notify.success(t("schedules.notification.created"))
     } catch (error) {
@@ -96,7 +96,7 @@ export function InboxActionProvider({ children }: Props) {
       setBusy(true)
       try {
         const schedule = item.schedule
-        await postSchedulesBlueprintIdOccurrenceDatecomplete(schedule.blueprint_id, schedule.occurrence_date, {
+        await postSchedulesRuleIdOccurrenceDatecomplete(schedule.rule_id, schedule.occurrence_date, {
           headers: revisionHeaders(schedule.revision),
         })
         await Promise.all([invalidateCommon(), invalidateProject(item.project_id ?? undefined)])

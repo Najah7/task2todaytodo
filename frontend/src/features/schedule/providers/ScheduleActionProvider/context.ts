@@ -5,10 +5,10 @@ import type { ScheduleEvent } from "~/features/schedule/providers/ScheduleAPIDat
 export type ScheduleScope = "current" | "following"
 
 export type ScheduleEditInput = {
-  blueprintId: string
+  ruleId: string
   occurrenceDate: string
   revision: number
-  blueprintRevision: number
+  ruleRevision: number
   scope: ScheduleScope
   values: ScheduleFormValues
   baselineValues: ScheduleFormValues
@@ -17,7 +17,7 @@ export type ScheduleEditInput = {
 export type ScheduleReloadSnapshot = {
   values: ScheduleFormValues
   occurrenceRevision: number
-  blueprintRevision?: number
+  ruleRevision?: number
   followingAvailable: boolean
 }
 

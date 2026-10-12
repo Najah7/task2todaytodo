@@ -1,5 +1,5 @@
 import type { RestScheduleOccurrenceResponse } from "~/api/generated/schedules"
-import { addCalendarDays, instantToLocalDate, instantToLocalDateTime } from "~/features/schedule/lib/dateTime"
+import { addCalendarDays, instantToLocalDate, instantToLocalDateTime } from "~/features/shared/calendar/dateTime"
 import type { ScheduleEvent, ScheduleProjectOption } from "~/features/schedule/providers/ScheduleAPIDataProvider/context"
 
 export function scheduleOccurrences2events(
@@ -7,7 +7,7 @@ export function scheduleOccurrences2events(
   projectOptions: ScheduleProjectOption[],
 ): ScheduleEvent[] {
   return occurrences.flatMap((occurrence) => {
-    if (!occurrence.blueprint_id || !occurrence.occurrence_date || !occurrence.start_at || !occurrence.end_at) return []
+    if (!occurrence.rule_id || !occurrence.occurrence_date || !occurrence.start_at || !occurrence.end_at) return []
     const timezone = occurrence.timezone || "UTC"
     const start = new Date(occurrence.start_at)
     const end = new Date(occurrence.end_at)
@@ -19,8 +19,8 @@ export function scheduleOccurrences2events(
     const projectId = occurrence.project_id || ""
     const projectTitle = projectOptions.find((project) => project.id === projectId)?.title || ""
     return [{
-      id: occurrence.id || `schedule-occurrence:${encodeURIComponent(occurrence.blueprint_id)}:${occurrence.occurrence_date}`,
-      blueprintId: occurrence.blueprint_id,
+      id: occurrence.id || `schedule-occurrence:${encodeURIComponent(occurrence.rule_id)}:${occurrence.occurrence_date}`,
+      ruleId: occurrence.rule_id,
       occurrenceDate: occurrence.occurrence_date,
       title: occurrence.title || "",
       description: occurrence.description || "",
