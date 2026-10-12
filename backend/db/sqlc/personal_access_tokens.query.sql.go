@@ -7,17 +7,32 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getPersonalAccessTokenByToken = `-- name: GetPersonalAccessTokenByToken :one
-SELECT token, user_id, expires_at, revoked_at, created_at
+SELECT personal_access_tokens.token, personal_access_tokens.user_id,
+       personal_access_tokens.expires_at, personal_access_tokens.revoked_at,
+       personal_access_tokens.created_at
 FROM personal_access_tokens
-WHERE token = $1
+JOIN users ON users.id = personal_access_tokens.user_id
+WHERE personal_access_tokens.token = $1
+  AND users.email_verified_at IS NOT NULL
+  AND personal_access_tokens.auth_version = users.auth_version
 `
 
-func (q *Queries) GetPersonalAccessTokenByToken(ctx context.Context, token string) (PersonalAccessToken, error) {
+type GetPersonalAccessTokenByTokenRow struct {
+	Token     string
+	UserID    string
+	ExpiresAt pgtype.Timestamptz
+	RevokedAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetPersonalAccessTokenByToken(ctx context.Context, token string) (GetPersonalAccessTokenByTokenRow, error) {
 	row := q.db.QueryRow(ctx, getPersonalAccessTokenByToken, token)
-	var i PersonalAccessToken
+	var i GetPersonalAccessTokenByTokenRow
 	err := row.Scan(
 		&i.Token,
 		&i.UserID,

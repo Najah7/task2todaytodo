@@ -11,75 +11,27 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, first_name, last_name, email, password)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
+const updateUserEmailByID = `-- name: UpdateUserEmailByID :one
+UPDATE users SET email = $2, updated_at = now()
+WHERE id = $1 RETURNING id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
 `
 
-type CreateUserParams struct {
-	ID        string
-	FirstName string
-	LastName  string
-	Email     string
-	Password  string
+type UpdateUserEmailByIDParams struct {
+	ID    string
+	Email string
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser,
-		arg.ID,
-		arg.FirstName,
-		arg.LastName,
-		arg.Email,
-		arg.Password,
-	)
+func (q *Queries) UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailByIDParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserEmailByID, arg.ID, arg.Email)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.FirstName,
 		&i.LastName,
 		&i.Email,
-		&i.Password,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Timezone,
-		&i.WakeUpTime,
-		&i.Bedtime,
-		&i.MinimumGapMinutes,
-	)
-	return i, err
-}
-
-const updateUser = `-- name: UpdateUser :one
-UPDATE users
-SET first_name = $2, last_name = $3, email = $4, password = $5, updated_at = now()
-WHERE id = $1
-RETURNING id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
-`
-
-type UpdateUserParams struct {
-	ID        string
-	FirstName string
-	LastName  string
-	Email     string
-	Password  string
-}
-
-func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, updateUser,
-		arg.ID,
-		arg.FirstName,
-		arg.LastName,
-		arg.Email,
-		arg.Password,
-	)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.FirstName,
-		&i.LastName,
-		&i.Email,
-		&i.Password,
+		&i.PasswordHash,
+		&i.EmailVerifiedAt,
+		&i.AuthVersion,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Timezone,
@@ -105,6 +57,38 @@ type UpdateUserMinimumGapMinutesParams struct {
 func (q *Queries) UpdateUserMinimumGapMinutes(ctx context.Context, arg UpdateUserMinimumGapMinutesParams) error {
 	_, err := q.db.Exec(ctx, updateUserMinimumGapMinutes, arg.MinimumGapMinutes, arg.UserID)
 	return err
+}
+
+const updateUserNameByID = `-- name: UpdateUserNameByID :one
+UPDATE users SET first_name = $2, last_name = $3, updated_at = now()
+WHERE id = $1 RETURNING id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
+`
+
+type UpdateUserNameByIDParams struct {
+	ID        string
+	FirstName string
+	LastName  string
+}
+
+func (q *Queries) UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByIDParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserNameByID, arg.ID, arg.FirstName, arg.LastName)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+		&i.PasswordHash,
+		&i.EmailVerifiedAt,
+		&i.AuthVersion,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Timezone,
+		&i.WakeUpTime,
+		&i.Bedtime,
+		&i.MinimumGapMinutes,
+	)
+	return i, err
 }
 
 const updateUserSleepSettings = `-- name: UpdateUserSleepSettings :exec

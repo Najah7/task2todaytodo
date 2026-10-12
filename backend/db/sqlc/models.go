@@ -134,6 +134,16 @@ type AdminOperation struct {
 	CreatedAt            pgtype.Timestamptz
 }
 
+type AuthLinkToken struct {
+	TokenHash []byte
+	UserID    string
+	Purpose   string
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	RevokedAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
 type DailySleepException struct {
 	UserID       string
 	LocalDate    pgtype.Date
@@ -142,6 +152,11 @@ type DailySleepException struct {
 	Timezone     string
 	Revision     int32
 	ChangedAt    pgtype.Timestamptz
+}
+
+type EmailDeliveryAttempt struct {
+	EmailHash   []byte
+	AttemptedAt pgtype.Timestamptz
 }
 
 type FrequencyMaster struct {
@@ -168,11 +183,12 @@ type Permission struct {
 }
 
 type PersonalAccessToken struct {
-	Token     string
-	UserID    string
-	ExpiresAt pgtype.Timestamptz
-	RevokedAt pgtype.Timestamptz
-	CreatedAt pgtype.Timestamptz
+	Token       string
+	UserID      string
+	AuthVersion int64
+	ExpiresAt   pgtype.Timestamptz
+	RevokedAt   pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
 }
 
 type PriorityMaster struct {
@@ -533,7 +549,9 @@ type User struct {
 	FirstName         string
 	LastName          string
 	Email             string
-	Password          string
+	PasswordHash      string
+	EmailVerifiedAt   pgtype.Timestamptz
+	AuthVersion       int64
 	CreatedAt         pgtype.Timestamptz
 	UpdatedAt         pgtype.Timestamptz
 	Timezone          string

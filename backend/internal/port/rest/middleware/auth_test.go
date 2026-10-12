@@ -28,6 +28,9 @@ func (r authTokenRepositoryStub) GetByToken(context.Context, string) (dao.Person
 func (authTokenRepositoryStub) Create(context.Context, authdomain.PersonalAccessToken) (dao.PersonalAccessToken, error) {
 	return dao.PersonalAccessToken{}, errors.New("unexpected Create")
 }
+func (authTokenRepositoryStub) CreateForAuth(context.Context, authdomain.PersonalAccessToken, int64) (dao.PersonalAccessToken, error) {
+	return dao.PersonalAccessToken{}, errors.New("unexpected CreateForAuth")
+}
 func (authTokenRepositoryStub) Revoke(context.Context, string) error {
 	return errors.New("unexpected Revoke")
 }

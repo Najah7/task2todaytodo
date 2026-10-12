@@ -44,7 +44,7 @@ func TestUserLifecycle(t *testing.T) {
 		t.Fatalf("NewPassword() error = %v", err)
 	}
 	updated = updated.UpdatePassword(newPassword)
-	if !updated.Login(newEmail, newPassword) {
+	if !updated.Login(newEmail, "NewPassword1!") {
 		t.Error("Login() = false, want true for updated credentials")
 	}
 }
@@ -67,9 +67,9 @@ func TestUserLoginRejectsWrongCredentials(t *testing.T) {
 	user := NewUser(UserID(id), email, password, NewUserName("", ""))
 
 	wrongEmail, _ := NewEmail("other@example.com")
-	wrongPassword, _ := NewPassword("WrongPassword1!")
+	wrongPassword := "WrongPassword1!"
 
-	if user.Login(wrongEmail, password) {
+	if user.Login(wrongEmail, "Password1!") {
 		t.Error("Login() = true with a wrong email")
 	}
 	if user.Login(email, wrongPassword) {

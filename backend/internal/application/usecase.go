@@ -16,6 +16,7 @@ import (
 
 type UseCase struct {
 	User                authusecase.UserUseCases
+	EmailAuth           authusecase.EmailAuthUseCases
 	PersonalAccessToken authusecase.PersonalAccessTokenUseCases
 	Role                authusecase.RoleUseCases
 	Project             *projectusecase.UseCases
@@ -29,13 +30,23 @@ type UseCase struct {
 	Todo                todousecase.UseCases
 }
 
-func NewUseCase(store Store, uow UOW, id IDIssuer, logger telemetry.Logger) (UseCase, func(context.Context) error) {
+type AuthEmailSettings struct {
+	Sender      authusecase.AuthLinkSender
+	FrontendURL string
+}
+
+func NewUseCase(store Store, uow UOW, id IDIssuer, logger telemetry.Logger, emailSettings ...AuthEmailSettings) (UseCase, func(context.Context) error) {
+	var email AuthEmailSettings
+	if len(emailSettings) > 0 {
+		email = emailSettings[0]
+	}
 	schedules := NewScheduleUseCases(uow.Schedule, store.Auth, id, logger, uow.ScheduleRead)
 	prefill := allocationusecase.NewPrefillAllocationsExecutor(store.Allocation, uow.Allocation, id.NewULID)
 	admin, closeAdmin := NewAdminUseCases(store.Admin, schedules.Backfill, id, logger, prefill)
 	return UseCase{
-		User:                NewUserUseCases(store.Auth, uow.Auth, logger),
-		PersonalAccessToken: NewPersonalAccessTokenUseCases(store.Auth, logger),
+		User:                NewUserUseCases(store.Auth, uow.Auth, uow.AuthAccount, logger),
+		EmailAuth:           authusecase.NewEmailAuthUseCases(uow.AuthAccount, email.Sender, email.FrontendURL, logger),
+		PersonalAccessToken: NewPersonalAccessTokenUseCases(store.Auth, uow.AuthAccount, logger),
 		Role:                NewRoleUseCases(store.Auth, logger),
 		Timezone:            NewTimezoneUseCases(store.Auth, logger),
 		Project:             NewProjectUseCases(store.Project, uow.Project, logger, uow.ProjectRead),

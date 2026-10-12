@@ -107,8 +107,8 @@ func allocationCountForOrigin(t *testing.T, api *allocationHTTP, ruleID string, 
 func (api *allocationHTTP) seedUser(t *testing.T, timezone string) string {
 	t.Helper()
 	id := ulid.Make().String()
-	_, err := api.pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password,timezone)
-		VALUES($1,'Allocation','Integration',$2,'unused',$3)`, id, id+"@allocation.test", timezone)
+	_, err := api.pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone)
+		VALUES($1,'Allocation','Integration',$2,'unused',now(),$3)`, id, id+"@allocation.test", timezone)
 	if err != nil {
 		t.Fatalf("insert test user: %v", err)
 	}

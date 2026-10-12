@@ -1,6 +1,6 @@
--- name: CreatePersonalAccessToken :one
-INSERT INTO personal_access_tokens (token, user_id, expires_at)
-VALUES ($1, $2, $3)
+-- name: CreatePersonalAccessTokenWithAuthVersion :one
+INSERT INTO personal_access_tokens (token, user_id, auth_version, expires_at)
+VALUES ($1, $2, $3, $4)
 RETURNING token, user_id, expires_at, revoked_at, created_at;
 
 -- name: RevokePersonalAccessToken :exec

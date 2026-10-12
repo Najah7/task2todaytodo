@@ -31,13 +31,13 @@ func (r *PersonalAccessTokenRepository) WithTx(tx pgx.Tx) *PersonalAccessTokenRe
 	}
 }
 
-func recordToPersonalAccessTokenDAO(t sqlc.PersonalAccessToken) dao.PersonalAccessToken {
+func recordToPersonalAccessTokenDAO(token, userID string, expiresAt, revokedAt, createdAt pgtype.Timestamptz) dao.PersonalAccessToken {
 	return dao.PersonalAccessToken{
-		Token:     t.Token,
-		UserID:    t.UserID,
-		ExpiresAt: pgTimeUnix(t.ExpiresAt),
-		RevokedAt: pgTimeUnix(t.RevokedAt),
-		CreatedAt: pgTimeUnix(t.CreatedAt),
+		Token:     token,
+		UserID:    userID,
+		ExpiresAt: pgTimeUnix(expiresAt),
+		RevokedAt: pgTimeUnix(revokedAt),
+		CreatedAt: pgTimeUnix(createdAt),
 	}
 }
 
@@ -46,25 +46,23 @@ func (r PersonalAccessTokenRepository) GetByToken(ctx context.Context, token str
 	if err != nil {
 		return dao.PersonalAccessToken{}, err
 	}
-	return recordToPersonalAccessTokenDAO(t), nil
+	return recordToPersonalAccessTokenDAO(t.Token, t.UserID, t.ExpiresAt, t.RevokedAt, t.CreatedAt), nil
 }
 
-func (r PersonalAccessTokenRepository) Create(ctx context.Context, token domain.PersonalAccessToken) (dao.PersonalAccessToken, error) {
+func (r PersonalAccessTokenRepository) CreateForAuth(ctx context.Context, token domain.PersonalAccessToken, authVersion int64) (dao.PersonalAccessToken, error) {
 	expiresAt := pgtype.Timestamptz{}
 	err := expiresAt.Scan(time.Unix(token.ExpiresAt, 0))
 	if err != nil {
 		return dao.PersonalAccessToken{}, err
 	}
 
-	t, err := r.queries.CreatePersonalAccessToken(ctx, sqlc.CreatePersonalAccessTokenParams{
-		Token:     token.Token,
-		UserID:    string(token.UserID),
-		ExpiresAt: expiresAt,
+	t, err := r.queries.CreatePersonalAccessTokenWithAuthVersion(ctx, sqlc.CreatePersonalAccessTokenWithAuthVersionParams{
+		Token: token.Token, UserID: string(token.UserID), AuthVersion: authVersion, ExpiresAt: expiresAt,
 	})
 	if err != nil {
 		return dao.PersonalAccessToken{}, err
 	}
-	return recordToPersonalAccessTokenDAO(t), nil
+	return recordToPersonalAccessTokenDAO(t.Token, t.UserID, t.ExpiresAt, t.RevokedAt, t.CreatedAt), nil
 }
 
 func (r PersonalAccessTokenRepository) Revoke(ctx context.Context, token string) error {

@@ -27,7 +27,7 @@ func TestUpdateUserTimezoneUseCaseExecute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
-	if got.Timezone != "America/Los_Angeles" || got.Password != "" {
+	if got.Timezone != "America/Los_Angeles" || got.PasswordHash != "" {
 		t.Errorf("user = %+v, want timezone set and password omitted", got)
 	}
 	if repo.updatedID != user.ID || repo.updatedTimezone.String() != "America/Los_Angeles" {

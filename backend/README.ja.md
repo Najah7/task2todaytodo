@@ -31,3 +31,6 @@ API は構造化 JSON ログを標準出力に書き込みます。リクエス�
 エクスポートには外部 Collector を設定してください。このリポジトリは
 Collector を起動しません。実装規約は
 [ログとテレメトリーのガイド](internal/telemetry/AGENTS.md)を参照してください。
+
+メール登録、確認、パスワード再設定、ローカル Mailpit、Production SES の設定は
+[メール認証ガイド](docs/email-auth.md)を参照してください。

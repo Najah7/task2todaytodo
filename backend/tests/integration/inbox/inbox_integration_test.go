@@ -414,7 +414,7 @@ func materializeDailyOccurrence(t *testing.T, pool *pgxpool.Pool, fixture inboxS
 
 func insertInboxUser(t *testing.T, pool *pgxpool.Pool, id, timezone string) {
 	t.Helper()
-	if _, err := pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Inbox','Test',$2,'unused',$3)`, id, id+"@inbox.test", timezone); err != nil {
+	if _, err := pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Inbox','Test',$2,'unused',now(),$3)`, id, id+"@inbox.test", timezone); err != nil {
 		t.Fatalf("insert inbox user: %v", err)
 	}
 }

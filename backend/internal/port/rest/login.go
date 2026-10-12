@@ -33,6 +33,7 @@ type LoginRequest struct {
 //	@Success		200		{object}	PersonalAccessTokenResponse
 //	@Failure		400		{object}	ErrResponse	"Invalid request body"
 //	@Failure		401		{object}	ErrResponse	"Invalid email or password"
+//	@Failure		403		{object}	ErrResponse	"Email address is not verified"
 //	@Failure		500		{object}	ErrResponse	"Failed to generate access token"
 //	@Router			/login [post]
 func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -44,20 +45,18 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := h.personalAccessToken.Login.Execute(ctx, req.Email, req.Password)
+	t, err := h.personalAccessToken.LoginAndIssue.Execute(ctx, req.Email, req.Password)
 	if err != nil {
+		if errors.Is(err, authusecase.ErrEmailUnverified) {
+			WriteError(w, http.StatusForbidden, ErrSpecPersonalAccessTokensGenerateFailed, NewErrDetail("email", "email_unverified", "Verify your email address before logging in"))
+			return
+		}
 		if errors.Is(err, authusecase.ErrInvalidCredentials) {
 			WriteError(w, http.StatusUnauthorized, ErrSpecPersonalAccessTokensGenerateFailed, ErrDetailInvalidCredentials)
 			return
 		}
 
 		WriteError(w, http.StatusInternalServerError, ErrSpecPersonalAccessTokensGenerateFailed, ErrDetailFailedUserLookup)
-		return
-	}
-
-	t, err := h.personalAccessToken.Generate.Execute(ctx, u)
-	if err != nil {
-		WriteError(w, http.StatusInternalServerError, ErrSpecPersonalAccessTokensGenerateFailed)
 		return
 	}
 

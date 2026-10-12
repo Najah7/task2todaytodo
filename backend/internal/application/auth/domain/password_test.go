@@ -2,56 +2,55 @@ package domain
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
-func TestNewPasswordHashesValidatedValue(t *testing.T) {
-	tests := []struct {
-		name    string
-		value   string
-		wantErr error
-	}{
-		{name: "valid", value: "Password1!"},
-		{name: "empty", wantErr: ErrPasswordEmpty},
-		{name: "too short", value: "short", wantErr: ErrPasswordTooShort},
-		{name: "missing lowercase", value: "PASSWORD1!", wantErr: ErrPasswordMissingLowercase},
-		{name: "missing uppercase", value: "password1!", wantErr: ErrPasswordMissingUppercase},
-		{name: "missing digit", value: "Password!!", wantErr: ErrPasswordMissingDigit},
-		{name: "missing special character", value: "Password12", wantErr: ErrPasswordMissingSpecial},
+func TestNewPasswordHashesAndVerifiesInput(t *testing.T) {
+	password, err := NewPassword("Password1!")
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewPassword(tt.value)
-			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("NewPassword() error = %v, want %v", err, tt.wantErr)
-			}
-			if err == nil && (!got.IsHashed || got.String() != "hashed_"+tt.value) {
-				t.Errorf("password = %+v, want hashed password for %q", got, tt.value)
-			}
-		})
+	if strings.HasPrefix(password.String(), "hashed_") || !strings.HasPrefix(password.String(), "$argon2id$v=19$m=19456,t=2,p=1$") {
+		t.Fatalf("password hash = %q, want Argon2id PHC format", password.String())
+	}
+	if !password.Verify("Password1!") || password.Verify("WrongPassword1!") {
+		t.Fatal("Verify() did not distinguish correct and incorrect passwords")
+	}
+	if password.String() == "Password1!" {
+		t.Fatal("stored password contains plaintext")
 	}
 }
 
-func TestNewHashedPassword(t *testing.T) {
+func TestNewPasswordValidatesInput(t *testing.T) {
 	tests := []struct {
-		name    string
-		value   string
-		wantErr error
+		value string
+		want  error
 	}{
-		{name: "valid", value: "hashed_Password1!"},
-		{name: "empty", wantErr: ErrPasswordEmpty},
+		{"", ErrPasswordEmpty},
+		{"short", ErrPasswordTooShort},
+		{"PASSWORD1!", ErrPasswordMissingLowercase},
+		{"password1!", ErrPasswordMissingUppercase},
+		{"Password!!", ErrPasswordMissingDigit},
+		{"Password12", ErrPasswordMissingSpecial},
 	}
+	for _, test := range tests {
+		if _, err := NewPassword(test.value); !errors.Is(err, test.want) {
+			t.Errorf("NewPassword(%q) error = %v, want %v", test.value, err, test.want)
+		}
+	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewHashedPassword(tt.value)
-			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("NewHashedPassword() error = %v, want %v", err, tt.wantErr)
-			}
-			if err == nil && (!got.IsHashed || got.String() != tt.value) {
-				t.Errorf("hashed password = %+v, want %+v", got, tt.value)
-			}
-		})
+func TestNewHashedPasswordRejectsMalformedAndUnsafeParameters(t *testing.T) {
+	for _, value := range []string{
+		"hashed_Password1!",
+		"$argon2id$v=19$m=1073741824,t=2,p=1$YWJjZGVmZ2hpamtsbW5vcA$YWJjZGVmZ2hpamtsbW5vcA",
+	} {
+		if _, err := NewHashedPassword(value); !errors.Is(err, ErrPasswordMustBeHashed) {
+			t.Errorf("NewHashedPassword() error = %v, want invalid stored hash", err)
+		}
+	}
+	if _, err := NewHashedPassword(""); !errors.Is(err, ErrPasswordEmpty) {
+		t.Errorf("empty hash error = %v, want %v", err, ErrPasswordEmpty)
 	}
 }

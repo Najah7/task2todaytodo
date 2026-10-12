@@ -32,6 +32,40 @@ func TestLoadUsesDefaultsAndEnvironment(t *testing.T) {
 	if string(cfg.Secrets.PageTokenKey) != "01234567890123456789012345678901" {
 		t.Errorf("Secrets.PageTokenKey decoded incorrectly")
 	}
+	if cfg.Email.Provider != "mailpit" || cfg.Email.SMTPHost != "localhost" || cfg.Email.SMTPPort != 1025 || cfg.Email.FrontendBaseURL != "http://localhost:5173" {
+		t.Errorf("Email = %+v, want local Mailpit defaults", cfg.Email)
+	}
+}
+
+func TestLoadValidatesFrontendURLAndEmailProvider(t *testing.T) {
+	t.Setenv("PAGE_TOKEN_KEY", base64.StdEncoding.EncodeToString(make([]byte, 32)))
+	t.Setenv("ENVIRONMENT", "production")
+	t.Setenv("EMAIL_PROVIDER", "ses")
+	t.Setenv("FRONTEND_BASE_URL", "http://app.example.com")
+	if _, err := Load(); err == nil || err.Error() != "FRONTEND_BASE_URL must use HTTPS in production" {
+		t.Fatalf("Load() error = %v, want HTTPS validation", err)
+	}
+	t.Setenv("FRONTEND_BASE_URL", "https://app.example.com")
+	t.Setenv("ENVIRONMENT", "staging")
+	t.Setenv("EMAIL_PROVIDER", "smtp")
+	if _, err := Load(); err == nil || err.Error() != "EMAIL_PROVIDER must be mailpit or ses" {
+		t.Fatalf("Load() error = %v, want provider validation", err)
+	}
+}
+
+func TestProductionRequiresSESAndHTTPSEvenForLocalhost(t *testing.T) {
+	t.Setenv("PAGE_TOKEN_KEY", base64.StdEncoding.EncodeToString(make([]byte, 32)))
+	t.Setenv("ENVIRONMENT", "production")
+	t.Setenv("FRONTEND_BASE_URL", "https://app.example.com")
+	t.Setenv("EMAIL_PROVIDER", "mailpit")
+	if _, err := Load(); err == nil || err.Error() != "EMAIL_PROVIDER must be ses in production" {
+		t.Fatalf("Load() error = %v, want production SES requirement", err)
+	}
+	t.Setenv("EMAIL_PROVIDER", "ses")
+	t.Setenv("FRONTEND_BASE_URL", "http://localhost:5173")
+	if _, err := Load(); err == nil || err.Error() != "FRONTEND_BASE_URL must use HTTPS in production" {
+		t.Fatalf("Load() error = %v, want production HTTPS requirement", err)
+	}
 }
 
 func TestLoadReadsRuntimeMetadataAndLogLevel(t *testing.T) {
@@ -60,6 +94,8 @@ func TestLoadResolvesResourceMetadataAndAttributes(t *testing.T) {
 	env := map[string]string{
 		"PAGE_TOKEN_KEY":           key,
 		"ENVIRONMENT":              "staging",
+		"EMAIL_PROVIDER":           "ses",
+		"FRONTEND_BASE_URL":        "https://localhost:5173",
 		"APP_VERSION":              "2.3.4",
 		"OTEL_RESOURCE_ATTRIBUTES": "service.name=resource-api,deployment.environment.name=production,service.version=3.0,custom.path=hello%2Fworld,custom.plus=a+b,custom.spaces=%20%20,custom.value=first,custom.value=last%3Dvalue,invalid.escape= raw%ZZ ,custom.tail=ok",
 		"OTEL_SERVICE_NAME":        "  final-api  ",

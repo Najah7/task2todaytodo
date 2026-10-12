@@ -67,7 +67,7 @@ func (f *projectRepositoryFixture) user(t *testing.T) string {
 
 func (f *projectRepositoryFixture) insertUser(t *testing.T, id string) {
 	t.Helper()
-	if _, err := f.tx.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password) VALUES($1,'Project','Test',$2,'unused')`, id, id+"@project-audit.test"); err != nil {
+	if _, err := f.tx.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at) VALUES($1,'Project','Test',$2,'unused',now())`, id, id+"@project-audit.test"); err != nil {
 		t.Fatalf("insert user: %v", err)
 	}
 }

@@ -697,6 +697,84 @@ const docTemplate = `{
                 }
             }
         },
+        "/email-verification/confirm": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Confirm email address",
+                "parameters": [
+                    {
+                        "description": "Verification token and registration password",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.EmailVerificationConfirmRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.AuthLinkResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/email-verification/resend": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Resend verification email",
+                "parameters": [
+                    {
+                        "description": "Email address",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.EmailAddressRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/rest.GenericEmailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/inbox": {
             "get": {
                 "security": [
@@ -827,8 +905,92 @@ const docTemplate = `{
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
+                    "403": {
+                        "description": "Email address is not verified",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
                     "500": {
                         "description": "Failed to generate access token",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/password-reset/confirm": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Confirm password reset",
+                "parameters": [
+                    {
+                        "description": "Reset token and new password",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.PasswordResetConfirmRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.AuthLinkResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/password-reset/request": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Request password reset",
+                "parameters": [
+                    {
+                        "description": "Email address",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.EmailAddressRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/rest.GenericEmailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -3250,7 +3412,7 @@ const docTemplate = `{
         },
         "/signup": {
             "post": {
-                "description": "Creates a user with an email address and password.",
+                "description": "Registers an unverified user and sends a confirmation email when eligible.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3273,20 +3435,14 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "202": {
+                        "description": "Accepted",
                         "schema": {
-                            "$ref": "#/definitions/rest.UserResponse"
+                            "$ref": "#/definitions/rest.GenericEmailResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to create user",
+                        "description": "Invalid request",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -6019,6 +6175,14 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.AuthLinkResult": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
         "rest.CreateAllocationRequest": {
             "type": "object",
             "properties": {
@@ -6053,6 +6217,25 @@ const docTemplate = `{
                 "wake_local": {
                     "type": "string",
                     "example": "2026-10-12T07:00"
+                }
+            }
+        },
+        "rest.EmailAddressRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.EmailVerificationConfirmRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
                 }
             }
         },
@@ -6098,6 +6281,14 @@ const docTemplate = `{
             "properties": {
                 "error": {
                     "$ref": "#/definitions/rest.Err"
+                }
+            }
+        },
+        "rest.GenericEmailResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
                 }
             }
         },
@@ -6456,6 +6647,20 @@ const docTemplate = `{
                         "type": "integer",
                         "format": "int64"
                     }
+                }
+            }
+        },
+        "rest.PasswordResetConfirmRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "password_confirmation": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
                 }
             }
         },

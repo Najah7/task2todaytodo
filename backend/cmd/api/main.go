@@ -16,6 +16,7 @@ import (
 	_ "github.com/Najah7/task2todaytodo/docs"
 	"github.com/Najah7/task2todaytodo/internal/application"
 	"github.com/Najah7/task2todaytodo/internal/port/adapter"
+	emailadapter "github.com/Najah7/task2todaytodo/internal/port/adapter/email"
 	"github.com/Najah7/task2todaytodo/internal/port/rest"
 	"github.com/Najah7/task2todaytodo/internal/port/rest/middleware"
 	"github.com/Najah7/task2todaytodo/internal/settings"
@@ -45,13 +46,26 @@ func main() {
 		os.Exit(1)
 	}
 	logger := telemetry.NewLogger(os.Stdout, settings.Application, settings.Logger)
+	var mailSender emailadapter.Sender
+	if settings.Email.Provider == "ses" {
+		mailSender, err = emailadapter.NewSES(context.Background(), settings.Email.Region, settings.Email.FromAddress, settings.Email.FromName)
+	} else {
+		mailSender = emailadapter.NewSMTP(settings.Email.SMTPHost, settings.Email.SMTPPort, settings.Email.FromAddress, settings.Email.FromName)
+	}
+	if err != nil {
+		logger.Error(context.Background(), "API initialization failed", append([]any{"operation", "configure_email_sender"}, telemetry.ErrorFields(err)...)...)
+		telemetry.Shutdown(provider, logger)
+		os.Exit(1)
+	}
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
 		logger.Error(context.Background(), "OpenTelemetry error", telemetry.ErrorFields(err)...)
 	}))
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
 	idIssuer := adapter.NewIDIssuer()
-	app, closeApp, err := application.New(settings.Database, idIssuer, logger)
+	app, closeApp, err := application.New(settings.Database, idIssuer, logger, application.AuthEmailSettings{
+		Sender: emailadapter.AuthLinkSender{Provider: mailSender}, FrontendURL: settings.Email.FrontendBaseURL,
+	})
 	if err != nil {
 		logger.Error(context.Background(), "API initialization failed", append([]any{"operation", "initialize_application"}, telemetry.ErrorFields(err)...)...)
 		stop()
@@ -86,6 +100,10 @@ func main() {
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/signup", handler.Signup.Signup)
 		r.Post("/login", handler.Login.Login)
+		r.Post("/email-verification/resend", handler.EmailAuth.ResendVerification)
+		r.Post("/email-verification/confirm", handler.EmailAuth.ConfirmVerification)
+		r.Post("/password-reset/request", handler.EmailAuth.RequestPasswordReset)
+		r.Post("/password-reset/confirm", handler.EmailAuth.ConfirmPasswordReset)
 		auth := r.With(middleware.NewAuthMiddleware(app.UseCase.PersonalAccessToken.Authenticate))
 
 		// Admin

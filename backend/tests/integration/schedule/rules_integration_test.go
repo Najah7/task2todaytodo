@@ -1446,7 +1446,7 @@ var scheduleTestUserRegistry = struct {
 func createScheduleTestUser(t *testing.T, pool *pgxpool.Pool) string {
 	t.Helper()
 	id := ulid.Make().String()
-	if _, err := pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Schedule','Integration',$2,'unused','Asia/Tokyo')`, id, id+"@schedule.test"); err != nil {
+	if _, err := pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Schedule','Integration',$2,'unused',now(),'Asia/Tokyo')`, id, id+"@schedule.test"); err != nil {
 		t.Fatalf("insert schedule integration user: %v", err)
 	}
 	scheduleTestUserRegistry.Lock()

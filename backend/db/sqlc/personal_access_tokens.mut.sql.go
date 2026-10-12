@@ -11,21 +11,35 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createPersonalAccessToken = `-- name: CreatePersonalAccessToken :one
-INSERT INTO personal_access_tokens (token, user_id, expires_at)
-VALUES ($1, $2, $3)
+const createPersonalAccessTokenWithAuthVersion = `-- name: CreatePersonalAccessTokenWithAuthVersion :one
+INSERT INTO personal_access_tokens (token, user_id, auth_version, expires_at)
+VALUES ($1, $2, $3, $4)
 RETURNING token, user_id, expires_at, revoked_at, created_at
 `
 
-type CreatePersonalAccessTokenParams struct {
+type CreatePersonalAccessTokenWithAuthVersionParams struct {
+	Token       string
+	UserID      string
+	AuthVersion int64
+	ExpiresAt   pgtype.Timestamptz
+}
+
+type CreatePersonalAccessTokenWithAuthVersionRow struct {
 	Token     string
 	UserID    string
 	ExpiresAt pgtype.Timestamptz
+	RevokedAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
 }
 
-func (q *Queries) CreatePersonalAccessToken(ctx context.Context, arg CreatePersonalAccessTokenParams) (PersonalAccessToken, error) {
-	row := q.db.QueryRow(ctx, createPersonalAccessToken, arg.Token, arg.UserID, arg.ExpiresAt)
-	var i PersonalAccessToken
+func (q *Queries) CreatePersonalAccessTokenWithAuthVersion(ctx context.Context, arg CreatePersonalAccessTokenWithAuthVersionParams) (CreatePersonalAccessTokenWithAuthVersionRow, error) {
+	row := q.db.QueryRow(ctx, createPersonalAccessTokenWithAuthVersion,
+		arg.Token,
+		arg.UserID,
+		arg.AuthVersion,
+		arg.ExpiresAt,
+	)
+	var i CreatePersonalAccessTokenWithAuthVersionRow
 	err := row.Scan(
 		&i.Token,
 		&i.UserID,

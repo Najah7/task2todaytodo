@@ -21,8 +21,8 @@ help:
 	@printf '  %-28s %s\n' 'make build' 'Build the API binary.'
 	@printf '  %-28s %s\n' 'make run' 'Run the app service with Docker Compose.'
 	@printf '  %-28s %s\n' 'make dev' 'Run the API with Air live reload in Docker.'
-	@printf '  %-28s %s\n' 'make env-up' 'Start the database service.'
-	@printf '  %-28s %s\n' 'make env-down' 'Stop the database service.'
+	@printf '  %-28s %s\n' 'make env-up' 'Start database and Mailpit services.'
+	@printf '  %-28s %s\n' 'make env-down' 'Stop database and Mailpit services.'
 	@printf '  %-28s %s\n' 'make env-cleanup' 'Remove the database volume after confirmation.'
 	@printf '  %-28s %s\n' 'make cleanup-logs' 'Remove application logs after confirmation.'
 	@printf '  %-28s %s\n' 'make db-shell' 'Open a psql shell in the database container.'
@@ -64,11 +64,11 @@ dev:
 
 .PHONY: env-up
 env-up:
-	@docker compose up -d db
+	@docker compose up -d db mailpit
 
 .PHONY: env-down
 env-down:
-	@docker compose down db
+	@docker compose down db mailpit
 
 .PHONY: env-cleanup
 env-cleanup:

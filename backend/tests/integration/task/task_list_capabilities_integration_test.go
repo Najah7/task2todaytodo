@@ -24,7 +24,7 @@ func TestTaskTodayCapabilitySurvivesFilteredProjectAndInboxProjections(t *testin
 	projectID := ulid.Make().String()
 	otherUserID := ulid.Make().String()
 	startedTaskID, otherAssigneeTaskID := ulid.Make().String(), ulid.Make().String()
-	if _, err := pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Other','Assignee',$2,'unused','UTC')`, otherUserID, string(otherUserID)+"@task-capability.test"); err != nil {
+	if _, err := pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Other','Assignee',$2,'unused',now(),'UTC')`, otherUserID, string(otherUserID)+"@task-capability.test"); err != nil {
 		t.Fatalf("insert other assignee: %v", err)
 	}
 	if _, err := pool.Exec(t.Context(), `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','Capability project','low',$2)`, projectID, userID); err != nil {

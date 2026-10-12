@@ -6,6 +6,8 @@ BEGIN;
 
 TRUNCATE TABLE
     personal_access_tokens,
+    auth_link_tokens,
+    email_delivery_attempts,
     admin_operations,
     todo_items,
     todos,
@@ -21,9 +23,9 @@ TRUNCATE TABLE
     users
 RESTART IDENTITY CASCADE;
 
-INSERT INTO users (id, first_name, last_name, email, password, timezone) VALUES
-    ('00000000000000000000000001', '太郎', '山田', 'demo@example.com', 'hashed_Password1!', 'Asia/Tokyo'),
-    ('00000000000000000000000002', '花子', '佐藤', 'other@example.com', 'hashed_Password1!', 'Asia/Tokyo');
+INSERT INTO users (id, first_name, last_name, email, password_hash, email_verified_at, timezone) VALUES
+    ('00000000000000000000000001', '太郎', '山田', 'demo@example.com', '$argon2id$v=19$m=19456,t=2,p=1$z8gO7D+jUgyJPqCiBuAqmQ$mB7kxjqyP0o/OAhMYBu0McbqOYa/DsuEbgCD5cUR4dE', now(), 'Asia/Tokyo'),
+    ('00000000000000000000000002', '花子', '佐藤', 'other@example.com', '$argon2id$v=19$m=19456,t=2,p=1$Q+/+8Q9/OL0qgJfuNZE1hg$4m2NIOuWWY/r7xAVMy2LKR7mrtrTd7n6leELigXKP6w', now(), 'Asia/Tokyo');
 
 INSERT INTO projects (id, user_id, type, title, goal, description, priority, start_date, end_date) VALUES
     ('00000000000000000000000101', '00000000000000000000000001', 'work', 'プロダクト改善', '今四半期の主要改善をリリースする', '要件整理からリリースまでの仕事', 'high', CURRENT_DATE - 14, CURRENT_DATE + 45),

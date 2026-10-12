@@ -30,3 +30,6 @@ disables trace export; configure an external Collector to export traces. The
 repository does not start a Collector. See the
 [logging and telemetry guide](internal/telemetry/AGENTS.md) for implementation
 rules.
+
+Email signup, verification, password recovery, local Mailpit, and production
+SES setup are documented in the [email authentication guide](docs/email-auth.md).

@@ -658,8 +658,8 @@ func (fixture *sharingFixture) user(t *testing.T) string {
 func (fixture *sharingFixture) insertUser(t *testing.T, userID string) {
 	t.Helper()
 	if _, err := fixture.tx.Exec(t.Context(), `
-		INSERT INTO users (id, first_name, last_name, email, password)
-		VALUES ($1, 'Sharing', 'Test', $2, 'not-used')
+		INSERT INTO users (id, first_name, last_name, email, password_hash, email_verified_at)
+		VALUES ($1, 'Sharing', 'Test', $2, 'not-used', now())
 	`, userID, userID+"@sharing.test"); err != nil {
 		t.Fatalf("insert sharing test user: %v", err)
 	}

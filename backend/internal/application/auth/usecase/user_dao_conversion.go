@@ -13,7 +13,7 @@ func restoreUser(record dao.User) (domain.User, error) {
 		return domain.NewZeroUser(), err
 	}
 
-	password, err := domain.NewHashedPassword(record.Password)
+	password, err := domain.NewHashedPassword(record.PasswordHash)
 	if err != nil {
 		return domain.NewZeroUser(), err
 	}
@@ -36,6 +36,6 @@ func restoreUser(record dao.User) (domain.User, error) {
 }
 
 func userWithoutPassword(record dao.User) dao.User {
-	record.Password = ""
+	record.PasswordHash = ""
 	return record
 }

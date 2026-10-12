@@ -39,8 +39,8 @@ Available commands:
   make build                   Build the API binary.
   make run                     Run the app service with Docker Compose.
   make dev                     Run the API with Air live reload in Docker.
-  make env-up                  Start the database service.
-  make env-down                Stop the database service.
+  make env-up                  Start database and Mailpit services.
+  make env-down                Stop database and Mailpit services.
   make env-cleanup             Remove the database volume after confirmation.
   make cleanup-logs            Remove application logs after confirmation.
   make db-shell                Open a psql shell in the database container.

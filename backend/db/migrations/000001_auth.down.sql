@@ -1,6 +1,10 @@
 DROP INDEX IF EXISTS idx_personal_access_tokens_expires_at;
 DROP INDEX IF EXISTS idx_personal_access_tokens_user_id;
 DROP TABLE IF EXISTS personal_access_tokens;
+DROP INDEX IF EXISTS idx_email_delivery_attempts_attempted_at;
+DROP TABLE IF EXISTS email_delivery_attempts;
+DROP INDEX IF EXISTS idx_auth_link_tokens_user_purpose;
+DROP TABLE IF EXISTS auth_link_tokens;
 DROP TABLE IF EXISTS system_user_roles;
 DROP TABLE IF EXISTS role_permissions;
 DROP TABLE IF EXISTS permissions;

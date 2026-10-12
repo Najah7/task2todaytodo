@@ -8,12 +8,12 @@ import (
 )
 
 type UpdateUserPasswordUseCase struct {
-	repo   UserRepository
+	uow    UOW
 	logger telemetry.Logger
 }
 
-func NewUpdateUserPasswordUseCase(repo UserRepository, logger telemetry.Logger) *UpdateUserPasswordUseCase {
-	return &UpdateUserPasswordUseCase{repo: repo, logger: telemetry.OrNop(logger)}
+func NewUpdateUserPasswordUseCase(uow UOW, logger telemetry.Logger) *UpdateUserPasswordUseCase {
+	return &UpdateUserPasswordUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
 
 func (uc *UpdateUserPasswordUseCase) Execute(ctx context.Context, userID domain.UserID, newPassword string) error {
@@ -22,26 +22,21 @@ func (uc *UpdateUserPasswordUseCase) Execute(ctx context.Context, userID domain.
 		return err
 	}
 
-	userRecord, err := uc.repo.Get(ctx, userID)
-	if err != nil {
-		logUnexpectedFailure(uc.logger, ctx, "user.update_password.load", err)
-		return err
-	}
-	user, err := restoreUser(userRecord)
-	if err != nil {
-		logUnexpectedFailure(uc.logger, ctx, "user.update_password.restore", err)
-		return err
-	}
-
-	newUser := user.UpdatePassword(p)
-	updated, err := uc.repo.Update(ctx, newUser)
+	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
+		if _, err := repos.EmailAuth().GetUserByIDForAuth(ctx, string(userID)); err != nil {
+			return err
+		}
+		if err := repos.EmailAuth().UpdateUserPasswordForReset(ctx, string(userID), p.String()); err != nil {
+			return err
+		}
+		if err := repos.EmailAuth().RevokeAllUserPersonalAccessTokens(ctx, string(userID)); err != nil {
+			return err
+		}
+		return repos.EmailAuth().RevokeUserAuthLinkTokens(ctx, string(userID))
+	})
 	if err != nil {
 		logUnexpectedFailure(uc.logger, ctx, "user.update_password.persist", err)
 		return err
-	}
-	if updated.Password != newUser.Password.String() {
-		uc.logger.Error(ctx, "password update verification failed", "operation", "user.update_password")
-		return ErrPasswordUpdateFailed
 	}
 	uc.logger.Info(ctx, "user password changed", "operation", "user.update_password")
 	return nil

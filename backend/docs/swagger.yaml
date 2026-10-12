@@ -332,6 +332,11 @@ definitions:
       week_start:
         type: string
     type: object
+  rest.AuthLinkResult:
+    properties:
+      message:
+        type: string
+    type: object
   rest.CreateAllocationRequest:
     properties:
       end_at:
@@ -355,6 +360,18 @@ definitions:
         type: string
       wake_local:
         example: 2026-10-12T07:00
+        type: string
+    type: object
+  rest.EmailAddressRequest:
+    properties:
+      email:
+        type: string
+    type: object
+  rest.EmailVerificationConfirmRequest:
+    properties:
+      password:
+        type: string
+      token:
         type: string
     type: object
   rest.Err:
@@ -385,6 +402,11 @@ definitions:
     properties:
       error:
         $ref: '#/definitions/rest.Err'
+    type: object
+  rest.GenericEmailResponse:
+    properties:
+      message:
+        type: string
     type: object
   rest.HealthResponse:
     properties:
@@ -636,6 +658,15 @@ definitions:
           format: int64
           type: integer
         type: object
+    type: object
+  rest.PasswordResetConfirmRequest:
+    properties:
+      password:
+        type: string
+      password_confirmation:
+        type: string
+      token:
+        type: string
     type: object
   rest.PausedAllocationRuleResponse:
     properties:
@@ -2372,6 +2403,56 @@ paths:
       summary: Set daily sleep exception
       tags:
       - Allocations
+  /email-verification/confirm:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Verification token and registration password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.EmailVerificationConfirmRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.AuthLinkResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      summary: Confirm email address
+      tags:
+      - Users
+  /email-verification/resend:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Email address
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.EmailAddressRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/rest.GenericEmailResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      summary: Resend verification email
+      tags:
+      - Users
   /inbox:
     get:
       description: Returns a paginated, read-only projection of all incomplete Tasks
@@ -2461,6 +2542,10 @@ paths:
           description: Invalid email or password
           schema:
             $ref: '#/definitions/rest.ErrResponse'
+        "403":
+          description: Email address is not verified
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
         "500":
           description: Failed to generate access token
           schema:
@@ -2468,6 +2553,56 @@ paths:
       summary: Log in
       tags:
       - Personal Access Tokens
+  /password-reset/confirm:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Reset token and new password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.PasswordResetConfirmRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.AuthLinkResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      summary: Confirm password reset
+      tags:
+      - Users
+  /password-reset/request:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Email address
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.EmailAddressRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/rest.GenericEmailResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      summary: Request password reset
+      tags:
+      - Users
   /permissions:
     get:
       produces:
@@ -4018,7 +4153,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a user with an email address and password.
+      description: Registers an unverified user and sends a confirmation email when
+        eligible.
       parameters:
       - description: Signup request
         in: body
@@ -4029,16 +4165,12 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "202":
+          description: Accepted
           schema:
-            $ref: '#/definitions/rest.UserResponse'
+            $ref: '#/definitions/rest.GenericEmailResponse'
         "400":
-          description: Invalid request body
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "500":
-          description: Failed to create user
+          description: Invalid request
           schema:
             $ref: '#/definitions/rest.ErrResponse'
       summary: Sign up

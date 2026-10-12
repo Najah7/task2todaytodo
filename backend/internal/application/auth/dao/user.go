@@ -5,7 +5,9 @@ type User struct {
 	FirstName         string
 	LastName          string
 	Email             string
-	Password          string
+	PasswordHash      string
+	EmailVerifiedAt   int64
+	AuthVersion       int64
 	Timezone          string
 	WakeUpTime        string
 	Bedtime           string

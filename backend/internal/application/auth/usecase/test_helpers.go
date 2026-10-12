@@ -13,10 +13,8 @@ import (
 var (
 	errGetUser                   = errors.New("get user failed")
 	errGetUserByEmail            = errors.New("get user by email failed")
-	errCreateUser                = errors.New("create user failed")
 	errUpdateUser                = errors.New("update user failed")
 	errGetPersonalAccessToken    = errors.New("get access token failed")
-	errCreatePersonalAccessToken = errors.New("create access token failed")
 	errRevokePersonalAccessToken = errors.New("revoke access token failed")
 )
 
@@ -25,11 +23,9 @@ var _ UserRepository = (*stubUserRepository)(nil)
 type stubUserRepository struct {
 	user              domain.User
 	userByEmail       domain.User
-	createdUser       domain.User
 	updateResult      domain.User
 	getErr            error
 	getByEmailErr     error
-	createErr         error
 	updateErr         error
 	updateTimezoneErr error
 }
@@ -48,21 +44,27 @@ func (r *stubUserRepository) GetByEmail(_ context.Context, _ string) (dao.User, 
 	return userDAOFromDomain(r.userByEmail), nil
 }
 
-func (r *stubUserRepository) Create(_ context.Context, user domain.User) (dao.User, error) {
-	if r.createErr != nil {
-		return dao.User{}, r.createErr
-	}
-	r.createdUser = user
-	return userDAOFromDomain(user), nil
-}
-
-func (r *stubUserRepository) Update(_ context.Context, user domain.User) (dao.User, error) {
+func (r *stubUserRepository) UpdateName(_ context.Context, id domain.UserID, name domain.UserName) (dao.User, error) {
 	if r.updateErr != nil {
 		return dao.User{}, r.updateErr
 	}
+	user := r.user
 	if !r.updateResult.IsZero() {
-		return userDAOFromDomain(r.updateResult), nil
+		user = r.updateResult
 	}
+	user.ID, user.Name = id, name
+	return userDAOFromDomain(user), nil
+}
+
+func (r *stubUserRepository) UpdateEmail(_ context.Context, id domain.UserID, email domain.Email) (dao.User, error) {
+	if r.updateErr != nil {
+		return dao.User{}, r.updateErr
+	}
+	user := r.user
+	if !r.updateResult.IsZero() {
+		user = r.updateResult
+	}
+	user.ID, user.Email = id, email
 	return userDAOFromDomain(user), nil
 }
 
@@ -92,9 +94,7 @@ var _ PersonalAccessTokenRepository = (*stubPersonalAccessTokenRepository)(nil)
 type stubPersonalAccessTokenRepository struct {
 	token        domain.PersonalAccessToken
 	getErr       error
-	createErr    error
 	revokeErr    error
-	createdToken domain.PersonalAccessToken
 	revokedToken string
 }
 
@@ -105,11 +105,7 @@ func (r *stubPersonalAccessTokenRepository) GetByToken(_ context.Context, _ stri
 	return personalAccessTokenDAOFromDomain(r.token), nil
 }
 
-func (r *stubPersonalAccessTokenRepository) Create(_ context.Context, token domain.PersonalAccessToken) (dao.PersonalAccessToken, error) {
-	if r.createErr != nil {
-		return dao.PersonalAccessToken{}, r.createErr
-	}
-	r.createdToken = token
+func (r *stubPersonalAccessTokenRepository) CreateForAuth(_ context.Context, token domain.PersonalAccessToken, _ int64) (dao.PersonalAccessToken, error) {
 	return personalAccessTokenDAOFromDomain(token), nil
 }
 
@@ -153,18 +149,19 @@ func assertUserEqual(t *testing.T, got, want domain.User) {
 
 func userDAOFromDomain(user domain.User) dao.User {
 	return dao.User{
-		ID:        string(user.ID),
-		FirstName: user.Name.FirstName,
-		LastName:  user.Name.LastName,
-		Email:     user.Email.String(),
-		Password:  user.Password.String(),
-		Timezone:  user.Timezone.String(),
+		ID:              string(user.ID),
+		FirstName:       user.Name.FirstName,
+		LastName:        user.Name.LastName,
+		Email:           user.Email.String(),
+		PasswordHash:    user.Password.String(),
+		EmailVerifiedAt: 1,
+		Timezone:        user.Timezone.String(),
 	}
 }
 
 func userReadDAOFromDomain(user domain.User) dao.User {
 	result := userDAOFromDomain(user)
-	result.Password = ""
+	result.PasswordHash = ""
 	return result
 }
 
@@ -191,3 +188,35 @@ func assertPersonalAccessTokenErrorIs(t *testing.T, got, want error) {
 		t.Errorf("error = %v, want %v", got, want)
 	}
 }
+
+type passwordUpdateUOW struct{ repository *passwordUpdateRepository }
+
+func (u passwordUpdateUOW) Do(ctx context.Context, fn func(context.Context, Repositories) error) error {
+	return fn(ctx, passwordUpdateRepositories{repository: u.repository})
+}
+
+type passwordUpdateRepositories struct{ repository *passwordUpdateRepository }
+
+func (passwordUpdateRepositories) Users() UserRepository                               { return nil }
+func (passwordUpdateRepositories) Availability() UserAvailabilityValidator             { return nil }
+func (passwordUpdateRepositories) PersonalAccessTokens() PersonalAccessTokenRepository { return nil }
+func (passwordUpdateRepositories) Roles() RoleCatalogRepository                        { return nil }
+func (r passwordUpdateRepositories) EmailAuth() EmailAuthRepository                    { return r.repository }
+
+type passwordUpdateRepository struct {
+	EmailAuthRepository
+	user dao.User
+	err  error
+}
+
+func (r *passwordUpdateRepository) GetUserByIDForAuth(context.Context, string) (dao.User, error) {
+	return r.user, r.err
+}
+func (r *passwordUpdateRepository) UpdateUserPasswordForReset(_ context.Context, _ string, hash string) error {
+	r.user.PasswordHash = hash
+	return r.err
+}
+func (*passwordUpdateRepository) RevokeAllUserPersonalAccessTokens(context.Context, string) error {
+	return nil
+}
+func (*passwordUpdateRepository) RevokeUserAuthLinkTokens(context.Context, string) error { return nil }

@@ -21,6 +21,7 @@ type Settings struct {
 	Server      ServerSettings
 	Database    DatabaseSettings
 	Secrets     Secrets
+	Email       EmailSettings
 	Application ApplicationSettings
 	Logger      LoggerSettings
 }
@@ -63,6 +64,10 @@ func Load() (Settings, error) {
 	if resolved := strings.TrimSpace(os.Getenv("OTEL_SERVICE_NAME")); resolved != "" {
 		service = resolved
 	}
+	email, err := loadEmailSettings(value, environment)
+	if err != nil {
+		return Settings{}, err
+	}
 
 	return Settings{
 		Server: ServerSettings{
@@ -79,6 +84,7 @@ func Load() (Settings, error) {
 		Secrets: Secrets{
 			PageTokenKey: key,
 		},
+		Email: email,
 		Application: ApplicationSettings{
 			Service:     service,
 			Environment: environment,

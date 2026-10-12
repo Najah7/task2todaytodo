@@ -369,7 +369,7 @@ func seedUser(t *testing.T, pool *pgxpool.Pool) string {
 
 func seedUserWithID(t *testing.T, pool *pgxpool.Pool, id string) {
 	t.Helper()
-	if _, err := pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password) VALUES($1,'Admin','Test',$2,'unused')`, id, id+"@admin.test"); err != nil {
+	if _, err := pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at) VALUES($1,'Admin','Test',$2,'unused',now())`, id, id+"@admin.test"); err != nil {
 		t.Fatalf("insert admin test user: %v", err)
 	}
 	t.Cleanup(func() {

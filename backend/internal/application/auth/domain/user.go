@@ -1,11 +1,12 @@
 package domain
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 var (
-	ErrPasswordMustBeHashed    = errors.New("password must be hashed")
-	ErrPasswordMustNotBeHashed = errors.New("password must not be hashed")
-	ErrFirstNameRequired       = errors.New("first name is required")
+	ErrFirstNameRequired = errors.New("first name is required")
 )
 
 type UserID string
@@ -66,6 +67,6 @@ func (u User) UpdateTimezone(timezone UserTimezone) User {
 	return u
 }
 
-func (u User) Login(email Email, password Password) bool {
-	return u.Email == email && u.Password == password
+func (u User) Login(email Email, password string) bool {
+	return strings.EqualFold(u.Email.String(), email.String()) && u.Password.Verify(password)
 }

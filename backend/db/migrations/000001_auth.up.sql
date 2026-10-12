@@ -531,7 +531,9 @@ CREATE TABLE users (
     first_name text NOT NULL,
     last_name text NOT NULL,
     email citext NOT NULL UNIQUE,
-    password text NOT NULL,
+    password_hash text NOT NULL,
+    email_verified_at timestamptz,
+    auth_version bigint NOT NULL DEFAULT 0,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     timezone text NOT NULL DEFAULT 'Asia/Tokyo' REFERENCES timezone_master(timezone) ON DELETE RESTRICT,
@@ -647,6 +649,7 @@ WHERE effect = 'allow' AND (resource_id, action) IN (('admin_job', 'run'), ('adm
 CREATE TABLE personal_access_tokens (
     token TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id),
+    auth_version bigint NOT NULL DEFAULT 0,
     expires_at TIMESTAMPTZ NOT NULL,
     revoked_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -654,3 +657,22 @@ CREATE TABLE personal_access_tokens (
 
 CREATE INDEX idx_personal_access_tokens_user_id ON personal_access_tokens(user_id);
 CREATE INDEX idx_personal_access_tokens_expires_at ON personal_access_tokens(expires_at);
+
+CREATE TABLE auth_link_tokens (
+    token_hash bytea PRIMARY KEY CHECK (octet_length(token_hash) = 32),
+    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    purpose text NOT NULL CHECK (purpose IN ('email_verification', 'password_reset')),
+    expires_at timestamptz NOT NULL,
+    used_at timestamptz,
+    revoked_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_auth_link_tokens_user_purpose
+    ON auth_link_tokens(user_id, purpose, created_at DESC);
+
+CREATE TABLE email_delivery_attempts (
+    email_hash bytea NOT NULL CHECK (octet_length(email_hash) = 32),
+    attempted_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (email_hash, attempted_at)
+);
+CREATE INDEX idx_email_delivery_attempts_attempted_at ON email_delivery_attempts(attempted_at);

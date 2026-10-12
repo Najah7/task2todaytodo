@@ -34,7 +34,7 @@ func (q *Queries) GetTimezoneChoices(ctx context.Context) ([]string, error) {
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
+SELECT id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
 FROM users
 WHERE id = $1
 `
@@ -47,7 +47,9 @@ func (q *Queries) GetUser(ctx context.Context, id string) (User, error) {
 		&i.FirstName,
 		&i.LastName,
 		&i.Email,
-		&i.Password,
+		&i.PasswordHash,
+		&i.EmailVerifiedAt,
+		&i.AuthVersion,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Timezone,
@@ -59,7 +61,7 @@ func (q *Queries) GetUser(ctx context.Context, id string) (User, error) {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
+SELECT id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
 FROM users
 WHERE email = $1
 `
@@ -72,7 +74,9 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.FirstName,
 		&i.LastName,
 		&i.Email,
-		&i.Password,
+		&i.PasswordHash,
+		&i.EmailVerifiedAt,
+		&i.AuthVersion,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Timezone,

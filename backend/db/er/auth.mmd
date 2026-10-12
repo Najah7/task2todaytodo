@@ -11,7 +11,9 @@ erDiagram
         text first_name "NOT NULL"
         text last_name "NOT NULL"
         citext email UK "NOT NULL"
-        text password "NOT NULL"
+        text password_hash "NOT NULL, Argon2id PHC"
+        timestamptz email_verified_at "NULL"
+        bigint auth_version "NOT NULL, DEFAULT 0"
         timestamptz created_at "NOT NULL"
         timestamptz updated_at "NOT NULL"
         text timezone FK "NOT NULL"
@@ -56,9 +58,25 @@ erDiagram
     personal_access_tokens {
         text token PK "NOT NULL"
         text user_id FK "NOT NULL"
+        bigint auth_version "NOT NULL, DEFAULT 0"
         timestamptz expires_at "NOT NULL"
         timestamptz revoked_at "NULL"
         timestamptz created_at "NOT NULL"
+    }
+
+    auth_link_tokens {
+        bytea token_hash PK "NOT NULL, SHA-256 digest"
+        text user_id FK "NOT NULL"
+        text purpose "NOT NULL, email_verification or password_reset"
+        timestamptz expires_at "NOT NULL"
+        timestamptz used_at "NULL"
+        timestamptz revoked_at "NULL"
+        timestamptz created_at "NOT NULL"
+    }
+
+    email_delivery_attempts {
+        bytea email_hash PK "NOT NULL, SHA-256 digest with attempted_at"
+        timestamptz attempted_at PK "NOT NULL"
     }
 
     timezone_master ||..o{ users : local_timezone
@@ -68,3 +86,4 @@ erDiagram
     permissions ||--o{ role_permissions : granted_as
     managed_resources ||..o{ permissions : defines
     users ||..o{ personal_access_tokens : owns
+    users ||..o{ auth_link_tokens : owns

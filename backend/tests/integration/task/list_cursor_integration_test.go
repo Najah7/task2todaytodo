@@ -22,7 +22,7 @@ func TestCursorListRepositories(t *testing.T) {
 	const user = "99999999999999999999999901"
 	const project = "99999999999999999999999902"
 	const task = "99999999999999999999999903"
-	if _, err := tx.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password) VALUES($1,'Test','User',$2,'x')`, user, "list-cursor-test@example.test"); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at) VALUES($1,'Test','User',$2,'x', now())`, user, "list-cursor-test@example.test"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,start_date,end_date,created_at) VALUES

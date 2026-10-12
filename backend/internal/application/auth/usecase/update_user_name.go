@@ -30,12 +30,11 @@ func (uc *UpdateUserNameUseCase) Execute(ctx context.Context, userID domain.User
 		return dao.User{}, err
 	}
 
-	newUser, err := u.UpdateName(domain.NewUserName(firstName, lastName))
-	if err != nil {
+	newName := domain.NewUserName(firstName, lastName)
+	if _, err := u.UpdateName(newName); err != nil {
 		return dao.User{}, err
 	}
-
-	updated, err := uc.repo.Update(ctx, newUser)
+	updated, err := uc.repo.UpdateName(ctx, userID, newName)
 	if err != nil {
 		logUnexpectedFailure(uc.logger, ctx, "user.update_name.persist", err)
 		return dao.User{}, err

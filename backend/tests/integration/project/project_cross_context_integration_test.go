@@ -73,7 +73,7 @@ func TestProjectLifecycleTransitionsAcrossTaskAndScheduleMutations(t *testing.T)
 	firstOccurrenceDate, secondOccurrenceDate := "", ""
 	roleID := "project_child_only_" + strings.ToLower(ulid.Make().String())
 	for _, id := range []string{ownerID, actorID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Lifecycle',$2,'unused','UTC')`, id, id+"@project-lifecycle.test"); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Project','Lifecycle',$2,'unused',now(),'UTC')`, id, id+"@project-lifecycle.test"); err != nil {
 			t.Fatalf("insert user: %v", err)
 		}
 	}
@@ -237,7 +237,7 @@ func TestOpenTaskAtFullActionItemProgressDoesNotCompleteProject(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, projectID, taskID, actionItemID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Open task',$2,'unused','UTC')`, ownerID, ownerID+"@project-open-task.test"); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Project','Open task',$2,'unused',now(),'UTC')`, ownerID, ownerID+"@project-open-task.test"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','Open Task Project','low',$2)`, projectID, ownerID); err != nil {
@@ -278,7 +278,7 @@ func TestActionItemCompletionAndReopenTransitionTaskAndProject(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, projectID, taskID, actionItemID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'ActionItem','Lifecycle',$2,'unused','UTC')`, ownerID, ownerID+"@actionItem-lifecycle.test"); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'ActionItem','Lifecycle',$2,'unused',now(),'UTC')`, ownerID, ownerID+"@actionItem-lifecycle.test"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','ActionItem Lifecycle','low',$2)`, projectID, ownerID); err != nil {
@@ -336,7 +336,7 @@ func TestMovingCompletedTaskReconcilesBothProjects(t *testing.T) {
 	ctx := t.Context()
 	ownerID, sourceID, targetID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	firstTaskID, secondTaskID, targetTaskID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Move',$2,'unused','UTC')`, ownerID, ownerID+"@project-move.test"); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Project','Move',$2,'unused',now(),'UTC')`, ownerID, ownerID+"@project-move.test"); err != nil {
 		t.Fatal(err)
 	}
 	for id, title := range map[string]string{sourceID: "Source", targetID: "Target"} {
@@ -401,7 +401,7 @@ func TestDoneProjectScheduleVirtualSuppressionAndSkipRestoreReopen(t *testing.T)
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, projectID := ulid.Make().String(), ulid.Make().String()
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Schedule','Lifecycle',$2,'unused','UTC')`, ownerID, ownerID+"@schedule-lifecycle.test"); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Schedule','Lifecycle',$2,'unused',now(),'UTC')`, ownerID, ownerID+"@schedule-lifecycle.test"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','Schedule Lifecycle','low',$2)`, projectID, ownerID); err != nil {
@@ -456,7 +456,7 @@ func TestAutoCompletingProjectPausesRecurringRuleAndManualReopenResumesIt(t *tes
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, projectID := ulid.Make().String(), ulid.Make().String()
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Schedule','Pause',$2,'unused','UTC')`, ownerID, ownerID+"@schedule-pause.test"); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Schedule','Pause',$2,'unused',now(),'UTC')`, ownerID, ownerID+"@schedule-pause.test"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','Schedule Pause','low',$2)`, projectID, ownerID); err != nil {
@@ -549,7 +549,7 @@ func TestDeletedScheduleOccurrenceDoesNotCountInProjectWorkState(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, projectID, ruleID, deletedOverrideID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Schedule','Deleted',$2,'unused','UTC')`, ownerID, ownerID+"@schedule-deleted-override.test"); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Schedule','Deleted',$2,'unused',now(),'UTC')`, ownerID, ownerID+"@schedule-deleted-override.test"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','Deleted Schedule Override','low',$2)`, projectID, ownerID); err != nil {
@@ -588,7 +588,7 @@ func TestProjectMemberRemovalReassignsCurrentAndFutureOccurrences(t *testing.T) 
 	ctx := t.Context()
 	ownerID, memberID, projectID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	for _, userID := range []string{ownerID, memberID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Schedule','Member',$2,'unused','UTC')`, userID, userID+"@schedule-member.test"); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Schedule','Member',$2,'unused',now(),'UTC')`, userID, userID+"@schedule-member.test"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -686,7 +686,7 @@ func TestProjectDeleteLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	actorID, projectID, taskID, scheduleID, ruleID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Audit',$2,'unused','Asia/Tokyo')`, actorID, actorID+"@project-audit.test"); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Project','Audit',$2,'unused',now(),'Asia/Tokyo')`, actorID, actorID+"@project-audit.test"); err != nil {
 		t.Fatalf("insert actor: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','Atomic Project Delete','low',$2)`, projectID, actorID); err != nil {

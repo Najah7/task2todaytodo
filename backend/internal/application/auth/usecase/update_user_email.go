@@ -30,18 +30,7 @@ func (uc *UpdateUserEmailUseCase) Execute(ctx context.Context, userID domain.Use
 		logUnexpectedFailure(uc.logger, ctx, "user.update_email.check_email", err)
 	}
 
-	userRecord, err := uc.repo.Get(ctx, userID)
-	if err != nil {
-		logUnexpectedFailure(uc.logger, ctx, "user.update_email.load", err)
-		return dao.User{}, err
-	}
-	user, err := restoreUser(userRecord)
-	if err != nil {
-		logUnexpectedFailure(uc.logger, ctx, "user.update_email.restore", err)
-		return dao.User{}, err
-	}
-
-	updated, err := uc.repo.Update(ctx, user.UpdateEmail(e))
+	updated, err := uc.repo.UpdateEmail(ctx, userID, e)
 	if err != nil {
 		logUnexpectedFailure(uc.logger, ctx, "user.update_email.persist", err)
 		return dao.User{}, err

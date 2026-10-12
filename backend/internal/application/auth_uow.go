@@ -12,6 +12,7 @@ type AuthUOW struct {
 	pool                *pgxpool.Pool
 	store               AuthStore
 	availabilityFactory func(pgx.Tx) authusecase.UserAvailabilityValidator
+	run                 transactionRunner
 }
 
 func NewAuthUOW(pool *pgxpool.Pool, store AuthStore, availabilityFactory ...func(pgx.Tx) authusecase.UserAvailabilityValidator) authusecase.UOW {
@@ -20,15 +21,19 @@ func NewAuthUOW(pool *pgxpool.Pool, store AuthStore, availabilityFactory ...func
 		bind = availabilityFactory[0]
 	}
 	return &AuthUOW{
-		pool: pool, store: store, availabilityFactory: bind,
+		pool: pool, store: store, availabilityFactory: bind, run: RunInTodoWorkflowTx,
 	}
+}
+
+func NewAuthAccountUOW(pool *pgxpool.Pool, store AuthStore) authusecase.UOW {
+	return &AuthUOW{pool: pool, store: store, run: RunInTx}
 }
 
 func (u *AuthUOW) Do(
 	ctx context.Context,
 	fn func(ctx context.Context, repos authusecase.Repositories) error,
 ) error {
-	return RunInTodoWorkflowTx(ctx, u.pool, func(tx pgx.Tx) error {
+	return u.run(ctx, u.pool, func(tx pgx.Tx) error {
 		var availability authusecase.UserAvailabilityValidator
 		if u.availabilityFactory != nil {
 			availability = u.availabilityFactory(tx)
@@ -44,6 +49,10 @@ type authRepositories struct {
 
 func (r authRepositories) Users() authusecase.UserRepository {
 	return r.store.Users
+}
+
+func (r authRepositories) EmailAuth() authusecase.EmailAuthRepository {
+	return r.store.EmailAuth
 }
 
 func (r authRepositories) Availability() authusecase.UserAvailabilityValidator { return r.availability }

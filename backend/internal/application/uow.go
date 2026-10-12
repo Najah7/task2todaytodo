@@ -17,6 +17,7 @@ import (
 
 type UOW struct {
 	Auth           authusecase.UOW
+	AuthAccount    authusecase.UOW
 	Project        projectusecase.UnitOfWork
 	ProjectRead    projectusecase.UnitOfWork
 	Task           taskusecase.UOW
@@ -44,6 +45,7 @@ func NewUOWWithID(pool *pgxpool.Pool, authStore AuthStore, projectStore ProjectS
 	store := Store{Auth: authStore, Project: projectStore, Task: taskStore, Schedule: scheduleStore, Allocation: allocationStore}
 	return UOW{
 		Auth:           NewAuthUOW(pool, authStore, availability...),
+		AuthAccount:    NewAuthAccountUOW(pool, authStore),
 		Project:        NewProjectUOW(pool, projectStore, taskStore, scheduleStore),
 		ProjectRead:    NewProjectReadUOW(pool, projectStore, taskStore, scheduleStore),
 		Task:           NewTaskUOW(pool, taskStore, projectStore, scheduleStore, newID),

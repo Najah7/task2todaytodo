@@ -33,7 +33,7 @@ func TestRESTProjectScheduleOccurrenceHistoryFlow(t *testing.T) {
 	ctx := t.Context()
 	ownerID, outsiderID := ulid.Make().String(), ulid.Make().String()
 	for _, userID := range []string{ownerID, outsiderID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'REST','Audit',$2,'unused','Asia/Tokyo')`, userID, userID+"@rest-audit.test"); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'REST','Audit',$2,'unused',now(),'Asia/Tokyo')`, userID, userID+"@rest-audit.test"); err != nil {
 			t.Fatalf("insert user: %v", err)
 		}
 	}

@@ -5,12 +5,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	authusecase "github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
 )
 
 func TestSignupHandlerRejectsInvalidJSON(t *testing.T) {
-	handler := NewSignupHandler(authusecase.UserUseCases{}, nil)
+	handler := NewSignupHandler(nil, nil)
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, "/api/signup", strings.NewReader("{"))
 

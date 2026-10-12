@@ -37,7 +37,7 @@ func newTasksPageREST(t *testing.T) *tasksPageREST {
 	t.Helper()
 	pool := testdb.Open(t)
 	userID := ulid.Make().String()
-	if _, err := pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Tasks','Page',$2,'unused','UTC')`, userID, userID+"@tasks-page.test"); err != nil {
+	if _, err := pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Tasks','Page',$2,'unused',now(),'UTC')`, userID, userID+"@tasks-page.test"); err != nil {
 		t.Fatalf("insert user: %v", err)
 	}
 	t.Cleanup(func() {

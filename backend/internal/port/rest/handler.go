@@ -10,6 +10,7 @@ import (
 type Handler struct {
 	User                *UserHandler
 	Signup              *SignupHandler
+	EmailAuth           *EmailAuthHandler
 	Login               *LoginHandler
 	PersonalAccessToken *PersonalAccessTokenHandler
 	Project             *ProjectHandler
@@ -33,7 +34,8 @@ func NewHandler(usecases application.UseCase, issueID func() string, pageTokenKe
 
 	return &Handler{
 		User:                NewUserHandler(usecases.User),
-		Signup:              NewSignupHandler(usecases.User, issueID),
+		Signup:              NewSignupHandler(usecases.EmailAuth.RegisterUser, issueID),
+		EmailAuth:           NewEmailAuthHandler(usecases.EmailAuth),
 		Login:               NewLoginHandler(usecases.PersonalAccessToken),
 		PersonalAccessToken: NewPersonalAccessTokenHandler(usecases.PersonalAccessToken),
 		Project:             NewProjectHandler(usecases.Project, usecases.Task, issueID, pageTokens),

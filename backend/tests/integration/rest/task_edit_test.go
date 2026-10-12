@@ -35,7 +35,7 @@ func newTaskEditAPI(t *testing.T) *taskEditAPI {
 	t.Helper()
 	pool := testdb.Open(t)
 	userID := ulid.Make().String()
-	if _, err := pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Task','Edit',$2,'unused','UTC')`, userID, userID+"@task-edit.test"); err != nil {
+	if _, err := pool.Exec(t.Context(), `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Task','Edit',$2,'unused',now(),'UTC')`, userID, userID+"@task-edit.test"); err != nil {
 		t.Fatalf("insert Task edit user: %v", err)
 	}
 	t.Cleanup(func() {

@@ -23,8 +23,8 @@ func seedTask(t *testing.T, pool *pgxpool.Pool, timezone string) (domain.UserID,
 	userID := domain.UserID(ulid.Make().String())
 	taskID := domain.TaskID(ulid.Make().String())
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO users (id, first_name, last_name, email, password, timezone)
-		VALUES ($1, 'Test', 'User', $2, 'not-used', $3)
+		INSERT INTO users (id, first_name, last_name, email, password_hash, email_verified_at, timezone)
+		VALUES ($1, 'Test', 'User', $2, 'not-used', now(), $3)
 	`, string(userID), string(userID)+"@example.test", timezone); err != nil {
 		t.Fatalf("insert integration test user: %v", err)
 	}

@@ -52,7 +52,9 @@ func recordToUserDAO(record sqlc.User) dao.User {
 		FirstName:         record.FirstName,
 		LastName:          record.LastName,
 		Email:             record.Email,
-		Password:          record.Password,
+		PasswordHash:      record.PasswordHash,
+		EmailVerifiedAt:   pgTimeUnix(record.EmailVerifiedAt),
+		AuthVersion:       record.AuthVersion,
 		Timezone:          record.Timezone,
 		WakeUpTime:        pgTimeString(record.WakeUpTime),
 		Bedtime:           pgTimeString(record.Bedtime),
@@ -90,14 +92,8 @@ func (r UserRepository) GetByEmail(ctx context.Context, email string) (dao.User,
 	return result, nil
 }
 
-func (r UserRepository) Create(ctx context.Context, user domain.User) (dao.User, error) {
-	u, err := r.queries.CreateUser(ctx, sqlc.CreateUserParams{
-		ID:        string(user.ID),
-		Email:     user.Email.String(),
-		Password:  user.Password.String(),
-		FirstName: user.Name.FirstName,
-		LastName:  user.Name.LastName,
-	})
+func (r UserRepository) UpdateName(ctx context.Context, id domain.UserID, name domain.UserName) (dao.User, error) {
+	u, err := r.queries.UpdateUserNameByID(ctx, sqlc.UpdateUserNameByIDParams{ID: string(id), FirstName: name.FirstName, LastName: name.LastName})
 	if err != nil {
 		return dao.User{}, err
 	}
@@ -105,19 +101,12 @@ func (r UserRepository) Create(ctx context.Context, user domain.User) (dao.User,
 	return result, nil
 }
 
-func (r UserRepository) Update(ctx context.Context, user domain.User) (dao.User, error) {
-	u, err := r.queries.UpdateUser(ctx, sqlc.UpdateUserParams{
-		ID:        string(user.ID),
-		Email:     user.Email.String(),
-		Password:  user.Password.String(),
-		FirstName: user.Name.FirstName,
-		LastName:  user.Name.LastName,
-	})
+func (r UserRepository) UpdateEmail(ctx context.Context, id domain.UserID, email domain.Email) (dao.User, error) {
+	u, err := r.queries.UpdateUserEmailByID(ctx, sqlc.UpdateUserEmailByIDParams{ID: string(id), Email: email.String()})
 	if err != nil {
 		return dao.User{}, err
 	}
-	result := recordToUserDAO(u)
-	return result, nil
+	return recordToUserDAO(u), nil
 }
 
 func (r UserRepository) UpdateTimezone(ctx context.Context, id domain.UserID, timezone domain.UserTimezone) error {

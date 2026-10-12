@@ -19,7 +19,7 @@ type IDIssuer interface {
 	NewUUID() string
 }
 
-func New(database settings.DatabaseSettings, id IDIssuer, logger telemetry.Logger) (*Application, func(context.Context) error, error) {
+func New(database settings.DatabaseSettings, id IDIssuer, logger telemetry.Logger, emailSettings ...AuthEmailSettings) (*Application, func(context.Context) error, error) {
 	ctx := context.Background()
 	pool, err := newPool(ctx, database)
 	if err != nil {
@@ -28,7 +28,7 @@ func New(database settings.DatabaseSettings, id IDIssuer, logger telemetry.Logge
 
 	store := NewStore(pool)
 	uow := NewUOWWithID(pool, store.Auth, store.Project, store.Task, store.Schedule, store.Allocation, id.NewULID)
-	uc, stopUseCases := NewUseCase(store, uow, id, logger)
+	uc, stopUseCases := NewUseCase(store, uow, id, logger, emailSettings...)
 	closeApp := func(ctx context.Context) error {
 		if err := stopUseCases(ctx); err != nil {
 			return fmt.Errorf("shutdown admin operations: %w", err)

@@ -26,7 +26,7 @@ func TestProjectScheduleAndTaskCreateUseProjectOwnerAndRecordMemberActor(t *test
 	ctx := t.Context()
 	ownerID, actorID, projectID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	for _, id := range []string{ownerID, actorID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Actor',$2,'unused','UTC')`, id, id+"@project-flow.test"); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Project','Actor',$2,'unused',now(),'UTC')`, id, id+"@project-flow.test"); err != nil {
 			t.Fatalf("insert user: %v", err)
 		}
 	}
@@ -89,7 +89,7 @@ func TestProjectTaskListIncludesReadableTasksAcrossAssignees(t *testing.T) {
 	ctx := t.Context()
 	ownerID, editorID, viewerID, projectID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	for _, id := range []string{ownerID, editorID, viewerID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','List',$2,'unused','UTC')`, id, id+"@project-flow.test"); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Project','List',$2,'unused',now(),'UTC')`, id, id+"@project-flow.test"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -145,7 +145,7 @@ func TestProjectMemberRemovalReassignsTaskAndScheduleRowsAtomically(t *testing.T
 	taskID, rootID, childID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	rootRuleID, childRuleID := ulid.Make().String(), ulid.Make().String()
 	for _, id := range []string{ownerID, memberID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Member',$2,'unused','UTC')`, id, id+"@project-flow.test"); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Project','Member',$2,'unused',now(),'UTC')`, id, id+"@project-flow.test"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -244,7 +244,7 @@ func TestProjectMemberRemovalRacesCannotLeaveRemovedAssignee(t *testing.T) {
 	ownerID, memberID, projectID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	taskID, scheduleID, ruleID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	for _, id := range []string{ownerID, memberID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Member race',$2,'unused','UTC')`, id, id+"@project-flow.test"); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Project','Member race',$2,'unused',now(),'UTC')`, id, id+"@project-flow.test"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -338,7 +338,7 @@ func TestProjectDeletionLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 	ownerID, projectID := ulid.Make().String(), ulid.Make().String()
 	taskID, actionItemID, scheduleID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	ruleID := ulid.Make().String()
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Delete',$2,'unused','UTC')`, ownerID, ownerID+"@project-flow.test"); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Project','Delete',$2,'unused',now(),'UTC')`, ownerID, ownerID+"@project-flow.test"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','Delete all children','low',$2)`, projectID, ownerID); err != nil {
@@ -403,7 +403,7 @@ func TestProjectProgressCombinesPerTaskFloorsAndScheduleOccurrencesFromDB(t *tes
 	taskIDs := []string{ulid.Make().String(), ulid.Make().String(), ulid.Make().String()}
 	scheduleID, ruleID := ulid.Make().String(), ulid.Make().String()
 	for _, id := range []string{ownerID, memberID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Progress',$2,'unused','UTC')`, id, id+"@project-flow.test"); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Project','Progress',$2,'unused',now(),'UTC')`, id, id+"@project-flow.test"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -469,7 +469,7 @@ func TestProjectProgressUsesOnlySavedScheduleOccurrences(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, projectID, scheduleID, ruleID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','DST',$2,'unused','America/New_York')`, ownerID, ownerID+"@project-dst.test"); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Project','DST',$2,'unused',now(),'America/New_York')`, ownerID, ownerID+"@project-dst.test"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','DST progress','low',$2)`, projectID, ownerID); err != nil {
@@ -522,7 +522,7 @@ func TestProjectTaskAndScheduleCreationRaceWithParentOnlyDeletion(t *testing.T) 
 	ctx := t.Context()
 	ownerID, editorID, projectID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	for _, id := range []string{ownerID, editorID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Race',$2,'unused','UTC')`, id, id+"@project-flow.test"); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Project','Race',$2,'unused',now(),'UTC')`, id, id+"@project-flow.test"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -622,7 +622,7 @@ func TestProjectDeletionLeavesActionItemCreatedBeforeParentLockUntouched(t *test
 	ctx := t.Context()
 	ownerID, editorID, projectID, taskID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	for _, id := range []string{ownerID, editorID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','ActionItem race',$2,'unused','UTC')`, id, id+"@project-flow.test"); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Project','ActionItem race',$2,'unused',now(),'UTC')`, id, id+"@project-flow.test"); err != nil {
 			t.Fatalf("insert user: %v", err)
 		}
 	}

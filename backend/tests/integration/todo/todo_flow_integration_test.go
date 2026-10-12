@@ -38,7 +38,7 @@ func newTodoFixture(t *testing.T, timezone string, estimate int) *todoFixture {
 	pool := testdb.Open(t)
 	userID, taskID, itemID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	ctx := t.Context()
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Todo','Flow',$2,'unused',$3)`, userID, userID+"@todo-flow.test", timezone); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Todo','Flow',$2,'unused',now(),$3)`, userID, userID+"@todo-flow.test", timezone); err != nil {
 		t.Fatalf("insert user: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO tasks(id,user_id,assignee_id,title,priority,status,changed_by) VALUES($1,$2,$2,'Todo integration','low','pending',$2)`, taskID, userID); err != nil {
@@ -763,7 +763,7 @@ func TestScheduleImpactRegeneratesAssigneesAndRollsBackSourceOnFailure(t *testin
 	ctx := t.Context()
 	actorID, projectID, ownerProjectID, memberID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	for _, userID := range []string{actorID, memberID} {
-		if _, err := fixture.pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Schedule','Impact',$2,'unused','Asia/Tokyo')`, userID, userID+"@schedule-impact.test"); err != nil {
+		if _, err := fixture.pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone) VALUES($1,'Schedule','Impact',$2,'unused',now(),'Asia/Tokyo')`, userID, userID+"@schedule-impact.test"); err != nil {
 			t.Fatalf("insert Schedule impact user: %v", err)
 		}
 	}

@@ -5,6 +5,7 @@ import "errors"
 var (
 	ErrPasswordUpdateFailed   = errors.New("password update failed")
 	ErrInvalidCredentials     = errors.New("invalid credentials")
+	ErrEmailUnverified        = errors.New("email address is not verified")
 	ErrUserEmailAlreadyExists = errors.New("user with this email already exists")
 	ErrUserIDAlreadyExists    = errors.New("user with this ID already exists")
 )

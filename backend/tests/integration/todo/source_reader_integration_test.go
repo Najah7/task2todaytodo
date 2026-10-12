@@ -33,9 +33,9 @@ func TestTodoSourceReaderProjectsVirtualScheduleAndAllocationInUsersLocalDay(t *
 	weekday := int(today.Weekday())
 
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO users(id,first_name,last_name,email,password,timezone)
-		VALUES($1,'Todo','Source',$2,'unused','America/Los_Angeles'),
-		      ($3,'Todo','Viewer',$4,'unused','America/Los_Angeles')`, userID, userID+"@todo-source.test", viewerID, viewerID+"@todo-viewer.test"); err != nil {
+		INSERT INTO users(id,first_name,last_name,email,password_hash,email_verified_at,timezone)
+		VALUES($1,'Todo','Source',$2,'unused',now(),'America/Los_Angeles'),
+		      ($3,'Todo','Viewer',$4,'unused',now(),'America/Los_Angeles')`, userID, userID+"@todo-source.test", viewerID, viewerID+"@todo-viewer.test"); err != nil {
 		t.Fatalf("insert users: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `
