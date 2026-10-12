@@ -18,9 +18,11 @@ pnpm test:e2e login.spec.ts
 
 The first run downloads Docker images and Go dependencies. Later builds reuse Docker's build cache. Playwright arguments are forwarded by the runner. Use `pnpm test:e2e` rather than invoking Playwright directly so the test environment is always initialized.
 
+When deploying the SPA, serve its HTML entry document with `Cache-Control: no-store` so verification and reset landing pages are not cached by browsers or intermediaries. The entry document sets `Referrer-Policy` to `no-referrer`, and email-link credentials stay in URL fragments so browsers do not send them in HTTP requests.
+
 ## Lifecycle and isolation
 
-`run.mjs` creates a unique Compose project, starts a temporary database, applies the existing backend migrations, builds the backend, and waits for its health check. Playwright then starts a separate Vite server whose API proxy targets that backend. API and frontend ports are allocated dynamically; existing development servers are not reused.
+`run.mjs` creates a unique Compose project, starts a temporary database and Mailpit, applies the existing backend migrations, builds the backend, and waits for its health check. Playwright then starts a separate Vite server whose API proxy targets that backend. API, frontend, and Mailpit ports are allocated dynamically; existing development servers are not reused.
 
 Each test creates its own users with unique email addresses through the real API. Tests do not depend on execution order or shared seed data. Authentication assertions check that the saved token can access `/api/users/me`.
 
@@ -34,6 +36,8 @@ On failure, the runner prints service logs before cleanup. Playwright retains tr
 
 ## Coverage
 
-- Signup, automatic login, and a persisted session accepted by the backend.
-- Incorrect credentials, duplicate email, and correction of password confirmation.
+- Email signup, Mailpit verification, explicit confirmation, and normal login.
+- Unverified login handling and resend guidance; wrong credentials remain generic.
+- Mailpit password-reset flow, explicit confirmation, and normal login with the new password.
+- Generic reset guidance for eligible, ineligible, and unknown email addresses.
 - Language and display preferences, including persistence across navigation and reloads.

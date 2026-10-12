@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
-import { createAccount, expectAuthenticated, fillCredentials, newCredentials } from "./helpers/auth.ts"
+import { createAccount, expectAuthenticated, fillCredentials, newCredentials, waitForEmailLink } from "./helpers/auth.ts"
 
-test("signup creates an account and logs in to Today", async ({ page }) => {
+test("signup requests verification and only explicit confirmation enables later login", async ({ page, request }) => {
   const credentials = newCredentials()
   await page.goto("/signup")
   await fillCredentials(page, credentials, true)
@@ -12,23 +12,47 @@ test("signup creates an account and logs in to Today", async ({ page }) => {
   await page.evaluate(() => document.documentElement.style.fontSize = "32px")
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
   await page.getByRole("button", { name: "アカウントを作成" }).click()
-  await expectAuthenticated(page, credentials.email)
+  await expect(page.getByRole("status")).toContainText("確認メールを送信しました")
+  expect(await page.evaluate(() => localStorage.getItem("personal_access_token"))).toBeNull()
+  const verification = await waitForEmailLink(request, credentials.email, "verify-email")
+  let confirmationCalls = 0
+  const requestUrls: string[] = []
+  page.on("request", (requestEvent) => {
+    requestUrls.push(requestEvent.url())
+    if (new URL(requestEvent.url()).pathname === "/api/email-verification/confirm") confirmationCalls += 1
+  })
+  await page.goto(verification.url)
+  await expect(page.getByRole("heading", { name: "メールアドレスを確認", exact: true })).toBeVisible()
+  expect(page.url()).toContain(verification.token)
+  expect(confirmationCalls).toBe(0)
   await page.reload()
+  await expect(page.getByRole("heading", { name: "メールアドレスを確認", exact: true })).toBeVisible()
+  expect(page.url()).toContain(verification.token)
+  await page.getByLabel("パスワード", { exact: true }).fill("WrongPassword1!")
+  await page.getByRole("button", { name: "メールアドレスを確認", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("確認できませんでした")
+  expect(page.url()).toContain(verification.token)
+  await page.getByLabel("パスワード", { exact: true }).fill(credentials.password)
+  await page.getByRole("button", { name: "メールアドレスを確認", exact: true }).click()
+  await expect(page).toHaveURL(/\/login\?verified=1$/)
+  expect(confirmationCalls).toBe(2)
+  expect(requestUrls.every((url) => !url.includes(verification.token))).toBe(true)
+  expect(await page.evaluate(() => localStorage.getItem("personal_access_token"))).toBeNull()
+  await page.goBack()
+  expect(page.url()).not.toContain(verification.token)
+  await page.goto("/login")
+  await fillCredentials(page, credentials)
+  await page.getByRole("button", { name: "ログイン", exact: true }).click()
   await expectAuthenticated(page, credentials.email)
 })
 
-test("an existing email leads the user back to login", async ({ page, request }) => {
+test("an existing email receives same generic signup guidance", async ({ page, request }) => {
   const credentials = await createAccount(request)
   await page.goto("/signup")
   await fillCredentials(page, credentials, true)
   await page.getByRole("button", { name: "アカウントを作成" }).click()
-  await expect(page.getByRole("alert")).toHaveText("このメールアドレスは登録済みです。ログインしてください。")
+  await expect(page.getByRole("status")).toContainText("確認メールを送信しました")
   expect(await page.evaluate(() => localStorage.getItem("personal_access_token"))).toBeNull()
-  await page.getByRole("link", { name: "ログイン", exact: true }).click()
-  await expect(page.getByRole("heading", { name: "ログイン", exact: true })).toBeVisible()
-  await fillCredentials(page, credentials)
-  await page.getByRole("button", { name: "ログイン", exact: true }).click()
-  await expectAuthenticated(page, credentials.email)
 })
 
 test("password confirmation can be corrected before signup", async ({ page }) => {
@@ -41,5 +65,5 @@ test("password confirmation can be corrected before signup", async ({ page }) =>
   await expect(page).toHaveURL("/signup")
   await page.getByLabel("パスワード（確認）", { exact: true }).fill(credentials.password)
   await page.getByRole("button", { name: "アカウントを作成" }).click()
-  await expectAuthenticated(page, credentials.email)
+  await expect(page.getByRole("status")).toContainText("確認メールを送信しました")
 })

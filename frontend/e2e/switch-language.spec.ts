@@ -3,10 +3,10 @@ import { expect, test } from "@playwright/test"
 test.describe("English browser", () => {
   test.use({ locale: "en-US" })
 
-  test("initial language follows the browser setting", async ({ page }) => {
+  test("Japanese is default even when browser language is English", async ({ page }) => {
     await page.goto("/login")
-    await expect(page.getByRole("heading", { name: "Log in", exact: true })).toBeVisible()
-    await expect(page.getByRole("switch", { name: "Display language" })).not.toBeChecked()
+    await expect(page.getByRole("heading", { name: "ログイン", exact: true })).toBeVisible()
+    await expect(page.getByRole("switch", { name: "表示言語" })).toBeChecked()
   })
 })
 
@@ -25,4 +25,12 @@ test("language switches both ways and persists across routes and reloads", async
   await page.reload()
   await expect(page.getByRole("heading", { name: "新規登録", exact: true })).toBeVisible()
   await expect(page.locator("html")).toHaveAttribute("lang", "ja")
+})
+
+test("explicit language in an email link overrides saved site language", async ({ page }) => {
+  await page.goto("/login")
+  await page.evaluate(() => localStorage.setItem("language", "ja"))
+  await page.goto("/verify-email?lang=en#token=sample")
+  await expect(page.getByRole("heading", { name: "Verify your email", exact: true })).toBeVisible()
+  await expect(page.locator("html")).toHaveAttribute("lang", "en")
 })

@@ -56,11 +56,14 @@ async function availablePort() {
 
 console.log(`E2E environment: ${project}`)
 try {
+  env.E2E_FRONTEND_PORT = String(await availablePort())
+  env.E2E_FRONTEND_BASE_URL = `http://127.0.0.1:${env.E2E_FRONTEND_PORT}`
   await compose(["up", "--build", "--wait", "--wait-timeout", "120"])
   if (interrupted) throw new Error("E2E interrupted")
   const address = await compose(["port", "api", "8080"], true)
   env.E2E_API_URL = `http://${address}`
-  env.E2E_FRONTEND_PORT = String(await availablePort())
+  const mailpitAddress = await compose(["port", "mailpit", "8025"], true)
+  env.E2E_MAILPIT_URL = `http://${mailpitAddress}`
   if (interrupted) throw new Error("E2E interrupted")
   await run(process.execPath, [require.resolve("@playwright/test/cli"), "test", ...process.argv.slice(2)])
 } catch (error) {

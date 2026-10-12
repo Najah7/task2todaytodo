@@ -42,3 +42,13 @@ export function getAuthErrorMessage(error: unknown): MessageKey {
   if (error instanceof TypeError) return "auth.error.connection"
   return "auth.error.generic"
 }
+
+export function getAuthLinkErrorMessage(error: unknown, invalidLinkMessage: MessageKey): MessageKey {
+  if (error instanceof ApiError) {
+    const details = (error.data as RestErrResponse | undefined)?.error?.details ?? []
+    if (details.some((detail) => detail.code === "invalid_or_expired_auth_link")) {
+      return invalidLinkMessage
+    }
+  }
+  return getAuthErrorMessage(error)
+}

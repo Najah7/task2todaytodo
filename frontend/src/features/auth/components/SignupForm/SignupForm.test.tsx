@@ -7,15 +7,13 @@ import { LanguageProvider } from "~/features/i18n"
 import { NotificationViewport } from "~/features/shared/notification"
 import SignupForm from "./index"
 
-const { signup, login } = vi.hoisted(() => ({ signup: vi.fn(), login: vi.fn() }))
+const { signup } = vi.hoisted(() => ({ signup: vi.fn() }))
 vi.mock("~/api/generated/auth", () => ({
   usePostSignup: () => ({ mutateAsync: signup }),
-  usePostLogin: () => ({ mutateAsync: login }),
 }))
 
 beforeEach(() => {
   signup.mockReset()
-  login.mockReset()
   localStorage.clear()
   localStorage.setItem("language", "ja")
 })
@@ -41,18 +39,14 @@ function renderForm() {
   }
 }
 
-test("retries only login after the account has been created", async () => {
-  signup.mockResolvedValue({ user_id: "unit-user" })
-  login.mockRejectedValueOnce(new ApiError(503, {})).mockResolvedValueOnce({ personal_access_token: "unit-token" })
+test("shows generic verification guidance without creating a session", async () => {
+  signup.mockResolvedValue({ message: "Request received" })
   renderForm()
   fireEvent.click(screen.getByRole("button", { name: "アカウントを作成" }))
-  expect((await screen.findByRole("alert")).textContent).toContain("登録は完了しました")
-  expect(screen.getByLabelText("メールアドレス")).toHaveProperty("readOnly", true)
-  expect(screen.getByLabelText("パスワード", { exact: true })).toHaveProperty("readOnly", true)
-  fireEvent.click(screen.getByRole("button", { name: "ログインして進む" }))
-  expect(await screen.findByRole("heading", { name: "Today" })).toBeTruthy()
+  expect((await screen.findByRole("status")).textContent).toContain("確認メールを送信しました")
+  expect(screen.getByRole("button", { name: "確認メールを再送信" })).toBeTruthy()
   expect(signup).toHaveBeenCalledExactlyOnceWith({ data: { email: "test@example.com", password: "Password1!" } })
-  expect(login).toHaveBeenCalledTimes(2)
+  expect(localStorage.getItem("personal_access_token")).toBeNull()
 })
 
 test("notifies backend validation failures without creating a session", async () => {
@@ -60,7 +54,6 @@ test("notifies backend validation failures without creating a session", async ()
   renderForm()
   fireEvent.click(screen.getByRole("button", { name: "アカウントを作成" }))
   expect(await screen.findByText("パスワードは8文字以上で、英大文字・英小文字・数字・記号を含めてください。")).toBeTruthy()
-  expect(login).not.toHaveBeenCalled()
   expect(localStorage.getItem("personal_access_token")).toBeNull()
   expect(screen.getByRole("button", { name: "アカウントを作成" })).toHaveProperty("disabled", false)
 })

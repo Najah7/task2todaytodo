@@ -5,13 +5,22 @@ import type { Language } from "./messages/types"
 const LANGUAGE_STORAGE_KEY = "language"
 
 function getInitialLanguage(): Language {
+  const linked = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("lang") : null
+  if (linked === "ja" || linked === "en") {
+    try {
+      localStorage.setItem(LANGUAGE_STORAGE_KEY, linked)
+    } catch {
+      // The link language still applies until the page is closed.
+    }
+    return linked
+  }
   try {
     const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY)
     if (saved === "ja" || saved === "en") return saved
   } catch {
-    // Use the browser language when storage is unavailable.
+    // Continue with the default.
   }
-  return typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("ja") ? "ja" : "en"
+  return "ja"
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {

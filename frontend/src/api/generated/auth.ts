@@ -26,9 +26,8 @@ import type {
 
 import { apiFetch } from "~/api/http";
 import type { ErrorType } from "~/api/http";
-export interface RestPersonalAccessTokenResponse {
-  expires_at?: string;
-  personal_access_token?: string;
+export interface RestAuthLinkResult {
+  message?: string;
 }
 
 export interface RestAllocationConflictMetadata {
@@ -58,9 +57,33 @@ export interface RestErrResponse {
   error?: RestErr;
 }
 
+export interface RestEmailVerificationConfirmRequest {
+  password?: string;
+  token?: string;
+}
+
+export interface RestGenericEmailResponse {
+  message?: string;
+}
+
+export interface RestEmailAddressRequest {
+  email?: string;
+}
+
+export interface RestPersonalAccessTokenResponse {
+  expires_at?: string;
+  personal_access_token?: string;
+}
+
 export interface RestLoginRequest {
   email?: string;
   password?: string;
+}
+
+export interface RestPasswordResetConfirmRequest {
+  password?: string;
+  password_confirmation?: string;
+  token?: string;
 }
 
 export interface RestPermissionResponse {
@@ -90,6 +113,15 @@ export interface RestRoleListResponse {
   items?: RestRoleResponse[];
 }
 
+export interface RestSignupRequest {
+  email?: string;
+  password?: string;
+}
+
+export interface RestTimezoneListResponse {
+  items?: string[];
+}
+
 export interface RestUserResponse {
   bedtime?: string;
   email?: string;
@@ -98,15 +130,6 @@ export interface RestUserResponse {
   user_id?: string;
   user_name?: string;
   wake_up_time?: string;
-}
-
-export interface RestSignupRequest {
-  email?: string;
-  password?: string;
-}
-
-export interface RestTimezoneListResponse {
-  items?: string[];
 }
 
 export interface RestUserInfoUpdateRequest {
@@ -153,6 +176,182 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getPostEmailVerificationConfirmUrl = () => {
+
+
+
+
+  return `/api/email-verification/confirm`
+}
+
+/**
+ * @summary Confirm email address
+ */
+export const postEmailVerificationConfirm = async (restEmailVerificationConfirmRequest: RestEmailVerificationConfirmRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestAuthLinkResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<RestAuthLinkResult>(getPostEmailVerificationConfirmUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restEmailVerificationConfirmRequest)
+  }
+);}
+
+
+
+
+
+export const getPostEmailVerificationConfirmMutationKey = () => ['postEmailVerificationConfirm'] as const;
+
+export const getPostEmailVerificationConfirmMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postEmailVerificationConfirm>>, TError,PostEmailVerificationConfirmMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postEmailVerificationConfirm>>, TError,PostEmailVerificationConfirmMutationVariables, TContext> => {
+
+const mutationKey = getPostEmailVerificationConfirmMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postEmailVerificationConfirm>>, PostEmailVerificationConfirmMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  postEmailVerificationConfirm(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostEmailVerificationConfirmMutationResult = NonNullable<Awaited<ReturnType<typeof postEmailVerificationConfirm>>>
+    export type PostEmailVerificationConfirmMutationBody = RestEmailVerificationConfirmRequest
+    export type PostEmailVerificationConfirmMutationError = ErrorType<RestErrResponse>
+    export type PostEmailVerificationConfirmMutationVariables = {data: RestEmailVerificationConfirmRequest}
+
+    /**
+ * @summary Confirm email address
+ */
+export const usePostEmailVerificationConfirm = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postEmailVerificationConfirm>>, TError,PostEmailVerificationConfirmMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postEmailVerificationConfirm>>,
+        TError,
+        PostEmailVerificationConfirmMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostEmailVerificationConfirmMutationOptions(options), queryClient);
+    }
+
+export const getPostEmailVerificationResendUrl = () => {
+
+
+
+
+  return `/api/email-verification/resend`
+}
+
+/**
+ * @summary Resend verification email
+ */
+export const postEmailVerificationResend = async (restEmailAddressRequest: RestEmailAddressRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestGenericEmailResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<RestGenericEmailResponse>(getPostEmailVerificationResendUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restEmailAddressRequest)
+  }
+);}
+
+
+
+
+
+export const getPostEmailVerificationResendMutationKey = () => ['postEmailVerificationResend'] as const;
+
+export const getPostEmailVerificationResendMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postEmailVerificationResend>>, TError,PostEmailVerificationResendMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postEmailVerificationResend>>, TError,PostEmailVerificationResendMutationVariables, TContext> => {
+
+const mutationKey = getPostEmailVerificationResendMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postEmailVerificationResend>>, PostEmailVerificationResendMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  postEmailVerificationResend(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostEmailVerificationResendMutationResult = NonNullable<Awaited<ReturnType<typeof postEmailVerificationResend>>>
+    export type PostEmailVerificationResendMutationBody = RestEmailAddressRequest
+    export type PostEmailVerificationResendMutationError = ErrorType<RestErrResponse>
+    export type PostEmailVerificationResendMutationVariables = {data: RestEmailAddressRequest}
+
+    /**
+ * @summary Resend verification email
+ */
+export const usePostEmailVerificationResend = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postEmailVerificationResend>>, TError,PostEmailVerificationResendMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postEmailVerificationResend>>,
+        TError,
+        PostEmailVerificationResendMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostEmailVerificationResendMutationOptions(options), queryClient);
+    }
 
 export const getPostLoginUrl = () => {
 
@@ -241,6 +440,182 @@ export const usePostLogin = <TError = ErrorType<RestErrResponse>,
         TContext
       > => {
       return useMutation(getPostLoginMutationOptions(options), queryClient);
+    }
+
+export const getPostPasswordResetConfirmUrl = () => {
+
+
+
+
+  return `/api/password-reset/confirm`
+}
+
+/**
+ * @summary Confirm password reset
+ */
+export const postPasswordResetConfirm = async (restPasswordResetConfirmRequest: RestPasswordResetConfirmRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestAuthLinkResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<RestAuthLinkResult>(getPostPasswordResetConfirmUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restPasswordResetConfirmRequest)
+  }
+);}
+
+
+
+
+
+export const getPostPasswordResetConfirmMutationKey = () => ['postPasswordResetConfirm'] as const;
+
+export const getPostPasswordResetConfirmMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postPasswordResetConfirm>>, TError,PostPasswordResetConfirmMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postPasswordResetConfirm>>, TError,PostPasswordResetConfirmMutationVariables, TContext> => {
+
+const mutationKey = getPostPasswordResetConfirmMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postPasswordResetConfirm>>, PostPasswordResetConfirmMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  postPasswordResetConfirm(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostPasswordResetConfirmMutationResult = NonNullable<Awaited<ReturnType<typeof postPasswordResetConfirm>>>
+    export type PostPasswordResetConfirmMutationBody = RestPasswordResetConfirmRequest
+    export type PostPasswordResetConfirmMutationError = ErrorType<RestErrResponse>
+    export type PostPasswordResetConfirmMutationVariables = {data: RestPasswordResetConfirmRequest}
+
+    /**
+ * @summary Confirm password reset
+ */
+export const usePostPasswordResetConfirm = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postPasswordResetConfirm>>, TError,PostPasswordResetConfirmMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postPasswordResetConfirm>>,
+        TError,
+        PostPasswordResetConfirmMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostPasswordResetConfirmMutationOptions(options), queryClient);
+    }
+
+export const getPostPasswordResetRequestUrl = () => {
+
+
+
+
+  return `/api/password-reset/request`
+}
+
+/**
+ * @summary Request password reset
+ */
+export const postPasswordResetRequest = async (restEmailAddressRequest: RestEmailAddressRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestGenericEmailResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<RestGenericEmailResponse>(getPostPasswordResetRequestUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restEmailAddressRequest)
+  }
+);}
+
+
+
+
+
+export const getPostPasswordResetRequestMutationKey = () => ['postPasswordResetRequest'] as const;
+
+export const getPostPasswordResetRequestMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postPasswordResetRequest>>, TError,PostPasswordResetRequestMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postPasswordResetRequest>>, TError,PostPasswordResetRequestMutationVariables, TContext> => {
+
+const mutationKey = getPostPasswordResetRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postPasswordResetRequest>>, PostPasswordResetRequestMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  postPasswordResetRequest(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostPasswordResetRequestMutationResult = NonNullable<Awaited<ReturnType<typeof postPasswordResetRequest>>>
+    export type PostPasswordResetRequestMutationBody = RestEmailAddressRequest
+    export type PostPasswordResetRequestMutationError = ErrorType<RestErrResponse>
+    export type PostPasswordResetRequestMutationVariables = {data: RestEmailAddressRequest}
+
+    /**
+ * @summary Request password reset
+ */
+export const usePostPasswordResetRequest = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postPasswordResetRequest>>, TError,PostPasswordResetRequestMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postPasswordResetRequest>>,
+        TError,
+        PostPasswordResetRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostPasswordResetRequestMutationOptions(options), queryClient);
     }
 
 export const getGetPermissionsUrl = () => {
@@ -529,10 +904,10 @@ export const getPostSignupUrl = () => {
 }
 
 /**
- * Creates a user with an email address and password.
+ * Registers an unverified user and sends a confirmation email when eligible.
  * @summary Sign up
  */
-export const postSignup = async (restSignupRequest: RestSignupRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestUserResponse> => {
+export const postSignup = async (restSignupRequest: RestSignupRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestGenericEmailResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -548,7 +923,7 @@ export const postSignup = async (restSignupRequest: RestSignupRequest, options?:
     }
     return headers;
   };
-return apiFetch<RestUserResponse>(getPostSignupUrl(),
+return apiFetch<RestGenericEmailResponse>(getPostSignupUrl(),
   {
     ...options,
     method: 'POST',

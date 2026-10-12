@@ -5,6 +5,9 @@ import { getPersonalAccessToken } from "~/features/auth/lib/localStorage"
 import PageHeading from "~/features/shared/components/PageHeading"
 import LoginPage from "./pages/Login"
 import SignupPage from "./pages/Signup"
+import VerifyEmailPage from "./pages/VerifyEmail"
+import RequestPasswordResetPage from "./pages/RequestPasswordReset"
+import ResetPasswordPage from "./pages/ResetPassword"
 import ProjectsNewPage from "./pages/ProjectsNew"
 import ProjectsEditPage from "./pages/ProjectsEdit"
 import ProjectList from "~/pages/ProjectList"
@@ -28,6 +31,9 @@ function requireAuthentication() {
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/signup", element: <SignupPage /> },
+  { path: "/verify-email", element: <VerifyEmailPage /> },
+  { path: "/request-password-reset", element: <RequestPasswordResetPage /> },
+  { path: "/reset-password", element: <ResetPasswordPage /> },
   {
     loader: requireAuthentication,
     shouldRevalidate: () => true,

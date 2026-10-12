@@ -27,16 +27,14 @@ export const PasswordMismatch: Story = {
   },
 }
 
-export const EmailAlreadyExists: Story = {
+export const VerificationRequested: Story = {
   parameters: {
-    msw: { handlers: { signup: http.post("*/api/signup", () => HttpResponse.json({
-      error: { details: [{ code: "email_already_exists" }] },
-    }, { status: 409 })) } },
+    msw: { handlers: { signup: http.post("*/api/signup", () => HttpResponse.json({ message: "Request received" }, { status: 202 })) } },
   },
   play: async ({ canvasElement }) => {
     await fillCredentials(canvasElement, true)
     await submitForm(canvasElement)
-    await expect(await within(canvasElement).findByText(/このメールアドレスは登録済みです。ログインしてください。|This email is already registered\. Please log in\./)).toBeVisible()
+    await expect(await within(canvasElement).findByText(/対象の場合は確認メールを送信しました|If this address can receive email, instructions have been sent/)).toBeVisible()
   },
 }
 
