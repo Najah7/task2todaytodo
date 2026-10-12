@@ -3,22 +3,20 @@
 These rules apply to `internal/application/`, including the composition root
 and each business context. See the [backend guide](../../AGENTS.md) for commands
 and real-database integration tests. See the [REST guide](../port/rest/AGENTS.md),
-[configuration guide](../config/AGENTS.md), [SQL guide](../../db/AGENTS.md), and
+[configuration guide](../settings/AGENTS.md), [SQL guide](../../db/AGENTS.md), and
 [telemetry guide](../telemetry/AGENTS.md) for logging and trace boundaries.
 
 ## Structure and boundaries
 
 ```text
-internal/application/<context>/{domain,dao,usecase,repository}
+internal/application/<context>/{dao,usecase,repository}
+internal/application/<context>/domain/       Context-owned business rules, where needed
 internal/application/shared/              Cross-context contracts and pure policy
 internal/application/                      Composition root and transaction wiring
 ```
 
-`<context>` is `auth`, `project`, `task`, `schedule`, `allocation`, `todo`, `inbox`, or `admin`. Keep each
-context's domain, DAO, usecase, and repository within that context. Admin
-contains `job/` and `operation/` subareas: job usecases may consume the
-operation DAO and operation-owned lifecycle errors through narrow job ports;
-operation code must not import job packages. Context code may depend on its own
+`<context>` is `auth`, `project`, `task`, `schedule`, `allocation`, `todo`, `inbox`, `admin`, or `metric`. Keep each
+context's packages within that context. Context code may depend on its own
 layers and on `application/shared`, as shown in the
 [backend layer map](../../AGENTS.md#layer-rule).
 
@@ -28,10 +26,10 @@ transport boundary, and integration scenarios may exercise multiple contexts.
 These are composition, transport, and test boundaries; they do not permit
 business-context dependencies.
 
-`application/shared` may contain contracts or pure policy consumed by at least
+[`application/shared`](shared/AGENTS.md) may contain contracts or pure policy consumed by at least
 two business contexts, but must not depend on a business context or
 `port/rest`. Tests and transport use alone do not justify a shared package;
-keep one-context helpers with their owner. Keep Task and Schedule independent.
+keep one-context helpers with their owner.
 Define cross-context reads and writes at the consuming usecase boundary, then
 inject their implementations through root wiring. Keep HTTP query parsing,
 field masks, cursor tokens, and response types in `port/rest`.
@@ -88,9 +86,6 @@ owns business state and behavior.
   do not duplicate them in a read model. Projections still depend on the shared
   database schema, so a schema change may require updates to multiple context
   repositories.
-- Project progress reads Task status and nondeleted ActionItem counts through
-  the Project repository, then uses the shared Task percentage policy. It does
-  not call a Task repository or application adapter.
 - Pass a DAO through when no domain behavior is needed. Otherwise, the usecase
   converts its fields to value objects and domain models through existing
   factories. Do not make domain factories accept DAOs.
@@ -137,10 +132,8 @@ READ:  Repository -> DAO -> UseCase/REST handler
 - A UOW normally exposes repositories for its context. A cross-context
   orchestration UOW may additionally expose only narrow, consumer-defined
   command ports with primitive inputs. Root wiring implements them through
-  owner repositories bound to the same transaction. Project member removal
-  coordinates Task and Schedule reassignment commands this way. Project
-  deletion changes only the parent Project row and does not invoke child bulk
-  commands. Do not expose foreign repositories or domain types through the UOW.
+  owner repositories bound to the same transaction. Do not expose foreign
+  repositories or domain types through the UOW.
 - Repository implementations may expose `WithTx(tx)` internally; do not add it
   to usecase repository ports. The usecase decides the transaction boundary.
 - The UOW guarantees atomicity and rollback. It does not own business policy,
@@ -190,10 +183,8 @@ READ:  Repository -> DAO -> UseCase/REST handler
 - Usecases may depend on the `internal/telemetry` Logger contract and safe error
   helpers, but not concrete slog or OTel SDK types. Domain models and DAOs must
   not depend on a logger.
-- Log authentication outcomes, security events, and important state operations,
-  such as task status changes and occurrence complete/reopen/skip/restore/
-  reschedule. Use INFO for success. Use WARN for authentication rejection and
-  include a stable, safe reason.
+- Log security events and important state operations. Use INFO for success.
+  Use WARN for security-sensitive rejection and include a stable, safe reason.
 - Emit success logs only after persistence succeeds. For a transaction, emit
   them only after `UOW.Do` returns nil, which means commit succeeded. Never log
   success inside the callback or after rollback or commit failure. Describe

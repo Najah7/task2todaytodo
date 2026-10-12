@@ -16,7 +16,7 @@ internal/application/<context>/repository/ DB adapter and sqlc mapping
 internal/application/shared/             Cross-context application contracts
 internal/application/shared/pagination/  Transport-independent List page policy
 internal/application/schedule/domain/    Schedule models and rule recurrence rules
-internal/config/                          Process environment loading and validation
+internal/settings/                        Process environment loading and validation
 internal/telemetry/                       Structured logging and OpenTelemetry setup, propagation and trace export
 internal/port/rest/                      HTTP handlers, response and error mapping
 internal/port/rest/middleware/           HTTP middleware
@@ -25,7 +25,7 @@ internal/port/rest/fieldmask/            Read response field masks
 internal/port/adapter/                   External adapters, including ULID and UUID
 ```
 
-`<context>` means `auth`, `project`, `task`, `schedule`, `allocation`, `todo`, `inbox`, or `admin`.
+`<context>` means `auth`, `project`, `task`, `schedule`, `allocation`, `todo`, `inbox`, `admin`, or `metric`.
 Their HTTP handlers all live in `internal/port/rest`.
 
 ## Commands
@@ -72,9 +72,18 @@ Before changing an area below, read its guide:
 
 - [REST handlers, errors, and list APIs](internal/port/rest/AGENTS.md)
 - [Database migrations and SQL generation](db/AGENTS.md)
-- [Runtime configuration](internal/config/AGENTS.md)
+- [Runtime configuration](internal/settings/AGENTS.md)
 - [Logging and OpenTelemetry across backend layers](internal/telemetry/AGENTS.md)
 - [Application architecture and rules](internal/application/AGENTS.md)
+
+Before changing an application context, also read its guide:
+
+- [Auth](internal/application/auth/AGENTS.md), [Project](internal/application/project/AGENTS.md), [Task](internal/application/task/AGENTS.md)
+- [Schedule](internal/application/schedule/AGENTS.md), [Allocation](internal/application/allocation/AGENTS.md), [Todo](internal/application/todo/AGENTS.md)
+- [Inbox](internal/application/inbox/AGENTS.md), [Admin](internal/application/admin/AGENTS.md), [Metric](internal/application/metric/AGENTS.md)
+- [Shared application contracts](internal/application/shared/AGENTS.md)
+
+Keep each context guide's endpoint list in sync with `cmd/api/main.go` when routes change.
 
 ## Test
 

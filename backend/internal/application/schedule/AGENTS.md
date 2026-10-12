@@ -4,12 +4,43 @@ Follow the [application guide](../AGENTS.md) for architecture and boundaries.
 These product rules govern Schedule behavior. Keep this guide aligned with
 approved decisions.
 
+## Features
+
+- Create one-off or recurring Schedule rules, project virtual occurrences, and persist individual occurrence changes. Support individual or future-scoped edits, revisions, completion, skipping, restoration, and backfill.
+- Preserve fixed Schedule times for Todo planning. Project completion pauses recurring rules; reopening resumes future cadence.
+
+## Endpoints
+
+- `POST /api/schedule-rules`, `/api/projects/{id}/schedules`; `GET /api/schedule-rules/{id}`, `/api/schedule-rules/{id}/revisions`, `/api/schedule-rules/{id}/assignees`, `/api/schedules`, `/api/projects/{id}/schedules`.
+- `PATCH /api/schedule-rules/{id}`; `DELETE /api/schedule-rules/{id}/following/{occurrence_date}`.
+- `GET /api/schedules/{rule_id}/{occurrence_date}`, `/api/schedules/{rule_id}/{occurrence_date}/revisions`; `PATCH`, `DELETE /api/schedules/{rule_id}/{occurrence_date}`.
+- `POST /api/schedules/{rule_id}/{occurrence_date}:complete`, `/api/schedules/{rule_id}/{occurrence_date}:reopen`, `/api/schedules/{rule_id}/{occurrence_date}:skip`, `/api/schedules/{rule_id}/{occurrence_date}:restore`, `/api/schedules/{rule_id}/{occurrence_date}:reschedule`.
+- Backfill trigger: `POST /api/admin/jobs/backfill-schedules:run` (Admin-owned). Routes are registered in [cmd/api/main.go](../../../cmd/api/main.go).
+
+## Key files
+
+- [domain/recurrence.go](domain/recurrence.go), [domain/rule.go](domain/rule.go): recurrence and rule behavior.
+- [usecase/resolve_occurrence.go](usecase/resolve_occurrence.go), [usecase/update_rule.go](usecase/update_rule.go): virtual occurrence resolution and future-effective changes.
+- [usecase/update_occurrence.go](usecase/update_occurrence.go), [usecase/backfill.go](usecase/backfill.go): individual snapshots and materialization.
+- [repository/rules.go](repository/rules.go), [repository/schedules.go](repository/schedules.go): persisted rules, exceptions, and projections.
+
+## Change checks
+
+- Address an occurrence by rule ID and original local date; a move does not change that identity. Individual edits update the full exception and concrete projection in one transaction.
+- Keep recurrence in the rule's IANA timezone, including DST and all-day boundaries. Future-effective edits must preserve prior history and saved exceptions.
+- Backfill must not overwrite exceptions or trigger Project status changes; Project pause/resume affects [Todo](../todo/AGENTS.md), [Inbox](../inbox/AGENTS.md), and the [Schedule UI](../../../../frontend/src/features/schedule/AGENTS.md).
+
+## Verification
+
+- [Schedule integration tests](../../../tests/integration/schedule/rules_integration_test.go), [REST history flow](../../../tests/integration/rest/schedule_history_flow_integration_test.go), and nearby domain/usecase tests.
+
 ## Behavior reference
 
 - Follow Google Calendar's user-facing Schedule behavior wherever possible.
   Explicit product decisions below take precedence. Clarify material differences
   before implementing them; do not assume Google's API matches its UI behavior.
 - Keep recurrence rules and all-day boundary rules in the backend.
+- Log occurrence complete, reopen, skip, restore, and reschedule operations after successful persistence.
 
 ## Rules and schedules
 

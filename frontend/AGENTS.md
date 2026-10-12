@@ -10,6 +10,14 @@
 
 Before working in `src/features/`, composing feature Pages in `src/pages/`, or editing their tests and stories, read [src/features/AGENTS.md](src/features/AGENTS.md). It defines component structure, file ownership, Context/Provider responsibilities, and List/New/Edit conventions.
 
+Also read the guide for the feature being changed:
+
+- [Auth](src/features/auth/AGENTS.md), [Project](src/features/project/AGENTS.md), [Task](src/features/task/AGENTS.md), [Schedule](src/features/schedule/AGENTS.md)
+- [Allocation](src/features/allocation/AGENTS.md), [Todo](src/features/todo/AGENTS.md), [Inbox](src/features/inbox/AGENTS.md), [Metrics](src/features/metrics/AGENTS.md)
+- [Display](src/features/display/AGENTS.md), [i18n](src/features/i18n/AGENTS.md), [Shared](src/features/shared/AGENTS.md)
+
+Keep each routed feature guide's page paths in sync with `src/router.tsx` when routes change.
+
 ## State
 
 - The backend is the source of truth for server data; TanStack Query owns its client cache. Do not maintain a second server-data cache in Jotai or local State. Editing drafts and temporary UI state are local.
