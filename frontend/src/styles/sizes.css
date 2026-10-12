@@ -40,7 +40,7 @@
   --size-login-card-width: 27.5rem;
   --size-login-button-height: 3rem;
   --icon-stroke-width: 1.8;
-  --ratio-kpi-chart: 1.25;
+  --ratio-metrics-chart: 1.25fr;
 }
 
 @media (max-width: 37.5em) {

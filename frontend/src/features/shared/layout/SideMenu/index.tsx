@@ -26,7 +26,7 @@ const SideMenu = ({ inboxCount = 0 }: Props) => {
         </div>
         <div className={styles.group} role="group" aria-labelledby="analysis-label">
           <p className={`${styles.groupLabel} text-caption`} id="analysis-label">{i18n("sidebar.group.insights")}</p>
-          <SideMenuItem tab="kpi" inboxCount={inboxCount} />
+          <SideMenuItem tab="metrics" inboxCount={inboxCount} />
         </div>
         <div className={styles.profile}>
           <SideMenuItem tab="profile" inboxCount={inboxCount} />

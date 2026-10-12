@@ -34,7 +34,7 @@ The visual language is a deliberate crossover: **a to-do list × freee** (the Ja
 - **Suggest, then confirm.** Like freee's automatic bookkeeping, the app pre-fills a guess (project, date) and the user approves it with a per-row **登録 (Register)** button, or approves many at once with **まとめて登録 (Register selected)**.
 - **Plan vs. actual (予実)** thinking in reporting: planned time, actual time, variance, completion rate.
 
-The UI supports Japanese and English. System-provided interface text follows the selected language; Japanese navigation uses 今日、タスク受信箱、プロジェクト、カレンダー、KPIダッシュボード、プロフィール, while English navigation uses Today, Task Inbox, Projects, Calendar, KPI Dashboard, Profile. User-created task and project text stays as entered. Body text uses the global `text-body` style, with the density of Japanese business software.
+The UI supports Japanese and English. System-provided interface text follows the selected language; Japanese navigation uses 今日、タスク受信箱、プロジェクト、カレンダー、メトリクス、プロフィール, while English navigation uses Today, Task Inbox, Projects, Calendar, Metrics, Profile. User-created task and project text stays as entered. Body text uses the global `text-body` style, with the density of Japanese business software.
 
 The tone is polite and helpful, never chatty. It uses short です・ます sentences that tell the user what will happen ("登録すると、今日のタスクに追加されます" = registering adds it to today's tasks).
 
@@ -102,12 +102,12 @@ Use the global classes from [typography.css](src/styles/typography.css). The fil
 Use [sizes.css](src/styles/sizes.css) for shared dimensions and [spacing.css](src/styles/spacing.css) for the spacing scale and padding. The desktop layout has a fixed full-width top bar, a left sidebar below it, and content on the right. Adapt composition to the available width and text size; reference images do not establish a fixed viewport.
 
 - **Top bar**: [Header](src/features/shared/layout/Header/index.tsx) owns its markup and CSS Module. Use `--size-topbar-height` and `--padding-topbar`; responsive header height lives in [sizes.css](src/styles/sizes.css) so Header and SideMenu use the same value. Logo on the left, search field using `--size-search-width` / `--size-search-height`, and Help, Notifications, and avatar on the right.
-- **Sidebar**: `--size-sidebar-width` and `--padding-sidebar`. Navigation uses `--size-nav-item-height`. Today and Task Inbox come first; Manage / 管理 groups Projects / プロジェクト and Calendar / カレンダー; Insights / 分析 groups KPI Dashboard / KPIダッシュボード. Profile / プロフィール sits at the bottom. Separate it from the other links with a divider. Waiting Inbox items have an attention-colored count.
+- **Sidebar**: `--size-sidebar-width` and `--padding-sidebar`. Navigation uses `--size-nav-item-height`. Today and Task Inbox come first; Manage / 管理 groups Projects / プロジェクト and Calendar / カレンダー; Insights / 分析 groups Metrics / メトリクス. Profile / プロフィール sits at the bottom. Separate it from the other links with a divider. Waiting Inbox items have an attention-colored count.
 - **Language**: place the EN / JP switch on the right side of the header. Navigation groups read 管理 / 分析 in Japanese and Manage / Insights in English.
 - **Display**: place the sun / moon switch beside the language switch, before Help when present. On narrow screens, wrap the header so both controls remain usable with enlarged text.
 - **Content**: `--padding-page`, with `--space-lg` between blocks. Start each page with a title, a description beneath it, and actions on the right, with the primary action last.
 - **Spacing**: use the `--space-*` scale. Card headers use `--padding-card-header`; table cells use `--padding-table-cell`.
-- **Grids**: content comes first. Today uses a main area and `--size-today-side-column`; KPI uses `--ratio-kpi-chart` relative to the project table column.
+- **Grids**: content comes first. Today uses a main area and `--size-today-side-column`; Metrics uses `--ratio-metrics-chart` relative to the overdue-work column.
 
 Font-relative sizes and spacing use `rem`; breakpoints use `em`. Borders and focus outlines use `px`. Let text containers grow or wrap instead of clipping enlarged text.
 
@@ -204,7 +204,7 @@ Do not stack shadows or use elevation to indicate focus.
   - The `今日のタスク` / `Today's tasks` cells remain `-` placeholders until Todo-based Project counts exist. Overdue copy uses the overdue color pair. Other deadlines use the existing neutral and attention roles.
 - **Project form**: create `/projects/new` and edit `/projects/:id/edit` use the same form layout. Keep one wide card with a left label column and right input column, row dividers, and a raised footer action bar. Fields: required project title · Goal (WHY) · Details · type · priority · start date · end date. Put Details immediately after Goal (WHY); keep the API fields `goal` and `description`. Initial type is `other`, priority is `low`, and both dates are empty. Do not include weekly work hours or templates. Validate end date against start date but allow past dates. Keep field errors beside their inputs. Save only on explicit submit.
 - **Calendar**: one card with a toolbar (今日 (Today), previous/next, the date range, and a 日/週/月 (Day/Week/Month) segmented control), the week grid, and a legend.
-- **KPI Dashboard**: a period row (週次 (Weekly) select and a stepper), then the summary strip (達成率 (completion rate), 実績時間 (actual time), 予定時間 (planned time), 予定との差異 (variance)). Below it, the chart card 日別の予定と実績 (planned vs. actual by day) next to the table card プロジェクト別 (by project): planned · actual · variance · completion, closed by a totals row and a footnote explaining ▲.
+- **Metrics**: a 7-day / 30-day period switch controls today's Todo completion summaries and a daily planned-versus-completed bar chart. A separate overdue-work panel lists the top five projects and an aggregate for remaining projects. Keep today's partial data labeled; show daily completion ratios in accessible chart details.
 - **Login**: see Forms.
 
 ## Brand Assets
