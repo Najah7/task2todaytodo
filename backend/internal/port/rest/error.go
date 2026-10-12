@@ -30,6 +30,7 @@ const (
 	ActionUpdateBasicInfo           = "update_basic_info"
 	ActionUpdateTimezone            = "update_timezone"
 	ActionUpdateSleepSettings       = "update_sleep_settings"
+	ActionUpdateMinimumGap          = "update_minimum_gap"
 	ActionCreateAllocation          = "create_allocation"
 	ActionGetAllocation             = "get_allocation"
 	ActionUpdateAllocation          = "update_allocation"
@@ -79,6 +80,7 @@ var (
 	ErrSpecUsersUpdateBasicInfoFailed         = NewFailureErrSpec(ResourceUsers, ActionUpdateBasicInfo, "Failed to update user")
 	ErrSpecUsersUpdateTimezoneFailed          = NewFailureErrSpec(ResourceUsers, ActionUpdateTimezone, "Failed to update user timezone")
 	ErrSpecUsersUpdateSleepSettingsFailed     = NewFailureErrSpec(ResourceUsers, ActionUpdateSleepSettings, "Failed to update user sleep settings")
+	ErrSpecUsersUpdateMinimumGapFailed        = NewFailureErrSpec(ResourceUsers, ActionUpdateMinimumGap, "Failed to update user minimum gap")
 	ErrSpecUsersUpdatePasswordFailed          = NewFailureErrSpec(ResourceUsers, ActionUpdatePassword, "Failed to update password")
 	ErrSpecAdminRunFailed                     = NewFailureErrSpec(ResourceAdmin, ActionRun, "Failed to run administrative job")
 	ErrSpecAdminListFailed                    = NewFailureErrSpec(ResourceAdmin, ActionList, "Failed to list operations")

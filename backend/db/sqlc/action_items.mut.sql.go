@@ -11,6 +11,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const completeActionItemWithActualMinutesByTaskAndUserID = `-- name: CompleteActionItemWithActualMinutesByTaskAndUserID :one
+UPDATE action_items AS ai
+SET completed = true, actual_minutes = $1::integer, updated_at = now()
+FROM tasks AS t
+WHERE ai.id = $2::text
+  AND ai.task_id = $3::text
+  AND t.id = ai.task_id
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, $4::text, 'action_item', 'update')
+  AND ai.deleted_at IS NULL
+RETURNING ai.id
+`
+
+type CompleteActionItemWithActualMinutesByTaskAndUserIDParams struct {
+	ActualMinutes pgtype.Int4
+	ID            string
+	TaskID        string
+	UserID        string
+}
+
+func (q *Queries) CompleteActionItemWithActualMinutesByTaskAndUserID(ctx context.Context, arg CompleteActionItemWithActualMinutesByTaskAndUserIDParams) (string, error) {
+	row := q.db.QueryRow(ctx, completeActionItemWithActualMinutesByTaskAndUserID,
+		arg.ActualMinutes,
+		arg.ID,
+		arg.TaskID,
+		arg.UserID,
+	)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const createActionItemByTaskAndUserID = `-- name: CreateActionItemByTaskAndUserID :one
 WITH owned_task AS (
     SELECT t.id
@@ -30,10 +63,11 @@ WITH owned_task AS (
            $7::date, $8::integer,
            $9::text, false, p.position
     FROM owned_task AS t CROSS JOIN next_position AS p
-    RETURNING id, task_id, title, description, due_date, estimated_minutes, priority,
+    RETURNING id, task_id, title, description, due_date, estimated_minutes, actual_minutes,
+              false AS started, true AS estimate_editable, priority,
               completed, position, (deleted_at IS NOT NULL) AS deleted, created_at, updated_at
 )
-SELECT id, task_id, title, description, due_date, estimated_minutes, priority, completed, position, deleted, created_at, updated_at FROM inserted
+SELECT id, task_id, title, description, due_date, estimated_minutes, actual_minutes, started, estimate_editable, priority, completed, position, deleted, created_at, updated_at FROM inserted
 `
 
 type CreateActionItemByTaskAndUserIDParams struct {
@@ -54,7 +88,10 @@ type CreateActionItemByTaskAndUserIDRow struct {
 	Title            string
 	Description      pgtype.Text
 	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
+	EstimatedMinutes int32
+	ActualMinutes    pgtype.Int4
+	Started          bool
+	EstimateEditable bool
 	Priority         string
 	Completed        bool
 	Position         int32
@@ -83,6 +120,9 @@ func (q *Queries) CreateActionItemByTaskAndUserID(ctx context.Context, arg Creat
 		&i.Description,
 		&i.DueDate,
 		&i.EstimatedMinutes,
+		&i.ActualMinutes,
+		&i.Started,
+		&i.EstimateEditable,
 		&i.Priority,
 		&i.Completed,
 		&i.Position,
@@ -160,11 +200,13 @@ WITH target AS (
 ), updated AS (
     UPDATE action_items ai SET position = reordered.new_position, updated_at = now()
     FROM reordered WHERE ai.id = reordered.id
-    RETURNING ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+    RETURNING ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes, ai.actual_minutes,
+              EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS started,
+              NOT ai.completed AND NOT EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS estimate_editable,
               ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
               ai.created_at, ai.updated_at
 )
-SELECT updated.id, updated.task_id, updated.title, updated.description, updated.due_date, updated.estimated_minutes, updated.priority, updated.completed, updated.position, updated.deleted, updated.created_at, updated.updated_at FROM updated JOIN target ON target.id = updated.id
+SELECT updated.id, updated.task_id, updated.title, updated.description, updated.due_date, updated.estimated_minutes, updated.actual_minutes, updated.started, updated.estimate_editable, updated.priority, updated.completed, updated.position, updated.deleted, updated.created_at, updated.updated_at FROM updated JOIN target ON target.id = updated.id
 `
 
 type ReorderActionItemsByTaskAndUserIDParams struct {
@@ -180,7 +222,10 @@ type ReorderActionItemsByTaskAndUserIDRow struct {
 	Title            string
 	Description      pgtype.Text
 	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
+	EstimatedMinutes int32
+	ActualMinutes    pgtype.Int4
+	Started          bool
+	EstimateEditable pgtype.Bool
 	Priority         string
 	Completed        bool
 	Position         int32
@@ -204,6 +249,9 @@ func (q *Queries) ReorderActionItemsByTaskAndUserID(ctx context.Context, arg Reo
 		&i.Description,
 		&i.DueDate,
 		&i.EstimatedMinutes,
+		&i.ActualMinutes,
+		&i.Started,
+		&i.EstimateEditable,
 		&i.Priority,
 		&i.Completed,
 		&i.Position,
@@ -216,7 +264,9 @@ func (q *Queries) ReorderActionItemsByTaskAndUserID(ctx context.Context, arg Reo
 
 const setActionItemCompletedByTaskAndUserID = `-- name: SetActionItemCompletedByTaskAndUserID :one
 UPDATE action_items AS ai
-SET completed = $1, updated_at = now()
+SET completed = $1,
+    actual_minutes = CASE WHEN $1::boolean THEN ai.actual_minutes ELSE NULL END,
+    updated_at = now()
 FROM tasks AS t
 WHERE ai.id = $2::text
   AND ai.task_id = $3::text
@@ -253,18 +303,21 @@ SET title = $1,
     description = $2,
     due_date = $3,
     estimated_minutes = $4,
-    priority = $5,
-    position = $6,
+    actual_minutes = $5,
+    priority = $6,
+    position = $7,
     updated_at = now()
 FROM tasks AS t
-WHERE ai.id = $7::text
-  AND ai.task_id = $8::text
+WHERE ai.id = $8::text
+  AND ai.task_id = $9::text
   AND t.id = ai.task_id
   AND t.deleted_at IS NULL
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
-  AND task_has_permission(t.id, $9::text, 'action_item', 'update')
+  AND task_has_permission(t.id, $10::text, 'action_item', 'update')
   AND ai.deleted_at IS NULL
-RETURNING ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+RETURNING ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes, ai.actual_minutes,
+          EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS started,
+       NOT ai.completed AND NOT EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS estimate_editable,
           ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
           ai.created_at, ai.updated_at
 `
@@ -274,6 +327,7 @@ type UpdateActionItemByTaskAndUserIDParams struct {
 	Description      pgtype.Text
 	DueDate          pgtype.Date
 	EstimatedMinutes pgtype.Int4
+	ActualMinutes    pgtype.Int4
 	Priority         string
 	Position         int32
 	ID               string
@@ -287,7 +341,10 @@ type UpdateActionItemByTaskAndUserIDRow struct {
 	Title            string
 	Description      pgtype.Text
 	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
+	EstimatedMinutes int32
+	ActualMinutes    pgtype.Int4
+	Started          bool
+	EstimateEditable pgtype.Bool
 	Priority         string
 	Completed        bool
 	Position         int32
@@ -302,6 +359,7 @@ func (q *Queries) UpdateActionItemByTaskAndUserID(ctx context.Context, arg Updat
 		arg.Description,
 		arg.DueDate,
 		arg.EstimatedMinutes,
+		arg.ActualMinutes,
 		arg.Priority,
 		arg.Position,
 		arg.ID,
@@ -316,6 +374,9 @@ func (q *Queries) UpdateActionItemByTaskAndUserID(ctx context.Context, arg Updat
 		&i.Description,
 		&i.DueDate,
 		&i.EstimatedMinutes,
+		&i.ActualMinutes,
+		&i.Started,
+		&i.EstimateEditable,
 		&i.Priority,
 		&i.Completed,
 		&i.Position,

@@ -62,6 +62,39 @@ SELECT (CASE
   )
 END)::boolean;
 
+-- name: ListScheduleTodoImpactUsers :many
+WITH existing_assignees AS (
+    SELECT assignee_id FROM schedules
+    WHERE rule_id = sqlc.arg(rule_id)::text AND (
+        sqlc.narg(occurrence_date)::date IS NULL OR
+        (sqlc.arg(following)::boolean AND occurrence_date >= sqlc.narg(occurrence_date)::date) OR
+        (NOT sqlc.arg(following)::boolean AND occurrence_date = sqlc.narg(occurrence_date)::date)
+    )
+    UNION ALL
+    SELECT assignee_id FROM schedule_exceptions
+    WHERE rule_id = sqlc.arg(rule_id)::text AND (
+        sqlc.narg(occurrence_date)::date IS NULL OR
+        (sqlc.arg(following)::boolean AND occurrence_date >= sqlc.narg(occurrence_date)::date) OR
+        (NOT sqlc.arg(following)::boolean AND occurrence_date = sqlc.narg(occurrence_date)::date)
+    )
+    UNION ALL
+    SELECT assignee_id FROM schedule_rule_revisions
+    WHERE rule_id = sqlc.arg(rule_id)::text AND (
+        sqlc.narg(occurrence_date)::date IS NULL OR
+        (sqlc.arg(following)::boolean AND (effective_from >= sqlc.narg(occurrence_date)::date OR
+            (effective_from <= sqlc.narg(occurrence_date)::date AND (cutoff_after IS NULL OR cutoff_after >= sqlc.narg(occurrence_date)::date)))) OR
+        (NOT sqlc.arg(following)::boolean AND effective_from <= sqlc.narg(occurrence_date)::date AND (cutoff_after IS NULL OR cutoff_after >= sqlc.narg(occurrence_date)::date))
+    )
+), proposed_assignee AS (
+    SELECT COALESCE(NULLIF(sqlc.narg(assignee_id)::text, ''), project.user_id, sqlc.arg(actor_id)::text) AS assignee_id
+    FROM (SELECT 1) AS seed
+    LEFT JOIN projects AS project ON project.id = sqlc.narg(project_id)::text AND project.deleted_at IS NULL
+)
+SELECT DISTINCT assignee_id
+FROM (SELECT assignee_id FROM existing_assignees UNION ALL SELECT assignee_id FROM proposed_assignee) users
+WHERE assignee_id <> ''
+ORDER BY assignee_id;
+
 -- name: ListEligibleScheduleRuleAssignees :many
 WITH current_revision AS (
     SELECT revision.* FROM schedule_rule_revisions revision

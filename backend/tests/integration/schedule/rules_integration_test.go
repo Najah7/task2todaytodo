@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -18,6 +19,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/tests/integration/internal/testdb"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/oklog/ulid/v2"
 )
@@ -50,6 +52,10 @@ func (u ruleTestUOW) Do(ctx context.Context, fn func(context.Context, usecase.Re
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+func (u ruleTestUOW) DoWithTodoImpact(ctx context.Context, _ usecase.TodoImpactScope, _ bool, fn func(context.Context, usecase.Repositories) error) error {
+	return u.Do(ctx, fn)
 }
 
 func (ruleProjectLifecycle) LockParent(context.Context, string) error { return nil }
@@ -128,16 +134,17 @@ func TestRuleCreateAndVirtualListDoesNotPersistRecurringRows(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT id FROM schedules WHERE rule_id=$1`, once.ID).Scan(&concreteScheduleID); err != nil {
 		t.Fatalf("read concrete one-off schedule: %v", err)
 	}
-	todoListID := ulid.Make().String()
-	if _, err := pool.Exec(ctx, `INSERT INTO todo_lists(id,user_id,list_date) VALUES($1,$2,$3)`, todoListID, userID, time.Now().UTC().Format("2006-01-02")); err != nil {
-		t.Fatalf("create TodoList: %v", err)
+	todoID := ulid.Make().String()
+	occurrenceDate := onceStart.Format("2006-01-02")
+	if _, err := pool.Exec(ctx, `INSERT INTO todos(id,user_id,todo_date,timezone) VALUES($1,$2,$3,'Asia/Tokyo')`, todoID, userID, occurrenceDate); err != nil {
+		t.Fatalf("create Todo: %v", err)
 	}
-	if _, err := sqlc.New(pool).AddTodoListSchedule(ctx, sqlc.AddTodoListScheduleParams{TodoListID: todoListID, ScheduleID: concreteScheduleID}); err != nil {
-		t.Fatalf("link independent concrete Schedule into TodoList: %v", err)
+	if _, err := pool.Exec(ctx, `INSERT INTO todo_items(id,todo_id,kind,schedule_rule_id,occurrence_date,scheduled_start,scheduled_end,position) VALUES($1,$2,'schedule',$3,$4,$5,$6,0)`, ulid.Make().String(), todoID, once.ID, occurrenceDate, onceStart.UTC(), onceStart.Add(time.Hour).UTC()); err != nil {
+		t.Fatalf("link recurring identity into Todo: %v", err)
 	}
-	linked, err := sqlc.New(pool).ListTodoListSchedules(ctx, todoListID)
-	if err != nil || len(linked) != 1 || linked[0].ScheduleID != concreteScheduleID {
-		t.Fatalf("TodoList Schedule links=%v, err=%v; want concrete occurrence %s", linked, err, concreteScheduleID)
+	var linkedRuleID string
+	if err := pool.QueryRow(ctx, `SELECT schedule_rule_id FROM todo_items WHERE todo_id=$1 AND occurrence_date=$2`, todoID, occurrenceDate).Scan(&linkedRuleID); err != nil || linkedRuleID != once.ID {
+		t.Fatalf("Todo Schedule link=%q, err=%v; want stable rule %s", linkedRuleID, err, once.ID)
 	}
 
 	list := usecase.NewListOccurrencesUseCase(uow)
@@ -164,6 +171,81 @@ func TestRuleCreateAndVirtualListDoesNotPersistRecurringRows(t *testing.T) {
 	}
 	if recurringRows != 0 {
 		t.Fatalf("read-only list persisted %d recurring rows", recurringRows)
+	}
+}
+
+func TestScheduleTodoImpactUsersUsesProjectOwnerWhenAssigneeOmitted(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := t.Context()
+	ownerID := createScheduleTestUser(t, pool)
+	projectID := ulid.Make().String()
+	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,status,changed_by) VALUES($1,$2,'other','Schedule impact owner','low','open',$2)`, projectID, ownerID); err != nil {
+		t.Fatalf("create Project: %v", err)
+	}
+	users, err := sqlc.New(pool).ListScheduleTodoImpactUsers(ctx, sqlc.ListScheduleTodoImpactUsersParams{
+		RuleID: ulid.Make().String(), OccurrenceDate: pgtype.Date{Time: time.Now().UTC(), Valid: true},
+		AssigneeID: pgtype.Text{}, ActorID: ownerID, ProjectID: pgtype.Text{String: projectID, Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("resolve impact users: %v", err)
+	}
+	if !reflect.DeepEqual(users, []string{ownerID}) {
+		t.Fatalf("impact users=%v, want Project owner %q", users, ownerID)
+	}
+}
+
+func TestScheduleTodoImpactUsersIncludesExceptionAssignee(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := t.Context()
+	ownerID := createScheduleTestUser(t, pool)
+	oldAssigneeID := createScheduleTestUser(t, pool)
+	exceptionAssigneeID := createScheduleTestUser(t, pool)
+	projectID := ulid.Make().String()
+	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,status,changed_by) VALUES($1,$2,'other','Schedule exception impact','low','open',$2)`, projectID, ownerID); err != nil {
+		t.Fatalf("create Project: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO project_members(project_id,user_id,role_id,added_by) VALUES($1,$2,'editor',$3),($1,$4,'editor',$3)`, projectID, oldAssigneeID, ownerID, exceptionAssigneeID); err != nil {
+		t.Fatalf("add Schedule assignees: %v", err)
+	}
+	uow := ruleTestUOW{pool: pool}
+	now := time.Now()
+	location, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	localNow := now.In(location)
+	localDate := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
+	start := localDate.Add(10 * time.Hour)
+	rule, err := usecase.NewCreateRuleUseCase(uow, (ruleTestIDs{}).Generate, ruleTimezoneValidator{queries: sqlc.New(pool)}, nil, func() time.Time { return now }).Execute(ctx, ownerID, usecase.CreateRuleInput{
+		Title: "Schedule with exception assignee", ProjectID: projectID, AssigneeID: oldAssigneeID,
+		Timezone: "Asia/Tokyo", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "once",
+	})
+	if err != nil {
+		t.Fatalf("create Schedule rule: %v", err)
+	}
+	occurrenceDate := start.Format("2006-01-02")
+	movedStart := start.Add(2 * time.Hour)
+	if _, err := usecase.NewRescheduleOccurrenceUseCase(uow, nil, (ruleTestIDs{}).Generate).Execute(ctx, ownerID, rule.ID, occurrenceDate, movedStart, movedStart.Add(time.Hour), 1); err != nil {
+		t.Fatalf("create occurrence exception: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE schedule_exceptions SET assignee_id=$1 WHERE rule_id=$2 AND occurrence_date=$3`, exceptionAssigneeID, rule.ID, occurrenceDate); err != nil {
+		t.Fatalf("set exception assignee: %v", err)
+	}
+	date, err := time.Parse("2006-01-02", occurrenceDate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	users, err := sqlc.New(pool).ListScheduleTodoImpactUsers(ctx, sqlc.ListScheduleTodoImpactUsersParams{
+		RuleID: rule.ID, OccurrenceDate: pgtype.Date{Time: date, Valid: true}, Following: false,
+		AssigneeID: pgtype.Text{}, ActorID: ownerID, ProjectID: pgtype.Text{String: projectID, Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("resolve Schedule impact users: %v", err)
+	}
+	want := []string{ownerID, oldAssigneeID, exceptionAssigneeID}
+	sort.Strings(want)
+	if !reflect.DeepEqual(users, want) {
+		t.Fatalf("Schedule impact users=%v, want owner, rule assignee, and exception assignee %v", users, want)
 	}
 }
 

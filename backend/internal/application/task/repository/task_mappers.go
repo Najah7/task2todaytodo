@@ -34,34 +34,26 @@ func recordsToActionItemsForTaskRows(records []sqlc.ListActionItemsByTaskForUser
 	items := make([]dao.ActionItem, 0, len(records))
 	for _, record := range records {
 		items = append(items, actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
-			record.DueDate, record.EstimatedMinutes, record.Priority, record.Completed,
+			record.DueDate, record.EstimatedMinutes, record.ActualMinutes, record.Started, sqlcBoolean(record.EstimateEditable), record.Priority, record.Completed,
 			record.Position, false, record.CreatedAt, record.UpdatedAt))
 	}
 	return items
 }
 
 func actionItemDAO(id, taskID, title string, description pgtype.Text, dueDate pgtype.Date,
-	estimatedMinutes pgtype.Int4, priority string, completed bool, position int32,
+	estimatedMinutes int32, actualMinutes pgtype.Int4, started, estimateEditable bool, priority string, completed bool, position int32,
 	deleted bool, createdAt, updatedAt pgtype.Timestamptz) dao.ActionItem {
 	return dao.ActionItem{
 		ID: id, TaskID: taskID, Title: title, Description: pgTextString(description), DueDate: pgDateUnix(dueDate),
-		EstimatedMinutes: pgIntPointer(estimatedMinutes), Priority: dao.Priority{Value: priority},
+		EstimatedMinutes: int32Pointer(estimatedMinutes), ActualMinutes: pgIntPointer(actualMinutes), Started: started, EstimateEditable: estimateEditable, Priority: dao.Priority{Value: priority},
 		Completed: completed, Position: int(position), Deleted: deleted,
 		CreatedAt: pgUnix(createdAt), UpdatedAt: pgUnix(updatedAt),
 	}
 }
 
-func recordToTodoList(record sqlc.TodoList) dao.TodoList {
-	return dao.TodoList{ID: record.ID, UserID: record.UserID, ListDate: pgDateUnix(record.ListDate),
-		CreatedAt: pgUnix(record.CreatedAt), UpdatedAt: pgUnix(record.UpdatedAt)}
-}
-
-func recordsToTodoLists(records []sqlc.TodoList) []dao.TodoList {
-	lists := make([]dao.TodoList, 0, len(records))
-	for _, record := range records {
-		lists = append(lists, recordToTodoList(record))
-	}
-	return lists
+func int32Pointer(value int32) *int {
+	converted := int(value)
+	return &converted
 }
 
 func pgTextString(value pgtype.Text) string {
@@ -72,8 +64,14 @@ func pgTextString(value pgtype.Text) string {
 }
 
 func sqlcBoolean(value interface{}) bool {
-	boolean, _ := value.(bool)
-	return boolean
+	switch boolean := value.(type) {
+	case bool:
+		return boolean
+	case pgtype.Bool:
+		return boolean.Valid && boolean.Bool
+	default:
+		return false
+	}
 }
 
 func pgIntPointer(value pgtype.Int4) *int {

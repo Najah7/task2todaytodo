@@ -17,7 +17,8 @@ WITH owned_task AS (
            sqlc.narg(due_date)::date, sqlc.narg(estimated_minutes)::integer,
            sqlc.arg(priority)::text, false, p.position
     FROM owned_task AS t CROSS JOIN next_position AS p
-    RETURNING id, task_id, title, description, due_date, estimated_minutes, priority,
+    RETURNING id, task_id, title, description, due_date, estimated_minutes, actual_minutes,
+              false AS started, true AS estimate_editable, priority,
               completed, position, (deleted_at IS NOT NULL) AS deleted, created_at, updated_at
 )
 SELECT * FROM inserted;
@@ -28,6 +29,7 @@ SET title = sqlc.arg(title),
     description = sqlc.narg(description),
     due_date = sqlc.narg(due_date),
     estimated_minutes = sqlc.narg(estimated_minutes),
+    actual_minutes = sqlc.narg(actual_minutes),
     priority = sqlc.arg(priority),
     position = sqlc.arg(position),
     updated_at = now()
@@ -39,13 +41,30 @@ WHERE ai.id = sqlc.arg(id)::text
   AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
   AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'action_item', 'update')
   AND ai.deleted_at IS NULL
-RETURNING ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+RETURNING ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes, ai.actual_minutes,
+          EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS started,
+       NOT ai.completed AND NOT EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS estimate_editable,
           ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
           ai.created_at, ai.updated_at;
 
 -- name: SetActionItemCompletedByTaskAndUserID :one
 UPDATE action_items AS ai
-SET completed = sqlc.arg(completed), updated_at = now()
+SET completed = sqlc.arg(completed),
+    actual_minutes = CASE WHEN sqlc.arg(completed)::boolean THEN ai.actual_minutes ELSE NULL END,
+    updated_at = now()
+FROM tasks AS t
+WHERE ai.id = sqlc.arg(id)::text
+  AND ai.task_id = sqlc.arg(task_id)::text
+  AND t.id = ai.task_id
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL))
+  AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'action_item', 'update')
+  AND ai.deleted_at IS NULL
+RETURNING ai.id;
+
+-- name: CompleteActionItemWithActualMinutesByTaskAndUserID :one
+UPDATE action_items AS ai
+SET completed = true, actual_minutes = sqlc.narg(actual_minutes)::integer, updated_at = now()
 FROM tasks AS t
 WHERE ai.id = sqlc.arg(id)::text
   AND ai.task_id = sqlc.arg(task_id)::text
@@ -109,7 +128,9 @@ WITH target AS (
 ), updated AS (
     UPDATE action_items ai SET position = reordered.new_position, updated_at = now()
     FROM reordered WHERE ai.id = reordered.id
-    RETURNING ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+    RETURNING ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes, ai.actual_minutes,
+              EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS started,
+              NOT ai.completed AND NOT EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS estimate_editable,
               ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
               ai.created_at, ai.updated_at
 )

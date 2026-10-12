@@ -2,11 +2,14 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
+	authdomain "github.com/Najah7/task2todaytodo/internal/application/auth/domain"
 	authusecase "github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
 	"github.com/Najah7/task2todaytodo/internal/port/rest"
+	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 const bearerPrefix = "Bearer "
@@ -29,7 +32,11 @@ func NewAuthMiddleware(authenticate *authusecase.AuthenticateUseCase) func(http.
 			ctx := r.Context()
 			userID, err := authenticate.Execute(ctx, token)
 			if err != nil {
-				rest.WriteError(w, http.StatusUnauthorized, rest.ErrSpecAuthAuthenticateFailed, rest.ErrDetailInvalidPersonalAccessToken)
+				if invalidPersonalAccessToken(err) {
+					rest.WriteError(w, http.StatusUnauthorized, rest.ErrSpecAuthAuthenticateFailed, rest.ErrDetailInvalidPersonalAccessToken)
+					return
+				}
+				rest.WriteError(w, http.StatusInternalServerError, rest.ErrSpecAuthAuthenticateFailed, rest.ErrDetailInternalServerError)
 				return
 			}
 
@@ -38,4 +45,13 @@ func NewAuthMiddleware(authenticate *authusecase.AuthenticateUseCase) func(http.
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func invalidPersonalAccessToken(err error) bool {
+	return telemetry.IsNotFound(err) ||
+		errors.Is(err, authdomain.ErrPersonalAccessTokenEmpty) ||
+		errors.Is(err, authdomain.ErrPersonalAccessTokenUserIDEmpty) ||
+		errors.Is(err, authdomain.ErrPersonalAccessTokenExpiresAtInvalid) ||
+		errors.Is(err, authdomain.ErrPersonalAccessTokenRevoked) ||
+		errors.Is(err, authdomain.ErrPersonalAccessTokenExpired)
 }

@@ -284,7 +284,7 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 		task, position int
 		completed      bool
 	}{{task: 0, position: 0}, {task: 1, position: 0, completed: true}, {task: 1, position: 1}} {
-		if _, err := fixture.tx.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,completed) VALUES($1,$2,$3,$4,$5)`, actionItemIDs[i], taskIDs[item.task], "Action item", item.position, item.completed); err != nil {
+		if _, err := fixture.tx.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,completed,estimated_minutes) VALUES($1,$2,$3,$4,$5,10)`, actionItemIDs[i], taskIDs[item.task], "Action item", item.position, item.completed); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -307,7 +307,7 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 	if err := taskDelete.Execute(ctx, taskdomain.UserID(fixture.ownerID), taskdomain.TaskID(taskIDs[0]), 1); err != nil {
 		t.Fatalf("individually delete Task: %v", err)
 	}
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleUOW := newProjectScheduleUOW(pool, store)
 	scheduleDelete := scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "delete", nil, (projectActionItemID{}).Generate)
 	if err := scheduleDelete.Execute(ctx, fixture.ownerID, ruleIDs[0], "2026-10-08", 1); err != nil {
 		t.Fatalf("individually delete Schedule: %v", err)

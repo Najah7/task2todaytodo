@@ -19,7 +19,7 @@ var taskPriorities = map[string]TaskPriority{
 	"high":    {Value: "high", Label: "High", LabelJp: "高", Weight: 50},
 	"medium":  {Value: "medium", Label: "Medium", LabelJp: "中", Weight: 25},
 	"low":     {Value: "low", Label: "Low", LabelJp: "低", Weight: 10},
-	"someday": {Value: "someday", Label: "Someday", LabelJp: "いつか", Weight: 0},
+	"someday": {Value: "someday", Label: "Someday", LabelJp: "いつか", Weight: 1},
 }
 
 func NewTaskPriority(priority string) (TaskPriority, error) {

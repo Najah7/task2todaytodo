@@ -103,11 +103,13 @@ func newCreateTaskInProjectFakes() (*createTaskInProjectUOWFake, *createTaskInPr
 }
 
 func validCreateTaskInProjectInput() CreateTaskInProjectInput {
+	estimate := 60
 	return CreateTaskInProjectInput{
-		ID:        domain.TaskID("task-1"),
-		UserID:    domain.UserID("user-1"),
-		ProjectID: domain.ProjectID("project-1"),
-		Title:     "Task title",
+		ID:               domain.TaskID("task-1"),
+		UserID:           domain.UserID("user-1"),
+		ProjectID:        domain.ProjectID("project-1"),
+		Title:            "Task title",
+		EstimatedMinutes: &estimate,
 	}
 }
 

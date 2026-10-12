@@ -565,13 +565,14 @@ SET title = $1,
     manual_estimated_minutes = $4,
     actual_minutes = $5,
     priority = $6,
-    project_id = $7,
-    assignee_id = $8::text,
-    changed_by = $9::text
-WHERE id = $10
+    status = $7,
+    project_id = $8,
+    assignee_id = $9::text,
+    changed_by = $10::text
+WHERE id = $11
   AND deleted_at IS NULL
-  AND revision = $11::integer
-  AND task_has_permission(id, $9::text, 'task', 'update')
+  AND revision = $12::integer
+  AND task_has_permission(id, $10::text, 'task', 'update')
 RETURNING id, user_id, project_id, assignee_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status, revision, deleted_at, changed_by, created_at, updated_at
 `
 
@@ -582,6 +583,7 @@ type UpdateTaskByUserIDParams struct {
 	ManualEstimatedMinutes pgtype.Int4
 	ActualMinutes          pgtype.Int4
 	Priority               string
+	Status                 string
 	ProjectID              pgtype.Text
 	AssigneeID             string
 	UserID                 string
@@ -597,6 +599,7 @@ func (q *Queries) UpdateTaskByUserID(ctx context.Context, arg UpdateTaskByUserID
 		arg.ManualEstimatedMinutes,
 		arg.ActualMinutes,
 		arg.Priority,
+		arg.Status,
 		arg.ProjectID,
 		arg.AssigneeID,
 		arg.UserID,

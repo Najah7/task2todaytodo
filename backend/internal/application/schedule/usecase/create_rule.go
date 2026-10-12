@@ -105,7 +105,10 @@ func (uc *CreateRuleUseCase) Execute(ctx context.Context, actorID string, input 
 		RevisionID: revisionID, ChangedBy: actorID,
 	}
 	asOf := uc.now().UTC()
-	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
+	err = doWithTodoImpact(ctx, uc.uow, TodoImpactScope{
+		ActorID: actorID, RuleID: ruleID, OccurrenceDate: startDate.Format("2006-01-02"),
+		Following: definition.Frequency != domain.FrequencyOnce, ProjectID: definition.ProjectID, AssigneeID: definition.AssigneeID,
+	}, input.ConfirmTodoRegeneration, func(ctx context.Context, repos Repositories) error {
 		var before *shared.ProjectWorkState
 		if definition.ProjectID != "" {
 			if err := repos.Schedules().LockProjectForScheduleMutation(ctx, domain.ProjectID(definition.ProjectID)); err != nil {

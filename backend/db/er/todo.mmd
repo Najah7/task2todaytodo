@@ -1,0 +1,55 @@
+erDiagram
+    %% Tables created by 000005_todo.up.sql.
+    %% External references: users (auth.mmd), tasks/action_items (task.mmd), schedule_rules (schedule.mmd).
+    %% Schedule items identify virtual or persisted occurrences by (schedule_rule_id, occurrence_date).
+
+    users {
+        text id PK "NOT NULL"
+    }
+
+    action_items {
+        text id PK "NOT NULL"
+    }
+
+    tasks {
+        text id PK "NOT NULL"
+    }
+
+    schedule_rules {
+        text id PK "NOT NULL"
+    }
+
+    todos {
+        text id PK "NOT NULL"
+        text user_id FK "NOT NULL"
+        date todo_date "NOT NULL"
+        text timezone FK "NOT NULL"
+        integer revision "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    todo_items {
+        text id PK "NOT NULL"
+        text todo_id FK "NOT NULL"
+        text kind "NOT NULL: task | action_item | schedule"
+        text task_id FK "NULL"
+        text action_item_id FK "NULL"
+        text schedule_rule_id FK "NULL"
+        date occurrence_date "NULL"
+        integer planned_minutes "NULL for Schedule; positive for Task/ActionItem"
+        timestamptz scheduled_start "NULL for unscheduled ActionItem"
+        timestamptz scheduled_end "NULL for unscheduled ActionItem"
+        boolean completed "NOT NULL"
+        boolean hidden "NOT NULL"
+        integer position "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    users ||..o{ todos : owns
+    timezone_master ||..o{ todos : local_timezone
+    todos ||--o{ todo_items : contains
+    action_items |o..o{ todo_items : action_item_source
+    tasks |o..o{ todo_items : direct_task_source
+    schedule_rules |o..o{ todo_items : schedule_occurrence_source

@@ -37,7 +37,13 @@ func (uc *UpdateOccurrenceUseCase) Execute(ctx context.Context, actorID, ruleID,
 
 func (uc *UpdateOccurrenceUseCase) execute(ctx context.Context, actorID, ruleID, occurrenceDate string, input UpdateScheduleInput, expectedRevision int32, operation string) (output dao.ScheduleOccurrence, err error) {
 	defer func() { logUnexpectedScheduleFailure(uc.logger, ctx, "UpdateOccurrenceUseCase.Execute", err) }()
-	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
+	newAssignee := ""
+	if input.AssigneeID != nil {
+		newAssignee = *input.AssigneeID
+	}
+	err = doWithTodoImpact(ctx, uc.uow, TodoImpactScope{
+		ActorID: actorID, RuleID: ruleID, OccurrenceDate: occurrenceDate, AssigneeID: newAssignee,
+	}, input.ConfirmTodoRegeneration, func(ctx context.Context, repos Repositories) error {
 		capability := occurrenceUpdateCapability(input)
 		initial, err := resolveOccurrenceForMutation(ctx, repos.Rules(), actorID, ruleID, occurrenceDate, capability, false)
 		if err != nil {

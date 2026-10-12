@@ -536,7 +536,8 @@ CREATE TABLE users (
     updated_at timestamptz NOT NULL DEFAULT now(),
     timezone text NOT NULL DEFAULT 'Asia/Tokyo' REFERENCES timezone_master(timezone) ON DELETE RESTRICT,
     wake_up_time time NOT NULL DEFAULT TIME '07:00',
-    bedtime time NOT NULL DEFAULT TIME '23:00'
+    bedtime time NOT NULL DEFAULT TIME '23:00',
+    minimum_gap_minutes integer NOT NULL DEFAULT 5 CHECK (minimum_gap_minutes BETWEEN 0 AND 1440)
 );
 
 CREATE TABLE roles (

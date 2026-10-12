@@ -102,7 +102,7 @@ func occurrenceCursorAnchor(anchor *listAnchor) *scheduleusecase.CursorAnchor {
 //	@Tags		Schedules
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		rule_id	path		string	true	"Rule ID"
+//	@Param		rule_id			path		string	true	"Rule ID"
 //	@Param		occurrence_date	path		string	true	"Original local occurrence date"
 //	@Success	200				{object}	ScheduleOccurrenceResponse
 //	@Router		/schedules/{rule_id}/{occurrence_date} [get]
@@ -152,7 +152,7 @@ type ScheduleOccurrenceRevisionResponse struct {
 //	@Tags		Schedules
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		rule_id	path		string	true	"Rule ID"
+//	@Param		rule_id			path		string	true	"Rule ID"
 //	@Param		occurrence_date	path		string	true	"Original local occurrence date"
 //	@Param		page_size		query		int		false	"Items per page"
 //	@Param		page_token		query		string	false	"Opaque page token"
@@ -203,7 +203,7 @@ func (h *ScheduleHandler) ListOccurrenceRevisions(w http.ResponseWriter, r *http
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		rule_id	path		string							true	"Rule ID"
+//	@Param		rule_id			path		string							true	"Rule ID"
 //	@Param		occurrence_date	path		string							true	"Original local occurrence date"
 //	@Param		If-Match		header		string							true	"Current occurrence revision, or 0 for a virtual occurrence"
 //	@Param		request			body		ScheduleOccurrenceUpdateRequest	true	"Occurrence fields"
@@ -247,7 +247,7 @@ func (h *ScheduleHandler) UpdateOccurrence(w http.ResponseWriter, r *http.Reques
 //	@Summary	Complete schedule occurrence
 //	@Tags		Schedules
 //	@Security	BearerAuth
-//	@Param		rule_id	path	string	true	"Rule ID"
+//	@Param		rule_id			path	string	true	"Rule ID"
 //	@Param		occurrence_date	path	string	true	"Original local occurrence date"
 //	@Param		If-Match		header	string	true	"Current occurrence revision, or 0 for a virtual occurrence"
 //	@Success	204
@@ -261,7 +261,7 @@ func (h *ScheduleHandler) CompleteOccurrence(w http.ResponseWriter, r *http.Requ
 //	@Summary	Reopen schedule occurrence
 //	@Tags		Schedules
 //	@Security	BearerAuth
-//	@Param		rule_id	path	string	true	"Rule ID"
+//	@Param		rule_id			path	string	true	"Rule ID"
 //	@Param		occurrence_date	path	string	true	"Original local occurrence date"
 //	@Param		If-Match		header	string	true	"Current occurrence revision, or 0 for a virtual occurrence"
 //	@Success	204
@@ -275,9 +275,10 @@ func (h *ScheduleHandler) ReopenOccurrence(w http.ResponseWriter, r *http.Reques
 //	@Summary	Skip schedule occurrence
 //	@Tags		Schedules
 //	@Security	BearerAuth
-//	@Param		rule_id	path	string	true	"Rule ID"
-//	@Param		occurrence_date	path	string	true	"Original local occurrence date"
-//	@Param		If-Match		header	string	true	"Current occurrence revision, or 0 for a virtual occurrence"
+//	@Param		rule_id						path	string	true	"Rule ID"
+//	@Param		occurrence_date				path	string	true	"Original local occurrence date"
+//	@Param		If-Match					header	string	true	"Current occurrence revision, or 0 for a virtual occurrence"
+//	@Param		confirm_todo_regeneration	query	bool	false	"Confirm regeneration of affected Todos"
 //	@Success	204
 //	@Router		/schedules/{rule_id}/{occurrence_date}:skip [post]
 func (h *ScheduleHandler) SkipOccurrence(w http.ResponseWriter, r *http.Request) {
@@ -289,9 +290,10 @@ func (h *ScheduleHandler) SkipOccurrence(w http.ResponseWriter, r *http.Request)
 //	@Summary	Restore schedule occurrence
 //	@Tags		Schedules
 //	@Security	BearerAuth
-//	@Param		rule_id	path	string	true	"Rule ID"
-//	@Param		occurrence_date	path	string	true	"Original local occurrence date"
-//	@Param		If-Match		header	string	true	"Current occurrence revision, or 0 for a virtual occurrence"
+//	@Param		rule_id						path	string	true	"Rule ID"
+//	@Param		occurrence_date				path	string	true	"Original local occurrence date"
+//	@Param		If-Match					header	string	true	"Current occurrence revision, or 0 for a virtual occurrence"
+//	@Param		confirm_todo_regeneration	query	bool	false	"Confirm regeneration of affected Todos"
 //	@Success	204
 //	@Router		/schedules/{rule_id}/{occurrence_date}:restore [post]
 func (h *ScheduleHandler) RestoreOccurrence(w http.ResponseWriter, r *http.Request) {
@@ -303,9 +305,10 @@ func (h *ScheduleHandler) RestoreOccurrence(w http.ResponseWriter, r *http.Reque
 //	@Summary	Delete schedule occurrence
 //	@Tags		Schedules
 //	@Security	BearerAuth
-//	@Param		rule_id	path	string	true	"Rule ID"
-//	@Param		occurrence_date	path	string	true	"Original local occurrence date"
-//	@Param		If-Match		header	string	true	"Current occurrence revision, or 0 for a virtual occurrence"
+//	@Param		rule_id						path	string	true	"Rule ID"
+//	@Param		occurrence_date				path	string	true	"Original local occurrence date"
+//	@Param		If-Match					header	string	true	"Current occurrence revision, or 0 for a virtual occurrence"
+//	@Param		confirm_todo_regeneration	query	bool	false	"Confirm regeneration of affected Todos"
 //	@Success	204
 //	@Router		/schedules/{rule_id}/{occurrence_date} [delete]
 func (h *ScheduleHandler) DeleteOccurrence(w http.ResponseWriter, r *http.Request) {
@@ -331,7 +334,7 @@ func (h *ScheduleHandler) setOccurrenceState(w http.ResponseWriter, r *http.Requ
 		WriteError(w, http.StatusInternalServerError, spec, ErrDetailInternalServerError)
 		return
 	}
-	if err := uc.Execute(r.Context(), string(actor), ruleID, occurrenceDate, expected); err != nil {
+	if err := uc.Execute(r.Context(), string(actor), ruleID, occurrenceDate, expected, r.URL.Query().Get("confirm_todo_regeneration") == "true"); err != nil {
 		writeScheduleUseCaseError(w, spec, err)
 		return
 	}
@@ -339,8 +342,9 @@ func (h *ScheduleHandler) setOccurrenceState(w http.ResponseWriter, r *http.Requ
 }
 
 type ScheduleOccurrenceRescheduleRequest struct {
-	StartAt *string `json:"start_at"`
-	EndAt   *string `json:"end_at"`
+	StartAt                 *string `json:"start_at"`
+	EndAt                   *string `json:"end_at"`
+	ConfirmTodoRegeneration bool    `json:"confirm_todo_regeneration"`
 }
 
 // RescheduleOccurrence moves one concrete occurrence.
@@ -350,7 +354,7 @@ type ScheduleOccurrenceRescheduleRequest struct {
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		rule_id	path		string								true	"Rule ID"
+//	@Param		rule_id			path		string								true	"Rule ID"
 //	@Param		occurrence_date	path		string								true	"Original local occurrence date"
 //	@Param		If-Match		header		string								true	"Current occurrence revision, or 0 for a virtual occurrence"
 //	@Param		request			body		ScheduleOccurrenceRescheduleRequest	true	"New interval"
@@ -386,7 +390,7 @@ func (h *ScheduleHandler) RescheduleOccurrence(w http.ResponseWriter, r *http.Re
 		WriteError(w, http.StatusBadRequest, spec, scheduleField("end_at", "invalid_timestamp", "Timestamp must be a valid RFC3339 instant"))
 		return
 	}
-	row, err := h.schedules.RescheduleOccurrence.Execute(r.Context(), string(actor), ruleID, occurrenceDate, startAt, endAt, expected)
+	row, err := h.schedules.RescheduleOccurrence.Execute(r.Context(), string(actor), ruleID, occurrenceDate, startAt, endAt, expected, request.ConfirmTodoRegeneration)
 	if err != nil {
 		writeScheduleUseCaseError(w, spec, err)
 		return
@@ -414,7 +418,7 @@ func scheduleOccurrencePath(w http.ResponseWriter, r *http.Request, spec ErrSpec
 }
 
 func (request ScheduleOccurrenceUpdateRequest) input() (scheduleusecase.UpdateScheduleInput, error) {
-	var input scheduleusecase.UpdateScheduleInput
+	input := scheduleusecase.UpdateScheduleInput{ConfirmTodoRegeneration: request.ConfirmTodoRegeneration}
 	for _, field := range []struct {
 		name    string
 		present bool

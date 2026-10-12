@@ -35,6 +35,10 @@ type TaskPayload struct {
 	ActionItemCompletedCount int
 	CanUpdate                bool
 	CanAssign                bool
+	Started                  bool
+	EstimateEditable         bool
+	CanAddActionItem         bool
+	CanAddToToday            bool
 }
 
 type SchedulePayload struct {

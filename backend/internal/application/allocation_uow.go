@@ -12,14 +12,23 @@ import (
 type AllocationUOW struct {
 	pool  *pgxpool.Pool
 	store *allocationrepository.AllocationRepository
+	runTx transactionRunner
 }
 
 func NewAllocationUOW(pool *pgxpool.Pool, store *allocationrepository.AllocationRepository) allocationusecase.UnitOfWork {
-	return &AllocationUOW{pool: pool, store: store}
+	return newAllocationUOW(pool, store, RunInTodoWorkflowTx)
+}
+
+func NewAllocationReadUOW(pool *pgxpool.Pool, store *allocationrepository.AllocationRepository) allocationusecase.UnitOfWork {
+	return newAllocationUOW(pool, store, RunInTx)
+}
+
+func newAllocationUOW(pool *pgxpool.Pool, store *allocationrepository.AllocationRepository, runTx transactionRunner) *AllocationUOW {
+	return &AllocationUOW{pool: pool, store: store, runTx: runTx}
 }
 
 func (u *AllocationUOW) Do(ctx context.Context, fn func(context.Context, allocationusecase.Repository) error) error {
-	return RunInTx(ctx, u.pool, func(tx pgx.Tx) error {
+	return u.runTx(ctx, u.pool, func(tx pgx.Tx) error {
 		return fn(ctx, u.store.WithTx(tx))
 	})
 }

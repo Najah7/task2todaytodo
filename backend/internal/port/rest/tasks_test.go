@@ -238,6 +238,26 @@ func (repos taskHandlerRepositories) Tasks() taskusecase.TaskRepository { return
 func (repos taskHandlerRepositories) ActionItems() taskusecase.ActionItemRepository {
 	return repos.actionItems
 }
+func (taskHandlerRepositories) TaskTodos() taskusecase.TaskTodoLifecycle {
+	return taskHandlerTodoLifecycle{}
+}
+
+type taskHandlerTodoLifecycle struct{}
+
+func (taskHandlerTodoLifecycle) HasCompletedTaskFrame(context.Context, domain.TaskID) (bool, error) {
+	return false, nil
+}
+func (taskHandlerTodoLifecycle) HasTodayTaskFrame(context.Context, domain.UserID, domain.TaskID) (bool, error) {
+	return false, nil
+}
+func (taskHandlerTodoLifecycle) HasTodayTaskWork(context.Context, domain.UserID, domain.TaskID) (bool, error) {
+	return false, nil
+}
+func (taskHandlerTodoLifecycle) CompleteTodayTaskFrames(context.Context, domain.UserID, domain.TaskID) error {
+	return nil
+}
+func (taskHandlerTodoLifecycle) ReopenTaskFrames(context.Context, domain.TaskID) error { return nil }
+func (taskHandlerTodoLifecycle) RegenerateToday(context.Context, domain.UserID) error  { return nil }
 
 type taskHandlerUOW struct {
 	repos taskusecase.Repositories
@@ -362,8 +382,8 @@ func TestTaskHandlerCreateValidatesInputAndMapsConflictAndInternalErrors(t *test
 		{name: "malformed json", body: "{", wantStatus: http.StatusBadRequest},
 		{name: "forbidden project field", body: `{"title":"Work","project_id":"p1"}`, wantStatus: http.StatusBadRequest},
 		{name: "invalid title", body: `{"title":"  "}`, wantStatus: http.StatusBadRequest},
-		{name: "id conflict", body: `{"title":"Work"}`, createErr: &pgconn.PgError{Code: "23505", ConstraintName: "tasks_pkey"}, wantStatus: http.StatusConflict},
-		{name: "unknown failure", body: `{"title":"Work"}`, createErr: errors.New("database secret"), wantStatus: http.StatusInternalServerError},
+		{name: "id conflict", body: `{"title":"Work","manual_estimated_minutes":20}`, createErr: &pgconn.PgError{Code: "23505", ConstraintName: "tasks_pkey"}, wantStatus: http.StatusConflict},
+		{name: "unknown failure", body: `{"title":"Work","manual_estimated_minutes":20}`, createErr: errors.New("database secret"), wantStatus: http.StatusInternalServerError},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

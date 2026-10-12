@@ -35,44 +35,13 @@ func (uc *ListOccurrencesUseCase) ExecutePage(ctx context.Context, actorID strin
 	if err := validateCursorPageRequest(request); err != nil {
 		return CursorPage[dao.ScheduleOccurrence]{}, err
 	}
+	var items []dao.ScheduleOccurrence
 	var revisions []dao.RuleRevision
-	var saved []dao.ScheduleOccurrence
-	var origins []dao.ScheduleOccurrenceOrigin
 	if err := uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		var err error
-		revisions, err = repos.Rules().ListRuleRevisionsForRange(ctx, actorID, request.From, request.To)
-		if err != nil {
-			return err
-		}
-		saved, err = repos.Rules().ListPersistedOccurrences(ctx, actorID, request.From, request.To, request.IncludeSkipped)
-		if err != nil {
-			return err
-		}
-		ruleIDs := make([]string, 0, len(revisions))
-		seenRules := make(map[string]struct{}, len(revisions))
-		for _, revision := range revisions {
-			if _, seen := seenRules[revision.ID]; seen {
-				continue
-			}
-			seenRules[revision.ID] = struct{}{}
-			ruleIDs = append(ruleIDs, revision.ID)
-		}
-		origins, err = repos.Rules().ListOccurrenceOrigins(ctx, actorID, ruleIDs, request.From, request.To)
-		if err != nil {
-			return err
-		}
-		for i := range revisions {
-			revisions[i].PauseIntervals, err = repos.Rules().ListPauseIntervals(ctx, actorID, revisions[i].ID)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+		items, revisions, err = projectedOccurrencesWithRevisionsInTx(ctx, actorID, request.From, request.To, request.IncludeSkipped, repos)
+		return err
 	}); err != nil {
-		return CursorPage[dao.ScheduleOccurrence]{}, err
-	}
-	items, err := projectOccurrences(revisions, saved, origins, request.From, request.To, request.IncludeSkipped)
-	if err != nil {
 		return CursorPage[dao.ScheduleOccurrence]{}, err
 	}
 	filtered := items[:0]
@@ -119,6 +88,53 @@ func (uc *ListOccurrencesUseCase) ExecutePage(ctx context.Context, actorID strin
 		}
 	}
 	return page, nil
+}
+
+// RangeInTx projects every visible occurrence for an actor within a finite
+// UTC range using repositories already bound to the caller's transaction. It
+// is intended for trusted application workflows that need an unpaginated view
+// without opening a nested UOW.
+func (uc *ListOccurrencesUseCase) RangeInTx(ctx context.Context, actorID string, from, to time.Time, repos Repositories) ([]dao.ScheduleOccurrence, error) {
+	if from.IsZero() || to.IsZero() {
+		return nil, ErrScheduleRangeRequired
+	}
+	if from.Location() != time.UTC || to.Location() != time.UTC || !to.After(from) {
+		return nil, ErrScheduleRangeInvalid
+	}
+	rows, _, err := projectedOccurrencesWithRevisionsInTx(ctx, actorID, from, to, false, repos)
+	return rows, err
+}
+
+func projectedOccurrencesWithRevisionsInTx(ctx context.Context, actorID string, from, to time.Time, includeSkipped bool, repos Repositories) ([]dao.ScheduleOccurrence, []dao.RuleRevision, error) {
+	revisions, err := repos.Rules().ListRuleRevisionsForRange(ctx, actorID, from, to)
+	if err != nil {
+		return nil, nil, err
+	}
+	saved, err := repos.Rules().ListPersistedOccurrences(ctx, actorID, from, to, includeSkipped)
+	if err != nil {
+		return nil, nil, err
+	}
+	ruleIDs := make([]string, 0, len(revisions))
+	seenRules := make(map[string]struct{}, len(revisions))
+	for _, revision := range revisions {
+		if _, seen := seenRules[revision.ID]; seen {
+			continue
+		}
+		seenRules[revision.ID] = struct{}{}
+		ruleIDs = append(ruleIDs, revision.ID)
+	}
+	origins, err := repos.Rules().ListOccurrenceOrigins(ctx, actorID, ruleIDs, from, to)
+	if err != nil {
+		return nil, nil, err
+	}
+	for i := range revisions {
+		revisions[i].PauseIntervals, err = repos.Rules().ListPauseIntervals(ctx, actorID, revisions[i].ID)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	rows, err := projectOccurrences(revisions, saved, origins, from, to, includeSkipped)
+	return rows, revisions, err
 }
 
 func followingAllowed(scheduledStart, now time.Time) bool {

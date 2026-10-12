@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"math"
 	"strings"
 	"time"
 )
@@ -11,7 +12,8 @@ var (
 	ErrActionItemTaskIDEmpty             = errors.New("action item task ID cannot be empty")
 	ErrActionItemTitleEmpty              = errors.New("action item title cannot be empty")
 	ErrActionItemPositionLess            = errors.New("action item position must be greater than or equal to 0")
-	ErrActionItemEstimatedMinutesInvalid = errors.New("action item estimated minutes must be greater than or equal to 0")
+	ErrActionItemEstimatedMinutesInvalid = errors.New("action item estimated minutes must be between 1 and 2147483647")
+	ErrActionItemActualMinutesInvalid    = errors.New("action item actual minutes must be between 0 and 2147483647")
 )
 
 type ActionItemID string
@@ -23,6 +25,7 @@ type ActionItem struct {
 	Description      string
 	DueDate          time.Time
 	EstimatedMinutes *int
+	ActualMinutes    *int
 	Priority         TaskPriority
 	Completed        bool
 	Position         int
@@ -30,8 +33,8 @@ type ActionItem struct {
 	UpdatedAt        time.Time
 }
 
-func NewActionItem(id ActionItemID, taskID TaskID, title string) (ActionItem, error) {
-	item := ActionItem{ID: id, TaskID: taskID, Title: title}
+func NewActionItem(id ActionItemID, taskID TaskID, title string, estimatedMinutes int) (ActionItem, error) {
+	item := ActionItem{ID: id, TaskID: taskID, Title: title, EstimatedMinutes: &estimatedMinutes}
 	return item, item.Validate()
 }
 
@@ -56,6 +59,7 @@ func NewActionItemWithDetails(
 	}
 	if len(planning) > 0 {
 		item.EstimatedMinutes = copyActionItemMinutes(planning[0].EstimatedMinutes)
+		item.ActualMinutes = copyActionItemMinutes(planning[0].ActualMinutes)
 		item.Priority = planning[0].Priority
 	}
 	return item, item.Validate()
@@ -63,6 +67,7 @@ func NewActionItemWithDetails(
 
 type ActionItemPlanning struct {
 	EstimatedMinutes *int
+	ActualMinutes    *int
 	Priority         TaskPriority
 }
 
@@ -116,8 +121,11 @@ func (i ActionItem) Validate() error {
 	if i.Position < 0 {
 		return ErrActionItemPositionLess
 	}
-	if i.EstimatedMinutes != nil && *i.EstimatedMinutes < 0 {
+	if i.EstimatedMinutes == nil || *i.EstimatedMinutes < 1 || int64(*i.EstimatedMinutes) > math.MaxInt32 {
 		return ErrActionItemEstimatedMinutesInvalid
+	}
+	if i.ActualMinutes != nil && (*i.ActualMinutes < 0 || int64(*i.ActualMinutes) > math.MaxInt32) {
+		return ErrActionItemActualMinutesInvalid
 	}
 	if i.Priority != (TaskPriority{}) {
 		if err := i.Priority.validate(); err != nil {

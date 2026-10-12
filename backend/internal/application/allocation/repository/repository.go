@@ -26,6 +26,12 @@ func NewAllocationRepository(pool *pgxpool.Pool) *AllocationRepository {
 	return &AllocationRepository{queries: sqlc.New(pool), pool: pool}
 }
 
+// NewAllocationRepositoryFromTx binds allocation projections to an existing
+// transaction without requiring a pool-backed repository instance.
+func NewAllocationRepositoryFromTx(tx pgx.Tx) *AllocationRepository {
+	return &AllocationRepository{queries: sqlc.New(tx), tx: tx}
+}
+
 func (r *AllocationRepository) WithTx(tx pgx.Tx) *AllocationRepository {
 	return &AllocationRepository{queries: r.queries.WithTx(tx), pool: r.pool, tx: tx}
 }

@@ -21,12 +21,13 @@ func NewUserHandler(user authusecase.UserUseCases) *UserHandler {
 }
 
 type UserResponse struct {
-	UserID     string `json:"user_id"`
-	UserName   string `json:"user_name,omitempty"`
-	Email      string `json:"email"`
-	Timezone   string `json:"timezone"`
-	WakeUpTime string `json:"wake_up_time"`
-	Bedtime    string `json:"bedtime"`
+	UserID            string `json:"user_id"`
+	UserName          string `json:"user_name,omitempty"`
+	Email             string `json:"email"`
+	Timezone          string `json:"timezone"`
+	WakeUpTime        string `json:"wake_up_time"`
+	Bedtime           string `json:"bedtime"`
+	MinimumGapMinutes int    `json:"minimum_gap_minutes"`
 }
 
 type UserListResponse struct {
@@ -35,13 +36,58 @@ type UserListResponse struct {
 
 func newUserResponse(u dao.User) UserResponse {
 	return UserResponse{
-		UserID:     u.ID,
-		UserName:   auth.NewUserName(u.FirstName, u.LastName).FullName(),
-		Email:      u.Email,
-		Timezone:   u.Timezone,
-		WakeUpTime: u.WakeUpTime,
-		Bedtime:    u.Bedtime,
+		UserID:            u.ID,
+		UserName:          auth.NewUserName(u.FirstName, u.LastName).FullName(),
+		Email:             u.Email,
+		Timezone:          u.Timezone,
+		WakeUpTime:        u.WakeUpTime,
+		Bedtime:           u.Bedtime,
+		MinimumGapMinutes: u.MinimumGapMinutes,
 	}
+}
+
+type UserMinimumGapUpdateRequest struct {
+	MinimumGapMinutes *int `json:"minimum_gap_minutes" validate:"required" minimum:"0" maximum:"1440"`
+}
+
+// UpdateMinimumGap updates the authenticated user's daily schedule gap preference.
+//
+//	@Summary	Update minimum gap preference
+//	@Tags		Users
+//	@Accept		json
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		request	body		UserMinimumGapUpdateRequest	true	"Minimum gap preference"
+//	@Success	200		{object}	UserResponse
+//	@Failure	400		{object}	ErrResponse
+//	@Failure	401		{object}	ErrResponse
+//	@Router		/users/me/minimum-gap [patch]
+func (h UserHandler) UpdateMinimumGap(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(UserIDContextKey).(string)
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, ErrSpecUsersUpdateMinimumGapFailed, ErrDetailUnauthorized)
+		return
+	}
+	var req UserMinimumGapUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteError(w, http.StatusBadRequest, ErrSpecUsersUpdateMinimumGapFailed, ErrDetailInvalidRequestBody)
+		return
+	}
+	if req.MinimumGapMinutes == nil {
+		WriteError(w, http.StatusBadRequest, ErrSpecUsersUpdateMinimumGapFailed, NewErrDetail("minimum_gap_minutes", "required", "Minimum gap is required"))
+		return
+	}
+	u, err := h.user.UpdateMinimumGap.Execute(r.Context(), auth.UserID(userID), *req.MinimumGapMinutes)
+	if err != nil {
+		if errors.Is(err, authusecase.ErrInvalidMinimumGapMinutes) {
+			WriteError(w, http.StatusBadRequest, ErrSpecUsersUpdateMinimumGapFailed, NewErrDetail("minimum_gap_minutes", "out_of_range", "Minimum gap must be between 0 and 1440 minutes"))
+			return
+		}
+		status, detail := errToErrResponse(err, "")
+		WriteError(w, status, ErrSpecUsersUpdateMinimumGapFailed, detail)
+		return
+	}
+	WriteJSON(w, http.StatusOK, newUserResponse(u))
 }
 
 type UserSleepSettingsUpdateRequest struct {
@@ -56,11 +102,11 @@ type UserSleepSettingsUpdateRequest struct {
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		request body UserSleepSettingsUpdateRequest true "Sleep settings"
-//	@Success	200 {object} UserResponse
-//	@Failure	400 {object} ErrResponse
-//	@Failure	401 {object} ErrResponse
-//	@Failure	409 {object} ErrResponse
+//	@Param		request	body		UserSleepSettingsUpdateRequest	true	"Sleep settings"
+//	@Success	200		{object}	UserResponse
+//	@Failure	400		{object}	ErrResponse
+//	@Failure	401		{object}	ErrResponse
+//	@Failure	409		{object}	ErrResponse
 //	@Router		/users/me/sleep [patch]
 func (h UserHandler) UpdateSleepSettings(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(UserIDContextKey).(string)

@@ -157,14 +157,14 @@ func TestReopenTaskUseCaseTransitions(t *testing.T) {
 			if uow.calls != 1 || !uow.committed || uow.rolledBack {
 				t.Errorf("UOW = calls:%d committed:%t rolledBack:%t, want one commit", uow.calls, uow.committed, uow.rolledBack)
 			}
-			if tasks.getCalls != 3 || tasks.updateCalls != 1 || tasks.userID != userID || tasks.taskID != taskID {
-				t.Errorf("task repository calls/scope = %d/%d user:%q task:%q, want association pre-read, locked read, update, and persisted readback", tasks.getCalls, tasks.updateCalls, tasks.userID, tasks.taskID)
+			if tasks.getCalls != 2 || tasks.updateCalls != 1 || tasks.userID != userID || tasks.taskID != taskID {
+				t.Errorf("task repository calls/scope = %d/%d user:%q task:%q, want two owner-scoped reads and one update", tasks.getCalls, tasks.updateCalls, tasks.userID, tasks.taskID)
 			}
 			if tasks.updated.Status.String() != "open" || tasks.updated.ID != taskID || tasks.updated.UserID != userID || tasks.updated.Title != "Ship release" || tasks.updated.Progress != 37 || tasks.updated.Priority.Value != "high" || tasks.updated.ManualEstimatedMinutes == nil || *tasks.updated.ManualEstimatedMinutes != 42 {
 				t.Errorf("updated task = %#v, want open with existing fields preserved", tasks.updated)
 			}
 
-			wantCalls := []string{"tasks", "get-task", "get-task", "set-status", "get-task"}
+			wantCalls := []string{"tasks", "get-task", "get-task", "update-task"}
 			if !reflect.DeepEqual(*accesses, wantCalls) {
 				t.Errorf("operation order = %v, want %v", *accesses, wantCalls)
 			}

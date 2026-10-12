@@ -14,7 +14,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, first_name, last_name, email, password)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime
+RETURNING id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
 `
 
 type CreateUserParams struct {
@@ -45,6 +45,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Timezone,
 		&i.WakeUpTime,
 		&i.Bedtime,
+		&i.MinimumGapMinutes,
 	)
 	return i, err
 }
@@ -53,7 +54,7 @@ const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET first_name = $2, last_name = $3, email = $4, password = $5, updated_at = now()
 WHERE id = $1
-RETURNING id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime
+RETURNING id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
 `
 
 type UpdateUserParams struct {
@@ -84,8 +85,26 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.Timezone,
 		&i.WakeUpTime,
 		&i.Bedtime,
+		&i.MinimumGapMinutes,
 	)
 	return i, err
+}
+
+const updateUserMinimumGapMinutes = `-- name: UpdateUserMinimumGapMinutes :exec
+UPDATE users
+SET minimum_gap_minutes = $1::integer,
+    updated_at = now()
+WHERE id = $2::text
+`
+
+type UpdateUserMinimumGapMinutesParams struct {
+	MinimumGapMinutes int32
+	UserID            string
+}
+
+func (q *Queries) UpdateUserMinimumGapMinutes(ctx context.Context, arg UpdateUserMinimumGapMinutesParams) error {
+	_, err := q.db.Exec(ctx, updateUserMinimumGapMinutes, arg.MinimumGapMinutes, arg.UserID)
+	return err
 }
 
 const updateUserSleepSettings = `-- name: UpdateUserSleepSettings :exec

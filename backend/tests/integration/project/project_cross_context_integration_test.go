@@ -35,6 +35,10 @@ func newProjectUseCases(t *testing.T, pool *pgxpool.Pool, store application.Stor
 	return usecases.Project
 }
 
+func newProjectScheduleUOW(pool *pgxpool.Pool, store application.Store) scheduleusecase.UOW {
+	return application.NewScheduleUOW(pool, store.Schedule, store.Project, store, store.Task, func() string { return ulid.Make().String() })
+}
+
 type projectCrossContextTimezoneReader struct{}
 
 type projectActionItemID struct{}
@@ -105,10 +109,10 @@ func TestProjectLifecycleTransitionsAcrossTaskAndScheduleMutations(t *testing.T)
 	var canUpdateProject, canUpdateTask, canUpdateSchedule bool
 	store := application.NewStore(pool)
 	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project, store.Schedule)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleUOW := newProjectScheduleUOW(pool, store)
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
 	task, err := taskusecase.NewCreateTaskInProjectUseCase(taskUOW, nil).Execute(ctx, taskusecase.CreateTaskInProjectInput{
-		ID: taskdomain.TaskID(firstTaskID), UserID: taskdomain.UserID(ownerID), ProjectID: taskdomain.ProjectID(projectID), Title: "Initial Task",
+		ID: taskdomain.TaskID(firstTaskID), UserID: taskdomain.UserID(ownerID), ProjectID: taskdomain.ProjectID(projectID), Title: "Initial Task", EstimatedMinutes: projectManualEstimate(60),
 	})
 	if err != nil {
 		t.Fatalf("create initial Task: %v", err)
@@ -174,7 +178,7 @@ func TestProjectLifecycleTransitionsAcrossTaskAndScheduleMutations(t *testing.T)
 		t.Fatalf("mark Project done before adding Task: %v", err)
 	}
 	secondTask, err := taskusecase.NewCreateTaskInProjectUseCase(taskUOW, nil).Execute(ctx, taskusecase.CreateTaskInProjectInput{
-		ID: taskdomain.TaskID(secondTaskID), UserID: taskdomain.UserID(ownerID), ProjectID: taskdomain.ProjectID(projectID), Title: "Added after completion",
+		ID: taskdomain.TaskID(secondTaskID), UserID: taskdomain.UserID(ownerID), ProjectID: taskdomain.ProjectID(projectID), Title: "Added after completion", EstimatedMinutes: projectManualEstimate(60),
 	})
 	if err != nil {
 		t.Fatalf("add unfinished Task to done Project: %v", err)
@@ -242,7 +246,7 @@ func TestOpenTaskAtFullActionItemProgressDoesNotCompleteProject(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,status,changed_by) VALUES($1,$2,$3,$2,'Open Task','open',$2)`, taskID, ownerID, projectID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,completed) VALUES($1,$2,'Already finished',0,true)`, actionItemID, taskID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,completed,estimated_minutes) VALUES($1,$2,'Already finished',0,true,10)`, actionItemID, taskID); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
@@ -292,13 +296,14 @@ func TestActionItemCompletionAndReopenTransitionTaskAndProject(t *testing.T) {
 	store := application.NewStore(pool)
 	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project, store.Schedule)
 	_, err := taskusecase.NewCreateTaskInProjectUseCase(taskUOW, nil).Execute(ctx, taskusecase.CreateTaskInProjectInput{
-		ID: taskdomain.TaskID(taskID), UserID: taskdomain.UserID(ownerID), ProjectID: taskdomain.ProjectID(projectID), Title: "ActionItem-backed Task",
+		ID: taskdomain.TaskID(taskID), UserID: taskdomain.UserID(ownerID), ProjectID: taskdomain.ProjectID(projectID), Title: "ActionItem-backed Task", EstimatedMinutes: projectManualEstimate(60),
 	})
 	if err != nil {
 		t.Fatalf("create linked Task: %v", err)
 	}
+	completionEstimate := 30
 	_, err = taskusecase.NewCreateActionItemUseCase(taskUOW, nil).Execute(ctx, taskusecase.CreateActionItemInput{
-		ID: taskdomain.ActionItemID(actionItemID), UserID: taskdomain.UserID(ownerID), TaskID: taskdomain.TaskID(taskID), Title: "Complete me",
+		ID: taskdomain.ActionItemID(actionItemID), UserID: taskdomain.UserID(ownerID), TaskID: taskdomain.TaskID(taskID), Title: "Complete me", EstimatedMinutes: &completionEstimate,
 	})
 	if err != nil {
 		t.Fatalf("create ActionItem: %v", err)
@@ -352,7 +357,7 @@ func TestMovingCompletedTaskReconcilesBothProjects(t *testing.T) {
 	newTask := func(id, projectID, title string) {
 		t.Helper()
 		_, err := taskusecase.NewCreateTaskInProjectUseCase(taskUOW, nil).Execute(ctx, taskusecase.CreateTaskInProjectInput{
-			ID: taskdomain.TaskID(id), UserID: taskdomain.UserID(ownerID), ProjectID: taskdomain.ProjectID(projectID), Title: title,
+			ID: taskdomain.TaskID(id), UserID: taskdomain.UserID(ownerID), ProjectID: taskdomain.ProjectID(projectID), Title: title, EstimatedMinutes: projectManualEstimate(60),
 		})
 		if err != nil {
 			t.Fatalf("create Task %s: %v", id, err)
@@ -411,7 +416,7 @@ func TestDoneProjectScheduleVirtualSuppressionAndSkipRestoreReopen(t *testing.T)
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	weekday := strings.ToLower(today.Weekday().String())[:3]
 	store := application.NewStore(pool)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleUOW := newProjectScheduleUOW(pool, store)
 	created, err := scheduleusecase.NewCreateRuleUseCase(scheduleUOW, (projectActionItemID{}).Generate, projectCrossContextTimezoneReader{}, nil).Execute(ctx, ownerID, scheduleusecase.CreateRuleInput{
 		ProjectID: projectID, Title: "Weekly schedule", Timezone: "UTC", LocalStart: today.Add(9 * time.Hour), LocalEnd: today.Add(10 * time.Hour),
 		Frequency: "weekly", Interval: 1, Weekdays: []string{weekday},
@@ -478,7 +483,7 @@ func TestAutoCompletingProjectPausesRecurringRuleAndManualReopenResumesIt(t *tes
 		t.Fatalf("insert completed historical Schedule occurrence: %v", err)
 	}
 	store := application.NewStore(pool)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleUOW := newProjectScheduleUOW(pool, store)
 	rule, err := scheduleusecase.NewCreateRuleUseCase(scheduleUOW, (projectActionItemID{}).Generate, projectCrossContextTimezoneReader{}, nil).Execute(ctx, ownerID, scheduleusecase.CreateRuleInput{
 		ProjectID: projectID, Title: "Recurring work", Timezone: "UTC", LocalStart: today.Add(9 * time.Hour), LocalEnd: today.Add(10 * time.Hour),
 		Frequency: "weekly", Interval: 1, Weekdays: []string{weekday},
@@ -605,7 +610,7 @@ func TestProjectMemberRemovalReassignsCurrentAndFutureOccurrences(t *testing.T) 
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	anchorDate := today.AddDate(0, 0, -3)
 	store := application.NewStore(pool)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleUOW := newProjectScheduleUOW(pool, store)
 	bl, err := scheduleusecase.NewCreateRuleUseCase(scheduleUOW, (projectActionItemID{}).Generate, projectCrossContextTimezoneReader{}, nil).Execute(ctx, ownerID, scheduleusecase.CreateRuleInput{
 		ProjectID: projectID, AssigneeID: memberID, Title: "Member's recurring work", Timezone: "UTC",
 		LocalStart: anchorDate.Add(9 * time.Hour), LocalEnd: anchorDate.Add(10 * time.Hour), Frequency: "daily", Interval: 2,

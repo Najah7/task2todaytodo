@@ -55,6 +55,7 @@ SET title = sqlc.arg(title),
     manual_estimated_minutes = sqlc.arg(manual_estimated_minutes),
     actual_minutes = sqlc.arg(actual_minutes),
     priority = sqlc.arg(priority),
+    status = sqlc.arg(status),
     project_id = sqlc.narg(project_id),
     assignee_id = sqlc.arg(assignee_id)::text,
     changed_by = sqlc.arg(user_id)::text

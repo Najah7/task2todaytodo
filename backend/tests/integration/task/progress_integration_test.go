@@ -19,7 +19,7 @@ func TestPersistedActionItemCompletionProjectsTaskProgress(t *testing.T) {
 	repo := taskrepo.NewActionItemRepository(pool)
 	ids := []domain.ActionItemID{domain.ActionItemID(actionItemTestID{}.Generate()), domain.ActionItemID(actionItemTestID{}.Generate())}
 	for _, id := range ids {
-		item, err := domain.NewActionItem(id, taskID, "Persisted work")
+		item, err := domain.NewActionItem(id, taskID, "Persisted work", 30)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -48,7 +48,7 @@ func TestConcurrentFinalActionItemCompletionsSetTaskDone(t *testing.T) {
 	repo := taskrepo.NewActionItemRepository(pool)
 	ids := []domain.ActionItemID{domain.ActionItemID(actionItemTestID{}.Generate()), domain.ActionItemID(actionItemTestID{}.Generate())}
 	for _, id := range ids {
-		item, err := domain.NewActionItem(id, taskID, "Concurrent persisted work")
+		item, err := domain.NewActionItem(id, taskID, "Concurrent persisted work", 30)
 		if err != nil {
 			t.Fatal(err)
 		}

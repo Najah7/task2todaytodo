@@ -11,7 +11,8 @@ type Repositories interface {
 	TaskProjects() TaskProjectRepository
 	Tasks() TaskRepository
 	ActionItems() ActionItemRepository
-	TodoLists() TodoListRepository
+	ActionItemTodos() ActionItemTodoLifecycle
+	TaskTodos() TaskTodoLifecycle
 	TaskPriorities() TaskPriorityRepository
 	TaskStatuses() TaskStatusRepository
 }

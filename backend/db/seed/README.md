@@ -8,7 +8,7 @@ The seed is repeatable and uses dates relative to the database's current date
 in `Asia/Tokyo`. It creates two users so authenticated list endpoints can be
 checked for user scoping. The full seed contains 20 projects, 45 tasks,
 35 ActionItems, 22 concrete Schedule occurrences, one recurring Schedule
-rule with two effective revisions, and 15 TodoLists.
+rule with two effective revisions, and 15 Todos.
 
 ## Swagger walkthrough
 

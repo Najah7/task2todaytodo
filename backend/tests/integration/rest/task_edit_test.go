@@ -169,7 +169,7 @@ func TestRESTTaskEndpointsRejectNestedActionItems(t *testing.T) {
 	if create.Code != http.StatusBadRequest {
 		t.Fatalf("nested Task create status/body=%d/%s; want 400", create.Code, create.Body.String())
 	}
-	task := api.createTask(t, `{"title":"Standalone Task","priority":"low"}`)
+	task := api.createTask(t, `{"title":"Standalone Task","priority":"low","manual_estimated_minutes":30}`)
 	child := api.request(api.userID, http.MethodPost, "/tasks/"+task.ID+"/action-items", `{"title":"Standalone child","estimated_minutes":20,"priority":"medium"}`, "")
 	if child.Code != http.StatusCreated {
 		t.Fatalf("POST ActionItem status/body=%d/%s", child.Code, child.Body.String())
@@ -206,7 +206,7 @@ func TestRESTTaskEndpointsRejectNestedActionItems(t *testing.T) {
 
 func TestRESTActionItemsUpdateIndividuallyAndPreserveTaskIfMatch(t *testing.T) {
 	api := newTaskEditAPI(t)
-	task := api.createTask(t, `{"title":"Revision task","priority":"low"}`)
+	task := api.createTask(t, `{"title":"Revision task","priority":"low","manual_estimated_minutes":30}`)
 	created := api.request(api.userID, http.MethodPost, "/tasks/"+task.ID+"/action-items", `{"title":"First child","estimated_minutes":10,"priority":"medium"}`, "")
 	if created.Code != http.StatusCreated {
 		t.Fatalf("POST ActionItem status/body=%d/%s", created.Code, created.Body.String())
@@ -237,7 +237,7 @@ func TestRESTActionItemsUpdateIndividuallyAndPreserveTaskIfMatch(t *testing.T) {
 
 func TestRESTTaskEditChangesProjectAndPriority(t *testing.T) {
 	api := newTaskEditAPI(t)
-	task := api.createTask(t, `{"title":"Move task","priority":"low"}`)
+	task := api.createTask(t, `{"title":"Move task","priority":"low","manual_estimated_minutes":30}`)
 	projectResponse := api.request(api.userID, http.MethodPost, "/projects", `{"type":"other","title":"Destination project","priority":"high"}`, "")
 	if projectResponse.Code != http.StatusCreated {
 		t.Fatalf("POST /projects status/body=%d/%s", projectResponse.Code, projectResponse.Body.String())

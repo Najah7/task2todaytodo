@@ -22,6 +22,7 @@ var (
 	ErrRescheduleDateMismatch      = errors.New("future reschedule must keep the occurrence's local date")
 	ErrPermissionDenied            = errors.New("permission denied")
 	ErrInvalidSchedulePage         = errors.New("invalid schedule page")
+	ErrTodoRegenerationRequired    = errors.New("todo regeneration confirmation required")
 )
 
 type UserTimezoneReader interface {
@@ -47,4 +48,21 @@ type Repositories interface {
 
 type UOW interface {
 	Do(ctx context.Context, fn func(context.Context, Repositories) error) error
+	DoWithTodoImpact(ctx context.Context, scope TodoImpactScope, confirmed bool, fn func(context.Context, Repositories) error) error
+}
+
+// TodoImpactScope narrowly identifies schedule reservations that may affect
+// generated local-day plans. The root resolves old assignees and occurrences
+// inside the transaction; callers may provide the proposed assignee.
+type TodoImpactScope struct {
+	ActorID        string
+	RuleID         string
+	OccurrenceDate string
+	Following      bool
+	ProjectID      string
+	AssigneeID     string
+}
+
+func doWithTodoImpact(ctx context.Context, uow UOW, scope TodoImpactScope, confirmed bool, fn func(context.Context, Repositories) error) error {
+	return uow.DoWithTodoImpact(ctx, scope, confirmed, fn)
 }

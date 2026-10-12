@@ -17,6 +17,7 @@ erDiagram
         text timezone FK "NOT NULL"
         time wake_up_time "NOT NULL"
         time bedtime "NOT NULL"
+        integer minimum_gap_minutes "NOT NULL, 0..1440"
     }
 
     roles {

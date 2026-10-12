@@ -626,7 +626,7 @@ func TestProjectHandlerProjectTaskRoutesAndPagination(t *testing.T) {
 	t.Run("create task", func(t *testing.T) {
 		h := newProjectHandlerHarness()
 		response := httptest.NewRecorder()
-		h.handler.CreateTask(response, projectHandlerRequest(http.MethodPost, "/projects/project-1/tasks", `{"title":"New task","due_date":"2026-05-03"}`, true))
+		h.handler.CreateTask(response, projectHandlerRequest(http.MethodPost, "/projects/project-1/tasks", `{"title":"New task","due_date":"2026-05-03","manual_estimated_minutes":25}`, true))
 		var got ProjectTaskResponse
 		if err := json.Unmarshal(response.Body.Bytes(), &got); err != nil {
 			t.Fatal(err)
@@ -774,7 +774,7 @@ func TestProjectHandlerCreateTaskRejectsMalformedDueDate(t *testing.T) {
 		t.Run(dueDate, func(t *testing.T) {
 			h := newProjectHandlerHarness()
 			response := httptest.NewRecorder()
-			body := `{"title":"x","due_date":"` + dueDate + `"}`
+			body := `{"title":"x","manual_estimated_minutes":25,"due_date":"` + dueDate + `"}`
 			h.handler.CreateTask(response, projectHandlerRequest(http.MethodPost, "/projects/project-1/tasks", body, true))
 			if response.Code != http.StatusBadRequest || h.tasks.createCalls != 0 {
 				t.Errorf("CreateTask() = status %d, create calls %d; want 400 before write", response.Code, h.tasks.createCalls)
@@ -787,7 +787,7 @@ func TestProjectHandlerCreateTaskMapsConflict(t *testing.T) {
 	h := newProjectHandlerHarness()
 	h.tasks.createErr = &pgconn.PgError{Code: "23505", ConstraintName: "tasks_pkey"}
 	response := httptest.NewRecorder()
-	h.handler.CreateTask(response, projectHandlerRequest(http.MethodPost, "/projects/project-1/tasks", `{"title":"duplicate"}`, true))
+	h.handler.CreateTask(response, projectHandlerRequest(http.MethodPost, "/projects/project-1/tasks", `{"title":"duplicate","manual_estimated_minutes":25}`, true))
 	if response.Code != http.StatusConflict {
 		t.Errorf("CreateTask() status = %d, want 409", response.Code)
 	}

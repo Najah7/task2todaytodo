@@ -68,6 +68,7 @@ func newAllocationHTTP(t *testing.T) *allocationHTTP {
 		r.Post("/projects/{id}:reopen", handlers.Project.Reopen)
 		r.Post("/projects/{id}/schedules", handlers.Schedule.CreateProjectRule)
 		r.Patch("/users/me/sleep", handlers.User.UpdateSleepSettings)
+		r.Patch("/users/me/minimum-gap", handlers.User.UpdateMinimumGap)
 	})
 	api := &allocationHTTP{pool: pool, router: router, closeApp: closeApp}
 	api.registerCleanup(t)

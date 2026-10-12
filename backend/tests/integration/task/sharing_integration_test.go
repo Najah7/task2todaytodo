@@ -215,11 +215,13 @@ func TestSharedTaskCreationUsesProjectOwnerAndRecordsMemberActor(t *testing.T) {
 	fixture.commit(t)
 
 	taskID := ulid.Make().String()
+	manualEstimate := 30
 	created, err := usecase.NewCreateTaskInProjectUseCase(sharingTestUOW{pool: pool}, nil).Execute(ctx, usecase.CreateTaskInProjectInput{
-		ID:        domain.TaskID(taskID),
-		UserID:    domain.UserID(editorID),
-		ProjectID: domain.ProjectID(fixture.projectID),
-		Title:     "Created by shared editor",
+		ID:                     domain.TaskID(taskID),
+		UserID:                 domain.UserID(editorID),
+		ProjectID:              domain.ProjectID(fixture.projectID),
+		Title:                  "Created by shared editor",
+		EstimatedMinutes: &manualEstimate,
 	})
 	if err != nil {
 		t.Fatalf("create task as shared editor: %v", err)
@@ -266,15 +268,16 @@ func TestSharedActionItemReadWriteAndDeletePermissions(t *testing.T) {
 	}
 
 	viewerCreate := usecase.NewCreateActionItemUseCase(uow, nil)
+	estimatedMinutes := 30
 	if _, err := viewerCreate.Execute(ctx, usecase.CreateActionItemInput{
-		ID: domain.ActionItemID(ulid.Make().String()), UserID: domain.UserID(viewerID), TaskID: domain.TaskID(taskID), Title: "Viewer write must fail",
+		ID: domain.ActionItemID(ulid.Make().String()), UserID: domain.UserID(viewerID), TaskID: domain.TaskID(taskID), Title: "Viewer write must fail", EstimatedMinutes: &estimatedMinutes,
 	}); !errors.Is(err, usecase.ErrPermissionDenied) {
 		t.Fatalf("viewer assignee create-actionItem error = %v, want permission denied", err)
 	}
 
 	createdActionItem, err := usecase.NewCreateActionItemUseCase(uow, nil).Execute(ctx, usecase.CreateActionItemInput{
 		ID: domain.ActionItemID(ulid.Make().String()), UserID: domain.UserID(editorID), TaskID: domain.TaskID(taskID),
-		Title: "Editor created actionItem", DueDate: today,
+		Title: "Editor created actionItem", DueDate: today, EstimatedMinutes: &estimatedMinutes,
 	})
 	if err != nil {
 		t.Fatalf("create actionItem as shared editor: %v", err)
@@ -716,8 +719,8 @@ func (fixture *sharingFixture) actionItem(t *testing.T, taskID string) string {
 	t.Helper()
 	actionItemID := ulid.Make().String()
 	if _, err := fixture.tx.Exec(t.Context(), `
-		INSERT INTO action_items (id, task_id, title, position)
-		VALUES ($1, $2, 'ActionItem child', 0)
+		INSERT INTO action_items (id, task_id, title, position, estimated_minutes)
+		VALUES ($1, $2, 'ActionItem child', 0, 10)
 	`, actionItemID, taskID); err != nil {
 		t.Fatalf("insert actionItem child: %v", err)
 	}

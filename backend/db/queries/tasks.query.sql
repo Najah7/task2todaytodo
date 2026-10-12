@@ -142,7 +142,8 @@ ORDER BY
 LIMIT sqlc.arg(page_limit)::integer;
 
 -- name: ListProjectTasksByUserIDCursorPage :many
-SELECT t.*, p.status AS project_status
+SELECT t.*, p.status AS project_status,
+       task_has_permission(t.id, sqlc.arg(user_id)::text, 'task', 'update') AS can_update
 FROM tasks AS t
 JOIN projects AS p ON p.id = t.project_id AND p.user_id = t.user_id AND p.deleted_at IS NULL
 WHERE t.project_id = sqlc.arg(project_id)
@@ -169,6 +170,9 @@ SELECT
     ti.description,
     ti.due_date,
     ti.estimated_minutes,
+    ti.actual_minutes,
+    EXISTS (SELECT 1 FROM todo_items todo WHERE todo.action_item_id = ti.id AND todo.kind = 'action_item' AND todo.completed) AS started,
+    NOT EXISTS (SELECT 1 FROM todo_items todo WHERE todo.action_item_id = ti.id AND todo.kind = 'action_item' AND todo.completed) AS estimate_editable,
     ti.priority,
     ti.completed,
     ti.position,

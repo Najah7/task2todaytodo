@@ -20,8 +20,52 @@ func (taskProgressTestRepositories) Tasks() TaskRepository { return taskProgress
 func (taskProgressTestRepositories) ActionItems() ActionItemRepository {
 	return taskProgressTestActionItems{}
 }
+func (taskProgressTestRepositories) ActionItemTodos() ActionItemTodoLifecycle {
+	return taskProgressTestActionItemTodos{}
+}
+
+func (taskProgressTestRepositories) TaskTodos() TaskTodoLifecycle { return taskProgressTestTaskTodos{} }
+
+type taskProgressTestActionItemTodos struct{}
+
+func (taskProgressTestActionItemTodos) HasCompletedFrame(context.Context, domain.ActionItemID) (bool, error) {
+	return false, nil
+}
+func (taskProgressTestActionItemTodos) HasTodayActionItem(context.Context, domain.UserID, domain.ActionItemID) (bool, error) {
+	return false, nil
+}
+func (taskProgressTestActionItemTodos) CompleteTodayFrames(context.Context, domain.UserID, domain.ActionItemID) error {
+	return nil
+}
+func (taskProgressTestActionItemTodos) ReopenFrames(context.Context, domain.ActionItemID) error {
+	return nil
+}
+func (taskProgressTestActionItemTodos) RegenerateToday(context.Context, domain.UserID) error {
+	return nil
+}
+
+type taskProgressTestTaskTodos struct{}
+
+func (taskProgressTestTaskTodos) HasCompletedTaskFrame(context.Context, domain.TaskID) (bool, error) {
+	return false, nil
+}
+func (taskProgressTestTaskTodos) HasTodayTaskFrame(context.Context, domain.UserID, domain.TaskID) (bool, error) {
+	return false, nil
+}
+func (taskProgressTestTaskTodos) HasTodayTaskWork(context.Context, domain.UserID, domain.TaskID) (bool, error) {
+	return false, nil
+}
+func (taskProgressTestTaskTodos) CompleteTodayTaskFrames(context.Context, domain.UserID, domain.TaskID) error {
+	return nil
+}
+func (taskProgressTestTaskTodos) ReopenTaskFrames(context.Context, domain.TaskID) error { return nil }
+func (taskProgressTestTaskTodos) RegenerateToday(context.Context, domain.UserID) error  { return nil }
 
 type taskProgressTestActionItems struct{ ActionItemRepository }
+
+func (taskProgressTestActionItems) CountForOwnedTask(context.Context, domain.UserID, domain.TaskID, shared.Capability) (int, error) {
+	return 0, nil
+}
 
 func (taskProgressTestActionItems) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
 	items := make(map[string][]dao.ActionItem, len(taskIDs))

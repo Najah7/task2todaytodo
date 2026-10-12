@@ -57,7 +57,7 @@ type Priority struct {
 var projectPriorities = map[string]Priority{
 	"urgent": {"urgent", "Urgent", "緊急", 100}, "high": {"high", "High", "高", 50},
 	"medium": {"medium", "Medium", "中", 25}, "low": {"low", "Low", "低", 10},
-	"someday": {"someday", "Someday", "いつか", 0},
+	"someday": {"someday", "Someday", "いつか", 1},
 }
 
 func NewPriority(value string) (Priority, error) {

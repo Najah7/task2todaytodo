@@ -36,8 +36,8 @@ erDiagram
         text title "NOT NULL"
         text description "NULL"
         date due_date "NULL"
-        integer manual_estimated_minutes "NULL"
-        integer actual_minutes "NULL"
+        integer manual_estimated_minutes "NULL for child-bearing Tasks; otherwise 1..2147483647"
+        integer actual_minutes "NULL or 0..2147483647"
         text priority FK "NOT NULL"
         text status FK "NOT NULL"
         integer revision "NOT NULL"
@@ -56,8 +56,8 @@ erDiagram
         text title "NOT NULL"
         text description "NULL"
         date due_date "NULL"
-        integer manual_estimated_minutes "NULL"
-        integer actual_minutes "NULL"
+        integer manual_estimated_minutes "NULL for child-bearing Tasks; otherwise 1..2147483647"
+        integer actual_minutes "NULL or 0..2147483647"
         text priority "NOT NULL"
         text status "NOT NULL"
         timestamptz deleted_at "NULL"
@@ -75,11 +75,18 @@ erDiagram
         date due_date "NULL"
         boolean completed "NOT NULL"
         integer position "NOT NULL"
-        integer estimated_minutes "NULL"
+        integer estimated_minutes "NOT NULL, 1..2147483647"
+        integer actual_minutes "NULL, 0..2147483647"
         text priority FK "NOT NULL"
         timestamptz deleted_at "NULL"
         timestamptz created_at "NOT NULL"
         timestamptz updated_at "NOT NULL"
+    }
+
+    todo_items {
+        text task_id FK "NULL for non-Task frames"
+        integer planned_minutes "positive for Task frames"
+        boolean completed "NOT NULL"
     }
 
     users ||..o{ tasks : owns
@@ -93,4 +100,5 @@ erDiagram
     users ||..o{ task_revisions : assigned_to
     users ||..o{ task_revisions : changed_by
     tasks ||..o{ action_items : contains
+    tasks ||..o{ todo_items : direct_task_execution_frames
     priority_master ||..o{ action_items : prioritizes

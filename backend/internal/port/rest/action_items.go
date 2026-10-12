@@ -1,10 +1,12 @@
 package rest
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
@@ -43,7 +45,10 @@ type ActionItemResponse struct {
 	TaskID           string  `json:"task_id"`
 	Title            string  `json:"title"`
 	Description      string  `json:"description"`
-	EstimatedMinutes *int    `json:"estimated_minutes" validate:"required" extensions:"x-nullable"`
+	EstimatedMinutes int     `json:"estimated_minutes" validate:"required" minimum:"1" maximum:"2147483647"`
+	ActualMinutes    *int    `json:"actual_minutes" extensions:"x-nullable" minimum:"0" maximum:"2147483647"`
+	Started          bool    `json:"started"`
+	EstimateEditable bool    `json:"estimate_editable"`
 	Priority         string  `json:"priority"`
 	DueDate          *string `json:"due_date"`
 	Completed        bool    `json:"completed"`
@@ -58,23 +63,35 @@ type ActionItemListResponse struct {
 }
 
 type ActionItemCreateRequest struct {
-	Title            string  `json:"title"`
-	Description      string  `json:"description"`
-	EstimatedMinutes *int    `json:"estimated_minutes" extensions:"x-nullable"`
-	Priority         string  `json:"priority"`
-	DueDate          *string `json:"due_date"`
+	Title                   string  `json:"title"`
+	Description             string  `json:"description"`
+	EstimatedMinutes        *int    `json:"estimated_minutes" validate:"required" minimum:"1" maximum:"2147483647"`
+	Priority                string  `json:"priority"`
+	DueDate                 *string `json:"due_date"`
+	ConfirmTodoRegeneration bool    `json:"confirm_todo_regeneration"`
 }
 
 type ActionItemUpdateRequest struct {
-	Title            optionalJSON[string] `json:"title" swaggertype:"string"`
-	Description      optionalJSON[string] `json:"description" swaggertype:"string"`
-	DueDate          optionalJSON[string] `json:"due_date" swaggertype:"string"`
-	EstimatedMinutes optionalJSON[int]    `json:"estimated_minutes" swaggertype:"integer" extensions:"x-nullable"`
-	Priority         optionalJSON[string] `json:"priority" swaggertype:"string"`
+	Title                   optionalJSON[string] `json:"title" swaggertype:"string"`
+	Description             optionalJSON[string] `json:"description" swaggertype:"string"`
+	DueDate                 optionalJSON[string] `json:"due_date" swaggertype:"string"`
+	EstimatedMinutes        optionalJSON[int]    `json:"estimated_minutes" swaggertype:"integer" minimum:"1" maximum:"2147483647"`
+	ActualMinutes           optionalJSON[int]    `json:"actual_minutes" swaggertype:"integer" extensions:"x-nullable" minimum:"0" maximum:"2147483647"`
+	Priority                optionalJSON[string] `json:"priority" swaggertype:"string"`
+	ConfirmTodoRegeneration bool                 `json:"confirm_todo_regeneration"`
 }
 
 type ActionItemReorderRequest struct {
 	Position *int `json:"position"`
+}
+
+type ActionItemCompleteRequest struct {
+	ActualMinutes *int `json:"actual_minutes" extensions:"x-nullable" minimum:"0" maximum:"2147483647"`
+}
+
+type ActionItemDeleteRequest struct {
+	ManualEstimatedMinutes  optionalJSON[int] `json:"manual_estimated_minutes" swaggertype:"integer" minimum:"1" maximum:"2147483647"`
+	ConfirmTodoRegeneration bool              `json:"confirm_todo_regeneration"`
 }
 
 func actionItemResponse(item dao.ActionItem) ActionItemResponse {
@@ -83,7 +100,10 @@ func actionItemResponse(item dao.ActionItem) ActionItemResponse {
 		TaskID:           item.TaskID,
 		Title:            item.Title,
 		Description:      item.Description,
-		EstimatedMinutes: cloneInt(item.EstimatedMinutes),
+		EstimatedMinutes: valueInt(item.EstimatedMinutes),
+		ActualMinutes:    cloneInt(item.ActualMinutes),
+		Started:          item.Started,
+		EstimateEditable: item.EstimateEditable,
 		Priority:         item.Priority.Value,
 		Completed:        item.Completed,
 		Position:         item.Position,
@@ -95,6 +115,13 @@ func actionItemResponse(item dao.ActionItem) ActionItemResponse {
 		response.DueDate = &dueDate
 	}
 	return response
+}
+
+func valueInt(value *int) int {
+	if value == nil {
+		return 0
+	}
+	return *value
 }
 
 func actionItemsUserID(r *http.Request) (domain.UserID, bool) {
@@ -116,6 +143,8 @@ func writeActionItemError(w http.ResponseWriter, spec ErrSpec, err error) {
 
 func actionItemErrorResponse(err error) (int, ErrDetail) {
 	switch {
+	case errors.Is(err, taskusecase.ErrRevisionConflict):
+		return http.StatusPreconditionFailed, NewErrDetail("If-Match", "revision_mismatch", "The Task changed since the supplied revision")
 	case errors.Is(err, taskusecase.ErrPermissionDenied):
 		return http.StatusForbidden, NewErrDetail("", "permission_denied", "The caller lacks permission for this action item operation")
 	case errors.Is(err, taskusecase.ErrTaskNotFound), errors.Is(err, taskusecase.ErrActionItemNotFound):
@@ -127,7 +156,23 @@ func actionItemErrorResponse(err error) (int, ErrDetail) {
 	case errors.Is(err, taskusecase.ErrActionItemPatchRequiredFieldNull):
 		return http.StatusBadRequest, NewErrDetail("title", "title_required", "Title cannot be null")
 	case errors.Is(err, domain.ErrActionItemEstimatedMinutesInvalid):
-		return http.StatusBadRequest, NewErrDetail("estimated_minutes", "invalid_minutes", "Estimated minutes must be zero or greater")
+		return http.StatusBadRequest, NewErrDetail("estimated_minutes", "invalid_minutes", "Estimated minutes must be between 1 and 2147483647")
+	case errors.Is(err, domain.ErrActionItemActualMinutesInvalid):
+		return http.StatusBadRequest, NewErrDetail("actual_minutes", "invalid_minutes", "Actual minutes must be between 0 and 2147483647")
+	case errors.Is(err, taskusecase.ErrActionItemActualMinutesRequiresCompletion):
+		return http.StatusConflict, NewErrDetail("actual_minutes", "action_item_not_completed", "Actual minutes can only be edited after completion")
+	case errors.Is(err, taskusecase.ErrActionItemStarted):
+		return http.StatusConflict, NewErrDetail("estimated_minutes", "action_item_started", "Estimate cannot change after an ActionItem has started")
+	case errors.Is(err, taskusecase.ErrTodoRegenerationRequired):
+		return http.StatusConflict, NewErrDetail("", "todo_regeneration_required", "Changing this estimate resets unfinished work and manual edits in today's Todo. Started work remains.")
+	case errors.Is(err, taskusecase.ErrTaskManualEstimateRequired):
+		return http.StatusBadRequest, NewErrDetail("manual_estimated_minutes", "required", "A positive estimate is required when a Task has no ActionItems")
+	case errors.Is(err, taskusecase.ErrTaskStarted):
+		return http.StatusConflict, NewErrDetail("manual_estimated_minutes", "task_started", "Task estimate cannot change after work starts or completes")
+	case errors.Is(err, domain.ErrTaskEstimatedMinutesInvalid):
+		return http.StatusBadRequest, NewErrDetail("manual_estimated_minutes", "invalid_minutes", "Estimated minutes must be between 1 and 2147483647")
+	case errors.Is(err, taskusecase.ErrCannotAddActionItemToStartedTask):
+		return http.StatusConflict, NewErrDetail("task_id", "task_started", "ActionItems cannot be added to a started or completed childless Task")
 	case errors.Is(err, domain.ErrTaskPriorityEmpty), errors.Is(err, domain.ErrTaskPriorityInvalid):
 		return http.StatusBadRequest, NewErrDetail("priority", "invalid_priority", "Priority is invalid")
 	case errors.Is(err, domain.ErrActionItemTitleEmpty):
@@ -255,7 +300,7 @@ func (h *ActionItemHandler) Create(w http.ResponseWriter, r *http.Request) {
 	item, err := h.actionItems.Create.Execute(r.Context(), taskusecase.CreateActionItemInput{
 		ID: domain.ActionItemID(h.issueID()), UserID: userID, TaskID: taskID,
 		Title: request.Title, Description: request.Description, DueDate: dueDate,
-		EstimatedMinutes: cloneInt(request.EstimatedMinutes), Priority: request.Priority,
+		EstimatedMinutes: cloneInt(request.EstimatedMinutes), Priority: request.Priority, ConfirmTodoRegeneration: request.ConfirmTodoRegeneration,
 	})
 	if err != nil {
 		writeActionItemError(w, actionItemsCreateFailure, err)
@@ -312,7 +357,10 @@ func (h *ActionItemHandler) Update(w http.ResponseWriter, r *http.Request) {
 	title, description := request.Title.patchField(), request.Description.patchField()
 	var item dao.ActionItem
 	var err error
-	planning := taskusecase.ActionItemPlanningPatch{EstimatedMinutes: request.EstimatedMinutes.patchField(), Priority: request.Priority.patchField()}
+	planning := taskusecase.ActionItemPlanningPatch{
+		EstimatedMinutes: request.EstimatedMinutes.patchField(), ActualMinutes: request.ActualMinutes.patchField(),
+		Priority: request.Priority.patchField(), ConfirmTodoRegeneration: request.ConfirmTodoRegeneration,
+	}
 	item, err = h.actionItems.Update.Execute(r.Context(), userID, taskID, itemID, title, description, dueDate, planning)
 	if err != nil {
 		writeActionItemError(w, actionItemsUpdateFailure, err)
@@ -324,16 +372,21 @@ func (h *ActionItemHandler) Update(w http.ResponseWriter, r *http.Request) {
 // Delete removes a saved ActionItem.
 //
 //	@Summary		Delete action item
-//	@Description	Deletes a saved ActionItem.
+//	@Description	Deletes a saved ActionItem. When removing the final child of a Task, an optional body atomically supplies the childless Task's manual estimate and regeneration confirmation.
 //	@Tags			ActionItems
+//	@Accept			json
 //	@Security		BearerAuth
-//	@Param			taskId	path	string	true	"Task ID"
-//	@Param			id		path	string	true	"ActionItem ID"
+//	@Param			taskId		path	string					true	"Task ID"
+//	@Param			id			path	string					true	"ActionItem ID"
+//	@Param			If-Match	header	string					false	"Current Task ETag; required when manual_estimated_minutes is supplied"
+//	@Param			request		body	ActionItemDeleteRequest	false	"Atomic last-child estimate and Todo regeneration confirmation"
 //	@Success		204
 //	@Failure		400	{object}	ErrResponse	"Invalid IDs"
 //	@Failure		401	{object}	ErrResponse	"Unauthorized"
 //	@Failure		404	{object}	ErrResponse	"Task or action item not found"
 //	@Failure		409	{object}	ErrResponse	"Completed ActionItems cannot be deleted"
+//	@Failure		412	{object}	ErrResponse	"Task revision does not match If-Match"
+//	@Failure		428	{object}	ErrResponse	"If-Match is required when changing the Task manual estimate"
 //	@Failure		500	{object}	ErrResponse	"Failed to delete action item"
 //
 //	@Router			/tasks/{taskId}/action-items/{id} [delete]
@@ -347,7 +400,39 @@ func (h *ActionItemHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if !actionItemIDsRequired(w, actionItemsDeleteFailure, taskID, itemID, true) {
 		return
 	}
-	if err := h.actionItems.Delete.Execute(r.Context(), userID, taskID, itemID); err != nil {
+	var request ActionItemDeleteRequest
+	if r.Body != nil {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			WriteError(w, http.StatusBadRequest, actionItemsDeleteFailure, ErrDetailInvalidRequestBody)
+			return
+		}
+		if len(bytes.TrimSpace(body)) > 0 {
+			r.Body = io.NopCloser(bytes.NewReader(body))
+			if err := decodeRequest(r, &request); err != nil {
+				WriteError(w, http.StatusBadRequest, actionItemsDeleteFailure, ErrDetailInvalidRequestBody)
+				return
+			}
+		}
+	}
+	var expected *int32
+	if request.ManualEstimatedMinutes.Present {
+		if request.ManualEstimatedMinutes.Value == nil || *request.ManualEstimatedMinutes.Value < 1 || int64(*request.ManualEstimatedMinutes.Value) > 2147483647 {
+			WriteError(w, http.StatusBadRequest, actionItemsDeleteFailure, NewErrDetail("manual_estimated_minutes", "invalid_minutes", "Estimated minutes must be between 1 and 2147483647"))
+			return
+		}
+		revision, ok := expectedRevision(w, r, actionItemsDeleteFailure)
+		if !ok {
+			return
+		}
+		expected = &revision
+	}
+	if err := h.actionItems.Delete.ExecuteWithOptions(r.Context(), userID, taskID, itemID, taskusecase.DeleteActionItemOptions{
+		ConfirmTodoRegeneration: request.ConfirmTodoRegeneration,
+		ManualEstimatedMinutes:  request.ManualEstimatedMinutes.Value,
+		ManualEstimatePresent:   request.ManualEstimatedMinutes.Present,
+		ExpectedTaskRevision:    expected,
+	}); err != nil {
 		writeActionItemError(w, actionItemsDeleteFailure, err)
 		return
 	}
@@ -386,8 +471,9 @@ func (h *ActionItemHandler) changeCompleted(w http.ResponseWriter, r *http.Reque
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			taskId	path		string	true	"Task ID"
-//	@Param			id		path		string	true	"ActionItem ID"
+//	@Param			taskId	path		string						true	"Task ID"
+//	@Param			id		path		string						true	"ActionItem ID"
+//	@Param			request	body		ActionItemCompleteRequest	false	"Optional actual work time"
 //	@Success		200		{object}	MessageResponse
 //	@Failure		400		{object}	ErrResponse
 //	@Failure		401		{object}	ErrResponse
@@ -396,7 +482,35 @@ func (h *ActionItemHandler) changeCompleted(w http.ResponseWriter, r *http.Reque
 //
 //	@Router			/tasks/{taskId}/action-items/{id}:complete [post]
 func (h *ActionItemHandler) Complete(w http.ResponseWriter, r *http.Request) {
-	h.changeCompleted(w, r, actionItemsCompleteFailure, h.actionItems.Complete.Execute, "ActionItem completed")
+	userID, ok := actionItemsUserID(r)
+	if !ok {
+		actionItemUnauthorized(w, actionItemsCompleteFailure)
+		return
+	}
+	taskID, itemID := actionItemPathIDs(r)
+	if !actionItemIDsRequired(w, actionItemsCompleteFailure, taskID, itemID, true) {
+		return
+	}
+	var request ActionItemCompleteRequest
+	if r.Body != nil {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			WriteError(w, http.StatusBadRequest, actionItemsCompleteFailure, ErrDetailInvalidRequestBody)
+			return
+		}
+		if strings.TrimSpace(string(body)) != "" {
+			r.Body = io.NopCloser(bytes.NewReader(body))
+			if err := decodeRequest(r, &request); err != nil {
+				WriteError(w, http.StatusBadRequest, actionItemsCompleteFailure, ErrDetailInvalidRequestBody)
+				return
+			}
+		}
+	}
+	if err := h.actionItems.Complete.Execute(r.Context(), userID, taskID, itemID, request.ActualMinutes); err != nil {
+		writeActionItemError(w, actionItemsCompleteFailure, err)
+		return
+	}
+	WriteMessage(w, http.StatusOK, "ActionItem completed")
 }
 
 // Reopen clears ActionItem completion.

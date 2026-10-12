@@ -90,10 +90,12 @@ func (reader getTaskActionItemsFake) ReadTaskListProjection(ctx context.Context,
 
 func (reader getTaskProjectionFake) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
 	items := make(map[string][]dao.ActionItem, len(taskIDs))
+	canCreate := make(map[string]bool, len(taskIDs))
 	for _, id := range taskIDs {
 		items[id] = reader.rows
+		canCreate[id] = true
 	}
-	return dao.TaskListProjectionSources{ActionItemsByTask: items}, nil
+	return dao.TaskListProjectionSources{ActionItemsByTask: items, CanCreateActionItems: canCreate}, nil
 }
 
 func TestGetTaskUseCaseExecuteReturnsOwnedTaskWithCapabilitiesAndProjection(t *testing.T) {
@@ -114,6 +116,8 @@ func TestGetTaskUseCaseExecuteReturnsOwnedTaskWithCapabilitiesAndProjection(t *t
 	wantTask.Progress, wantTask.ActionItemCount, wantTask.ActionItemCompletedCount = 66, 3, 2
 	wantTask.EstimateSource = "action_items"
 	wantTask.CanUpdate = true
+	wantTask.EstimateEditable = true
+	wantTask.CanAddActionItem = true
 	uow := &getTaskUOWFake{repos: getTaskRepositoriesFake{
 		tasks: taskRepo,
 		items: getTaskActionItemsFake{getTaskProjectionFake: getTaskProjectionFake{rows: rows}},

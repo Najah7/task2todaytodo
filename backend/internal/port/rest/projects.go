@@ -141,6 +141,10 @@ type ProjectTaskResponse struct {
 	ActionItemCompletedCount int                       `json:"action_item_completed_count"`
 	ActualMinutes            *int                      `json:"actual_minutes"`
 	Progress                 int                       `json:"progress"`
+	Started                  bool                      `json:"started"`
+	EstimateEditable         bool                      `json:"estimate_editable"`
+	CanAddActionItem         bool                      `json:"can_add_action_item"`
+	CanAddToToday            bool                      `json:"can_add_to_today"`
 	Priority                 ProjectPriorityResponse   `json:"priority"`
 	Status                   ProjectTaskStatusResponse `json:"status"`
 	CreatedAt                int64                     `json:"created_at"`
@@ -1019,7 +1023,8 @@ func projectTaskResponse(task taskdao.Task) ProjectTaskResponse {
 		ProjectID: task.ProjectID, Title: task.Title, Description: task.Description,
 		DueDate: projectUnixDate(task.DueDate), ManualEstimatedMinutes: cloneInt(task.ManualEstimatedMinutes), EstimatedMinutes: cloneInt(task.EstimatedMinutes), EstimateSource: task.EstimateSource,
 		ActionItemCount: task.ActionItemCount, ActionItemCompletedCount: task.ActionItemCompletedCount, ActualMinutes: task.ActualMinutes,
-		Progress:  task.Progress,
+		Progress: task.Progress, Started: task.Started, EstimateEditable: task.EstimateEditable,
+		CanAddActionItem: task.CanAddActionItem, CanAddToToday: task.CanAddToToday,
 		Priority:  ProjectPriorityResponse{Value: task.Priority.Value, Label: task.Priority.Label, LabelJp: task.Priority.LabelJp, Weight: task.Priority.Weight},
 		Status:    ProjectTaskStatusResponse{Value: task.Status.Value, Label: task.Status.Label, LabelJp: task.Status.LabelJp},
 		CreatedAt: task.CreatedAt, UpdatedAt: task.UpdatedAt,

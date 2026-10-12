@@ -28,6 +28,10 @@ type Task struct {
 	ActionItemCompletedCount int
 	CanUpdate                bool
 	CanAssign                bool
+	Started                  bool
+	EstimateEditable         bool
+	CanAddActionItem         bool
+	CanAddToToday            bool
 }
 
 type TaskDetails struct {
@@ -52,7 +56,10 @@ type TaskProgressSources struct {
 }
 
 type TaskListProjectionSources struct {
-	ActionItemsByTask map[string][]ActionItem
+	ActionItemsByTask    map[string][]ActionItem
+	StartedTasks         map[string]bool
+	TasksWithChildren    map[string]bool
+	CanCreateActionItems map[string]bool
 }
 
 type Priority struct {

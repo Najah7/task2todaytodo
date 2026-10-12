@@ -12,10 +12,13 @@ import (
 )
 
 var ErrActionItemPatchRequiredFieldNull = errors.New("required action item field cannot be null")
+var ErrActionItemActualMinutesRequiresCompletion = errors.New("actual minutes can only be set on completed action items")
 
 type ActionItemPlanningPatch struct {
-	EstimatedMinutes PatchField[int]
-	Priority         PatchField[string]
+	EstimatedMinutes        PatchField[int]
+	ActualMinutes           PatchField[int]
+	Priority                PatchField[string]
+	ConfirmTodoRegeneration bool
 }
 
 type UpdateActionItemUseCase struct {
@@ -48,7 +51,7 @@ func (uc *UpdateActionItemUseCase) Execute(
 	asOf := time.Now()
 	var result dao.ActionItem
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		return withTaskProgressMutationForPermission(ctx, repos, userID, taskID, asOf, shared.ActionItemUpdate(), func() error {
+		return withTaskProgressMutationForPermissionAndState(ctx, repos, userID, taskID, asOf, shared.ActionItemUpdate(), func(task dao.Task, _ taskProjectMutationSnapshot) error {
 			current, err := repos.ActionItems().GetForCommand(ctx, userID, taskID, itemID, shared.ActionItemUpdate())
 			if err != nil {
 				return err
@@ -73,10 +76,48 @@ func (uc *UpdateActionItemUseCase) Execute(
 				}
 			}
 			if patch.EstimatedMinutes.Present {
+				if patch.EstimatedMinutes.Value == nil {
+					return domain.ErrActionItemEstimatedMinutesInvalid
+				}
 				item.EstimatedMinutes = nil
 				if patch.EstimatedMinutes.Value != nil {
 					value := *patch.EstimatedMinutes.Value
 					item.EstimatedMinutes = &value
+				}
+			}
+			estimateChanged := patch.EstimatedMinutes.Present && (current.EstimatedMinutes == nil || item.EstimatedMinutes == nil || *current.EstimatedMinutes != *item.EstimatedMinutes)
+			todayHasItem := false
+			assigneeID := domain.UserID(task.AssigneeID)
+			if assigneeID == "" {
+				assigneeID = userID
+			}
+			if estimateChanged {
+				if current.Completed {
+					return ErrActionItemStarted
+				}
+				started, err := repos.ActionItemTodos().HasCompletedFrame(ctx, itemID)
+				if err != nil {
+					return err
+				}
+				if started {
+					return ErrActionItemStarted
+				}
+				todayHasItem, err = repos.ActionItemTodos().HasTodayActionItem(ctx, assigneeID, itemID)
+				if err != nil {
+					return err
+				}
+				if todayHasItem && !patch.ConfirmTodoRegeneration {
+					return ErrTodoRegenerationRequired
+				}
+			}
+			if patch.ActualMinutes.Present {
+				if !current.Completed {
+					return ErrActionItemActualMinutesRequiresCompletion
+				}
+				item.ActualMinutes = nil
+				if patch.ActualMinutes.Value != nil {
+					value := *patch.ActualMinutes.Value
+					item.ActualMinutes = &value
 				}
 			}
 			if patch.Priority.Present {
@@ -92,6 +133,9 @@ func (uc *UpdateActionItemUseCase) Execute(
 				return err
 			}
 			result, err = repos.ActionItems().UpdateForOwnedTask(ctx, userID, item)
+			if err == nil && estimateChanged && todayHasItem {
+				err = repos.ActionItemTodos().RegenerateToday(ctx, assigneeID)
+			}
 			return err
 		})
 	})
@@ -115,6 +159,7 @@ func actionItemDomainFromDAO(item dao.ActionItem) (domain.ActionItem, error) {
 	}
 	return domain.NewExistingActionItem(domain.ActionItemID(item.ID), domain.TaskID(item.TaskID), item.Title, item.Description, dueDate, item.Completed, item.Position, createdAt, updatedAt, domain.ActionItemPlanning{
 		EstimatedMinutes: item.EstimatedMinutes,
+		ActualMinutes:    item.ActualMinutes,
 		Priority:         priority,
 	})
 }

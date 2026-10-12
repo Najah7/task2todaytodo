@@ -112,7 +112,8 @@ func (repo *completeTaskTaskRepositoryFake) UpdateByUserID(_ context.Context, us
 	if repo.updateErr != nil {
 		return dao.Task{}, repo.updateErr
 	}
-	return dao.Task{ID: string(task.ID), UserID: string(task.UserID), Status: dao.TaskStatus{Value: task.Status.String()}, Revision: expectedRevision + 1}, nil
+	repo.task = dao.Task{ID: string(task.ID), UserID: string(task.UserID), AssigneeID: string(task.AssigneeID), Status: dao.TaskStatus{Value: task.Status.String()}, Revision: expectedRevision + 1, ActualMinutes: task.ActualMinutes}
+	return repo.task, nil
 }
 
 type completeTaskActionItemRepositoryFake struct {
@@ -164,13 +165,13 @@ func TestCompleteTaskUseCaseCompletesTaskAndListUsesTaskStatus(t *testing.T) {
 			if got.Revision != 2 || got.Status.Value != "done" {
 				t.Errorf("Execute() = revision %d, status %q; want revision 2, done", got.Revision, got.Status.Value)
 			}
-			if uow.calls != 1 || taskRepo.getCalls != 2 || taskRepo.updateCalls != 1 || actionItemRepo.calls != 0 {
-				t.Fatalf("calls = UOW:%d get:%d update:%d actionItem:%d, want status update and persisted readback", uow.calls, taskRepo.getCalls, taskRepo.updateCalls, actionItemRepo.calls)
+			if uow.calls != 1 || taskRepo.getCalls != 1 || taskRepo.updateCalls != 1 || actionItemRepo.calls != 0 {
+				t.Fatalf("calls = UOW:%d get:%d update:%d actionItem:%d, want one locked read and one persisted update", uow.calls, taskRepo.getCalls, taskRepo.updateCalls, actionItemRepo.calls)
 			}
 			if taskRepo.updated.Status.String() != "done" || taskRepo.task.Status.Value != "done" {
 				t.Errorf("updated status = %q/%q, want done", taskRepo.updated.Status.String(), taskRepo.task.Status.Value)
 			}
-			wantCalls := []string{"tasks", "get-task", "set-status", "get-task"}
+			wantCalls := []string{"tasks", "get-task", "update-task"}
 			if !reflect.DeepEqual(*accesses, wantCalls) {
 				t.Errorf("transaction repository call order = %v", *accesses)
 			}
@@ -197,7 +198,7 @@ func TestCompleteTaskUseCasePropagatesTaskAndUnitOfWorkFailures(t *testing.T) {
 		wantErr := errors.New("task update failed")
 		taskRepo.updateErr = wantErr
 		_, err := uc.Execute(context.Background(), "user-1", "task-1", 1)
-		if !errors.Is(err, wantErr) || !uow.rolledBack || !reflect.DeepEqual(*accesses, []string{"tasks", "get-task", "set-status"}) {
+		if !errors.Is(err, wantErr) || !uow.rolledBack || !reflect.DeepEqual(*accesses, []string{"tasks", "get-task", "update-task"}) {
 			t.Errorf("Execute() error=%v rollback=%t calls=%v", err, uow.rolledBack, *accesses)
 		}
 	})

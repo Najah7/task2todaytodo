@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
@@ -32,6 +33,12 @@ func NewCreateTaskInProjectUseCase(uow UOW, logger telemetry.Logger) *CreateTask
 
 func (uc *CreateTaskInProjectUseCase) Execute(ctx context.Context, input CreateTaskInProjectInput) (output dao.Task, err error) {
 	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "CreateTaskInProjectUseCase.Execute", err) }()
+	if input.EstimatedMinutes == nil {
+		return dao.Task{}, ErrTaskManualEstimateRequired
+	}
+	if *input.EstimatedMinutes < 1 || int64(*input.EstimatedMinutes) > math.MaxInt32 {
+		return dao.Task{}, domain.ErrTaskEstimatedMinutesInvalid
+	}
 
 	var created dao.Task
 	asOf := time.Now()

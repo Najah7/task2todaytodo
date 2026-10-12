@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/task/domain"
 )
@@ -46,6 +47,13 @@ func (*createActionItemRepositoryFake) ReadTaskListProjection(_ context.Context,
 		items[id] = nil
 	}
 	return dao.TaskListProjectionSources{ActionItemsByTask: items}, nil
+}
+
+func (*createActionItemRepositoryFake) ListByTask(context.Context, domain.UserID, domain.TaskID) ([]dao.ActionItem, error) {
+	return nil, nil
+}
+func (*createActionItemRepositoryFake) CountForOwnedTask(context.Context, domain.UserID, domain.TaskID, shared.Capability) (int, error) {
+	return 0, nil
 }
 
 func (repo *createActionItemRepositoryFake) CreateForOwnedTask(_ context.Context, _ domain.UserID, item domain.ActionItem, appendTail bool) (dao.ActionItem, error) {
@@ -99,7 +107,8 @@ func TestCreateActionItemUseCasePropagatesRepositoryAndUOWErrors(t *testing.T) {
 	t.Run("repository", func(t *testing.T) {
 		uow, repo, uc := newCreateActionItemFixture()
 		repo.err = wantErr
-		if _, err := uc.Execute(context.Background(), CreateActionItemInput{ID: "item-1", UserID: "user-1", TaskID: "task-1", Title: "Item"}); !errors.Is(err, wantErr) {
+		estimate := 15
+		if _, err := uc.Execute(context.Background(), CreateActionItemInput{ID: "item-1", UserID: "user-1", TaskID: "task-1", Title: "Item", EstimatedMinutes: &estimate}); !errors.Is(err, wantErr) {
 			t.Errorf("Execute() error = %v, want %v", err, wantErr)
 		}
 		if uow.calls != 1 || repo.created.ID != "item-1" {

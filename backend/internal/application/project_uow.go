@@ -19,14 +19,23 @@ type ProjectUOW struct {
 	projects  ProjectStore
 	tasks     TaskStore
 	schedules ScheduleStore
+	runTx     transactionRunner
 }
 
 func NewProjectUOW(pool *pgxpool.Pool, projects ProjectStore, tasks TaskStore, schedules ScheduleStore) projectusecase.UnitOfWork {
-	return &ProjectUOW{pool: pool, projects: projects, tasks: tasks, schedules: schedules}
+	return newProjectUOW(pool, projects, tasks, schedules, RunInTodoWorkflowTx)
+}
+
+func NewProjectReadUOW(pool *pgxpool.Pool, projects ProjectStore, tasks TaskStore, schedules ScheduleStore) projectusecase.UnitOfWork {
+	return newProjectUOW(pool, projects, tasks, schedules, RunInTx)
+}
+
+func newProjectUOW(pool *pgxpool.Pool, projects ProjectStore, tasks TaskStore, schedules ScheduleStore, runTx transactionRunner) *ProjectUOW {
+	return &ProjectUOW{pool: pool, projects: projects, tasks: tasks, schedules: schedules, runTx: runTx}
 }
 
 func (uow *ProjectUOW) Do(ctx context.Context, fn func(context.Context, projectusecase.Repository, projectusecase.ProjectChildrenDeleter) error) error {
-	return RunInTx(ctx, uow.pool, func(tx pgx.Tx) error {
+	return uow.runTx(ctx, uow.pool, func(tx pgx.Tx) error {
 		allocationRepository := allocationrepository.NewAllocationRepository(uow.pool).WithTx(tx)
 		return fn(ctx, uow.projects.WithTx(tx).Projects, projectChildrenAdapter{
 			tasks:       uow.tasks.WithTx(tx).Tasks,

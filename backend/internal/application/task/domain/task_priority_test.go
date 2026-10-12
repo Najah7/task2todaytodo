@@ -16,7 +16,7 @@ func TestNewTaskPriority(t *testing.T) {
 		{name: "high", value: "high", want: TaskPriority{Value: "high", Label: "High", LabelJp: "高", Weight: 50}},
 		{name: "medium", value: "medium", want: TaskPriority{Value: "medium", Label: "Medium", LabelJp: "中", Weight: 25}},
 		{name: "low", value: "low", want: TaskPriority{Value: "low", Label: "Low", LabelJp: "低", Weight: 10}},
-		{name: "someday", value: "someday", want: TaskPriority{Value: "someday", Label: "Someday", LabelJp: "いつか", Weight: 0}},
+		{name: "someday", value: "someday", want: TaskPriority{Value: "someday", Label: "Someday", LabelJp: "いつか", Weight: 1}},
 		{name: "empty", wantErr: ErrTaskPriorityEmpty},
 		{name: "invalid", value: "blocked", wantErr: ErrTaskPriorityInvalid},
 	}

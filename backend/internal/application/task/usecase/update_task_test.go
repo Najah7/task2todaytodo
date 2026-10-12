@@ -93,16 +93,18 @@ func TestUpdateTaskUseCaseExecuteUpdatesSpecifiedFieldAndPreservesProtectedField
 }
 
 func TestUpdateTaskUseCaseExecuteClearsNullableFields(t *testing.T) {
-	repo := &updateTaskRepositoryFake{task: updateTaskFixture()}
+	fixture := updateTaskFixture()
+	fixture.Status.Value = "done"
+	repo := &updateTaskRepositoryFake{task: fixture}
 	_, err := NewUpdateTaskUseCase(&updateTaskUOWFake{repo: repo}, nil).Execute(context.Background(), UpdateTaskInput{
 		UserID: "user-1", TaskID: "task-1", ExpectedRevision: 1,
 		Description: PatchField[string]{Present: true}, DueDate: PatchField[time.Time]{Present: true},
-		ManualEstimatedMinutes: PatchField[int]{Present: true}, ActualMinutes: PatchField[int]{Present: true},
+		ActualMinutes: PatchField[int]{Present: true},
 	})
 	if err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
 	}
-	if repo.updated.Description != "" || !repo.updated.DueDate.IsZero() || repo.updated.ManualEstimatedMinutes != nil || repo.updated.ActualMinutes != nil {
+	if repo.updated.Description != "" || !repo.updated.DueDate.IsZero() || repo.updated.ManualEstimatedMinutes == nil || *repo.updated.ManualEstimatedMinutes != 45 || repo.updated.ActualMinutes != nil {
 		t.Errorf("nullable fields not cleared: description=%q due=%v estimate=%v actual=%v", repo.updated.Description, repo.updated.DueDate, repo.updated.ManualEstimatedMinutes, repo.updated.ActualMinutes)
 	}
 }
@@ -213,7 +215,14 @@ type updateTaskRepositoriesFake struct {
 	repo *updateTaskRepositoryFake
 }
 
-func (repos updateTaskRepositoriesFake) Tasks() TaskRepository { return repos.repo }
+func (repos updateTaskRepositoriesFake) Tasks() TaskRepository       { return repos.repo }
+func (updateTaskRepositoriesFake) ActionItems() ActionItemRepository { return updateTaskActionItems{} }
+
+type updateTaskActionItems struct{ taskProgressTestActionItems }
+
+func (updateTaskActionItems) CountForOwnedTask(context.Context, domain.UserID, domain.TaskID, shared.Capability) (int, error) {
+	return 3, nil
+}
 
 func updateTaskProgressSource() *taskProgressSourceFake {
 	return &taskProgressSourceFake{sources: dao.TaskProgressSources{

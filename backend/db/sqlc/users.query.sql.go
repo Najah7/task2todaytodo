@@ -34,7 +34,7 @@ func (q *Queries) GetTimezoneChoices(ctx context.Context) ([]string, error) {
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime
+SELECT id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
 FROM users
 WHERE id = $1
 `
@@ -53,12 +53,13 @@ func (q *Queries) GetUser(ctx context.Context, id string) (User, error) {
 		&i.Timezone,
 		&i.WakeUpTime,
 		&i.Bedtime,
+		&i.MinimumGapMinutes,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime
+SELECT id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
 FROM users
 WHERE email = $1
 `
@@ -77,6 +78,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Timezone,
 		&i.WakeUpTime,
 		&i.Bedtime,
+		&i.MinimumGapMinutes,
 	)
 	return i, err
 }

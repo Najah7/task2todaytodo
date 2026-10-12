@@ -21,7 +21,7 @@ func TestActionItemReorderAndAppendAfterDeletingLastRow(t *testing.T) {
 		domain.ActionItemID(actionItemTestID{}.Generate()),
 	}
 	for index, id := range ids {
-		item, err := domain.NewActionItem(id, taskID, "Ordered work")
+		item, err := domain.NewActionItem(id, taskID, "Ordered work", 30)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -62,7 +62,7 @@ func TestActionItemReorderAndAppendAfterDeletingLastRow(t *testing.T) {
 		t.Fatalf("soft-delete last ActionItem: %v", err)
 	}
 	appendedID := domain.ActionItemID(actionItemTestID{}.Generate())
-	appended, err := domain.NewActionItem(appendedID, taskID, "Appended after delete")
+	appended, err := domain.NewActionItem(appendedID, taskID, "Appended after delete", 30)
 	if err != nil {
 		t.Fatal(err)
 	}

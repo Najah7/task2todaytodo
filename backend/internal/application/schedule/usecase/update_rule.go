@@ -34,7 +34,13 @@ func (uc *UpdateRuleUseCase) Execute(ctx context.Context, actorID, ruleID, occur
 		return dao.Rule{}, err
 	}
 	var result dao.Rule
-	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
+	newAssignee := ""
+	if input.AssigneeID != nil {
+		newAssignee = *input.AssigneeID
+	}
+	err = doWithTodoImpact(ctx, uc.uow, TodoImpactScope{
+		ActorID: actorID, RuleID: ruleID, OccurrenceDate: occurrenceDate, Following: true, AssigneeID: newAssignee,
+	}, input.ConfirmTodoRegeneration, func(ctx context.Context, repos Repositories) error {
 		repo := repos.Rules()
 		assignmentOnly := input.AssigneeID != nil && input.Title == nil && input.Description == nil && input.Location == nil &&
 			input.ProjectID == nil && input.Timezone == nil && input.LocalStart == nil && input.LocalEnd == nil &&

@@ -232,6 +232,7 @@ func (r TaskRepository) ListByProjectAndUserIDCursor(ctx context.Context, userID
 			ChangedBy: record.ChangedBy, CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt,
 		})
 		task.ProjectStatus = record.ProjectStatus
+		task.CanUpdate = record.CanUpdate
 		tasks = append(tasks, task)
 	}
 	return tasks, nil
@@ -377,6 +378,7 @@ func (r TaskRepository) UpdateByUserID(ctx context.Context, userID domain.UserID
 		ManualEstimatedMinutes: intPointerToPgInt(task.ManualEstimatedMinutes),
 		ActualMinutes:          intPointerToPgInt(task.ActualMinutes),
 		Priority:               taskPriorityString(task.Priority),
+		Status:                 taskStatusString(task.Status),
 		ProjectID:              stringToPgText(string(task.ProjectID)),
 		AssigneeID:             string(task.AssigneeID),
 	})

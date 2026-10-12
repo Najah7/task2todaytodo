@@ -29,7 +29,14 @@ func EnrichTaskList(ctx context.Context, reader TaskListProjectionReader, userID
 	if err != nil {
 		return nil, err
 	}
-	return ApplyTaskListProjection(tasks, sources, asOf)
+	rows, err := ApplyTaskListProjection(tasks, sources, asOf)
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		rows[i].CanAddToToday = rows[i].CanAddToToday && rows[i].AssigneeID == string(userID)
+	}
+	return rows, nil
 }
 
 // EnrichTasksInRepositories loads project state and ActionItem projections
@@ -55,6 +62,11 @@ func ApplyTaskListProjection(tasks []dao.Task, sources dao.TaskListProjectionSou
 		rows := sources.ActionItemsByTask[task.ID]
 		task.ActionItemCount = len(rows)
 		task.ActionItemCompletedCount = 0
+		task.Started = sources.StartedTasks[task.ID]
+		task.EstimateEditable = task.CanUpdate && !task.Started && task.Status.Value != "done"
+		hasChildren := sources.TasksWithChildren[task.ID] || len(rows) > 0
+		task.CanAddActionItem = sources.CanCreateActionItems[task.ID] && task.Status.Value != "done" && task.ProjectStatus != "done" && (hasChildren || !task.Started)
+		task.CanAddToToday = !hasChildren && task.Status.Value != "done" && task.ProjectStatus != "done" && task.CanUpdate
 		var total int
 		hasEstimate := false
 		for _, item := range rows {

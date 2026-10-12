@@ -218,9 +218,9 @@ func TestRESTTaskCreateRejectsNestedActionItemsAndUsesActionItemEstimateSum(t *t
 	}
 
 	manual := 90
-	task := createTasksPageTask(t, api, `{"title":"Sum task","priority":"high","manual_estimated_minutes":90,"action_items":[{"title":"First","estimated_minutes":35},{"title":"No estimate","estimated_minutes":null},{"title":"Zero estimate","estimated_minutes":0,"priority":"low"}]}`)
-	if task.EstimatedMinutes == nil || *task.EstimatedMinutes != 35 || task.ManualEstimatedMinutes == nil || *task.ManualEstimatedMinutes != manual || task.EstimateSource != "action_items" {
-		t.Fatalf("Task estimate projection=%+v; want manual 90 and effective ActionItem sum 35", task)
+	task := createTasksPageTask(t, api, `{"title":"Sum task","priority":"high","manual_estimated_minutes":90,"action_items":[{"title":"First","estimated_minutes":35},{"title":"Second","estimated_minutes":10},{"title":"Third","estimated_minutes":20,"priority":"low"}]}`)
+	if task.EstimatedMinutes == nil || *task.EstimatedMinutes != 65 || task.ManualEstimatedMinutes == nil || *task.ManualEstimatedMinutes != manual || task.EstimateSource != "action_items" {
+		t.Fatalf("Task estimate projection=%+v; want manual 90 and effective ActionItem sum 65", task)
 	}
 	if task.ActionItemCount != 3 || task.ActionItemCompletedCount != 0 {
 		t.Fatalf("Task ActionItem counts=%+v; want 3/0", task)
@@ -238,31 +238,26 @@ func TestRESTTaskCreateRejectsNestedActionItemsAndUsesActionItemEstimateSum(t *t
 	if len(actionItems.Items) != 3 || actionItems.Items[0].Priority != "high" || actionItems.Items[1].Priority != "high" || actionItems.Items[2].Priority != "low" {
 		t.Fatalf("ActionItem priorities/order=%+v; want inherited high, inherited high, explicit low", actionItems.Items)
 	}
-	if actionItems.Items[0].EstimatedMinutes == nil || *actionItems.Items[0].EstimatedMinutes != 35 || actionItems.Items[1].EstimatedMinutes != nil || actionItems.Items[2].EstimatedMinutes == nil || *actionItems.Items[2].EstimatedMinutes != 0 {
-		t.Fatalf("ActionItem nullable estimates=%+v", actionItems.Items)
+	if actionItems.Items[0].EstimatedMinutes == nil || *actionItems.Items[0].EstimatedMinutes != 35 || actionItems.Items[1].EstimatedMinutes == nil || *actionItems.Items[1].EstimatedMinutes != 10 || actionItems.Items[2].EstimatedMinutes == nil || *actionItems.Items[2].EstimatedMinutes != 20 {
+		t.Fatalf("ActionItem estimates=%+v", actionItems.Items)
+	}
+	for _, body := range []string{`{"title":"Missing estimate"}`, `{"title":"Null estimate","estimated_minutes":null}`, `{"title":"Zero estimate","estimated_minutes":0}`} {
+		response := api.request(http.MethodPost, fmt.Sprintf("/tasks/%s/action-items", task.ID), body)
+		if response.Code != http.StatusBadRequest {
+			t.Errorf("POST invalid ActionItem %s status/body=%d/%s; want 400", body, response.Code, response.Body.String())
+		}
 	}
 
-	zero := createTasksPageTask(t, api, `{"title":"Manual zero","manual_estimated_minutes":0}`)
-	if zero.EstimatedMinutes == nil || *zero.EstimatedMinutes != 0 || zero.EstimateSource != "manual" {
-		t.Fatalf("manual zero estimate=%+v; want effective zero from manual source", zero)
-	}
-	allNull := createTasksPageTask(t, api, `{"title":"Null estimate","manual_estimated_minutes":90,"action_items":[{"title":"No estimate"}]}`)
-	if allNull.EstimatedMinutes != nil || allNull.ManualEstimatedMinutes == nil || *allNull.ManualEstimatedMinutes != 90 || allNull.EstimateSource != "action_items" {
-		t.Fatalf("all-null child estimate=%+v; want NULL effective estimate and retained manual 90", allNull)
-	}
-	noEstimate := createTasksPageTask(t, api, `{"title":"No manual estimate"}`)
-	if noEstimate.EstimatedMinutes != nil || noEstimate.ManualEstimatedMinutes != nil || noEstimate.EstimateSource != "manual" {
-		t.Fatalf("unset manual estimate=%+v; want nullable manual source", noEstimate)
-	}
-	zeroSummaryResponse := api.request(http.MethodGet, tasksPageQuery(url.Values{"status": {"all"}, "due_filter": {"all"}, "title": {"Manual zero"}}), "")
-	zeroSummary := decodeTasksPageList(t, zeroSummaryResponse)
-	if zeroSummary.EstimatedMinutesTotal == nil || *zeroSummary.EstimatedMinutesTotal != 0 {
-		t.Fatalf("zero-only estimate footer=%+v; want non-NULL zero", zeroSummary)
-	}
-	nullSummaryResponse := api.request(http.MethodGet, tasksPageQuery(url.Values{"status": {"all"}, "due_filter": {"all"}, "title": {"No manual estimate"}}), "")
-	nullSummary := decodeTasksPageList(t, nullSummaryResponse)
-	if nullSummary.EstimatedMinutesTotal != nil {
-		t.Fatalf("all-NULL estimate footer=%+v; want NULL", nullSummary)
+	for _, body := range []string{
+		`{"title":"Missing manual estimate"}`,
+		`{"title":"Null manual estimate","manual_estimated_minutes":null}`,
+		`{"title":"Zero manual estimate","manual_estimated_minutes":0}`,
+		`{"title":"Negative manual estimate","manual_estimated_minutes":-1}`,
+	} {
+		response := api.request(http.MethodPost, "/tasks", body)
+		if response.Code != http.StatusBadRequest {
+			t.Errorf("POST invalid childless Task %s status/body=%d/%s; want 400", body, response.Code, response.Body.String())
+		}
 	}
 }
 
@@ -273,7 +268,7 @@ func TestRESTTaskListFiltersSummaryAcrossCursorPagesAndReflectsCompletion(t *tes
 		t.Fatalf("set Alpha status for tab-count coverage: %v", err)
 	}
 	createTasksPageTask(t, api, `{"title":"Beta task","manual_estimated_minutes":15}`)
-	createTasksPageTask(t, api, `{"title":"Gamma task","action_items":[{"title":"Zero","estimated_minutes":0}]}`)
+	createTasksPageTask(t, api, `{"title":"Gamma task","manual_estimated_minutes":10,"action_items":[{"title":"Positive estimate","estimated_minutes":10}]}`)
 	actionItemsResponse := api.request(http.MethodGet, fmt.Sprintf("/tasks/%s/action-items?page_size=10", alpha.ID), "")
 	if actionItemsResponse.Code != http.StatusOK {
 		t.Fatalf("GET Alpha ActionItems status/body=%d/%s", actionItemsResponse.Code, actionItemsResponse.Body.String())
@@ -297,8 +292,8 @@ func TestRESTTaskListFiltersSummaryAcrossCursorPagesAndReflectsCompletion(t *tes
 	if len(first.Items) != 1 || first.Items[0].ID != alpha.ID || first.Items[0].Progress != 50 || first.Items[0].ActionItemCount != 2 || first.Items[0].ActionItemCompletedCount != 1 || first.Items[0].EstimatedMinutes == nil || *first.Items[0].EstimatedMinutes != 30 {
 		t.Fatalf("first Task row=%+v; want Alpha progress/counts and child estimate sum", first.Items)
 	}
-	if first.TotalCount != 3 || first.ActionItemTotalCount != 3 || first.ActionItemCompletedCount != 1 || first.EstimatedMinutesTotal == nil || *first.EstimatedMinutesTotal != 45 {
-		t.Fatalf("first-page footer summary=%+v; want all 3 Tasks/3 items/1 completed/45 minutes", first)
+	if first.TotalCount != 3 || first.ActionItemTotalCount != 3 || first.ActionItemCompletedCount != 1 || first.EstimatedMinutesTotal == nil || *first.EstimatedMinutesTotal != 55 {
+		t.Fatalf("first-page footer summary=%+v; want all 3 Tasks/3 items/1 completed/55 minutes", first)
 	}
 	if first.NextPageToken == "" {
 		t.Fatalf("first Task page has no continuation token: %+v", first)
@@ -347,12 +342,12 @@ func TestRESTTaskListDueFiltersAndNullLastOrdering(t *testing.T) {
 	api := newTasksPageREST(t)
 	today := time.Now().UTC()
 	dueDate := func(days int) string { return today.AddDate(0, 0, days).Format("2006-01-02") }
-	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Due overdue","due_date":%q}`, dueDate(-1)))
-	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Due today","due_date":%q}`, dueDate(0)))
-	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Due soon","due_date":%q}`, dueDate(1)))
-	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Due last soon","due_date":%q}`, dueDate(14)))
-	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Due outside window","due_date":%q}`, dueDate(15)))
-	createTasksPageTask(t, api, `{"title":"Due no date"}`)
+	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Due overdue","due_date":%q,"manual_estimated_minutes":10}`, dueDate(-1)))
+	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Due today","due_date":%q,"manual_estimated_minutes":10}`, dueDate(0)))
+	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Due soon","due_date":%q,"manual_estimated_minutes":10}`, dueDate(1)))
+	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Due last soon","due_date":%q,"manual_estimated_minutes":10}`, dueDate(14)))
+	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Due outside window","due_date":%q,"manual_estimated_minutes":10}`, dueDate(15)))
+	createTasksPageTask(t, api, `{"title":"Due no date","manual_estimated_minutes":10}`)
 	for _, test := range []struct {
 		filter string
 		want   int
@@ -392,8 +387,8 @@ func TestRESTTaskListDueFiltersAndNullLastOrdering(t *testing.T) {
 		}
 	}
 
-	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Same title","due_date":%q}`, dueDate(2)))
-	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Same title","due_date":%q}`, dueDate(2)))
+	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Same title","due_date":%q,"manual_estimated_minutes":10}`, dueDate(2)))
+	createTasksPageTask(t, api, fmt.Sprintf(`{"title":"Same title","due_date":%q,"manual_estimated_minutes":10}`, dueDate(2)))
 	for _, test := range []struct {
 		title  string
 		sortBy string
@@ -604,7 +599,7 @@ func TestRESTActionItemCreateFailureLeavesTaskForIndependentRetry(t *testing.T) 
 		_, _ = api.pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON action_items; DROP FUNCTION IF EXISTS %s();`, triggerName, functionName))
 	})
 
-	task := createTasksPageTask(t, api, `{"title":"Independent item create"}`)
+	task := createTasksPageTask(t, api, `{"title":"Independent item create","manual_estimated_minutes":25}`)
 	ok := api.request(http.MethodPost, fmt.Sprintf("/tasks/%s/action-items", task.ID), `{"title":"First valid child","estimated_minutes":25}`)
 	if ok.Code != http.StatusCreated {
 		t.Fatalf("first ActionItem status/body=%d/%s", ok.Code, ok.Body.String())

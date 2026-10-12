@@ -2701,6 +2701,12 @@ const docTemplate = `{
                         "name": "If-Match",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Confirm regeneration of affected Todos",
+                        "name": "confirm_todo_regeneration",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2883,6 +2889,12 @@ const docTemplate = `{
                         "name": "If-Match",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Confirm regeneration of affected Todos",
+                        "name": "confirm_todo_regeneration",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3174,6 +3186,12 @@ const docTemplate = `{
                         "name": "If-Match",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Confirm regeneration of affected Todos",
+                        "name": "confirm_todo_regeneration",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3215,6 +3233,12 @@ const docTemplate = `{
                         "name": "If-Match",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Confirm regeneration of affected Todos",
+                        "name": "confirm_todo_regeneration",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3864,6 +3888,9 @@ const docTemplate = `{
                     }
                 ],
                 "description": "Marks task done while preserving its ActionItems.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -3885,6 +3912,14 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Optional actual minutes",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TaskCompleteRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -4362,7 +4397,10 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deletes a saved ActionItem.",
+                "description": "Deletes a saved ActionItem. When removing the final child of a Task, an optional body atomically supplies the childless Task's manual estimate and regeneration confirmation.",
+                "consumes": [
+                    "application/json"
+                ],
                 "tags": [
                     "ActionItems"
                 ],
@@ -4381,6 +4419,20 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current Task ETag; required when manual_estimated_minutes is supplied",
+                        "name": "If-Match",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Atomic last-child estimate and Todo regeneration confirmation",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ActionItemDeleteRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -4407,6 +4459,18 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Completed ActionItems cannot be deleted",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "Task revision does not match If-Match",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is required when changing the Task manual estimate",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -4527,6 +4591,14 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Optional actual work time",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ActionItemCompleteRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -4744,6 +4816,400 @@ const docTemplate = `{
                 }
             }
         },
+        "/today-todo": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Todo"
+                ],
+                "summary": "Get today's Todo",
+                "operationId": "GetTodayTodo",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TodoTodayResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/today-todo/action-items/{actionItemId}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Todo"
+                ],
+                "summary": "Add an ActionItem to today's Todo",
+                "operationId": "AddTodayTodoActionItem",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ActionItem ID",
+                        "name": "actionItemId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current Todo revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TodoTodayResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/today-todo/items/{itemId}:complete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Todo"
+                ],
+                "summary": "Complete a Todo frame",
+                "operationId": "CompleteTodayTodoItem",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Todo item ID",
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current Todo revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Optional actual minutes for whole-source completion",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TodoCompleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TodoTodayResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/today-todo/items/{itemId}:remove": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Todo"
+                ],
+                "summary": "Remove an ActionItem frame",
+                "operationId": "RemoveTodayTodoItem",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Todo item ID",
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current Todo revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TodoTodayResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/today-todo/items/{itemId}:reopen": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Todo"
+                ],
+                "summary": "Reopen a Todo frame",
+                "operationId": "ReopenTodayTodoItem",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Todo item ID",
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current Todo revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TodoTodayResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/today-todo/schedules/{itemId}:hide": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Todo"
+                ],
+                "summary": "Hide a Schedule frame",
+                "operationId": "HideTodayTodoSchedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Todo item ID",
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current Todo revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TodoTodayResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/today-todo/schedules/{itemId}:restore": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Todo"
+                ],
+                "summary": "Restore a hidden Schedule",
+                "operationId": "RestoreTodayTodoSchedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Todo item ID",
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current Todo revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TodoTodayResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/today-todo/tasks/{taskId}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Todo"
+                ],
+                "summary": "Add a Task to today's Todo",
+                "operationId": "AddTodayTodoTask",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Current Todo revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TodoTodayResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/today-todo:regenerate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Todo"
+                ],
+                "summary": "Regenerate today's Todo",
+                "operationId": "RegenerateTodayTodo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current Todo revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TodoTodayResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "Precondition Failed",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/today-todo:reorder": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Todo"
+                ],
+                "summary": "Reorder today's Todo items",
+                "operationId": "ReorderTodayTodo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current Todo revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Ordered item IDs",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.TodoReorderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TodoTodayResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users/me": {
             "get": {
                 "security": [
@@ -4829,6 +5295,56 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Failed to update user",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/minimum-gap": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Update minimum gap preference",
+                "parameters": [
+                    {
+                        "description": "Minimum gap preference",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.UserMinimumGapUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -5005,9 +5521,26 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "rest.ActionItemCreateRequest": {
+        "rest.ActionItemCompleteRequest": {
             "type": "object",
             "properties": {
+                "actual_minutes": {
+                    "type": "integer",
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "x-nullable": true
+                }
+            }
+        },
+        "rest.ActionItemCreateRequest": {
+            "type": "object",
+            "required": [
+                "estimated_minutes"
+            ],
+            "properties": {
+                "confirm_todo_regeneration": {
+                    "type": "boolean"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -5016,13 +5549,27 @@ const docTemplate = `{
                 },
                 "estimated_minutes": {
                     "type": "integer",
-                    "x-nullable": true
+                    "maximum": 2147483647,
+                    "minimum": 1
                 },
                 "priority": {
                     "type": "string"
                 },
                 "title": {
                     "type": "string"
+                }
+            }
+        },
+        "rest.ActionItemDeleteRequest": {
+            "type": "object",
+            "properties": {
+                "confirm_todo_regeneration": {
+                    "type": "boolean"
+                },
+                "manual_estimated_minutes": {
+                    "type": "integer",
+                    "maximum": 2147483647,
+                    "minimum": 1
                 }
             }
         },
@@ -5054,6 +5601,12 @@ const docTemplate = `{
                 "estimated_minutes"
             ],
             "properties": {
+                "actual_minutes": {
+                    "type": "integer",
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "x-nullable": true
+                },
                 "completed": {
                     "type": "boolean"
                 },
@@ -5066,9 +5619,13 @@ const docTemplate = `{
                 "due_date": {
                     "type": "string"
                 },
+                "estimate_editable": {
+                    "type": "boolean"
+                },
                 "estimated_minutes": {
                     "type": "integer",
-                    "x-nullable": true
+                    "maximum": 2147483647,
+                    "minimum": 1
                 },
                 "id": {
                     "type": "string"
@@ -5078,6 +5635,9 @@ const docTemplate = `{
                 },
                 "priority": {
                     "type": "string"
+                },
+                "started": {
+                    "type": "boolean"
                 },
                 "task_id": {
                     "type": "string"
@@ -5093,6 +5653,15 @@ const docTemplate = `{
         "rest.ActionItemUpdateRequest": {
             "type": "object",
             "properties": {
+                "actual_minutes": {
+                    "type": "integer",
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "x-nullable": true
+                },
+                "confirm_todo_regeneration": {
+                    "type": "boolean"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -5101,7 +5670,8 @@ const docTemplate = `{
                 },
                 "estimated_minutes": {
                     "type": "integer",
-                    "x-nullable": true
+                    "maximum": 2147483647,
+                    "minimum": 1
                 },
                 "priority": {
                     "type": "string"
@@ -5722,10 +6292,13 @@ const docTemplate = `{
                 "action_item_count",
                 "actual_minutes",
                 "assignee_id",
+                "can_add_action_item",
+                "can_add_to_today",
                 "can_assign",
                 "can_update",
                 "description",
                 "due_date",
+                "estimate_editable",
                 "estimate_source",
                 "estimated_minutes",
                 "id",
@@ -5733,6 +6306,7 @@ const docTemplate = `{
                 "progress",
                 "remaining_days",
                 "revision",
+                "started",
                 "status"
             ],
             "properties": {
@@ -5749,6 +6323,12 @@ const docTemplate = `{
                 "assignee_id": {
                     "type": "string"
                 },
+                "can_add_action_item": {
+                    "type": "boolean"
+                },
+                "can_add_to_today": {
+                    "type": "boolean"
+                },
                 "can_assign": {
                     "type": "boolean"
                 },
@@ -5761,6 +6341,9 @@ const docTemplate = `{
                 "due_date": {
                     "type": "string",
                     "x-nullable": true
+                },
+                "estimate_editable": {
+                    "type": "boolean"
                 },
                 "estimate_source": {
                     "type": "string"
@@ -5784,6 +6367,9 @@ const docTemplate = `{
                 },
                 "revision": {
                     "type": "integer"
+                },
+                "started": {
+                    "type": "boolean"
                 },
                 "status": {
                     "type": "string"
@@ -6388,6 +6974,12 @@ const docTemplate = `{
                 "assignee_id": {
                     "type": "string"
                 },
+                "can_add_action_item": {
+                    "type": "boolean"
+                },
+                "can_add_to_today": {
+                    "type": "boolean"
+                },
                 "created_at": {
                     "type": "integer"
                 },
@@ -6396,6 +6988,9 @@ const docTemplate = `{
                 },
                 "due_date": {
                     "type": "string"
+                },
+                "estimate_editable": {
+                    "type": "boolean"
                 },
                 "estimate_source": {
                     "type": "string"
@@ -6420,6 +7015,9 @@ const docTemplate = `{
                 },
                 "revision": {
                     "type": "integer"
+                },
+                "started": {
+                    "type": "boolean"
                 },
                 "status": {
                     "$ref": "#/definitions/rest.ProjectTaskStatusResponse"
@@ -6574,6 +7172,9 @@ const docTemplate = `{
         "rest.ScheduleOccurrenceRescheduleRequest": {
             "type": "object",
             "properties": {
+                "confirm_todo_regeneration": {
+                    "type": "boolean"
+                },
                 "end_at": {
                     "type": "string"
                 },
@@ -6736,6 +7337,9 @@ const docTemplate = `{
                 "assignee_id": {
                     "type": "string"
                 },
+                "confirm_todo_regeneration": {
+                    "type": "boolean"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -6765,6 +7369,9 @@ const docTemplate = `{
                 },
                 "assignee_id": {
                     "type": "string"
+                },
+                "confirm_todo_regeneration": {
+                    "type": "boolean"
                 },
                 "description": {
                     "type": "string"
@@ -6970,6 +7577,9 @@ const docTemplate = `{
                 "assignee_id": {
                     "type": "string"
                 },
+                "confirm_todo_regeneration": {
+                    "type": "boolean"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -7103,8 +7713,22 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.TaskCompleteRequest": {
+            "type": "object",
+            "properties": {
+                "actual_minutes": {
+                    "type": "integer",
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "x-nullable": true
+                }
+            }
+        },
         "rest.TaskCreateRequest": {
             "type": "object",
+            "required": [
+                "manual_estimated_minutes"
+            ],
             "properties": {
                 "description": {
                     "type": "string"
@@ -7114,7 +7738,8 @@ const docTemplate = `{
                 },
                 "manual_estimated_minutes": {
                     "type": "integer",
-                    "x-nullable": true
+                    "maximum": 2147483647,
+                    "minimum": 1
                 },
                 "priority": {
                     "type": "string"
@@ -7185,10 +7810,13 @@ const docTemplate = `{
                 "action_item_count",
                 "actual_minutes",
                 "assignee_id",
+                "can_add_action_item",
+                "can_add_to_today",
                 "can_update",
                 "created_at",
                 "description",
                 "due_date",
+                "estimate_editable",
                 "estimate_source",
                 "estimated_minutes",
                 "id",
@@ -7199,6 +7827,7 @@ const docTemplate = `{
                 "project_name",
                 "remaining_days",
                 "revision",
+                "started",
                 "status",
                 "title",
                 "updated_at",
@@ -7218,6 +7847,12 @@ const docTemplate = `{
                 "assignee_id": {
                     "type": "string"
                 },
+                "can_add_action_item": {
+                    "type": "boolean"
+                },
+                "can_add_to_today": {
+                    "type": "boolean"
+                },
                 "can_update": {
                     "type": "boolean"
                 },
@@ -7230,6 +7865,9 @@ const docTemplate = `{
                 "due_date": {
                     "type": "string",
                     "x-nullable": true
+                },
+                "estimate_editable": {
+                    "type": "boolean"
                 },
                 "estimate_source": {
                     "type": "string"
@@ -7265,6 +7903,9 @@ const docTemplate = `{
                 },
                 "revision": {
                     "type": "integer"
+                },
+                "started": {
+                    "type": "boolean"
                 },
                 "status": {
                     "type": "string"
@@ -7357,6 +7998,9 @@ const docTemplate = `{
                     "type": "integer",
                     "x-nullable": true
                 },
+                "confirm_todo_regeneration": {
+                    "type": "boolean"
+                },
                 "description": {
                     "type": "string",
                     "x-nullable": true
@@ -7392,6 +8036,225 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.TodoCompleteRequest": {
+            "type": "object",
+            "properties": {
+                "actual_minutes": {
+                    "type": "integer",
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "x-nullable": true
+                }
+            }
+        },
+        "rest.TodoItemResponse": {
+            "type": "object",
+            "properties": {
+                "action_item_id": {
+                    "type": "string"
+                },
+                "actual_minutes": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
+                "can_add_action_item": {
+                    "type": "boolean"
+                },
+                "can_complete": {
+                    "type": "boolean"
+                },
+                "can_hide": {
+                    "type": "boolean"
+                },
+                "can_move": {
+                    "type": "boolean"
+                },
+                "can_remove": {
+                    "type": "boolean"
+                },
+                "can_reopen": {
+                    "type": "boolean"
+                },
+                "can_restore": {
+                    "type": "boolean"
+                },
+                "completed": {
+                    "type": "boolean"
+                },
+                "completes_source": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "duration_minutes": {
+                    "type": "integer"
+                },
+                "estimate_editable": {
+                    "type": "boolean"
+                },
+                "hidden": {
+                    "type": "boolean"
+                },
+                "history": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "planned_minutes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "x-nullable": true
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "project_title": {
+                    "type": "string"
+                },
+                "schedule_rule_id": {
+                    "type": "string"
+                },
+                "scheduled_end": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "scheduled_start": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "source_completed": {
+                    "type": "boolean"
+                },
+                "started": {
+                    "type": "boolean"
+                },
+                "task_id": {
+                    "type": "string"
+                },
+                "task_title": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.TodoPolicyResponse": {
+            "type": "object",
+            "properties": {
+                "gap_minutes": {
+                    "type": "integer"
+                },
+                "priority_weights": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "urgency_15_to_30": {
+                    "type": "integer"
+                },
+                "urgency_1_to_7": {
+                    "type": "integer"
+                },
+                "urgency_31_plus": {
+                    "type": "integer"
+                },
+                "urgency_8_to_14": {
+                    "type": "integer"
+                },
+                "urgency_none": {
+                    "type": "integer"
+                },
+                "urgency_same_or_past": {
+                    "type": "integer"
+                }
+            }
+        },
+        "rest.TodoProgressResponse": {
+            "type": "object",
+            "properties": {
+                "completed_items": {
+                    "type": "integer"
+                },
+                "completed_minutes": {
+                    "type": "integer"
+                },
+                "remaining_minutes": {
+                    "type": "integer"
+                },
+                "total_items": {
+                    "type": "integer"
+                },
+                "total_minutes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "rest.TodoReorderRequest": {
+            "type": "object",
+            "required": [
+                "item_ids"
+            ],
+            "properties": {
+                "item_ids": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "rest.TodoTodayResponse": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "hidden_schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.TodoItemResponse"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.TodoItemResponse"
+                    }
+                },
+                "next_schedule": {
+                    "$ref": "#/definitions/rest.TodoItemResponse"
+                },
+                "policy": {
+                    "$ref": "#/definitions/rest.TodoPolicyResponse"
+                },
+                "progress": {
+                    "$ref": "#/definitions/rest.TodoProgressResponse"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
         "rest.UpdateAllocationRequest": {
             "type": "object",
             "properties": {
@@ -7424,6 +8287,19 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.UserMinimumGapUpdateRequest": {
+            "type": "object",
+            "required": [
+                "minimum_gap_minutes"
+            ],
+            "properties": {
+                "minimum_gap_minutes": {
+                    "type": "integer",
+                    "maximum": 1440,
+                    "minimum": 0
+                }
+            }
+        },
         "rest.UserPasswordUpdateRequest": {
             "type": "object",
             "properties": {
@@ -7440,6 +8316,9 @@ const docTemplate = `{
                 },
                 "email": {
                     "type": "string"
+                },
+                "minimum_gap_minutes": {
+                    "type": "integer"
                 },
                 "timezone": {
                     "type": "string"

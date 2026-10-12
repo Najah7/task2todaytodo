@@ -39,6 +39,10 @@ type InboxTaskPayloadResponse struct {
 	ActionItemCompletedCount int     `json:"action_item_completed_count" validate:"required"`
 	CanUpdate                bool    `json:"can_update" validate:"required"`
 	CanAssign                bool    `json:"can_assign" validate:"required"`
+	Started                  bool    `json:"started" validate:"required"`
+	EstimateEditable         bool    `json:"estimate_editable" validate:"required"`
+	CanAddActionItem         bool    `json:"can_add_action_item" validate:"required"`
+	CanAddToToday            bool    `json:"can_add_to_today" validate:"required"`
 }
 
 type InboxSchedulePayloadResponse struct {
@@ -242,6 +246,8 @@ func inboxItemResponse(item inboxdao.Item) InboxItemResponse {
 			Progress: item.Task.Progress, Priority: item.Task.Priority, Status: item.Task.Status,
 			ActionItemCount: item.Task.ActionItemCount, ActionItemCompletedCount: item.Task.ActionItemCompletedCount,
 			CanUpdate: item.Task.CanUpdate, CanAssign: item.Task.CanAssign,
+			Started: item.Task.Started, EstimateEditable: item.Task.EstimateEditable,
+			CanAddActionItem: item.Task.CanAddActionItem, CanAddToToday: item.Task.CanAddToToday,
 		}
 		if item.Task.DueDate != 0 {
 			dueDate := time.Unix(item.Task.DueDate, 0).UTC().Format("2006-01-02")

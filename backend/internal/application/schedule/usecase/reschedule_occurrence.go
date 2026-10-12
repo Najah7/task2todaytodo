@@ -16,9 +16,11 @@ func NewRescheduleOccurrenceUseCase(uow UOW, logger telemetry.Logger, issueID fu
 	return &RescheduleOccurrenceUseCase{update: NewUpdateOccurrenceUseCase(uow, logger, issueID)}
 }
 
-func (uc *RescheduleOccurrenceUseCase) Execute(ctx context.Context, actorID, ruleID, occurrenceDate string, startAt, endAt time.Time, expectedRevision int32) (dao.ScheduleOccurrence, error) {
+func (uc *RescheduleOccurrenceUseCase) Execute(ctx context.Context, actorID, ruleID, occurrenceDate string, startAt, endAt time.Time, expectedRevision int32, confirmTodoRegeneration ...bool) (dao.ScheduleOccurrence, error) {
+	confirmed := len(confirmTodoRegeneration) > 0 && confirmTodoRegeneration[0]
 	return uc.update.execute(ctx, actorID, ruleID, occurrenceDate, UpdateScheduleInput{
-		StartAt: &startAt,
-		EndAt:   &endAt,
+		StartAt:                 &startAt,
+		EndAt:                   &endAt,
+		ConfirmTodoRegeneration: confirmed,
 	}, expectedRevision, "schedule.occurrence.reschedule")
 }

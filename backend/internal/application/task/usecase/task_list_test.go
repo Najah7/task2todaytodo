@@ -78,6 +78,66 @@ func TestListTasksFilteredPageRejectsInvalidSort(t *testing.T) {
 	}
 }
 
+func TestFilteredTaskPagePreservesCapabilitiesForSelfStartedAndOtherAssignee(t *testing.T) {
+	asOf := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
+	makeTask := func(id, title, assignee string) dao.Task {
+		return dao.Task{
+			ID: id, Title: title, AssigneeID: assignee,
+			Status: dao.TaskStatus{Value: "open"}, CanUpdate: true, CanAssign: true,
+			CursorCreatedAt: "candidate-cursor",
+		}
+	}
+	repo := &taskListRepositoryFake{
+		candidates: []dao.Task{
+			makeTask("self", "candidate self", "user-1"),
+			makeTask("started", "candidate started", "user-1"),
+			makeTask("other", "candidate other", "user-2"),
+		},
+		page: []dao.Task{
+			func() dao.Task {
+				task := makeTask("self", "page self", "user-1")
+				task.CursorCreatedAt = "page-cursor"
+				return task
+			}(),
+			makeTask("started", "page started", "user-1"),
+			makeTask("other", "page other", "user-2"),
+		},
+	}
+	useCase := &ListTasksUseCase{
+		repo: repo,
+		projection: taskListProjectionReaderFake{sources: dao.TaskListProjectionSources{
+			ActionItemsByTask:    map[string][]dao.ActionItem{},
+			StartedTasks:         map[string]bool{"started": true},
+			CanCreateActionItems: map[string]bool{"self": true, "started": true, "other": true},
+		}},
+	}
+	page, err := useCase.ExecuteFilteredPage(context.Background(), "user-1", TaskListRequest{
+		Size: 3, Status: "all", DueFilter: "all", SortBy: "created_at", SortOrder: "desc", AsOf: asOf,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := make(map[string]dao.Task, len(page.Items))
+	for _, item := range page.Items {
+		byID[item.ID] = item
+	}
+	self := byID["self"]
+	if !self.CanAddToToday || !self.CanAddActionItem || !self.EstimateEditable || !self.CanAssign {
+		t.Errorf("unstarted self-assigned Task lost capabilities in filtered page: %+v", self)
+	}
+	if self.Title != "page self" || self.CursorCreatedAt != "page-cursor" {
+		t.Errorf("filtered page did not preserve displayed/sort fields: title=%q cursor=%q", self.Title, self.CursorCreatedAt)
+	}
+	started := byID["started"]
+	if !started.Started || !started.CanAddToToday || started.EstimateEditable || started.CanAddActionItem {
+		t.Errorf("started Task capabilities in filtered page = %+v; want manual Today add allowed but estimate/child add locked", started)
+	}
+	other := byID["other"]
+	if other.CanAddToToday {
+		t.Errorf("other-assignee Task can_add_to_today=%t; want false", other.CanAddToToday)
+	}
+}
+
 func TestTaskListProgressAndEstimateUsePersistedActionItems(t *testing.T) {
 	manual, child := 99, 7
 	other := 12

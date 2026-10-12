@@ -48,16 +48,17 @@ var _ usecase.TimezoneRepository = UserRepository{}
 
 func recordToUserDAO(record sqlc.User) dao.User {
 	return dao.User{
-		ID:         record.ID,
-		FirstName:  record.FirstName,
-		LastName:   record.LastName,
-		Email:      record.Email,
-		Password:   record.Password,
-		Timezone:   record.Timezone,
-		WakeUpTime: pgTimeString(record.WakeUpTime),
-		Bedtime:    pgTimeString(record.Bedtime),
-		CreatedAt:  pgTimeUnix(record.CreatedAt),
-		UpdatedAt:  pgTimeUnix(record.UpdatedAt),
+		ID:                record.ID,
+		FirstName:         record.FirstName,
+		LastName:          record.LastName,
+		Email:             record.Email,
+		Password:          record.Password,
+		Timezone:          record.Timezone,
+		WakeUpTime:        pgTimeString(record.WakeUpTime),
+		Bedtime:           pgTimeString(record.Bedtime),
+		MinimumGapMinutes: int(record.MinimumGapMinutes),
+		CreatedAt:         pgTimeUnix(record.CreatedAt),
+		UpdatedAt:         pgTimeUnix(record.UpdatedAt),
 	}
 }
 
@@ -134,6 +135,10 @@ func (r UserRepository) UpdateSleepSettings(ctx context.Context, id domain.UserI
 		return err
 	}
 	return r.queries.UpdateUserSleepSettings(ctx, sqlc.UpdateUserSleepSettingsParams{WakeUpTime: wake, Bedtime: bed, UserID: string(id)})
+}
+
+func (r UserRepository) UpdateMinimumGapMinutes(ctx context.Context, id domain.UserID, minutes int) error {
+	return r.queries.UpdateUserMinimumGapMinutes(ctx, sqlc.UpdateUserMinimumGapMinutesParams{UserID: string(id), MinimumGapMinutes: int32(minutes)})
 }
 
 func parsePGTime(value string) (pgtype.Time, error) {

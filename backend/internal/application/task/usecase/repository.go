@@ -11,14 +11,20 @@ import (
 )
 
 var (
-	ErrTaskNotFound                = errors.New("task not found")
-	ErrTaskProjectionUnavailable   = errors.New("Task ActionItem projection reader is unavailable")
-	ErrTaskProjectNotFound         = errors.New("project not found")
-	ErrProjectLifecycleUnavailable = errors.New("project lifecycle service is unavailable")
-	ErrActionItemTaskNotFound      = errors.New("action item task not found")
-	ErrActionItemNotFound          = errors.New("action item not found")
-	ErrRevisionConflict            = errors.New("resource revision does not match")
-	ErrPermissionDenied            = errors.New("permission denied")
+	ErrTaskNotFound                        = errors.New("task not found")
+	ErrTaskProjectionUnavailable           = errors.New("Task ActionItem projection reader is unavailable")
+	ErrTaskProjectNotFound                 = errors.New("project not found")
+	ErrProjectLifecycleUnavailable         = errors.New("project lifecycle service is unavailable")
+	ErrActionItemTaskNotFound              = errors.New("action item task not found")
+	ErrActionItemNotFound                  = errors.New("action item not found")
+	ErrRevisionConflict                    = errors.New("resource revision does not match")
+	ErrPermissionDenied                    = errors.New("permission denied")
+	ErrActionItemStarted                   = errors.New("action item estimate is locked after work starts")
+	ErrTodoRegenerationRequired            = errors.New("todo regeneration confirmation required")
+	ErrTaskManualEstimateRequired          = errors.New("a positive manual estimate is required for a childless task")
+	ErrTaskStarted                         = errors.New("task estimate is locked after work starts")
+	ErrTaskActualMinutesRequiresCompletion = errors.New("actual minutes can only be edited after Task completion")
+	ErrCannotAddActionItemToStartedTask    = errors.New("cannot add an action item to a started or completed childless task")
 )
 
 // TaskProject is the small, primitive project view needed by Task commands.
@@ -85,6 +91,7 @@ type TaskStatusRepository interface {
 
 type ActionItemRepository interface {
 	TaskListProjectionReader
+	CountForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, capability shared.Capability) (int, error)
 	GetForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) (dao.ActionItem, error)
 	GetForCommand(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID, capability shared.Capability) (dao.ActionItem, error)
 	ListByTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID) ([]dao.ActionItem, error)
@@ -93,14 +100,28 @@ type ActionItemRepository interface {
 	UpdateForOwnedTask(ctx context.Context, userID domain.UserID, item domain.ActionItem) (dao.ActionItem, error)
 	ReorderForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID, newPosition int) (dao.ActionItem, error)
 	CheckForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) error
+	CompleteWithActualMinutesForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID, actualMinutes *int) error
 	UncheckForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) error
 	DeleteForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) error
 }
 
-type TodoListRepository interface {
-	Get(ctx context.Context, id domain.TodoListID) (dao.TodoList, error)
-	GetByUserIDAndDate(ctx context.Context, userID domain.UserID, listDate time.Time) (dao.TodoList, error)
-	ListByUserID(ctx context.Context, userID domain.UserID) ([]dao.TodoList, error)
-	Create(ctx context.Context, list domain.TodoList) (dao.TodoList, error)
-	Delete(ctx context.Context, id domain.TodoListID) error
+// ActionItemTodoLifecycle is a consumer-owned bridge to Todo state. Root wiring
+// binds it to the Todo repository inside the current transaction.
+type ActionItemTodoLifecycle interface {
+	HasCompletedFrame(ctx context.Context, actionItemID domain.ActionItemID) (bool, error)
+	HasTodayActionItem(ctx context.Context, userID domain.UserID, actionItemID domain.ActionItemID) (bool, error)
+	CompleteTodayFrames(ctx context.Context, userID domain.UserID, actionItemID domain.ActionItemID) error
+	ReopenFrames(ctx context.Context, actionItemID domain.ActionItemID) error
+	RegenerateToday(ctx context.Context, userID domain.UserID) error
+}
+
+// TaskTodoLifecycle synchronizes a direct, childless Task execution source
+// with Todo frames inside the caller's transaction.
+type TaskTodoLifecycle interface {
+	HasCompletedTaskFrame(ctx context.Context, taskID domain.TaskID) (bool, error)
+	HasTodayTaskFrame(ctx context.Context, userID domain.UserID, taskID domain.TaskID) (bool, error)
+	HasTodayTaskWork(ctx context.Context, userID domain.UserID, taskID domain.TaskID) (bool, error)
+	CompleteTodayTaskFrames(ctx context.Context, userID domain.UserID, taskID domain.TaskID) error
+	ReopenTaskFrames(ctx context.Context, taskID domain.TaskID) error
+	RegenerateToday(ctx context.Context, userID domain.UserID) error
 }

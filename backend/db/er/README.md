@@ -8,7 +8,7 @@ Each diagram documents tables created by one migration pair. Migration SQL is th
 | `000002_project.up.sql` / `000002_project.down.sql` | `project.mmd` |
 | `000003_task.up.sql` / `000003_task.down.sql` | `task.mmd` |
 | `000004_schedule.up.sql` / `000004_schedule.down.sql` | `schedule.mmd` |
-| `000005_todolist.up.sql` / `000005_todolist.down.sql` | `todolist.mmd` |
+| `000005_todo.up.sql` / `000005_todo.down.sql` | `todo.mmd` |
 | `000006_admin_operations.up.sql` / `000006_admin_operations.down.sql` | `admin_operations.mmd` |
 | `000007_allocation.up.sql` / `000007_allocation.down.sql` | `allocation.mmd` |
 

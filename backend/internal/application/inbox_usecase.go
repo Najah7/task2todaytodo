@@ -65,6 +65,8 @@ func (r inboxCandidateReader) ReadCandidates(ctx context.Context, actorID string
 				ActualMinutes: task.ActualMinutes, Progress: task.Progress, Priority: task.Priority.Value, Status: task.Status.Value,
 				ActionItemCount: task.ActionItemCount, ActionItemCompletedCount: task.ActionItemCompletedCount,
 				CanUpdate: task.CanUpdate, CanAssign: task.CanAssign,
+				Started: task.Started, EstimateEditable: task.EstimateEditable,
+				CanAddActionItem: task.CanAddActionItem, CanAddToToday: task.CanAddToToday,
 			},
 		})
 	}

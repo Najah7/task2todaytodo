@@ -2,7 +2,7 @@
 
 ## 入力と完了条件
 
-実装の公開契約は [SPEC.md](SPEC.md) を正とする。対象は現在 route がある6つの List API のみ。TodoList、Get、繰り返し補充・マスタ参照などの内部一覧は変更しない。
+実装の公開契約は [SPEC.md](SPEC.md) を正とする。対象は現在 route がある6つの List API のみ。Todo、Get、繰り返し補充・マスタ参照などの内部一覧は変更しない。
 
 完了条件は、6つの List が同じ `page_size` / `page_token` / `fields` と `{items,next_page_token}` を扱い、既存の表示順・所有者分離を保ち、offset を使わずに次ページを取得できること。Swagger とテストも新契約に合わせる。
 

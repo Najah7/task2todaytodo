@@ -157,10 +157,10 @@ type DailySleepExceptionRequest struct {
 //	@Tags		Allocations
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		week_start path string true "Monday date (YYYY-MM-DD)"
-//	@Success	200 {object} AllocationWeekResponse
-//	@Failure	400 {object} ErrResponse
-//	@Failure	401 {object} ErrResponse
+//	@Param		week_start	path		string	true	"Monday date (YYYY-MM-DD)"
+//	@Success	200			{object}	AllocationWeekResponse
+//	@Failure	400			{object}	ErrResponse
+//	@Failure	401			{object}	ErrResponse
 //	@Router		/allocation-weeks/{week_start} [get]
 func (h *AllocationHandler) GetWeek(w http.ResponseWriter, r *http.Request) {
 	actor, ok := allocationActor(w, r)
@@ -186,8 +186,8 @@ func (h *AllocationHandler) GetWeek(w http.ResponseWriter, r *http.Request) {
 //	@Tags		Allocations
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Success	200 {object} AllocationRulesResponse
-//	@Failure	401 {object} ErrResponse
+//	@Success	200	{object}	AllocationRulesResponse
+//	@Failure	401	{object}	ErrResponse
 //	@Router		/allocation-rules [get]
 func (h *AllocationHandler) GetRules(w http.ResponseWriter, r *http.Request) {
 	actor, ok := allocationActor(w, r)
@@ -210,13 +210,13 @@ func (h *AllocationHandler) GetRules(w http.ResponseWriter, r *http.Request) {
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		If-Match header string true "Current allocation rules revision"
-//	@Param		request body AllocationRulesRequest true "Weekly Rules"
-//	@Success	200 {object} AllocationRulesResponse
-//	@Failure	400 {object} ErrResponse
-//	@Failure	409 {object} ErrResponse
-//	@Failure	412 {object} ErrResponse
-//	@Failure	428 {object} ErrResponse
+//	@Param		If-Match	header		string					true	"Current allocation rules revision"
+//	@Param		request		body		AllocationRulesRequest	true	"Weekly Rules"
+//	@Success	200			{object}	AllocationRulesResponse
+//	@Failure	400			{object}	ErrResponse
+//	@Failure	409			{object}	ErrResponse
+//	@Failure	412			{object}	ErrResponse
+//	@Failure	428			{object}	ErrResponse
 //	@Router		/allocation-rules [put]
 func (h *AllocationHandler) PutRules(w http.ResponseWriter, r *http.Request) {
 	actor, ok := allocationActor(w, r)
@@ -251,8 +251,8 @@ func (h *AllocationHandler) PutRules(w http.ResponseWriter, r *http.Request) {
 //	@Tags		Allocations
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Success	200 {object} AllocationPlansResponse
-//	@Failure	401 {object} ErrResponse
+//	@Success	200	{object}	AllocationPlansResponse
+//	@Failure	401	{object}	ErrResponse
 //	@Router		/allocation-plans [get]
 func (h *AllocationHandler) GetPlans(w http.ResponseWriter, r *http.Request) {
 	actor, ok := allocationActor(w, r)
@@ -275,13 +275,13 @@ func (h *AllocationHandler) GetPlans(w http.ResponseWriter, r *http.Request) {
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		If-Match header string true "Current allocation plans revision"
-//	@Param		request body AllocationPlansRequest true "Weekly plans"
-//	@Success	200 {object} AllocationPlansResponse
-//	@Failure	400 {object} ErrResponse
-//	@Failure	409 {object} ErrResponse
-//	@Failure	412 {object} ErrResponse
-//	@Failure	428 {object} ErrResponse
+//	@Param		If-Match	header		string					true	"Current allocation plans revision"
+//	@Param		request		body		AllocationPlansRequest	true	"Weekly plans"
+//	@Success	200			{object}	AllocationPlansResponse
+//	@Failure	400			{object}	ErrResponse
+//	@Failure	409			{object}	ErrResponse
+//	@Failure	412			{object}	ErrResponse
+//	@Failure	428			{object}	ErrResponse
 //	@Router		/allocation-plans [put]
 func (h *AllocationHandler) PutPlans(w http.ResponseWriter, r *http.Request) {
 	actor, ok := allocationActor(w, r)
@@ -317,9 +317,9 @@ func (h *AllocationHandler) PutPlans(w http.ResponseWriter, r *http.Request) {
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		request body CreateAllocationRequest true "Allocation"
-//	@Success	201 {object} AllocationOccurrenceResponse
-//	@Failure	409 {object} ErrResponse
+//	@Param		request	body		CreateAllocationRequest	true	"Allocation"
+//	@Success	201		{object}	AllocationOccurrenceResponse
+//	@Failure	409		{object}	ErrResponse
 //	@Router		/allocations [post]
 func (h *AllocationHandler) Create(w http.ResponseWriter, r *http.Request) {
 	actor, ok := allocationActor(w, r)
@@ -347,12 +347,12 @@ func (h *AllocationHandler) Create(w http.ResponseWriter, r *http.Request) {
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		rule_id path string true "Rule ID"
-//	@Param		occurrence_date path string true "Original local occurrence date"
-//	@Param		If-Match header string true "Occurrence revision"
-//	@Param		request body UpdateAllocationRequest true "Occurrence update"
-//	@Success	200 {object} AllocationOccurrenceResponse
-//	@Failure	409 {object} ErrResponse
+//	@Param		rule_id			path		string					true	"Rule ID"
+//	@Param		occurrence_date	path		string					true	"Original local occurrence date"
+//	@Param		If-Match		header		string					true	"Occurrence revision"
+//	@Param		request			body		UpdateAllocationRequest	true	"Occurrence update"
+//	@Success	200				{object}	AllocationOccurrenceResponse
+//	@Failure	409				{object}	ErrResponse
 //	@Router		/allocations/{rule_id}/{occurrence_date} [patch]
 func (h *AllocationHandler) Update(w http.ResponseWriter, r *http.Request) {
 	actor, ok := allocationActor(w, r)
@@ -387,13 +387,13 @@ func (h *AllocationHandler) Update(w http.ResponseWriter, r *http.Request) {
 //	@Summary	Delete Project allocation occurrence
 //	@Tags		Allocations
 //	@Security	BearerAuth
-//	@Param		rule_id path string true "Rule ID"
-//	@Param		occurrence_date path string true "Original local occurrence date"
-//	@Param		If-Match header string true "Occurrence revision"
-//	@Param		scope query string true "current or following"
-//	@Param		rule_revision query int true "Rule revision when scope is following"
+//	@Param		rule_id			path	string	true	"Rule ID"
+//	@Param		occurrence_date	path	string	true	"Original local occurrence date"
+//	@Param		If-Match		header	string	true	"Occurrence revision"
+//	@Param		scope			query	string	true	"current or following"
+//	@Param		rule_revision	query	int		true	"Rule revision when scope is following"
 //	@Success	204
-//	@Failure	409 {object} ErrResponse
+//	@Failure	409	{object}	ErrResponse
 //	@Router		/allocations/{rule_id}/{occurrence_date} [delete]
 func (h *AllocationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	actor, ok := allocationActor(w, r)
@@ -424,11 +424,11 @@ func (h *AllocationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		local_date path string true "Waking date"
-//	@Param		If-Match header string true "Exception revision, or 0 when absent"
-//	@Param		request body DailySleepExceptionRequest true "Sleep exception"
-//	@Success	200 {object} SleepExceptionResponse
-//	@Failure	409 {object} ErrResponse
+//	@Param		local_date	path		string						true	"Waking date"
+//	@Param		If-Match	header		string						true	"Exception revision, or 0 when absent"
+//	@Param		request		body		DailySleepExceptionRequest	true	"Sleep exception"
+//	@Success	200			{object}	SleepExceptionResponse
+//	@Failure	409			{object}	ErrResponse
 //	@Router		/daily-sleep-exceptions/{local_date} [put]
 func (h *AllocationHandler) PutSleepException(w http.ResponseWriter, r *http.Request) {
 	actor, ok := allocationActor(w, r)
@@ -469,8 +469,8 @@ func (h *AllocationHandler) PutSleepException(w http.ResponseWriter, r *http.Req
 //	@Summary	Reset daily sleep exception
 //	@Tags		Allocations
 //	@Security	BearerAuth
-//	@Param		local_date path string true "Waking date"
-//	@Param		If-Match header string true "Exception revision"
+//	@Param		local_date	path	string	true	"Waking date"
+//	@Param		If-Match	header	string	true	"Exception revision"
 //	@Success	204
 //	@Router		/daily-sleep-exceptions/{local_date} [delete]
 func (h *AllocationHandler) DeleteSleepException(w http.ResponseWriter, r *http.Request) {

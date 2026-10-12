@@ -28,7 +28,7 @@ func (u *AuthUOW) Do(
 	ctx context.Context,
 	fn func(ctx context.Context, repos authusecase.Repositories) error,
 ) error {
-	return RunInTx(ctx, u.pool, func(tx pgx.Tx) error {
+	return RunInTodoWorkflowTx(ctx, u.pool, func(tx pgx.Tx) error {
 		var availability authusecase.UserAvailabilityValidator
 		if u.availabilityFactory != nil {
 			availability = u.availabilityFactory(tx)

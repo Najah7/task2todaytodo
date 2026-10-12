@@ -9,6 +9,7 @@ type UserUseCases struct {
 	UpdatePassword      *UpdateUserPasswordUseCase
 	UpdateTimezone      *UpdateUserTimezoneUseCase
 	UpdateSleepSettings *UpdateUserSleepSettingsUseCase
+	UpdateMinimumGap    *UpdateUserMinimumGapUseCase
 }
 
 type PersonalAccessTokenUseCases struct {

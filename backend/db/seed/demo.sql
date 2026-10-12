@@ -7,9 +7,8 @@ BEGIN;
 TRUNCATE TABLE
     personal_access_tokens,
     admin_operations,
-    todo_list_schedules,
-    todo_list_items,
-    todo_lists,
+    todo_items,
+    todos,
     schedule_revisions,
     schedule_backfill_checkpoints,
     schedule_project_pause_intervals,
@@ -53,7 +52,7 @@ INSERT INTO tasks (id, user_id, project_id, title, description, due_date, manual
     ('00000000000000000000000205', '00000000000000000000000001', '00000000000000000000000102', '英語記事を1本読む', 'プロダクト開発の記事を読む', CURRENT_DATE + 1, 40, NULL, 'medium', 'open'),
     ('00000000000000000000000206', '00000000000000000000000001', '00000000000000000000000103', '画面構成をスケッチする', 'ホームと読書記録画面を考える', CURRENT_DATE + 7, 45, NULL, 'low', 'pending'),
     ('00000000000000000000000207', '00000000000000000000000001', NULL, '郵便を出す', '駅前の郵便局に寄る', CURRENT_DATE, 15, NULL, 'high', 'open'),
-    ('00000000000000000000000208', '00000000000000000000000001', NULL, '古いメモを整理する', NULL, NULL, NULL, NULL, 'someday', 'open'),
+    ('00000000000000000000000208', '00000000000000000000000001', NULL, '古いメモを整理する', NULL, NULL, 30, NULL, 'someday', 'open'),
     ('00000000000000000000000209', '00000000000000000000000002', NULL, '別ユーザーのサンプルタスク', NULL, NULL, 30, NULL, 'low', 'open');
 
 INSERT INTO tasks (id, user_id, project_id, title, description, due_date, manual_estimated_minutes, actual_minutes, priority, status)
@@ -75,14 +74,14 @@ SELECT
 FROM generate_series(0, 35) AS series(n);
 
 -- ActionItems are single persisted rows; recurrence applies to Schedules only.
-INSERT INTO action_items (id, task_id, title, description, due_date, completed, position) VALUES
-    ('00000000000000000000000401', '00000000000000000000000201', 'インタビュー記録を読み返す', NULL, CURRENT_DATE, true, 0),
-    ('00000000000000000000000402', '00000000000000000000000201', '課題を3つに分類する', '利用者、業務、システムの観点で分類', CURRENT_DATE, false, 1),
-    ('00000000000000000000000403', '00000000000000000000000201', 'チームに要点を共有する', NULL, CURRENT_DATE + 1, false, 2),
-    ('00000000000000000000000404', '00000000000000000000000205', '記事の要点を3行で書く', NULL, CURRENT_DATE + 1, false, 0),
-    ('00000000000000000000000405', '00000000000000000000000204', '英単語を復習する', '平日に短時間の復習', CURRENT_DATE, true, 0);
+INSERT INTO action_items (id, task_id, title, description, due_date, completed, position, estimated_minutes) VALUES
+    ('00000000000000000000000401', '00000000000000000000000201', 'インタビュー記録を読み返す', NULL, CURRENT_DATE, true, 0, 15),
+    ('00000000000000000000000402', '00000000000000000000000201', '課題を3つに分類する', '利用者、業務、システムの観点で分類', CURRENT_DATE, false, 1, 30),
+    ('00000000000000000000000403', '00000000000000000000000201', 'チームに要点を共有する', NULL, CURRENT_DATE + 1, false, 2, 20),
+    ('00000000000000000000000404', '00000000000000000000000205', '記事の要点を3行で書く', NULL, CURRENT_DATE + 1, false, 0, 15),
+    ('00000000000000000000000405', '00000000000000000000000204', '英単語を復習する', '平日に短時間の復習', CURRENT_DATE, true, 0, 10);
 
-INSERT INTO action_items (id, task_id, title, description, due_date, completed, position)
+INSERT INTO action_items (id, task_id, title, description, due_date, completed, position, estimated_minutes)
 SELECT
     lpad((408 + n)::text, 26, '0'),
     lpad((220 + n)::text, 26, '0'),
@@ -90,7 +89,8 @@ SELECT
     'ActionItem一覧・ページング確認用データ',
     CASE WHEN n < 12 THEN CURRENT_DATE - (n + 2) ELSE CURRENT_DATE + (n % 10) END,
     n < 12 OR n % 4 = 0,
-    0
+    0,
+    10 + ((n % 4) * 5)
 FROM generate_series(0, 27) AS series(n);
 
 -- A recurring rule keeps its recurrence definition in revisions; the backfill
@@ -230,32 +230,5 @@ SELECT schedule_id, schedule_id, revision_id, user_id, occurrence_date,
        title, description, location, project_id, assignee_id, 'Asia/Tokyo', user_id
 FROM source;
 
-INSERT INTO todo_lists (id, user_id, list_date) VALUES
-    ('00000000000000000000000601', '00000000000000000000000001', CURRENT_DATE),
-    ('00000000000000000000000602', '00000000000000000000000001', CURRENT_DATE - 1),
-    ('00000000000000000000000603', '00000000000000000000000002', CURRENT_DATE);
-
-INSERT INTO todo_lists (id, user_id, list_date)
-SELECT
-    lpad((604 + n)::text, 26, '0'),
-    '00000000000000000000000001',
-    CURRENT_DATE - (n + 2)
-FROM generate_series(0, 11) AS series(n);
-
-INSERT INTO todo_list_items (todo_list_id, action_item_id, position) VALUES
-    ('00000000000000000000000601', '00000000000000000000000401', 0),
-    ('00000000000000000000000601', '00000000000000000000000402', 1),
-    ('00000000000000000000000602', '00000000000000000000000405', 0);
-
-INSERT INTO todo_list_items (todo_list_id, action_item_id, position)
-SELECT
-    lpad((604 + n)::text, 26, '0'),
-    lpad((408 + n)::text, 26, '0'),
-    0
-FROM generate_series(0, 11) AS series(n);
-
-INSERT INTO todo_list_schedules (todo_list_id, schedule_id) VALUES
-    ('00000000000000000000000601', '00000000000000000000000504'),
-    ('00000000000000000000000601', '00000000000000000000000505');
 
 COMMIT;

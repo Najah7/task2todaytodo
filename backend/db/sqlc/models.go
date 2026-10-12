@@ -106,7 +106,8 @@ type ActionItem struct {
 	DueDate          pgtype.Date
 	Completed        bool
 	Position         int32
-	EstimatedMinutes pgtype.Int4
+	EstimatedMinutes int32
+	ActualMinutes    pgtype.Int4
 	Priority         string
 	DeletedAt        pgtype.Timestamptz
 	CreatedAt        pgtype.Timestamptz
@@ -499,36 +500,44 @@ type TimezoneMaster struct {
 	Timezone string
 }
 
-type TodoList struct {
+type Todo struct {
 	ID        string
 	UserID    string
-	ListDate  pgtype.Date
+	TodoDate  pgtype.Date
+	Timezone  string
+	Revision  int32
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 }
 
-type TodoListItem struct {
-	TodoListID   string
-	ActionItemID string
-	Position     int32
-	CreatedAt    pgtype.Timestamptz
-}
-
-type TodoListSchedule struct {
-	TodoListID string
-	ScheduleID string
-	CreatedAt  pgtype.Timestamptz
+type TodoItem struct {
+	ID             string
+	TodoID         string
+	Kind           string
+	TaskID         pgtype.Text
+	ActionItemID   pgtype.Text
+	ScheduleRuleID pgtype.Text
+	OccurrenceDate pgtype.Date
+	PlannedMinutes pgtype.Int4
+	ScheduledStart pgtype.Timestamptz
+	ScheduledEnd   pgtype.Timestamptz
+	Completed      bool
+	Hidden         bool
+	Position       int32
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
 }
 
 type User struct {
-	ID         string
-	FirstName  string
-	LastName   string
-	Email      string
-	Password   string
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
-	Timezone   string
-	WakeUpTime pgtype.Time
-	Bedtime    pgtype.Time
+	ID                string
+	FirstName         string
+	LastName          string
+	Email             string
+	Password          string
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+	Timezone          string
+	WakeUpTime        pgtype.Time
+	Bedtime           pgtype.Time
+	MinimumGapMinutes int32
 }

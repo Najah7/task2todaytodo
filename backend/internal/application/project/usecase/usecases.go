@@ -21,14 +21,18 @@ type UseCases struct {
 	Restore      *RestoreProjectUseCase
 }
 
-func NewUseCases(repo Repository, tx UnitOfWork, logger telemetry.Logger) *UseCases {
+func NewUseCases(repo Repository, tx UnitOfWork, logger telemetry.Logger, readTxs ...UnitOfWork) *UseCases {
+	readTx := tx
+	if len(readTxs) > 0 && readTxs[0] != nil {
+		readTx = readTxs[0]
+	}
 	return &UseCases{
 		Create:       NewCreateProjectUseCase(repo, logger),
 		List:         NewListProjectsUseCase(repo, repo, logger),
 		Get:          NewGetProjectUseCase(repo, repo, logger),
 		Update:       NewUpdateProjectUseCase(repo, repo, logger),
 		Delete:       NewDeleteProjectUseCase(tx, logger),
-		Members:      &ProjectMemberUseCases{ListMembers: NewListProjectMembersUseCase(tx, logger), UpsertMember: NewUpsertProjectMemberUseCase(tx, logger), DeleteMember: NewDeleteProjectMemberUseCase(tx, logger)},
+		Members:      &ProjectMemberUseCases{ListMembers: NewListProjectMembersUseCase(readTx, logger), UpsertMember: NewUpsertProjectMemberUseCase(tx, logger), DeleteMember: NewDeleteProjectMemberUseCase(tx, logger)},
 		Revisions:    NewListProjectRevisionsUseCase(repo, logger),
 		Types:        NewListProjectTypesUseCase(repo, logger),
 		Options:      NewListProjectOptionsUseCase(repo, logger),

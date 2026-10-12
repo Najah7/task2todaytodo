@@ -54,6 +54,10 @@ func (*deleteActionItemRepositoryFake) ReadTaskListProjection(_ context.Context,
 	return dao.TaskListProjectionSources{ActionItemsByTask: items}, nil
 }
 
+func (*deleteActionItemRepositoryFake) CountForOwnedTask(context.Context, domain.UserID, domain.TaskID, shared.Capability) (int, error) {
+	return 2, nil
+}
+
 func (repo *deleteActionItemRepositoryFake) GetForCommand(_ context.Context, userID domain.UserID, taskID domain.TaskID, itemID domain.ActionItemID, capability shared.Capability) (dao.ActionItem, error) {
 	repo.getCalls++
 	repo.userID, repo.taskID, repo.itemID, repo.capability = userID, taskID, itemID, capability

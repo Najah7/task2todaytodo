@@ -64,6 +64,10 @@ type TaskResponse struct {
 	ActionItemCount          int     `json:"action_item_count" validate:"required"`
 	ActionItemCompletedCount int     `json:"action_item_completed_count" validate:"required"`
 	CanUpdate                bool    `json:"can_update" validate:"required"`
+	Started                  bool    `json:"started" validate:"required"`
+	EstimateEditable         bool    `json:"estimate_editable" validate:"required"`
+	CanAddActionItem         bool    `json:"can_add_action_item" validate:"required"`
+	CanAddToToday            bool    `json:"can_add_to_today" validate:"required"`
 	CreatedAt                string  `json:"created_at" validate:"required"`
 	UpdatedAt                string  `json:"updated_at" validate:"required"`
 }
@@ -87,18 +91,23 @@ type TaskCreateRequest struct {
 	Title                  string `json:"title"`
 	Description            string `json:"description"`
 	DueDate                string `json:"due_date"`
-	ManualEstimatedMinutes *int   `json:"manual_estimated_minutes" extensions:"x-nullable"`
+	ManualEstimatedMinutes *int   `json:"manual_estimated_minutes" validate:"required" minimum:"1" maximum:"2147483647"`
 	Priority               string `json:"priority"`
 }
 
 type TaskUpdateRequest struct {
-	Title                  optionalJSON[string] `json:"title" swaggertype:"string"`
-	Description            optionalJSON[string] `json:"description" swaggertype:"string" extensions:"x-nullable"`
-	DueDate                optionalJSON[string] `json:"due_date" swaggertype:"string" extensions:"x-nullable"`
-	ManualEstimatedMinutes optionalJSON[int]    `json:"manual_estimated_minutes" swaggertype:"integer" extensions:"x-nullable"`
-	ActualMinutes          optionalJSON[int]    `json:"actual_minutes" swaggertype:"integer" extensions:"x-nullable"`
-	Priority               optionalJSON[string] `json:"priority" swaggertype:"string"`
-	ProjectID              optionalJSON[string] `json:"project_id" swaggertype:"string" extensions:"x-nullable"`
+	Title                   optionalJSON[string] `json:"title" swaggertype:"string"`
+	Description             optionalJSON[string] `json:"description" swaggertype:"string" extensions:"x-nullable"`
+	DueDate                 optionalJSON[string] `json:"due_date" swaggertype:"string" extensions:"x-nullable"`
+	ManualEstimatedMinutes  optionalJSON[int]    `json:"manual_estimated_minutes" swaggertype:"integer" extensions:"x-nullable"`
+	ActualMinutes           optionalJSON[int]    `json:"actual_minutes" swaggertype:"integer" extensions:"x-nullable"`
+	Priority                optionalJSON[string] `json:"priority" swaggertype:"string"`
+	ProjectID               optionalJSON[string] `json:"project_id" swaggertype:"string" extensions:"x-nullable"`
+	ConfirmTodoRegeneration bool                 `json:"confirm_todo_regeneration"`
+}
+
+type TaskCompleteRequest struct {
+	ActualMinutes *int `json:"actual_minutes" extensions:"x-nullable" minimum:"0" maximum:"2147483647"`
 }
 
 type optionalJSON[T any] struct {
@@ -149,6 +158,10 @@ func taskResponse(task dao.Task) TaskResponse {
 		Progress:                 task.Progress,
 		Priority:                 task.Priority.Value,
 		CanUpdate:                task.CanUpdate,
+		Started:                  task.Started,
+		EstimateEditable:         task.EstimateEditable,
+		CanAddActionItem:         task.CanAddActionItem,
+		CanAddToToday:            task.CanAddToToday,
 		Status:                   task.Status.Value,
 		ActionItemCount:          task.ActionItemCount,
 		ActionItemCompletedCount: task.ActionItemCompletedCount,
@@ -236,7 +249,17 @@ func taskErrorResponse(err error) (int, ErrDetail) {
 	case errors.Is(err, domain.ErrTaskPriorityEmpty), errors.Is(err, domain.ErrTaskPriorityInvalid):
 		return http.StatusBadRequest, NewErrDetail("priority", "invalid_priority", "Priority is invalid")
 	case errors.Is(err, domain.ErrTaskEstimatedMinutesInvalid):
-		return http.StatusBadRequest, NewErrDetail("manual_estimated_minutes", "invalid_minutes", "Estimated minutes must be zero or greater")
+		return http.StatusBadRequest, NewErrDetail("manual_estimated_minutes", "invalid_minutes", "Estimated minutes must be between 1 and 2147483647")
+	case errors.Is(err, taskusecase.ErrTaskManualEstimateRequired):
+		return http.StatusBadRequest, NewErrDetail("manual_estimated_minutes", "required", "A positive estimate is required for a childless Task")
+	case errors.Is(err, taskusecase.ErrTaskStarted):
+		return http.StatusConflict, NewErrDetail("manual_estimated_minutes", "task_started", "Task estimate cannot change after work starts or completes")
+	case errors.Is(err, taskusecase.ErrTaskActualMinutesRequiresCompletion):
+		return http.StatusConflict, NewErrDetail("actual_minutes", "task_not_completed", "Actual minutes can only be edited after Task completion")
+	case errors.Is(err, taskusecase.ErrCannotAddActionItemToStartedTask):
+		return http.StatusConflict, NewErrDetail("task_id", "task_started", "ActionItems cannot be added to a started or completed childless Task")
+	case errors.Is(err, taskusecase.ErrTodoRegenerationRequired):
+		return http.StatusConflict, NewErrDetail("", "todo_regeneration_required", "This change resets unfinished work and manual edits in today's Todo. Started work remains.")
 	case errors.Is(err, domain.ErrTaskActualMinutesInvalid):
 		return http.StatusBadRequest, NewErrDetail("actual_minutes", "invalid_minutes", "Actual minutes must be zero or greater")
 	case IsUniqueConstraint(err, "tasks_pkey"):
@@ -389,6 +412,7 @@ func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Title: request.Title.patchField(), Description: request.Description.patchField(), DueDate: dueDate,
 		ManualEstimatedMinutes: request.ManualEstimatedMinutes.patchField(), ActualMinutes: request.ActualMinutes.patchField(),
 		Priority: request.Priority.patchField(), ProjectID: request.ProjectID.patchField(),
+		ConfirmTodoRegeneration: request.ConfirmTodoRegeneration,
 	})
 	if err != nil {
 		var field taskusecase.TaskUpdateFieldError
@@ -547,16 +571,51 @@ func (h *TaskHandler) Wait(w http.ResponseWriter, r *http.Request) {
 //	@Summary		Complete task
 //	@Description	Marks task done while preserving its ActionItems.
 //	@Tags			Tasks
+//	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			id	path		string	true	"Task ID"
-//	@Success		200	{object}	MessageResponse
-//	@Failure		401	{object}	ErrResponse	"Unauthorized"
-//	@Failure		404	{object}	ErrResponse	"Task not found"
-//	@Failure		500	{object}	ErrResponse	"Failed to complete task"
+//	@Param			id		path		string				true	"Task ID"
+//	@Param			request	body		TaskCompleteRequest	false	"Optional actual minutes"
+//	@Success		200		{object}	MessageResponse
+//	@Failure		401		{object}	ErrResponse	"Unauthorized"
+//	@Failure		404		{object}	ErrResponse	"Task not found"
+//	@Failure		500		{object}	ErrResponse	"Failed to complete task"
 //	@Router			/tasks/{id}:complete [post]
 func (h *TaskHandler) Complete(w http.ResponseWriter, r *http.Request) {
-	h.changeStatus(w, r, errSpecTasksCompleteFailed, h.tasks.Complete.Execute, "Task completed")
+	userID, ok := h.userID(r)
+	if !ok {
+		writeUnauthorized(w, errSpecTasksCompleteFailed)
+		return
+	}
+	taskID := taskIDFromRequest(r)
+	if taskID == "" {
+		writeTaskError(w, errSpecTasksCompleteFailed, taskusecase.ErrTaskNotFound)
+		return
+	}
+	expected, ok := expectedRevision(w, r, errSpecTasksCompleteFailed)
+	if !ok {
+		return
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, errSpecTasksCompleteFailed, ErrDetailInvalidRequestBody)
+		return
+	}
+	var request TaskCompleteRequest
+	if len(bytes.TrimSpace(body)) > 0 {
+		r.Body = io.NopCloser(bytes.NewReader(body))
+		if err := decodeRequest(r, &request); err != nil {
+			WriteError(w, http.StatusBadRequest, errSpecTasksCompleteFailed, ErrDetailInvalidRequestBody)
+			return
+		}
+	}
+	task, err := h.tasks.Complete.ExecuteWithActual(r.Context(), userID, domain.TaskID(taskID), expected, request.ActualMinutes)
+	if err != nil {
+		writeTaskError(w, errSpecTasksCompleteFailed, err)
+		return
+	}
+	setResourceETag(w, task.Revision)
+	WriteMessage(w, http.StatusOK, "Task completed")
 }
 
 // Reopen moves task to open.

@@ -37,10 +37,10 @@ func TestCursorListRepositories(t *testing.T) {
 		('99999999999999999999999905',$1,$2,'task-3','2026-01-01T00:00:00.000003Z')`, user, project); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position) VALUES
-		('99999999999999999999999909',$1,'actionItem-1',1),
-		('99999999999999999999999910',$1,'actionItem-2',2),
-		('99999999999999999999999911',$1,'actionItem-3',3)`, task); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,estimated_minutes) VALUES
+		('99999999999999999999999909',$1,'actionItem-1',1,10),
+		('99999999999999999999999910',$1,'actionItem-2',2,10),
+		('99999999999999999999999911',$1,'actionItem-3',3,10)`, task); err != nil {
 		t.Fatal(err)
 	}
 

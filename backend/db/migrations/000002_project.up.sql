@@ -152,7 +152,7 @@ INSERT INTO priority_master (priority, label, label_jp, weight) VALUES
     ('high', 'High', '高', 50),
     ('medium', 'Medium', '中', 25),
     ('low', 'Low', '低', 10),
-    ('someday', 'Someday', 'いつか', 0);
+    ('someday', 'Someday', 'いつか', 1);
 
 INSERT INTO status_master (status, label, label_jp) VALUES
     ('open', 'Open', 'オープン'),

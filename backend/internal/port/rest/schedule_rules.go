@@ -74,48 +74,51 @@ type ScheduleOccurrenceResponse struct {
 }
 
 type ScheduleRuleCreateRequest struct {
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	Location    string   `json:"location"`
-	ProjectID   string   `json:"project_id"`
-	AssigneeID  string   `json:"assignee_id"`
-	Timezone    string   `json:"timezone"`
-	LocalStart  string   `json:"local_start"`
-	LocalEnd    string   `json:"local_end"`
-	AllDay      bool     `json:"all_day"`
-	Frequency   string   `json:"frequency"`
-	Interval    int      `json:"interval"`
-	Weekdays    []string `json:"weekdays"`
-	EndDate     *string  `json:"end_date"`
+	Title                   string   `json:"title"`
+	Description             string   `json:"description"`
+	Location                string   `json:"location"`
+	ProjectID               string   `json:"project_id"`
+	AssigneeID              string   `json:"assignee_id"`
+	Timezone                string   `json:"timezone"`
+	LocalStart              string   `json:"local_start"`
+	LocalEnd                string   `json:"local_end"`
+	AllDay                  bool     `json:"all_day"`
+	Frequency               string   `json:"frequency"`
+	Interval                int      `json:"interval"`
+	Weekdays                []string `json:"weekdays"`
+	EndDate                 *string  `json:"end_date"`
+	ConfirmTodoRegeneration bool     `json:"confirm_todo_regeneration"`
 }
 
 type ScheduleRuleUpdateRequest struct {
-	OccurrenceDate string                 `json:"occurrence_date"`
-	Scope          string                 `json:"scope"`
-	Title          optionalJSON[string]   `json:"title" swaggertype:"string"`
-	Description    optionalJSON[string]   `json:"description" swaggertype:"string"`
-	Location       optionalJSON[string]   `json:"location" swaggertype:"string"`
-	ProjectID      optionalJSON[string]   `json:"project_id" swaggertype:"string" extensions:"x-nullable"`
-	AssigneeID     optionalJSON[string]   `json:"assignee_id" swaggertype:"string"`
-	Timezone       optionalJSON[string]   `json:"timezone" swaggertype:"string"`
-	LocalStart     optionalJSON[string]   `json:"local_start" swaggertype:"string"`
-	LocalEnd       optionalJSON[string]   `json:"local_end" swaggertype:"string"`
-	AllDay         optionalJSON[bool]     `json:"all_day" swaggertype:"boolean"`
-	Frequency      optionalJSON[string]   `json:"frequency" swaggertype:"string"`
-	Interval       optionalJSON[int]      `json:"interval" swaggertype:"integer"`
-	Weekdays       optionalJSON[[]string] `json:"weekdays" swaggertype:"array,string"`
-	EndDate        optionalJSON[string]   `json:"end_date" swaggertype:"string" extensions:"x-nullable"`
+	OccurrenceDate          string                 `json:"occurrence_date"`
+	Scope                   string                 `json:"scope"`
+	Title                   optionalJSON[string]   `json:"title" swaggertype:"string"`
+	Description             optionalJSON[string]   `json:"description" swaggertype:"string"`
+	Location                optionalJSON[string]   `json:"location" swaggertype:"string"`
+	ProjectID               optionalJSON[string]   `json:"project_id" swaggertype:"string" extensions:"x-nullable"`
+	AssigneeID              optionalJSON[string]   `json:"assignee_id" swaggertype:"string"`
+	Timezone                optionalJSON[string]   `json:"timezone" swaggertype:"string"`
+	LocalStart              optionalJSON[string]   `json:"local_start" swaggertype:"string"`
+	LocalEnd                optionalJSON[string]   `json:"local_end" swaggertype:"string"`
+	AllDay                  optionalJSON[bool]     `json:"all_day" swaggertype:"boolean"`
+	Frequency               optionalJSON[string]   `json:"frequency" swaggertype:"string"`
+	Interval                optionalJSON[int]      `json:"interval" swaggertype:"integer"`
+	Weekdays                optionalJSON[[]string] `json:"weekdays" swaggertype:"array,string"`
+	EndDate                 optionalJSON[string]   `json:"end_date" swaggertype:"string" extensions:"x-nullable"`
+	ConfirmTodoRegeneration bool                   `json:"confirm_todo_regeneration"`
 }
 
 type ScheduleOccurrenceUpdateRequest struct {
-	Title       optionalJSON[string] `json:"title" swaggertype:"string"`
-	Description optionalJSON[string] `json:"description" swaggertype:"string"`
-	Location    optionalJSON[string] `json:"location" swaggertype:"string"`
-	ProjectID   optionalJSON[string] `json:"project_id" swaggertype:"string" extensions:"x-nullable"`
-	AssigneeID  optionalJSON[string] `json:"assignee_id" swaggertype:"string"`
-	StartAt     optionalJSON[string] `json:"start_at" swaggertype:"string"`
-	EndAt       optionalJSON[string] `json:"end_at" swaggertype:"string"`
-	AllDay      optionalJSON[bool]   `json:"all_day" swaggertype:"boolean"`
+	Title                   optionalJSON[string] `json:"title" swaggertype:"string"`
+	Description             optionalJSON[string] `json:"description" swaggertype:"string"`
+	Location                optionalJSON[string] `json:"location" swaggertype:"string"`
+	ProjectID               optionalJSON[string] `json:"project_id" swaggertype:"string" extensions:"x-nullable"`
+	AssigneeID              optionalJSON[string] `json:"assignee_id" swaggertype:"string"`
+	StartAt                 optionalJSON[string] `json:"start_at" swaggertype:"string"`
+	EndAt                   optionalJSON[string] `json:"end_at" swaggertype:"string"`
+	AllDay                  optionalJSON[bool]   `json:"all_day" swaggertype:"boolean"`
+	ConfirmTodoRegeneration bool                 `json:"confirm_todo_regeneration"`
 }
 
 // CreateRule creates a one-off or recurring definition.
@@ -160,7 +163,7 @@ func (h *ScheduleHandler) CreateRule(w http.ResponseWriter, r *http.Request) {
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		id		path		string							true	"Project ID"
+//	@Param		id		path		string						true	"Project ID"
 //	@Param		request	body		ScheduleRuleCreateRequest	true	"Schedule definition"
 //	@Success	201		{object}	ScheduleRuleResponse
 //	@Router		/projects/{id}/schedules [post]
@@ -297,8 +300,8 @@ func anchorRevision(anchor *listAnchor) int32 {
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		id			path		string							true	"Rule ID"
-//	@Param		If-Match	header		string							true	"Current rule revision"
+//	@Param		id			path		string						true	"Rule ID"
+//	@Param		If-Match	header		string						true	"Current rule revision"
 //	@Param		request		body		ScheduleRuleUpdateRequest	true	"Following definition changes"
 //	@Success	200			{object}	ScheduleRuleResponse
 //	@Router		/schedule-rules/{id} [patch]
@@ -336,9 +339,10 @@ func (h *ScheduleHandler) UpdateRule(w http.ResponseWriter, r *http.Request) {
 //	@Summary	Delete following schedule occurrences
 //	@Tags		Schedules
 //	@Security	BearerAuth
-//	@Param		id				path	string	true	"Rule ID"
-//	@Param		occurrence_date	path	string	true	"Original local occurrence date"
-//	@Param		If-Match		header	string	true	"Current rule revision"
+//	@Param		id							path	string	true	"Rule ID"
+//	@Param		occurrence_date				path	string	true	"Original local occurrence date"
+//	@Param		If-Match					header	string	true	"Current rule revision"
+//	@Param		confirm_todo_regeneration	query	bool	false	"Confirm regeneration of affected Todos"
 //	@Success	204
 //	@Router		/schedule-rules/{id}/following/{occurrence_date} [delete]
 func (h *ScheduleHandler) DeleteRuleFollowing(w http.ResponseWriter, r *http.Request) {
@@ -351,7 +355,7 @@ func (h *ScheduleHandler) DeleteRuleFollowing(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return
 	}
-	if err := h.schedules.DeleteRuleFollowing.Execute(r.Context(), string(actor), chi.URLParam(r, "id"), chi.URLParam(r, "occurrence_date"), expected); err != nil {
+	if err := h.schedules.DeleteRuleFollowing.Execute(r.Context(), string(actor), chi.URLParam(r, "id"), chi.URLParam(r, "occurrence_date"), expected, r.URL.Query().Get("confirm_todo_regeneration") == "true"); err != nil {
 		writeScheduleUseCaseError(w, scheduleRuleDeleteFailure, err)
 		return
 	}
@@ -383,6 +387,7 @@ func (request ScheduleRuleCreateRequest) input() (scheduleusecase.CreateRuleInpu
 		ProjectID: request.ProjectID, AssigneeID: request.AssigneeID, Timezone: request.Timezone,
 		LocalStart: start, LocalEnd: end, Frequency: request.Frequency, Interval: request.Interval,
 		AllDay: request.AllDay, Weekdays: request.Weekdays, EndDate: endDate,
+		ConfirmTodoRegeneration: request.ConfirmTodoRegeneration,
 	}, nil
 }
 
@@ -420,7 +425,7 @@ func validateRuleWeekdays(values []string) error {
 }
 
 func (request ScheduleRuleUpdateRequest) input() (scheduleusecase.UpdateRuleInput, error) {
-	var input scheduleusecase.UpdateRuleInput
+	input := scheduleusecase.UpdateRuleInput{ConfirmTodoRegeneration: request.ConfirmTodoRegeneration}
 	for _, field := range []struct {
 		name    string
 		present bool

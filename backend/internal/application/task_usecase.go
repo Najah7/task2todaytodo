@@ -8,11 +8,15 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
-func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthStore, _ IDIssuer, logger telemetry.Logger) usecase.TaskUseCases {
+func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthStore, _ IDIssuer, logger telemetry.Logger, readUOWs ...usecase.UOW) usecase.TaskUseCases {
+	readUOW := taskUOW
+	if len(readUOWs) > 0 && readUOWs[0] != nil {
+		readUOW = readUOWs[0]
+	}
 	return usecase.TaskUseCases{
 		Create:            usecase.NewCreateTaskUseCase(taskUOW, logger),
 		List:              usecase.NewListTasksUseCase(taskStore.Tasks, logger, taskStore.ActionItems),
-		Get:               usecase.NewGetTaskUseCase(taskUOW, logger),
+		Get:               usecase.NewGetTaskUseCase(readUOW, logger),
 		Update:            usecase.NewUpdateTaskUseCase(taskUOW, logger),
 		Delete:            usecase.NewDeleteTaskUseCase(taskUOW, logger),
 		Start:             usecase.NewStartTaskUseCase(taskUOW, logger),
@@ -30,16 +34,20 @@ func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthSto
 	}
 }
 
-func NewScheduleUseCases(scheduleUOW scheduleusecase.UOW, authStore AuthStore, id IDIssuer, logger telemetry.Logger) scheduleusecase.ScheduleUseCases {
+func NewScheduleUseCases(scheduleUOW scheduleusecase.UOW, authStore AuthStore, id IDIssuer, logger telemetry.Logger, readUOWs ...scheduleusecase.UOW) scheduleusecase.ScheduleUseCases {
+	readUOW := scheduleUOW
+	if len(readUOWs) > 0 && readUOWs[0] != nil {
+		readUOW = readUOWs[0]
+	}
 	return scheduleusecase.ScheduleUseCases{
 		CreateRule:           scheduleusecase.NewCreateRuleUseCase(scheduleUOW, id.NewULID, authStore.Users, logger),
-		GetRule:              scheduleusecase.NewGetRuleUseCase(scheduleUOW),
-		ListRuleRevisions:    scheduleusecase.NewListRuleRevisionsUseCase(scheduleUOW),
+		GetRule:              scheduleusecase.NewGetRuleUseCase(readUOW),
+		ListRuleRevisions:    scheduleusecase.NewListRuleRevisionsUseCase(readUOW),
 		UpdateRule:           scheduleusecase.NewUpdateRuleUseCase(scheduleUOW, id.NewULID, authStore.Users),
 		DeleteRuleFollowing:  scheduleusecase.NewDeleteRuleFollowingUseCase(scheduleUOW, id.NewULID),
-		ListOccurrences:      scheduleusecase.NewListOccurrencesUseCase(scheduleUOW),
-		GetOccurrence:        scheduleusecase.NewGetOccurrenceUseCase(scheduleUOW, logger),
-		OccurrenceRevisions:  scheduleusecase.NewListOccurrenceRevisionsUseCase(scheduleUOW),
+		ListOccurrences:      scheduleusecase.NewListOccurrencesUseCase(readUOW),
+		GetOccurrence:        scheduleusecase.NewGetOccurrenceUseCase(readUOW, logger),
+		OccurrenceRevisions:  scheduleusecase.NewListOccurrenceRevisionsUseCase(readUOW),
 		UpdateOccurrence:     scheduleusecase.NewUpdateOccurrenceUseCase(scheduleUOW, logger, id.NewULID),
 		CompleteOccurrence:   scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "complete", logger, id.NewULID),
 		ReopenOccurrence:     scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "reopen", logger, id.NewULID),
@@ -48,14 +56,18 @@ func NewScheduleUseCases(scheduleUOW scheduleusecase.UOW, authStore AuthStore, i
 		DeleteOccurrence:     scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "delete", logger, id.NewULID),
 		RescheduleOccurrence: scheduleusecase.NewRescheduleOccurrenceUseCase(scheduleUOW, logger, id.NewULID),
 		Backfill:             scheduleusecase.NewBackfillUseCase(scheduleUOW, id.NewULID),
-		ListAssignees:        scheduleusecase.NewListScheduleAssigneesUseCase(scheduleUOW, logger),
+		ListAssignees:        scheduleusecase.NewListScheduleAssigneesUseCase(readUOW, logger),
 	}
 }
 
-func NewActionItemUseCases(taskUOW usecase.UOW, logger telemetry.Logger) usecase.ActionItemUseCases {
+func NewActionItemUseCases(taskUOW usecase.UOW, logger telemetry.Logger, readUOWs ...usecase.UOW) usecase.ActionItemUseCases {
+	readUOW := taskUOW
+	if len(readUOWs) > 0 && readUOWs[0] != nil {
+		readUOW = readUOWs[0]
+	}
 	return usecase.ActionItemUseCases{
 		Create:   usecase.NewCreateActionItemUseCase(taskUOW, logger),
-		List:     usecase.NewListActionItemsUseCase(taskUOW, logger),
+		List:     usecase.NewListActionItemsUseCase(readUOW, logger),
 		Update:   usecase.NewUpdateActionItemUseCase(taskUOW, logger),
 		Delete:   usecase.NewDeleteActionItemUseCase(taskUOW, logger),
 		Complete: usecase.NewCompleteActionItemUseCase(taskUOW, logger),

@@ -1,17 +1,18 @@
 package domain
 
 import (
+	"math"
 	"testing"
 	"time"
 )
 
 func TestNewActionItem(t *testing.T) {
-	item, err := NewActionItem("action-item-1", "task-1", "Buy milk")
+	item, err := NewActionItem("action-item-1", "task-1", "Buy milk", 15)
 	if err != nil {
 		t.Fatalf("NewActionItem() error = %v", err)
 	}
 
-	if item.ID != "action-item-1" || item.TaskID != "task-1" || item.Position != 0 {
+	if item.ID != "action-item-1" || item.TaskID != "task-1" || item.Position != 0 || item.EstimatedMinutes == nil || *item.EstimatedMinutes != 15 {
 		t.Errorf("action item = %+v, want ID, task ID, and position to be set", item)
 	}
 	if item.Description != "" || item.Completed || item.Position != 0 {
@@ -42,18 +43,23 @@ func TestNewActionItemValidation(t *testing.T) {
 		title            string
 		position         int
 		estimatedMinutes *int
+		actualMinutes    *int
 		wantErr          error
 	}{
 		{name: "empty ID", taskID: "task-1", title: "Action item", position: 0, wantErr: ErrActionItemIDEmpty},
 		{name: "empty task ID", id: "action-item-1", title: "Action item", position: 0, wantErr: ErrActionItemTaskIDEmpty},
 		{name: "blank title", id: "action-item-1", taskID: "task-1", title: " ", position: 0, wantErr: ErrActionItemTitleEmpty},
 		{name: "negative position", id: "action-item-1", taskID: "task-1", title: "Action item", position: -1, wantErr: ErrActionItemPositionLess},
+		{name: "missing estimate", id: "action-item-1", taskID: "task-1", title: "Action item", position: 0, wantErr: ErrActionItemEstimatedMinutesInvalid},
+		{name: "zero estimate", id: "action-item-1", taskID: "task-1", title: "Action item", position: 0, estimatedMinutes: pointerToInt(0), wantErr: ErrActionItemEstimatedMinutesInvalid},
 		{name: "negative estimate", id: "action-item-1", taskID: "task-1", title: "Action item", position: 0, estimatedMinutes: pointerToInt(-1), wantErr: ErrActionItemEstimatedMinutesInvalid},
+		{name: "estimate exceeds SQL integer", id: "action-item-1", taskID: "task-1", title: "Action item", position: 0, estimatedMinutes: pointerToInt(int(math.MaxInt32) + 1), wantErr: ErrActionItemEstimatedMinutesInvalid},
+		{name: "actual exceeds SQL integer", id: "action-item-1", taskID: "task-1", title: "Action item", position: 0, estimatedMinutes: pointerToInt(1), actualMinutes: pointerToInt(int(math.MaxInt32) + 1), wantErr: ErrActionItemActualMinutesInvalid},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewActionItemWithDetails(tt.id, tt.taskID, tt.title, "", time.Time{}, false, tt.position, ActionItemPlanning{EstimatedMinutes: tt.estimatedMinutes})
+			got, err := NewActionItemWithDetails(tt.id, tt.taskID, tt.title, "", time.Time{}, false, tt.position, ActionItemPlanning{EstimatedMinutes: tt.estimatedMinutes, ActualMinutes: tt.actualMinutes})
 			assertTaskDomainErrorIs(t, err, tt.wantErr)
 			if got.ID != tt.id || got.TaskID != tt.taskID || got.Title != tt.title {
 				t.Errorf("action item = %+v, want input values to be preserved", got)
@@ -107,7 +113,8 @@ func TestActionItemsHasIncomplete(t *testing.T) {
 
 func mustActionItemWithPosition(t *testing.T, id ActionItemID, position int, completed bool) ActionItem {
 	t.Helper()
-	item, err := NewActionItemWithDetails(id, "task-1", "Action item", "", time.Time{}, completed, position)
+	estimate := 1
+	item, err := NewActionItemWithDetails(id, "task-1", "Action item", "", time.Time{}, completed, position, ActionItemPlanning{EstimatedMinutes: &estimate})
 	if err != nil {
 		t.Fatalf("NewActionItemWithDetails() error = %v", err)
 	}

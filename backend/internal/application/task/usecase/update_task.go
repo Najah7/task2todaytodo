@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -16,16 +17,17 @@ import (
 var ErrTaskPatchRequiredFieldNull = errors.New("required task field cannot be null")
 
 type UpdateTaskInput struct {
-	UserID                 domain.UserID
-	TaskID                 domain.TaskID
-	ExpectedRevision       int32
-	Title                  PatchField[string]
-	Description            PatchField[string]
-	DueDate                PatchField[time.Time]
-	ManualEstimatedMinutes PatchField[int]
-	ActualMinutes          PatchField[int]
-	Priority               PatchField[string]
-	ProjectID              PatchField[string]
+	UserID                  domain.UserID
+	TaskID                  domain.TaskID
+	ExpectedRevision        int32
+	Title                   PatchField[string]
+	Description             PatchField[string]
+	DueDate                 PatchField[time.Time]
+	ManualEstimatedMinutes  PatchField[int]
+	ActualMinutes           PatchField[int]
+	Priority                PatchField[string]
+	ProjectID               PatchField[string]
+	ConfirmTodoRegeneration bool
 }
 
 type TaskUpdateFieldError struct {
@@ -146,15 +148,50 @@ func (uc *UpdateTaskUseCase) Execute(ctx context.Context, in UpdateTaskInput) (r
 				task.DueDate = *in.DueDate.Value
 			}
 		}
+		manualEstimateChanged := false
+		regenerateToday := false
+		assigneeID := domain.UserID(current.AssigneeID)
+		if assigneeID == "" {
+			assigneeID = in.UserID
+		}
 		if in.ManualEstimatedMinutes.Present {
-			if in.ManualEstimatedMinutes.Value != nil && *in.ManualEstimatedMinutes.Value < 0 {
+			if in.ManualEstimatedMinutes.Value != nil && (*in.ManualEstimatedMinutes.Value < 1 || int64(*in.ManualEstimatedMinutes.Value) > math.MaxInt32) {
 				return TaskUpdateFieldError{"manual_estimated_minutes", domain.ErrTaskEstimatedMinutesInvalid}
 			}
+			manualEstimateChanged = !sameOptionalInt(current.ManualEstimatedMinutes, in.ManualEstimatedMinutes.Value)
 			task.ManualEstimatedMinutes = copyOptionalInt(in.ManualEstimatedMinutes.Value)
+			if manualEstimateChanged {
+				started, e := repos.TaskTodos().HasCompletedTaskFrame(ctx, in.TaskID)
+				if e != nil {
+					return e
+				}
+				if started || current.Status.Value == "done" {
+					return ErrTaskStarted
+				}
+				childCount, e := repos.ActionItems().CountForOwnedTask(ctx, in.UserID, in.TaskID, shared.TaskUpdate())
+				if e != nil {
+					return e
+				}
+				if childCount == 0 {
+					if in.ManualEstimatedMinutes.Value == nil {
+						return ErrTaskManualEstimateRequired
+					}
+					regenerateToday, e = repos.TaskTodos().HasTodayTaskFrame(ctx, assigneeID, in.TaskID)
+					if e != nil {
+						return e
+					}
+					if regenerateToday && !in.ConfirmTodoRegeneration {
+						return ErrTodoRegenerationRequired
+					}
+				}
+			}
 		}
 		if in.ActualMinutes.Present {
-			if in.ActualMinutes.Value != nil && *in.ActualMinutes.Value < 0 {
+			if in.ActualMinutes.Value != nil && (*in.ActualMinutes.Value < 0 || int64(*in.ActualMinutes.Value) > math.MaxInt32) {
 				return TaskUpdateFieldError{"actual_minutes", domain.ErrTaskActualMinutesInvalid}
+			}
+			if current.Status.Value != "done" {
+				return ErrTaskActualMinutesRequiresCompletion
 			}
 			task.ActualMinutes = copyOptionalInt(in.ActualMinutes.Value)
 		}
@@ -202,6 +239,11 @@ func (uc *UpdateTaskUseCase) Execute(ctx context.Context, in UpdateTaskInput) (r
 		result, err = repos.Tasks().UpdateByUserID(ctx, in.UserID, validated, in.ExpectedRevision)
 		if err != nil {
 			return err
+		}
+		if manualEstimateChanged && regenerateToday {
+			if err = repos.TaskTodos().RegenerateToday(ctx, assigneeID); err != nil {
+				return err
+			}
 		}
 		result.CanUpdate = true
 		if result.ProjectID != "" {
@@ -251,4 +293,11 @@ func copyOptionalInt(value *int) *int {
 	}
 	copy := *value
 	return &copy
+}
+
+func sameOptionalInt(a, b *int) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
 }

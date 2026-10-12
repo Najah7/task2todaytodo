@@ -67,6 +67,7 @@ type actionItemsHandlerActionItemRepository struct {
 	deleteErr         error
 	completeErr       error
 	reopenErr         error
+	actualMinutes     *int
 	reorderErr        error
 	lastUserID        domain.UserID
 	lastTaskID        domain.TaskID
@@ -93,6 +94,16 @@ func (repo *actionItemsHandlerActionItemRepository) ReadTaskListProjection(_ con
 		}
 	}
 	return dao.TaskListProjectionSources{ActionItemsByTask: items}, nil
+}
+
+func (repo *actionItemsHandlerActionItemRepository) CountForOwnedTask(_ context.Context, _ domain.UserID, taskID domain.TaskID, _ shared.Capability) (int, error) {
+	count := 0
+	for _, item := range repo.rows {
+		if item.TaskID == string(taskID) && !item.Deleted {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (repo *actionItemsHandlerActionItemRepository) ListByTaskCursor(_ context.Context, userID domain.UserID, taskID domain.TaskID, limit int, anchor *taskusecase.CursorAnchor) ([]dao.ActionItem, error) {
@@ -154,6 +165,16 @@ func (repo *actionItemsHandlerActionItemRepository) UpdateForOwnedTask(_ context
 func (repo *actionItemsHandlerActionItemRepository) CheckForOwnedTask(_ context.Context, userID domain.UserID, taskID domain.TaskID, itemID domain.ActionItemID) error {
 	repo.completeCalls++
 	repo.lastUserID, repo.lastTaskID, repo.lastItemID = userID, taskID, itemID
+	if repo.completeErr != nil {
+		return repo.completeErr
+	}
+	return repo.setCompleted(taskID, itemID, true)
+}
+
+func (repo *actionItemsHandlerActionItemRepository) CompleteWithActualMinutesForOwnedTask(_ context.Context, userID domain.UserID, taskID domain.TaskID, itemID domain.ActionItemID, actualMinutes *int) error {
+	repo.completeCalls++
+	repo.lastUserID, repo.lastTaskID, repo.lastItemID = userID, taskID, itemID
+	repo.actualMinutes = cloneInt(actualMinutes)
 	if repo.completeErr != nil {
 		return repo.completeErr
 	}
@@ -254,6 +275,27 @@ func (repos actionItemsHandlerRepositories) Tasks() taskusecase.TaskRepository {
 func (repos actionItemsHandlerRepositories) ActionItems() taskusecase.ActionItemRepository {
 	return repos.items
 }
+func (repos actionItemsHandlerRepositories) ActionItemTodos() taskusecase.ActionItemTodoLifecycle {
+	return actionItemsHandlerTodoLifecycle{}
+}
+
+type actionItemsHandlerTodoLifecycle struct{}
+
+func (actionItemsHandlerTodoLifecycle) HasCompletedFrame(context.Context, domain.ActionItemID) (bool, error) {
+	return false, nil
+}
+func (actionItemsHandlerTodoLifecycle) HasTodayActionItem(context.Context, domain.UserID, domain.ActionItemID) (bool, error) {
+	return false, nil
+}
+func (actionItemsHandlerTodoLifecycle) CompleteTodayFrames(context.Context, domain.UserID, domain.ActionItemID) error {
+	return nil
+}
+func (actionItemsHandlerTodoLifecycle) ReopenFrames(context.Context, domain.ActionItemID) error {
+	return nil
+}
+func (actionItemsHandlerTodoLifecycle) RegenerateToday(context.Context, domain.UserID) error {
+	return nil
+}
 
 type actionItemsHandlerUOW struct{ repositories taskusecase.Repositories }
 
@@ -268,11 +310,12 @@ type actionItemsHandlerFixture struct {
 }
 
 func newActionItemsHandlerFixture() actionItemsHandlerFixture {
+	estimate := 30
 	itemRepo := &actionItemsHandlerActionItemRepository{rows: []dao.ActionItem{
-		{ID: "item-1", TaskID: "task-1", Title: "Write tests", Description: "Cover API", DueDate: time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC).Unix(), Position: 0, CreatedAt: 100, UpdatedAt: 200},
-		{ID: "item-2", TaskID: "task-1", Title: "Review tests", Position: 1},
+		{ID: "item-1", TaskID: "task-1", Title: "Write tests", Description: "Cover API", DueDate: time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC).Unix(), EstimatedMinutes: &estimate, EstimateEditable: true, Position: 0, CreatedAt: 100, UpdatedAt: 200},
+		{ID: "item-2", TaskID: "task-1", Title: "Review tests", EstimatedMinutes: &estimate, EstimateEditable: true, Position: 1},
 	}}
-	taskRepo := &actionItemsHandlerTaskRepository{task: dao.Task{ID: "task-1", UserID: "user-1", Status: dao.TaskStatus{Value: "open"}}}
+	taskRepo := &actionItemsHandlerTaskRepository{task: dao.Task{ID: "task-1", UserID: "user-1", Revision: 1, Status: dao.TaskStatus{Value: "open"}}}
 	uow := actionItemsHandlerUOW{repositories: actionItemsHandlerRepositories{tasks: taskRepo, items: itemRepo}}
 	ids := actionItemsHandlerID{id: "item-new"}
 	usecases := taskusecase.ActionItemUseCases{
@@ -332,7 +375,7 @@ func TestActionItemHandlerCreateRejectsRecurrenceFieldsAndReturnsConcreteID(t *t
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
 	}
-	if response.ID != "item-new" || response.Title != "Prepare release" || response.DueDate == nil || *response.DueDate != "2026-10-12" || response.EstimatedMinutes == nil || *response.EstimatedMinutes != 30 {
+	if response.ID != "item-new" || response.Title != "Prepare release" || response.DueDate == nil || *response.DueDate != "2026-10-12" || response.EstimatedMinutes != 30 {
 		t.Errorf("Create response=%+v", response)
 	}
 	assertNoActionItemRecurrenceFields(t, recorder.Body.Bytes())
@@ -391,6 +434,26 @@ func TestActionItemHandlerCompleteAndReopenUseConcretePathIDWithoutBody(t *testi
 	}
 }
 
+func TestActionItemCompleteAndReopenHandleChunkedBodies(t *testing.T) {
+	completeFixture := newActionItemsHandlerFixture()
+	request := actionItemRequest(http.MethodPost, "/tasks/task-1/action-items/item-1:complete", `{"actual_minutes":0}`, true)
+	request.ContentLength = -1
+	complete := httptest.NewRecorder()
+	completeFixture.handler.Complete(complete, request)
+	if complete.Code != http.StatusOK || completeFixture.itemRepo.actualMinutes == nil || *completeFixture.itemRepo.actualMinutes != 0 {
+		t.Fatalf("chunked complete status=%d actual=%v body=%s; want actual zero preserved", complete.Code, completeFixture.itemRepo.actualMinutes, complete.Body.String())
+	}
+
+	reopenFixture := newActionItemsHandlerFixture()
+	reopenRequest := actionItemRequest(http.MethodPost, "/tasks/task-1/action-items/item-1:reopen", `{"unexpected":true}`, true)
+	reopenRequest.ContentLength = -1
+	reopen := httptest.NewRecorder()
+	reopenFixture.handler.Reopen(reopen, reopenRequest)
+	if reopen.Code != http.StatusBadRequest || reopenFixture.itemRepo.reopenCalls != 0 {
+		t.Fatalf("chunked reopen status=%d calls=%d body=%s; want 400 and no mutation", reopen.Code, reopenFixture.itemRepo.reopenCalls, reopen.Body.String())
+	}
+}
+
 func TestActionItemHandlerDeletePreservesCompletedRestrictionAndSoftDeletes(t *testing.T) {
 	fixture := newActionItemsHandlerFixture()
 	if err := fixture.itemRepo.CheckForOwnedTask(context.Background(), "user-1", "task-1", "item-1"); err != nil {
@@ -409,6 +472,37 @@ func TestActionItemHandlerDeletePreservesCompletedRestrictionAndSoftDeletes(t *t
 	if deleted.Code != http.StatusNoContent || fixture.itemRepo.deleteCalls != 1 || fixture.itemRepo.lastItemID != "item-1" {
 		t.Fatalf("delete status=%d calls=%d id=%q body=%s", deleted.Code, fixture.itemRepo.deleteCalls, fixture.itemRepo.lastItemID, deleted.Body.String())
 	}
+}
+
+func TestActionItemDeleteManualEstimateRequiresCurrentTaskRevision(t *testing.T) {
+	t.Run("missing revision", func(t *testing.T) {
+		fixture := newActionItemsHandlerFixture()
+		recorder := httptest.NewRecorder()
+		fixture.handler.Delete(recorder, actionItemRequest(http.MethodDelete, "/tasks/task-1/action-items/item-1", `{"manual_estimated_minutes":60}`, true))
+		if recorder.Code != http.StatusPreconditionRequired || fixture.itemRepo.deleteCalls != 0 {
+			t.Fatalf("status=%d delete calls=%d body=%s; want 428 without mutation", recorder.Code, fixture.itemRepo.deleteCalls, recorder.Body.String())
+		}
+	})
+	t.Run("stale revision", func(t *testing.T) {
+		fixture := newActionItemsHandlerFixture()
+		request := actionItemRequest(http.MethodDelete, "/tasks/task-1/action-items/item-1", `{"manual_estimated_minutes":60,"confirm_todo_regeneration":true}`, true)
+		request.Header.Set(ifMatchHeader, `"2"`)
+		recorder := httptest.NewRecorder()
+		fixture.handler.Delete(recorder, request)
+		if recorder.Code != http.StatusPreconditionFailed || fixture.itemRepo.deleteCalls != 0 {
+			t.Fatalf("status=%d delete calls=%d body=%s; want 412 without mutation", recorder.Code, fixture.itemRepo.deleteCalls, recorder.Body.String())
+		}
+	})
+	t.Run("current revision", func(t *testing.T) {
+		fixture := newActionItemsHandlerFixture()
+		request := actionItemRequest(http.MethodDelete, "/tasks/task-1/action-items/item-1", `{"manual_estimated_minutes":60,"confirm_todo_regeneration":true}`, true)
+		request.Header.Set(ifMatchHeader, `"1"`)
+		recorder := httptest.NewRecorder()
+		fixture.handler.Delete(recorder, request)
+		if recorder.Code != http.StatusNoContent || fixture.itemRepo.deleteCalls != 1 {
+			t.Fatalf("status=%d delete calls=%d body=%s; want 204 and one mutation", recorder.Code, fixture.itemRepo.deleteCalls, recorder.Body.String())
+		}
+	})
 }
 
 func TestActionItemHandlerReorderUsesOnlyConcreteIDAndPosition(t *testing.T) {

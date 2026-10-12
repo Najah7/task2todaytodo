@@ -714,3 +714,73 @@ func (q *Queries) ListScheduleRuleRevisionsForRangeByActor(ctx context.Context, 
 	}
 	return items, nil
 }
+
+const listScheduleTodoImpactUsers = `-- name: ListScheduleTodoImpactUsers :many
+WITH existing_assignees AS (
+    SELECT assignee_id FROM schedules
+    WHERE rule_id = $1::text AND (
+        $2::date IS NULL OR
+        ($3::boolean AND occurrence_date >= $2::date) OR
+        (NOT $3::boolean AND occurrence_date = $2::date)
+    )
+    UNION ALL
+    SELECT assignee_id FROM schedule_exceptions
+    WHERE rule_id = $1::text AND (
+        $2::date IS NULL OR
+        ($3::boolean AND occurrence_date >= $2::date) OR
+        (NOT $3::boolean AND occurrence_date = $2::date)
+    )
+    UNION ALL
+    SELECT assignee_id FROM schedule_rule_revisions
+    WHERE rule_id = $1::text AND (
+        $2::date IS NULL OR
+        ($3::boolean AND (effective_from >= $2::date OR
+            (effective_from <= $2::date AND (cutoff_after IS NULL OR cutoff_after >= $2::date)))) OR
+        (NOT $3::boolean AND effective_from <= $2::date AND (cutoff_after IS NULL OR cutoff_after >= $2::date))
+    )
+), proposed_assignee AS (
+    SELECT COALESCE(NULLIF($4::text, ''), project.user_id, $5::text) AS assignee_id
+    FROM (SELECT 1) AS seed
+    LEFT JOIN projects AS project ON project.id = $6::text AND project.deleted_at IS NULL
+)
+SELECT DISTINCT assignee_id
+FROM (SELECT assignee_id FROM existing_assignees UNION ALL SELECT assignee_id FROM proposed_assignee) users
+WHERE assignee_id <> ''
+ORDER BY assignee_id
+`
+
+type ListScheduleTodoImpactUsersParams struct {
+	RuleID         string
+	OccurrenceDate pgtype.Date
+	Following      bool
+	AssigneeID     pgtype.Text
+	ActorID        string
+	ProjectID      pgtype.Text
+}
+
+func (q *Queries) ListScheduleTodoImpactUsers(ctx context.Context, arg ListScheduleTodoImpactUsersParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listScheduleTodoImpactUsers,
+		arg.RuleID,
+		arg.OccurrenceDate,
+		arg.Following,
+		arg.AssigneeID,
+		arg.ActorID,
+		arg.ProjectID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var assignee_id string
+		if err := rows.Scan(&assignee_id); err != nil {
+			return nil, err
+		}
+		items = append(items, assignee_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

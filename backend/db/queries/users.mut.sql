@@ -21,3 +21,9 @@ SET wake_up_time = sqlc.arg(wake_up_time)::time,
     bedtime = sqlc.arg(bedtime)::time,
     updated_at = now()
 WHERE id = sqlc.arg(user_id)::text;
+
+-- name: UpdateUserMinimumGapMinutes :exec
+UPDATE users
+SET minimum_gap_minutes = sqlc.arg(minimum_gap_minutes)::integer,
+    updated_at = now()
+WHERE id = sqlc.arg(user_id)::text;

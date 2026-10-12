@@ -137,7 +137,7 @@ func TestRESTInboxAppliesAssignmentProjectACLStateFiltersAndBidirectionalPaginat
 	if _, err := f.pool.Exec(t.Context(), `UPDATE tasks SET deleted_at=$2 WHERE id=$1`, deleted, now); err != nil {
 		t.Fatalf("soft-delete task fixture: %v", err)
 	}
-	if _, err := f.pool.Exec(t.Context(), `INSERT INTO action_items(id,task_id,title,position,completed) VALUES($1,$2,'Open item',0,false),($3,$2,'Done item',1,true)`, ulid.Make().String(), ownedTask, ulid.Make().String()); err != nil {
+	if _, err := f.pool.Exec(t.Context(), `INSERT INTO action_items(id,task_id,title,position,estimated_minutes,completed) VALUES($1,$2,'Open item',0,10,false),($3,$2,'Done item',1,10,true)`, ulid.Make().String(), ownedTask, ulid.Make().String()); err != nil {
 		t.Fatalf("insert ActionItem fixtures: %v", err)
 	}
 

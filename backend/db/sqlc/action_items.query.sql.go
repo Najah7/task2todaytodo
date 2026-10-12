@@ -11,8 +11,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countActionItemsForTaskCommand = `-- name: CountActionItemsForTaskCommand :one
+SELECT count(*)::integer AS child_count
+FROM action_items ai
+JOIN tasks t ON t.id = ai.task_id
+WHERE ai.task_id = $1::text
+  AND ai.deleted_at IS NULL
+  AND t.deleted_at IS NULL
+  AND task_has_permission(t.id, $2::text, $3::text, $4::action)
+`
+
+type CountActionItemsForTaskCommandParams struct {
+	TaskID     string
+	ActorID    string
+	ResourceID string
+	Action     Action
+}
+
+func (q *Queries) CountActionItemsForTaskCommand(ctx context.Context, arg CountActionItemsForTaskCommandParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countActionItemsForTaskCommand,
+		arg.TaskID,
+		arg.ActorID,
+		arg.ResourceID,
+		arg.Action,
+	)
+	var child_count int32
+	err := row.Scan(&child_count)
+	return child_count, err
+}
+
 const getActionItemByTaskAndUserID = `-- name: GetActionItemByTaskAndUserID :one
-SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes, ai.actual_minutes,
+       EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS started,
+       NOT ai.completed AND NOT EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS estimate_editable,
        ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
        ai.created_at, ai.updated_at
 FROM action_items ai JOIN tasks t ON t.id = ai.task_id
@@ -36,7 +67,10 @@ type GetActionItemByTaskAndUserIDRow struct {
 	Title            string
 	Description      pgtype.Text
 	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
+	EstimatedMinutes int32
+	ActualMinutes    pgtype.Int4
+	Started          bool
+	EstimateEditable pgtype.Bool
 	Priority         string
 	Completed        bool
 	Position         int32
@@ -55,6 +89,9 @@ func (q *Queries) GetActionItemByTaskAndUserID(ctx context.Context, arg GetActio
 		&i.Description,
 		&i.DueDate,
 		&i.EstimatedMinutes,
+		&i.ActualMinutes,
+		&i.Started,
+		&i.EstimateEditable,
 		&i.Priority,
 		&i.Completed,
 		&i.Position,
@@ -66,7 +103,9 @@ func (q *Queries) GetActionItemByTaskAndUserID(ctx context.Context, arg GetActio
 }
 
 const getActionItemByTaskAndUserIDForCommand = `-- name: GetActionItemByTaskAndUserIDForCommand :one
-SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes, ai.actual_minutes,
+       EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS started,
+       NOT ai.completed AND NOT EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS estimate_editable,
        ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
        ai.created_at, ai.updated_at
 FROM action_items ai JOIN tasks t ON t.id = ai.task_id
@@ -91,7 +130,10 @@ type GetActionItemByTaskAndUserIDForCommandRow struct {
 	Title            string
 	Description      pgtype.Text
 	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
+	EstimatedMinutes int32
+	ActualMinutes    pgtype.Int4
+	Started          bool
+	EstimateEditable pgtype.Bool
 	Priority         string
 	Completed        bool
 	Position         int32
@@ -116,6 +158,9 @@ func (q *Queries) GetActionItemByTaskAndUserIDForCommand(ctx context.Context, ar
 		&i.Description,
 		&i.DueDate,
 		&i.EstimatedMinutes,
+		&i.ActualMinutes,
+		&i.Started,
+		&i.EstimateEditable,
 		&i.Priority,
 		&i.Completed,
 		&i.Position,
@@ -127,7 +172,9 @@ func (q *Queries) GetActionItemByTaskAndUserIDForCommand(ctx context.Context, ar
 }
 
 const listActionItemsByTaskAndUserID = `-- name: ListActionItemsByTaskAndUserID :many
-SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes, ai.actual_minutes,
+       EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS started,
+       NOT ai.completed AND NOT EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS estimate_editable,
        ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
        ai.created_at, ai.updated_at
 FROM action_items ai JOIN tasks t ON t.id = ai.task_id
@@ -150,7 +197,10 @@ type ListActionItemsByTaskAndUserIDRow struct {
 	Title            string
 	Description      pgtype.Text
 	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
+	EstimatedMinutes int32
+	ActualMinutes    pgtype.Int4
+	Started          bool
+	EstimateEditable pgtype.Bool
 	Priority         string
 	Completed        bool
 	Position         int32
@@ -175,6 +225,9 @@ func (q *Queries) ListActionItemsByTaskAndUserID(ctx context.Context, arg ListAc
 			&i.Description,
 			&i.DueDate,
 			&i.EstimatedMinutes,
+			&i.ActualMinutes,
+			&i.Started,
+			&i.EstimateEditable,
 			&i.Priority,
 			&i.Completed,
 			&i.Position,
@@ -193,7 +246,9 @@ func (q *Queries) ListActionItemsByTaskAndUserID(ctx context.Context, arg ListAc
 }
 
 const listActionItemsByTaskAndUserIDCursorPage = `-- name: ListActionItemsByTaskAndUserIDCursorPage :many
-SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes, ai.actual_minutes,
+       EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS started,
+       NOT ai.completed AND NOT EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS estimate_editable,
        ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
        ai.created_at, ai.updated_at
 FROM action_items ai JOIN tasks t ON t.id = ai.task_id
@@ -222,7 +277,10 @@ type ListActionItemsByTaskAndUserIDCursorPageRow struct {
 	Title            string
 	Description      pgtype.Text
 	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
+	EstimatedMinutes int32
+	ActualMinutes    pgtype.Int4
+	Started          bool
+	EstimateEditable pgtype.Bool
 	Priority         string
 	Completed        bool
 	Position         int32
@@ -253,6 +311,9 @@ func (q *Queries) ListActionItemsByTaskAndUserIDCursorPage(ctx context.Context, 
 			&i.Description,
 			&i.DueDate,
 			&i.EstimatedMinutes,
+			&i.ActualMinutes,
+			&i.Started,
+			&i.EstimateEditable,
 			&i.Priority,
 			&i.Completed,
 			&i.Position,
@@ -271,7 +332,9 @@ func (q *Queries) ListActionItemsByTaskAndUserIDCursorPage(ctx context.Context, 
 }
 
 const listActionItemsForTaskIDsAndUserID = `-- name: ListActionItemsForTaskIDsAndUserID :many
-SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes,
+SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes, ai.actual_minutes,
+       EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS started,
+       NOT ai.completed AND NOT EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS estimate_editable,
        ai.priority, ai.completed, ai.position, (ai.deleted_at IS NOT NULL) AS deleted,
        ai.created_at, ai.updated_at
 FROM action_items ai JOIN tasks t ON t.id = ai.task_id
@@ -294,7 +357,10 @@ type ListActionItemsForTaskIDsAndUserIDRow struct {
 	Title            string
 	Description      pgtype.Text
 	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
+	EstimatedMinutes int32
+	ActualMinutes    pgtype.Int4
+	Started          bool
+	EstimateEditable pgtype.Bool
 	Priority         string
 	Completed        bool
 	Position         int32
@@ -319,6 +385,9 @@ func (q *Queries) ListActionItemsForTaskIDsAndUserID(ctx context.Context, arg Li
 			&i.Description,
 			&i.DueDate,
 			&i.EstimatedMinutes,
+			&i.ActualMinutes,
+			&i.Started,
+			&i.EstimateEditable,
 			&i.Priority,
 			&i.Completed,
 			&i.Position,
@@ -329,6 +398,110 @@ func (q *Queries) ListActionItemsForTaskIDsAndUserID(ctx context.Context, arg Li
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTasksWithActionItemChildren = `-- name: ListTasksWithActionItemChildren :many
+SELECT DISTINCT t.id AS task_id
+FROM tasks t
+JOIN action_items ai ON ai.task_id = t.id AND ai.deleted_at IS NULL
+WHERE t.id = ANY($1::text[])
+  AND t.deleted_at IS NULL
+  AND task_has_permission(t.id, $2::text, 'task', 'read')
+`
+
+type ListTasksWithActionItemChildrenParams struct {
+	TaskIds []string
+	UserID  string
+}
+
+func (q *Queries) ListTasksWithActionItemChildren(ctx context.Context, arg ListTasksWithActionItemChildrenParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listTasksWithActionItemChildren, arg.TaskIds, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var task_id string
+		if err := rows.Scan(&task_id); err != nil {
+			return nil, err
+		}
+		items = append(items, task_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTasksWithActionItemCreatePermission = `-- name: ListTasksWithActionItemCreatePermission :many
+SELECT t.id AS task_id
+FROM tasks t
+WHERE t.id = ANY($1::text[])
+  AND t.deleted_at IS NULL
+  AND (t.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.deleted_at IS NULL AND p.status <> 'done'))
+  AND task_has_permission(t.id, $2::text, 'action_item', 'create')
+`
+
+type ListTasksWithActionItemCreatePermissionParams struct {
+	TaskIds []string
+	UserID  string
+}
+
+func (q *Queries) ListTasksWithActionItemCreatePermission(ctx context.Context, arg ListTasksWithActionItemCreatePermissionParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listTasksWithActionItemCreatePermission, arg.TaskIds, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var task_id string
+		if err := rows.Scan(&task_id); err != nil {
+			return nil, err
+		}
+		items = append(items, task_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTasksWithCompletedTodoFrames = `-- name: ListTasksWithCompletedTodoFrames :many
+SELECT DISTINCT ti.task_id
+FROM todo_items ti
+JOIN tasks t ON t.id = ti.task_id
+WHERE ti.kind = 'task'
+  AND ti.task_id = ANY($1::text[])
+  AND ti.completed = true
+  AND t.deleted_at IS NULL
+  AND task_has_permission(t.id, $2::text, 'task', 'read')
+`
+
+type ListTasksWithCompletedTodoFramesParams struct {
+	TaskIds []string
+	UserID  string
+}
+
+func (q *Queries) ListTasksWithCompletedTodoFrames(ctx context.Context, arg ListTasksWithCompletedTodoFramesParams) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, listTasksWithCompletedTodoFrames, arg.TaskIds, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Text
+	for rows.Next() {
+		var task_id pgtype.Text
+		if err := rows.Scan(&task_id); err != nil {
+			return nil, err
+		}
+		items = append(items, task_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

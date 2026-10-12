@@ -105,12 +105,14 @@ func (uc *ListTasksUseCase) ExecuteFilteredPage(ctx context.Context, userID doma
 	}
 	for i := range pageRows {
 		if enriched, ok := enrichedByID[pageRows[i].ID]; ok {
-			pageRows[i].Progress = enriched.Progress
-			pageRows[i].EstimatedMinutes = enriched.EstimatedMinutes
-			pageRows[i].EstimateSource = enriched.EstimateSource
-			pageRows[i].ActionItemCount = enriched.ActionItemCount
-			pageRows[i].ActionItemCompletedCount = enriched.ActionItemCompletedCount
-			pageRows[i].Status = enriched.Status
+			// Keep page-query display and ordering fields, while carrying the full
+			// enriched projection (including capabilities) into REST.
+			enriched.ID = pageRows[i].ID
+			enriched.Title = pageRows[i].Title
+			enriched.DueDate = pageRows[i].DueDate
+			enriched.RemainingDays = pageRows[i].RemainingDays
+			enriched.CursorCreatedAt = pageRows[i].CursorCreatedAt
+			pageRows[i] = enriched
 		}
 	}
 	items := pageRows

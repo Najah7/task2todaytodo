@@ -36,14 +36,16 @@ func isExpectedTaskError(err error) bool {
 	for _, expected := range []error{
 		ErrTaskNotFound, ErrTaskProjectNotFound, ErrActionItemTaskNotFound, ErrActionItemNotFound,
 		ErrActionItemCompleted,
+		ErrActionItemStarted, ErrTodoRegenerationRequired,
 		ErrTaskPatchRequiredFieldNull,
 		ErrInvalidTaskPage, ErrActionItemPatchRequiredFieldNull, ErrActionItemPositionOutOfRange,
 		domain.ErrTaskIDEmpty,
 		domain.ErrTaskUserIDEmpty, domain.ErrTaskTitleEmpty, domain.ErrTaskEstimatedMinutesInvalid,
 		domain.ErrTaskActualMinutesInvalid, domain.ErrTaskProgressInvalid, domain.ErrTaskStatusEmpty, domain.ErrTaskStatusInvalid,
-		domain.ErrTaskPriorityEmpty, domain.ErrTaskPriorityInvalid, domain.ErrTodoListIDEmpty,
-		domain.ErrTodoListUserIDEmpty, domain.ErrTodoListListDateEmpty, domain.ErrActionItemIDEmpty,
+		domain.ErrTaskPriorityEmpty, domain.ErrTaskPriorityInvalid, domain.ErrActionItemIDEmpty,
 		domain.ErrActionItemTaskIDEmpty, domain.ErrActionItemTitleEmpty, domain.ErrActionItemPositionLess,
+		domain.ErrActionItemEstimatedMinutesInvalid, domain.ErrActionItemActualMinutesInvalid,
+		ErrActionItemActualMinutesRequiresCompletion,
 	} {
 		if errors.Is(err, expected) {
 			return true

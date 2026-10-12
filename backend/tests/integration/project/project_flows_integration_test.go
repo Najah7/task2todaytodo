@@ -50,12 +50,12 @@ func TestProjectScheduleAndTaskCreateUseProjectOwnerAndRecordMemberActor(t *test
 	store := application.NewStore(pool)
 	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project, store.Schedule)
 	task, err := taskusecase.NewCreateTaskInProjectUseCase(taskUOW, nil).Execute(ctx, taskusecase.CreateTaskInProjectInput{
-		ID: taskdomain.TaskID(taskID), UserID: taskdomain.UserID(actorID), ProjectID: taskdomain.ProjectID(projectID), Title: "Created by editor",
+		ID: taskdomain.TaskID(taskID), UserID: taskdomain.UserID(actorID), ProjectID: taskdomain.ProjectID(projectID), Title: "Created by editor", EstimatedMinutes: projectManualEstimate(60),
 	})
 	if err != nil {
 		t.Fatalf("create shared Task: %v", err)
 	}
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleUOW := newProjectScheduleUOW(pool, store)
 	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
 	schedule, err := scheduleusecase.NewCreateRuleUseCase(scheduleUOW, (projectActionItemID{}).Generate, store.Auth.Users, nil).Execute(ctx, actorID, scheduleusecase.CreateRuleInput{
 		Title: "Created by editor", ProjectID: projectID, Timezone: "UTC", LocalStart: start, LocalEnd: start.Add(time.Hour), Frequency: "once",
@@ -81,6 +81,8 @@ func TestProjectScheduleAndTaskCreateUseProjectOwnerAndRecordMemberActor(t *test
 		}
 	}
 }
+
+func projectManualEstimate(value int) *int { return &value }
 
 func TestProjectTaskListIncludesReadableTasksAcrossAssignees(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
@@ -271,7 +273,7 @@ func TestProjectMemberRemovalRacesCannotLeaveRemovedAssignee(t *testing.T) {
 	})
 	store := application.NewStore(pool)
 	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project, store.Schedule)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleUOW := newProjectScheduleUOW(pool, store)
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
 	raceCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -345,7 +347,7 @@ func TestProjectDeletionLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO tasks(id,user_id,project_id,assignee_id,title,changed_by) VALUES($1,$2,$3,$2,'Child task',$2)`, taskID, ownerID, projectID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position) VALUES($1,$2,'Child actionItem',0)`, actionItemID, taskID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,estimated_minutes) VALUES($1,$2,'Child actionItem',0,10)`, actionItemID, taskID); err != nil {
 		t.Fatal(err)
 	}
 	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
@@ -425,7 +427,7 @@ func TestProjectProgressCombinesPerTaskFloorsAndScheduleOccurrencesFromDB(t *tes
 	}
 	insertActionItem := func(id, taskID string, position int, completed bool) {
 		t.Helper()
-		if _, err := pool.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,completed) VALUES($1,$2,$3,$4,$5)`, id, taskID, "ActionItem", position, completed); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO action_items(id,task_id,title,position,completed,estimated_minutes) VALUES($1,$2,$3,$4,$5,10)`, id, taskID, "ActionItem", position, completed); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -500,7 +502,7 @@ func TestProjectProgressUsesOnlySavedScheduleOccurrences(t *testing.T) {
 		t.Fatalf("Project progress with only the completed recurrence root saved = %d, error=%v; want 100%%", project.Progress, err)
 	}
 
-	backfillUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	backfillUOW := newProjectScheduleUOW(pool, store)
 	cutoff := time.Date(occurrenceDate.Year(), occurrenceDate.Month(), occurrenceDate.Day(), 12, 1, 0, 0, location)
 	_, generated, err := scheduleusecase.NewBackfillUseCase(backfillUOW, (projectActionItemID{}).Generate).Execute(ctx, ownerID, cutoff, nil)
 	if err != nil || generated != 1 {
@@ -542,7 +544,7 @@ func TestProjectTaskAndScheduleCreationRaceWithParentOnlyDeletion(t *testing.T) 
 	})
 	store := application.NewStore(pool)
 	taskUOW := application.NewTaskUOW(pool, store.Task, store.Project, store.Schedule)
-	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
+	scheduleUOW := newProjectScheduleUOW(pool, store)
 	projectUOW := application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule)
 	taskIDValue := taskdomain.TaskID(taskID)
 	start := time.Now().UTC().AddDate(0, 0, 2).Truncate(time.Hour)
@@ -554,7 +556,7 @@ func TestProjectTaskAndScheduleCreationRaceWithParentOnlyDeletion(t *testing.T) 
 	deleteProject := make(chan error, 1)
 	go func() {
 		<-startGate
-		_, err := taskusecase.NewCreateTaskInProjectUseCase(taskUOW, nil).Execute(raceCtx, taskusecase.CreateTaskInProjectInput{ID: taskIDValue, UserID: taskdomain.UserID(editorID), ProjectID: taskdomain.ProjectID(projectID), Title: "Racing Task"})
+		_, err := taskusecase.NewCreateTaskInProjectUseCase(taskUOW, nil).Execute(raceCtx, taskusecase.CreateTaskInProjectInput{ID: taskIDValue, UserID: taskdomain.UserID(editorID), ProjectID: taskdomain.ProjectID(projectID), Title: "Racing Task", EstimatedMinutes: projectManualEstimate(60)})
 		createTask <- err
 	}()
 	go func() {
@@ -690,9 +692,11 @@ func TestProjectDeletionLeavesActionItemCreatedBeforeParentLockUntouched(t *test
 	raceCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	createResult := make(chan error, 1)
+	estimatedMinutes := 30
 	go func() {
 		_, err := create.Execute(raceCtx, taskusecase.CreateActionItemInput{
 			ID: taskdomain.ActionItemID(actionItemID), UserID: taskdomain.UserID(editorID), TaskID: taskdomain.TaskID(taskID), Title: "Created during Project deletion",
+			EstimatedMinutes: &estimatedMinutes,
 		})
 		createResult <- err
 	}()

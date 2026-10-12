@@ -35,7 +35,7 @@ func (r ActionItemRepository) GetForOwnedTask(ctx context.Context, userID domain
 		return dao.ActionItem{}, actionItemRepositoryError(err)
 	}
 	return actionItemDAO(record.ID, record.TaskID, record.Title, record.Description, record.DueDate,
-		record.EstimatedMinutes, record.Priority, record.Completed, record.Position,
+		record.EstimatedMinutes, record.ActualMinutes, record.Started, sqlcBoolean(record.EstimateEditable), record.Priority, record.Completed, record.Position,
 		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt), nil
 }
 
@@ -48,7 +48,7 @@ func (r ActionItemRepository) GetForCommand(ctx context.Context, userID domain.U
 		return dao.ActionItem{}, actionItemRepositoryError(err)
 	}
 	return actionItemDAO(record.ID, record.TaskID, record.Title, record.Description, record.DueDate,
-		record.EstimatedMinutes, record.Priority, record.Completed, record.Position,
+		record.EstimatedMinutes, record.ActualMinutes, record.Started, sqlcBoolean(record.EstimateEditable), record.Priority, record.Completed, record.Position,
 		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt), nil
 }
 
@@ -62,14 +62,14 @@ func (r ActionItemRepository) ListByTask(ctx context.Context, userID domain.User
 	items := make([]dao.ActionItem, 0, len(records))
 	for _, record := range records {
 		items = append(items, actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
-			record.DueDate, record.EstimatedMinutes, record.Priority, record.Completed, record.Position,
+			record.DueDate, record.EstimatedMinutes, record.ActualMinutes, record.Started, sqlcBoolean(record.EstimateEditable), record.Priority, record.Completed, record.Position,
 			sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt))
 	}
 	return items, nil
 }
 
 func (r ActionItemRepository) ReadTaskListProjection(ctx context.Context, userID domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
-	sources := dao.TaskListProjectionSources{ActionItemsByTask: make(map[string][]dao.ActionItem, len(taskIDs))}
+	sources := dao.TaskListProjectionSources{ActionItemsByTask: make(map[string][]dao.ActionItem, len(taskIDs)), StartedTasks: make(map[string]bool, len(taskIDs)), TasksWithChildren: make(map[string]bool, len(taskIDs)), CanCreateActionItems: make(map[string]bool, len(taskIDs))}
 	if len(taskIDs) == 0 {
 		return sources, nil
 	}
@@ -81,11 +81,41 @@ func (r ActionItemRepository) ReadTaskListProjection(ctx context.Context, userID
 	}
 	for _, row := range rows {
 		item := actionItemDAO(row.ID, row.TaskID, row.Title, row.Description, row.DueDate,
-			row.EstimatedMinutes, row.Priority, row.Completed, row.Position,
+			row.EstimatedMinutes, row.ActualMinutes, row.Started, sqlcBoolean(row.EstimateEditable), row.Priority, row.Completed, row.Position,
 			sqlcBoolean(row.Deleted), row.CreatedAt, row.UpdatedAt)
 		sources.ActionItemsByTask[item.TaskID] = append(sources.ActionItemsByTask[item.TaskID], item)
 	}
+	startedRows, err := r.queries.ListTasksWithCompletedTodoFrames(ctx, sqlc.ListTasksWithCompletedTodoFramesParams{TaskIds: taskIDs, UserID: string(userID)})
+	if err != nil {
+		return dao.TaskListProjectionSources{}, err
+	}
+	for _, row := range startedRows {
+		if row.Valid {
+			sources.StartedTasks[row.String] = true
+		}
+	}
+	childrenRows, err := r.queries.ListTasksWithActionItemChildren(ctx, sqlc.ListTasksWithActionItemChildrenParams{TaskIds: taskIDs, UserID: string(userID)})
+	if err != nil {
+		return dao.TaskListProjectionSources{}, err
+	}
+	for _, row := range childrenRows {
+		sources.TasksWithChildren[row] = true
+	}
+	createRows, err := r.queries.ListTasksWithActionItemCreatePermission(ctx, sqlc.ListTasksWithActionItemCreatePermissionParams{TaskIds: taskIDs, UserID: string(userID)})
+	if err != nil {
+		return dao.TaskListProjectionSources{}, err
+	}
+	for _, row := range createRows {
+		sources.CanCreateActionItems[row] = true
+	}
 	return sources, nil
+}
+
+func (r ActionItemRepository) CountForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, capability shared.Capability) (int, error) {
+	count, err := r.queries.CountActionItemsForTaskCommand(ctx, sqlc.CountActionItemsForTaskCommandParams{
+		TaskID: string(taskID), ActorID: string(userID), ResourceID: string(capability.Resource), Action: sqlc.Action(capability.Action),
+	})
+	return int(count), err
 }
 
 func (r ActionItemRepository) ListByTaskCursor(ctx context.Context, userID domain.UserID, taskID domain.TaskID, limit int, anchor *usecase.CursorAnchor) ([]dao.ActionItem, error) {
@@ -101,7 +131,7 @@ func (r ActionItemRepository) ListByTaskCursor(ctx context.Context, userID domai
 	items := make([]dao.ActionItem, 0, len(records))
 	for _, record := range records {
 		items = append(items, actionItemDAO(record.ID, record.TaskID, record.Title, record.Description,
-			record.DueDate, record.EstimatedMinutes, record.Priority, record.Completed, record.Position,
+			record.DueDate, record.EstimatedMinutes, record.ActualMinutes, record.Started, sqlcBoolean(record.EstimateEditable), record.Priority, record.Completed, record.Position,
 			sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt))
 	}
 	return items, nil
@@ -122,7 +152,7 @@ func (r ActionItemRepository) CreateForOwnedTask(ctx context.Context, userID dom
 		return dao.ActionItem{}, actionItemTaskNotFoundError(err)
 	}
 	return actionItemDAO(record.ID, record.TaskID, record.Title, record.Description, record.DueDate,
-		record.EstimatedMinutes, record.Priority, record.Completed, record.Position,
+		record.EstimatedMinutes, record.ActualMinutes, record.Started, sqlcBoolean(record.EstimateEditable), record.Priority, record.Completed, record.Position,
 		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt), nil
 }
 
@@ -131,13 +161,14 @@ func (r ActionItemRepository) UpdateForOwnedTask(ctx context.Context, userID dom
 		ID: string(item.ID), TaskID: string(item.TaskID), UserID: string(userID),
 		Title: item.Title, Description: stringToPgText(item.Description), DueDate: timeToPgDate(item.DueDate),
 		EstimatedMinutes: intPointerToPgInt(item.EstimatedMinutes), Priority: taskPriorityString(item.Priority),
-		Position: int32(item.Position),
+		ActualMinutes: intPointerToPgInt(item.ActualMinutes),
+		Position:      int32(item.Position),
 	})
 	if err != nil {
 		return dao.ActionItem{}, actionItemRepositoryError(err)
 	}
 	return actionItemDAO(record.ID, record.TaskID, record.Title, record.Description, record.DueDate,
-		record.EstimatedMinutes, record.Priority, record.Completed, record.Position,
+		record.EstimatedMinutes, record.ActualMinutes, record.Started, sqlcBoolean(record.EstimateEditable), record.Priority, record.Completed, record.Position,
 		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt), nil
 }
 
@@ -156,12 +187,19 @@ func (r ActionItemRepository) ReorderForOwnedTask(ctx context.Context, userID do
 		return dao.ActionItem{}, actionItemRepositoryError(err)
 	}
 	return actionItemDAO(record.ID, record.TaskID, record.Title, record.Description, record.DueDate,
-		record.EstimatedMinutes, record.Priority, record.Completed, record.Position,
+		record.EstimatedMinutes, record.ActualMinutes, record.Started, sqlcBoolean(record.EstimateEditable), record.Priority, record.Completed, record.Position,
 		sqlcBoolean(record.Deleted), record.CreatedAt, record.UpdatedAt), nil
 }
 
 func (r ActionItemRepository) CheckForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) error {
 	return r.setCompleted(ctx, userID, taskID, id, true)
+}
+
+func (r ActionItemRepository) CompleteWithActualMinutesForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID, actualMinutes *int) error {
+	_, err := r.queries.CompleteActionItemWithActualMinutesByTaskAndUserID(ctx, sqlc.CompleteActionItemWithActualMinutesByTaskAndUserIDParams{
+		ID: string(id), TaskID: string(taskID), UserID: string(userID), ActualMinutes: intPointerToPgInt(actualMinutes),
+	})
+	return actionItemRepositoryError(err)
 }
 
 func (r ActionItemRepository) UncheckForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) error {

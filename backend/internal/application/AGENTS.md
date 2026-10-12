@@ -14,7 +14,7 @@ internal/application/shared/              Cross-context contracts and pure polic
 internal/application/                      Composition root and transaction wiring
 ```
 
-`<context>` is `auth`, `project`, `task`, `schedule`, `allocation`, `inbox`, or `admin`. Keep each
+`<context>` is `auth`, `project`, `task`, `schedule`, `allocation`, `todo`, `inbox`, or `admin`. Keep each
 context's domain, DAO, usecase, and repository within that context. Admin
 contains `job/` and `operation/` subareas: job usecases may consume the
 operation DAO and operation-owned lifecycle errors through narrow job ports;

@@ -22,6 +22,7 @@ type Handler struct {
 	Admin               *AdminHandler
 	Inbox               *InboxHandler
 	Allocation          *AllocationHandler
+	Todos               *TodosHandler
 }
 
 func NewHandler(usecases application.UseCase, issueID func() string, pageTokenKey []byte) (*Handler, error) {
@@ -45,5 +46,6 @@ func NewHandler(usecases application.UseCase, issueID func() string, pageTokenKe
 		Admin:               NewAdminHandler(usecases.Admin.Job, usecases.Admin.Operation, pageTokens),
 		Inbox:               NewInboxHandler(usecases.Inbox, pageTokens),
 		Allocation:          NewAllocationHandler(usecases.Allocation),
+		Todos:               NewTodosHandler(TodosUseCases{GetToday: usecases.Todo.GetToday, Regenerate: usecases.Todo.Regenerate, AddActionItem: usecases.Todo.AddActionItem, AddTask: usecases.Todo.AddTask, Reflow: usecases.Todo.Reflow, CompleteFrame: usecases.Todo.CompleteFrame, ReopenFrame: usecases.Todo.ReopenFrame, RemoveActionItem: usecases.Todo.RemoveActionItem, HideSchedule: usecases.Todo.HideSchedule, RestoreSchedule: usecases.Todo.RestoreSchedule}),
 	}, nil
 }

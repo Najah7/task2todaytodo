@@ -11,14 +11,15 @@ import (
 )
 
 type CreateActionItemInput struct {
-	ID               domain.ActionItemID
-	UserID           domain.UserID
-	TaskID           domain.TaskID
-	Title            string
-	Description      string
-	DueDate          time.Time
-	EstimatedMinutes *int
-	Priority         string
+	ID                      domain.ActionItemID
+	UserID                  domain.UserID
+	TaskID                  domain.TaskID
+	Title                   string
+	Description             string
+	DueDate                 time.Time
+	EstimatedMinutes        *int
+	Priority                string
+	ConfirmTodoRegeneration bool
 }
 
 type CreateActionItemUseCase struct {
@@ -37,12 +38,36 @@ func (uc *CreateActionItemUseCase) Execute(ctx context.Context, input CreateActi
 	asOf := time.Now()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		return withTaskProgressMutationForPermissionAndState(ctx, repos, input.UserID, input.TaskID, asOf, shared.ActionItemCreate(), func(task dao.Task, _ taskProjectMutationSnapshot) error {
+			childCount, err := repos.ActionItems().CountForOwnedTask(ctx, input.UserID, input.TaskID, shared.ActionItemCreate())
+			if err != nil {
+				return err
+			}
+			regenerate := false
+			if childCount == 0 {
+				started, err := repos.TaskTodos().HasCompletedTaskFrame(ctx, input.TaskID)
+				if err != nil {
+					return err
+				}
+				if started || task.Status.Value == "done" {
+					return ErrCannotAddActionItemToStartedTask
+				}
+				assignee := domain.UserID(task.AssigneeID)
+				if assignee == "" {
+					assignee = input.UserID
+				}
+				regenerate, err = repos.TaskTodos().HasTodayTaskFrame(ctx, assignee, input.TaskID)
+				if err != nil {
+					return err
+				}
+				if regenerate && !input.ConfirmTodoRegeneration {
+					return ErrTodoRegenerationRequired
+				}
+			}
 			priorityValue := input.Priority
 			if priorityValue == "" {
 				priorityValue = task.Priority.Value
 			}
 			priority := domain.TaskPriority{}
-			var err error
 			if priorityValue != "" {
 				priority, err = domain.NewTaskPriority(priorityValue)
 				if err != nil {
@@ -57,6 +82,13 @@ func (uc *CreateActionItemUseCase) Execute(ctx context.Context, input CreateActi
 				return err
 			}
 			created, err = repos.ActionItems().CreateForOwnedTask(ctx, input.UserID, item, true)
+			if err == nil && regenerate {
+				assignee := domain.UserID(task.AssigneeID)
+				if assignee == "" {
+					assignee = input.UserID
+				}
+				err = repos.TaskTodos().RegenerateToday(ctx, assignee)
+			}
 			return err
 		})
 	})

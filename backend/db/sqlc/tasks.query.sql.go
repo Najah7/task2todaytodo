@@ -254,6 +254,9 @@ SELECT
     ti.description,
     ti.due_date,
     ti.estimated_minutes,
+    ti.actual_minutes,
+    EXISTS (SELECT 1 FROM todo_items todo WHERE todo.action_item_id = ti.id AND todo.kind = 'action_item' AND todo.completed) AS started,
+    NOT EXISTS (SELECT 1 FROM todo_items todo WHERE todo.action_item_id = ti.id AND todo.kind = 'action_item' AND todo.completed) AS estimate_editable,
     ti.priority,
     ti.completed,
     ti.position,
@@ -278,7 +281,10 @@ type ListActionItemsByTaskForUserRow struct {
 	Title            string
 	Description      pgtype.Text
 	DueDate          pgtype.Date
-	EstimatedMinutes pgtype.Int4
+	EstimatedMinutes int32
+	ActualMinutes    pgtype.Int4
+	Started          bool
+	EstimateEditable bool
 	Priority         string
 	Completed        bool
 	Position         int32
@@ -302,6 +308,9 @@ func (q *Queries) ListActionItemsByTaskForUser(ctx context.Context, arg ListActi
 			&i.Description,
 			&i.DueDate,
 			&i.EstimatedMinutes,
+			&i.ActualMinutes,
+			&i.Started,
+			&i.EstimateEditable,
 			&i.Priority,
 			&i.Completed,
 			&i.Position,
@@ -319,20 +328,21 @@ func (q *Queries) ListActionItemsByTaskForUser(ctx context.Context, arg ListActi
 }
 
 const listProjectTasksByUserIDCursorPage = `-- name: ListProjectTasksByUserIDCursorPage :many
-SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at, p.status AS project_status
+SELECT t.id, t.user_id, t.project_id, t.assignee_id, t.title, t.description, t.due_date, t.manual_estimated_minutes, t.actual_minutes, t.priority, t.status, t.revision, t.deleted_at, t.changed_by, t.created_at, t.updated_at, p.status AS project_status,
+       task_has_permission(t.id, $1::text, 'task', 'update') AS can_update
 FROM tasks AS t
 JOIN projects AS p ON p.id = t.project_id AND p.user_id = t.user_id AND p.deleted_at IS NULL
-WHERE t.project_id = $1
+WHERE t.project_id = $2
   AND t.deleted_at IS NULL
-  AND task_has_permission(t.id, $2, 'task', 'read')
+  AND task_has_permission(t.id, $1, 'task', 'read')
   AND ($3::timestamptz IS NULL OR (t.created_at, t.id) < ($3::timestamptz, $4::text))
 ORDER BY t.created_at DESC, t.id DESC
 LIMIT $5::integer
 `
 
 type ListProjectTasksByUserIDCursorPageParams struct {
-	ProjectID pgtype.Text
 	UserID    string
+	ProjectID pgtype.Text
 	CursorAt  pgtype.Timestamptz
 	CursorID  pgtype.Text
 	PageLimit int32
@@ -356,12 +366,13 @@ type ListProjectTasksByUserIDCursorPageRow struct {
 	CreatedAt              pgtype.Timestamptz
 	UpdatedAt              pgtype.Timestamptz
 	ProjectStatus          string
+	CanUpdate              bool
 }
 
 func (q *Queries) ListProjectTasksByUserIDCursorPage(ctx context.Context, arg ListProjectTasksByUserIDCursorPageParams) ([]ListProjectTasksByUserIDCursorPageRow, error) {
 	rows, err := q.db.Query(ctx, listProjectTasksByUserIDCursorPage,
-		arg.ProjectID,
 		arg.UserID,
+		arg.ProjectID,
 		arg.CursorAt,
 		arg.CursorID,
 		arg.PageLimit,
@@ -391,6 +402,7 @@ func (q *Queries) ListProjectTasksByUserIDCursorPage(ctx context.Context, arg Li
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ProjectStatus,
+			&i.CanUpdate,
 		); err != nil {
 			return nil, err
 		}

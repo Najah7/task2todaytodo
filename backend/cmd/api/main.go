@@ -107,12 +107,25 @@ func main() {
 		auth.Patch("/users/me", handler.User.UpdateBasicInfo)
 		auth.Patch("/users/me/timezone", handler.User.UpdateTimezone)
 		auth.Patch("/users/me/sleep", handler.User.UpdateSleepSettings)
+		auth.Patch("/users/me/minimum-gap", handler.User.UpdateMinimumGap)
 		auth.Patch("/users/me/password", handler.User.UpdatePassword)
 
 		// Role & Permissions
 		auth.Get("/roles", handler.Role.List)
 		auth.Get("/permissions", handler.Role.ListPermissions)
 		auth.Get("/timezones", handler.Timezone.List)
+
+		// Today's generated execution plan
+		auth.Get("/today-todo", handler.Todos.GetToday)
+		auth.Post("/today-todo:regenerate", handler.Todos.Regenerate)
+		auth.Post("/today-todo/action-items/{actionItemId}", handler.Todos.AddActionItem)
+		auth.Post("/today-todo/tasks/{taskId}", handler.Todos.AddTask)
+		auth.Post("/today-todo:reorder", handler.Todos.Reorder)
+		auth.Post("/today-todo/items/{itemId}:complete", handler.Todos.CompleteFrame)
+		auth.Post("/today-todo/items/{itemId}:reopen", handler.Todos.ReopenFrame)
+		auth.Post("/today-todo/items/{itemId}:remove", handler.Todos.RemoveActionItem)
+		auth.Post("/today-todo/schedules/{itemId}:hide", handler.Todos.HideSchedule)
+		auth.Post("/today-todo/schedules/{itemId}:restore", handler.Todos.RestoreSchedule)
 
 		// Inbox
 		auth.Get("/inbox", handler.Inbox.List)

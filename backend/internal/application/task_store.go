@@ -10,7 +10,6 @@ import (
 type TaskStore struct {
 	Tasks          *repository.TaskRepository
 	ActionItems    *repository.ActionItemRepository
-	TodoLists      *repository.TodoListRepository
 	TaskPriorities *repository.TaskPriorityRepository
 	TaskStatuses   *repository.TaskStatusRepository
 }
@@ -19,7 +18,6 @@ func newTaskStore(pool *pgxpool.Pool) TaskStore {
 	return TaskStore{
 		Tasks:          repository.NewTaskRepository(pool),
 		ActionItems:    repository.NewActionItemRepository(pool),
-		TodoLists:      repository.NewTodoListRepository(pool),
 		TaskPriorities: repository.NewTaskPriorityRepository(pool),
 		TaskStatuses:   repository.NewTaskStatusRepository(pool),
 	}
@@ -29,7 +27,6 @@ func (s TaskStore) WithTx(tx pgx.Tx) TaskStore {
 	return TaskStore{
 		Tasks:          s.Tasks.WithTx(tx),
 		ActionItems:    s.ActionItems.WithTx(tx),
-		TodoLists:      s.TodoLists.WithTx(tx),
 		TaskPriorities: s.TaskPriorities.WithTx(tx),
 		TaskStatuses:   s.TaskStatuses.WithTx(tx),
 	}

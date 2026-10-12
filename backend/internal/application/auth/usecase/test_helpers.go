@@ -74,6 +74,10 @@ func (*stubUserRepository) UpdateSleepSettings(_ context.Context, _ domain.UserI
 	return nil
 }
 
+func (*stubUserRepository) UpdateMinimumGapMinutes(_ context.Context, _ domain.UserID, _ int) error {
+	return nil
+}
+
 func (*stubUserRepository) TimezoneExists(_ context.Context, timezone string) (bool, error) {
 	switch timezone {
 	case "UTC", "Asia/Tokyo", "America/Los_Angeles":

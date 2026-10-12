@@ -15,6 +15,7 @@ func NewUserUseCases(authStore AuthStore, uow authusecase.UOW, logger telemetry.
 		UpdatePassword:      authusecase.NewUpdateUserPasswordUseCase(authStore.Users, logger),
 		UpdateTimezone:      authusecase.NewUpdateUserTimezoneUseCase(authStore.Users, logger, uow),
 		UpdateSleepSettings: authusecase.NewUpdateUserSleepSettingsUseCase(uow, logger),
+		UpdateMinimumGap:    authusecase.NewUpdateUserMinimumGapUseCase(authStore.Users, logger),
 	}
 }
 

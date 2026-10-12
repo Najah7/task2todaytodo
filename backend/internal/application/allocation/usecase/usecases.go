@@ -66,14 +66,18 @@ type UseCases struct {
 	DeleteSleepException *DeleteSleepExceptionUseCase
 }
 
-func NewUseCases(repo Repository, uow UnitOfWork, issueID func() string, now func() time.Time) UseCases {
+func NewUseCases(repo Repository, uow UnitOfWork, issueID func() string, now func() time.Time, readUOWs ...UnitOfWork) UseCases {
 	if now == nil {
 		now = time.Now
 	}
+	readUOW := uow
+	if len(readUOWs) > 0 && readUOWs[0] != nil {
+		readUOW = readUOWs[0]
+	}
 	return UseCases{
 		GetWeek:  NewGetWeekUseCase(repo),
-		GetRules: NewGetRulesUseCase(uow), PutRules: NewPutRulesUseCase(repo, uow, issueID, now),
-		GetPlans: NewGetPlansUseCase(uow), PutPlans: NewPutPlansUseCase(repo, uow),
+		GetRules: NewGetRulesUseCase(readUOW), PutRules: NewPutRulesUseCase(repo, uow, issueID, now),
+		GetPlans: NewGetPlansUseCase(readUOW), PutPlans: NewPutPlansUseCase(repo, uow),
 		Create:               NewCreateAllocationUseCase(repo, uow, issueID, now),
 		Update:               NewUpdateOccurrenceUseCase(repo, uow, issueID, now),
 		Delete:               NewDeleteOccurrenceUseCase(repo, uow, issueID, now),

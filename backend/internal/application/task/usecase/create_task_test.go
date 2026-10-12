@@ -43,11 +43,13 @@ type createTaskRepositoriesFake struct {
 func (repos createTaskRepositoriesFake) Tasks() TaskRepository { return repos.repo }
 
 func validCreateTaskInput() CreateTaskInput {
+	estimate := 60
 	return CreateTaskInput{
-		ID:          domain.TaskID("task-1"),
-		UserID:      domain.UserID("user-1"),
-		Title:       "Task title",
-		Description: "Task description",
+		ID:               domain.TaskID("task-1"),
+		UserID:           domain.UserID("user-1"),
+		Title:            "Task title",
+		Description:      "Task description",
+		EstimatedMinutes: &estimate,
 	}
 }
 
@@ -134,6 +136,30 @@ func TestCreateTaskUseCaseExecuteRejectsNegativeEstimate(t *testing.T) {
 	}
 	if repo.calls != 0 {
 		t.Errorf("Create() calls = %d, want 0", repo.calls)
+	}
+}
+
+func TestCreateTaskUseCaseRequiresPositiveInt32ManualEstimate(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		value *int
+		want  error
+	}{
+		{name: "missing", want: ErrTaskManualEstimateRequired},
+		{name: "zero", value: func() *int { value := 0; return &value }(), want: domain.ErrTaskEstimatedMinutesInvalid},
+		{name: "above int32", value: func() *int { value := int64(1) + int64(^uint32(0)>>1); converted := int(value); return &converted }(), want: domain.ErrTaskEstimatedMinutesInvalid},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			input := validCreateTaskInput()
+			input.EstimatedMinutes = test.value
+			repo := &createTaskRepositoryFake{}
+			if _, err := NewCreateTaskUseCase(createTaskUOWFake{repo: repo}, nil).Execute(context.Background(), input); !errors.Is(err, test.want) {
+				t.Fatalf("Execute() error = %v, want %v", err, test.want)
+			}
+			if repo.calls != 0 {
+				t.Fatalf("Create() calls = %d, want 0", repo.calls)
+			}
+		})
 	}
 }
 

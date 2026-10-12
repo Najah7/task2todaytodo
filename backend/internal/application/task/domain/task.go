@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"math"
 	"strings"
 	"time"
 
@@ -13,8 +14,8 @@ var (
 	ErrTaskUserIDEmpty             = errors.New("task user ID cannot be empty")
 	ErrTaskAssigneeEmpty           = errors.New("task assignee ID cannot be empty")
 	ErrTaskTitleEmpty              = errors.New("task title cannot be empty")
-	ErrTaskEstimatedMinutesInvalid = errors.New("task estimated minutes must be greater than or equal to 0")
-	ErrTaskActualMinutesInvalid    = errors.New("task actual minutes must be greater than or equal to 0")
+	ErrTaskEstimatedMinutesInvalid = errors.New("task estimated minutes must be between 1 and 2147483647")
+	ErrTaskActualMinutesInvalid    = errors.New("task actual minutes must be between 0 and 2147483647")
 	ErrTaskProgressInvalid         = errors.New("task progress must be between 0 and 100")
 )
 
@@ -187,10 +188,10 @@ func (t Task) Validate() error {
 	if strings.TrimSpace(t.Title) == "" {
 		return ErrTaskTitleEmpty
 	}
-	if t.ManualEstimatedMinutes != nil && *t.ManualEstimatedMinutes < 0 {
+	if t.ManualEstimatedMinutes != nil && (*t.ManualEstimatedMinutes < 1 || int64(*t.ManualEstimatedMinutes) > math.MaxInt32) {
 		return ErrTaskEstimatedMinutesInvalid
 	}
-	if t.ActualMinutes != nil && *t.ActualMinutes < 0 {
+	if t.ActualMinutes != nil && (*t.ActualMinutes < 0 || int64(*t.ActualMinutes) > math.MaxInt32) {
 		return ErrTaskActualMinutesInvalid
 	}
 	if t.Progress < 0 || t.Progress > 100 {

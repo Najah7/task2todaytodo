@@ -1,18 +1,40 @@
 basePath: /api
 definitions:
+  rest.ActionItemCompleteRequest:
+    properties:
+      actual_minutes:
+        maximum: 2147483647
+        minimum: 0
+        type: integer
+        x-nullable: true
+    type: object
   rest.ActionItemCreateRequest:
     properties:
+      confirm_todo_regeneration:
+        type: boolean
       description:
         type: string
       due_date:
         type: string
       estimated_minutes:
+        maximum: 2147483647
+        minimum: 1
         type: integer
-        x-nullable: true
       priority:
         type: string
       title:
         type: string
+    required:
+    - estimated_minutes
+    type: object
+  rest.ActionItemDeleteRequest:
+    properties:
+      confirm_todo_regeneration:
+        type: boolean
+      manual_estimated_minutes:
+        maximum: 2147483647
+        minimum: 1
+        type: integer
     type: object
   rest.ActionItemListResponse:
     properties:
@@ -30,6 +52,11 @@ definitions:
     type: object
   rest.ActionItemResponse:
     properties:
+      actual_minutes:
+        maximum: 2147483647
+        minimum: 0
+        type: integer
+        x-nullable: true
       completed:
         type: boolean
       created_at:
@@ -38,15 +65,20 @@ definitions:
         type: string
       due_date:
         type: string
+      estimate_editable:
+        type: boolean
       estimated_minutes:
+        maximum: 2147483647
+        minimum: 1
         type: integer
-        x-nullable: true
       id:
         type: string
       position:
         type: integer
       priority:
         type: string
+      started:
+        type: boolean
       task_id:
         type: string
       title:
@@ -58,13 +90,21 @@ definitions:
     type: object
   rest.ActionItemUpdateRequest:
     properties:
+      actual_minutes:
+        maximum: 2147483647
+        minimum: 0
+        type: integer
+        x-nullable: true
+      confirm_todo_regeneration:
+        type: boolean
       description:
         type: string
       due_date:
         type: string
       estimated_minutes:
+        maximum: 2147483647
+        minimum: 1
         type: integer
-        x-nullable: true
       priority:
         type: string
       title:
@@ -486,6 +526,10 @@ definitions:
         x-nullable: true
       assignee_id:
         type: string
+      can_add_action_item:
+        type: boolean
+      can_add_to_today:
+        type: boolean
       can_assign:
         type: boolean
       can_update:
@@ -495,6 +539,8 @@ definitions:
       due_date:
         type: string
         x-nullable: true
+      estimate_editable:
+        type: boolean
       estimate_source:
         type: string
       estimated_minutes:
@@ -511,6 +557,8 @@ definitions:
         x-nullable: true
       revision:
         type: integer
+      started:
+        type: boolean
       status:
         type: string
     required:
@@ -518,10 +566,13 @@ definitions:
     - action_item_count
     - actual_minutes
     - assignee_id
+    - can_add_action_item
+    - can_add_to_today
     - can_assign
     - can_update
     - description
     - due_date
+    - estimate_editable
     - estimate_source
     - estimated_minutes
     - id
@@ -529,6 +580,7 @@ definitions:
     - progress
     - remaining_days
     - revision
+    - started
     - status
     type: object
   rest.LoginRequest:
@@ -938,12 +990,18 @@ definitions:
         type: integer
       assignee_id:
         type: string
+      can_add_action_item:
+        type: boolean
+      can_add_to_today:
+        type: boolean
       created_at:
         type: integer
       description:
         type: string
       due_date:
         type: string
+      estimate_editable:
+        type: boolean
       estimate_source:
         type: string
       estimated_minutes:
@@ -960,6 +1018,8 @@ definitions:
         type: string
       revision:
         type: integer
+      started:
+        type: boolean
       status:
         $ref: '#/definitions/rest.ProjectTaskStatusResponse'
       title:
@@ -1061,6 +1121,8 @@ definitions:
     type: object
   rest.ScheduleOccurrenceRescheduleRequest:
     properties:
+      confirm_todo_regeneration:
+        type: boolean
       end_at:
         type: string
       start_at:
@@ -1168,6 +1230,8 @@ definitions:
         type: boolean
       assignee_id:
         type: string
+      confirm_todo_regeneration:
+        type: boolean
       description:
         type: string
       end_at:
@@ -1188,6 +1252,8 @@ definitions:
         type: boolean
       assignee_id:
         type: string
+      confirm_todo_regeneration:
+        type: boolean
       description:
         type: string
       end_date:
@@ -1323,6 +1389,8 @@ definitions:
         type: boolean
       assignee_id:
         type: string
+      confirm_todo_regeneration:
+        type: boolean
       description:
         type: string
       end_date:
@@ -1410,6 +1478,14 @@ definitions:
       assignee_id:
         type: string
     type: object
+  rest.TaskCompleteRequest:
+    properties:
+      actual_minutes:
+        maximum: 2147483647
+        minimum: 0
+        type: integer
+        x-nullable: true
+    type: object
   rest.TaskCreateRequest:
     properties:
       description:
@@ -1417,12 +1493,15 @@ definitions:
       due_date:
         type: string
       manual_estimated_minutes:
+        maximum: 2147483647
+        minimum: 1
         type: integer
-        x-nullable: true
       priority:
         type: string
       title:
         type: string
+    required:
+    - manual_estimated_minutes
     type: object
   rest.TaskDetailsResponse:
     properties:
@@ -1473,6 +1552,10 @@ definitions:
         x-nullable: true
       assignee_id:
         type: string
+      can_add_action_item:
+        type: boolean
+      can_add_to_today:
+        type: boolean
       can_update:
         type: boolean
       created_at:
@@ -1482,6 +1565,8 @@ definitions:
       due_date:
         type: string
         x-nullable: true
+      estimate_editable:
+        type: boolean
       estimate_source:
         type: string
       estimated_minutes:
@@ -1507,6 +1592,8 @@ definitions:
         x-nullable: true
       revision:
         type: integer
+      started:
+        type: boolean
       status:
         type: string
       title:
@@ -1520,10 +1607,13 @@ definitions:
     - action_item_count
     - actual_minutes
     - assignee_id
+    - can_add_action_item
+    - can_add_to_today
     - can_update
     - created_at
     - description
     - due_date
+    - estimate_editable
     - estimate_source
     - estimated_minutes
     - id
@@ -1534,6 +1624,7 @@ definitions:
     - project_name
     - remaining_days
     - revision
+    - started
     - status
     - title
     - updated_at
@@ -1590,6 +1681,8 @@ definitions:
       actual_minutes:
         type: integer
         x-nullable: true
+      confirm_todo_regeneration:
+        type: boolean
       description:
         type: string
         x-nullable: true
@@ -1614,6 +1707,153 @@ definitions:
           type: string
         type: array
     type: object
+  rest.TodoCompleteRequest:
+    properties:
+      actual_minutes:
+        maximum: 2147483647
+        minimum: 0
+        type: integer
+        x-nullable: true
+    type: object
+  rest.TodoItemResponse:
+    properties:
+      action_item_id:
+        type: string
+      actual_minutes:
+        type: integer
+        x-nullable: true
+      can_add_action_item:
+        type: boolean
+      can_complete:
+        type: boolean
+      can_hide:
+        type: boolean
+      can_move:
+        type: boolean
+      can_remove:
+        type: boolean
+      can_reopen:
+        type: boolean
+      can_restore:
+        type: boolean
+      completed:
+        type: boolean
+      completes_source:
+        type: boolean
+      description:
+        type: string
+      duration_minutes:
+        type: integer
+      estimate_editable:
+        type: boolean
+      hidden:
+        type: boolean
+      history:
+        type: boolean
+      id:
+        type: string
+      kind:
+        type: string
+      occurrence_date:
+        type: string
+      planned_minutes:
+        minimum: 0
+        type: integer
+        x-nullable: true
+      position:
+        type: integer
+      project_id:
+        type: string
+      project_title:
+        type: string
+      schedule_rule_id:
+        type: string
+      scheduled_end:
+        type: string
+        x-nullable: true
+      scheduled_start:
+        type: string
+        x-nullable: true
+      source_completed:
+        type: boolean
+      started:
+        type: boolean
+      task_id:
+        type: string
+      task_title:
+        type: string
+      title:
+        type: string
+    type: object
+  rest.TodoPolicyResponse:
+    properties:
+      gap_minutes:
+        type: integer
+      priority_weights:
+        additionalProperties:
+          type: integer
+        type: object
+      urgency_1_to_7:
+        type: integer
+      urgency_8_to_14:
+        type: integer
+      urgency_15_to_30:
+        type: integer
+      urgency_31_plus:
+        type: integer
+      urgency_none:
+        type: integer
+      urgency_same_or_past:
+        type: integer
+    type: object
+  rest.TodoProgressResponse:
+    properties:
+      completed_items:
+        type: integer
+      completed_minutes:
+        type: integer
+      remaining_minutes:
+        type: integer
+      total_items:
+        type: integer
+      total_minutes:
+        type: integer
+    type: object
+  rest.TodoReorderRequest:
+    properties:
+      item_ids:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - item_ids
+    type: object
+  rest.TodoTodayResponse:
+    properties:
+      date:
+        type: string
+      hidden_schedules:
+        items:
+          $ref: '#/definitions/rest.TodoItemResponse'
+        type: array
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/rest.TodoItemResponse'
+        type: array
+      next_schedule:
+        $ref: '#/definitions/rest.TodoItemResponse'
+      policy:
+        $ref: '#/definitions/rest.TodoPolicyResponse'
+      progress:
+        $ref: '#/definitions/rest.TodoProgressResponse'
+      revision:
+        type: integer
+      timezone:
+        type: string
+    type: object
   rest.UpdateAllocationRequest:
     properties:
       end_at:
@@ -1635,6 +1875,15 @@ definitions:
       last_name:
         type: string
     type: object
+  rest.UserMinimumGapUpdateRequest:
+    properties:
+      minimum_gap_minutes:
+        maximum: 1440
+        minimum: 0
+        type: integer
+    required:
+    - minimum_gap_minutes
+    type: object
   rest.UserPasswordUpdateRequest:
     properties:
       new_password:
@@ -1646,6 +1895,8 @@ definitions:
         type: string
       email:
         type: string
+      minimum_gap_minutes:
+        type: integer
       timezone:
         type: string
       user_id:
@@ -3412,6 +3663,10 @@ paths:
         name: If-Match
         required: true
         type: string
+      - description: Confirm regeneration of affected Todos
+        in: query
+        name: confirm_todo_regeneration
+        type: boolean
       responses:
         "204":
           description: No Content
@@ -3503,6 +3758,10 @@ paths:
         name: If-Match
         required: true
         type: string
+      - description: Confirm regeneration of affected Todos
+        in: query
+        name: confirm_todo_regeneration
+        type: boolean
       responses:
         "204":
           description: No Content
@@ -3713,6 +3972,10 @@ paths:
         name: If-Match
         required: true
         type: string
+      - description: Confirm regeneration of affected Todos
+        in: query
+        name: confirm_todo_regeneration
+        type: boolean
       responses:
         "204":
           description: No Content
@@ -3739,6 +4002,10 @@ paths:
         name: If-Match
         required: true
         type: string
+      - description: Confirm regeneration of affected Todos
+        in: query
+        name: confirm_todo_regeneration
+        type: boolean
       responses:
         "204":
           description: No Content
@@ -4164,6 +4431,8 @@ paths:
       - Tasks
   /tasks/{id}:complete:
     post:
+      consumes:
+      - application/json
       description: Marks task done while preserving its ActionItems.
       parameters:
       - description: Current task ETag, for example \
@@ -4176,6 +4445,11 @@ paths:
         name: id
         required: true
         type: string
+      - description: Optional actual minutes
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/rest.TaskCompleteRequest'
       produces:
       - application/json
       responses:
@@ -4487,7 +4761,11 @@ paths:
       - ActionItems
   /tasks/{taskId}/action-items/{id}:
     delete:
-      description: Deletes a saved ActionItem.
+      consumes:
+      - application/json
+      description: Deletes a saved ActionItem. When removing the final child of a
+        Task, an optional body atomically supplies the childless Task's manual estimate
+        and regeneration confirmation.
       parameters:
       - description: Task ID
         in: path
@@ -4499,6 +4777,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: Current Task ETag; required when manual_estimated_minutes is
+          supplied
+        in: header
+        name: If-Match
+        type: string
+      - description: Atomic last-child estimate and Todo regeneration confirmation
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/rest.ActionItemDeleteRequest'
       responses:
         "204":
           description: No Content
@@ -4516,6 +4804,14 @@ paths:
             $ref: '#/definitions/rest.ErrResponse'
         "409":
           description: Completed ActionItems cannot be deleted
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "412":
+          description: Task revision does not match If-Match
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "428":
+          description: If-Match is required when changing the Task manual estimate
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "500":
@@ -4592,6 +4888,11 @@ paths:
         name: id
         required: true
         type: string
+      - description: Optional actual work time
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/rest.ActionItemCompleteRequest'
       produces:
       - application/json
       responses:
@@ -4736,6 +5037,254 @@ paths:
       summary: List timezones
       tags:
       - Authorization
+  /today-todo:
+    get:
+      operationId: GetTodayTodo
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.TodoTodayResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Get today's Todo
+      tags:
+      - Todo
+  /today-todo/action-items/{actionItemId}:
+    post:
+      operationId: AddTodayTodoActionItem
+      parameters:
+      - description: ActionItem ID
+        in: path
+        name: actionItemId
+        required: true
+        type: string
+      - description: Current Todo revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.TodoTodayResponse'
+      security:
+      - BearerAuth: []
+      summary: Add an ActionItem to today's Todo
+      tags:
+      - Todo
+  /today-todo/items/{itemId}:complete:
+    post:
+      consumes:
+      - application/json
+      operationId: CompleteTodayTodoItem
+      parameters:
+      - description: Todo item ID
+        in: path
+        name: itemId
+        required: true
+        type: string
+      - description: Current Todo revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Optional actual minutes for whole-source completion
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/rest.TodoCompleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.TodoTodayResponse'
+      security:
+      - BearerAuth: []
+      summary: Complete a Todo frame
+      tags:
+      - Todo
+  /today-todo/items/{itemId}:remove:
+    post:
+      operationId: RemoveTodayTodoItem
+      parameters:
+      - description: Todo item ID
+        in: path
+        name: itemId
+        required: true
+        type: string
+      - description: Current Todo revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.TodoTodayResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove an ActionItem frame
+      tags:
+      - Todo
+  /today-todo/items/{itemId}:reopen:
+    post:
+      operationId: ReopenTodayTodoItem
+      parameters:
+      - description: Todo item ID
+        in: path
+        name: itemId
+        required: true
+        type: string
+      - description: Current Todo revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.TodoTodayResponse'
+      security:
+      - BearerAuth: []
+      summary: Reopen a Todo frame
+      tags:
+      - Todo
+  /today-todo/schedules/{itemId}:hide:
+    post:
+      operationId: HideTodayTodoSchedule
+      parameters:
+      - description: Todo item ID
+        in: path
+        name: itemId
+        required: true
+        type: string
+      - description: Current Todo revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.TodoTodayResponse'
+      security:
+      - BearerAuth: []
+      summary: Hide a Schedule frame
+      tags:
+      - Todo
+  /today-todo/schedules/{itemId}:restore:
+    post:
+      operationId: RestoreTodayTodoSchedule
+      parameters:
+      - description: Todo item ID
+        in: path
+        name: itemId
+        required: true
+        type: string
+      - description: Current Todo revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.TodoTodayResponse'
+      security:
+      - BearerAuth: []
+      summary: Restore a hidden Schedule
+      tags:
+      - Todo
+  /today-todo/tasks/{taskId}:
+    post:
+      operationId: AddTodayTodoTask
+      parameters:
+      - description: Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: Current Todo revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.TodoTodayResponse'
+      security:
+      - BearerAuth: []
+      summary: Add a Task to today's Todo
+      tags:
+      - Todo
+  /today-todo:regenerate:
+    post:
+      operationId: RegenerateTodayTodo
+      parameters:
+      - description: Current Todo revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.TodoTodayResponse'
+        "412":
+          description: Precondition Failed
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Regenerate today's Todo
+      tags:
+      - Todo
+  /today-todo:reorder:
+    post:
+      consumes:
+      - application/json
+      operationId: ReorderTodayTodo
+      parameters:
+      - description: Current Todo revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Ordered item IDs
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.TodoReorderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.TodoTodayResponse'
+      security:
+      - BearerAuth: []
+      summary: Reorder today's Todo items
+      tags:
+      - Todo
   /users/me:
     get:
       description: Returns the authenticated user's profile.
@@ -4792,6 +5341,37 @@ paths:
       security:
       - BearerAuth: []
       summary: Update current user basic info
+      tags:
+      - Users
+  /users/me/minimum-gap:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Minimum gap preference
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.UserMinimumGapUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update minimum gap preference
       tags:
       - Users
   /users/me/password:
