@@ -64,7 +64,7 @@ func main() {
 
 	idIssuer := adapter.NewIDIssuer()
 	app, closeApp, err := application.New(settings.Database, idIssuer, logger, application.AuthEmailSettings{
-		Sender: emailadapter.AuthLinkSender{Provider: mailSender}, FrontendURL: settings.Email.FrontendBaseURL,
+		Sender: emailadapter.AuthLinkSender{Provider: mailSender}, InvitationSender: emailadapter.ProjectInvitationSender{Provider: mailSender}, FrontendURL: settings.Email.FrontendBaseURL,
 	})
 	if err != nil {
 		logger.Error(context.Background(), "API initialization failed", append([]any{"operation", "initialize_application"}, telemetry.ErrorFields(err)...)...)
@@ -100,6 +100,9 @@ func main() {
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/signup", handler.Signup.Signup)
 		r.Post("/login", handler.Login.Login)
+		optionalAuth := middleware.NewOptionalAuthMiddleware(app.UseCase.PersonalAccessToken.Authenticate)
+		r.With(optionalAuth).Post("/invitations/accept", handler.ProjectInvitationAcceptance.Accept)
+		r.Post("/invitations/preview", handler.ProjectMember.PreviewInvitation)
 		r.Post("/email-verification/resend", handler.EmailAuth.ResendVerification)
 		r.Post("/email-verification/confirm", handler.EmailAuth.ConfirmVerification)
 		r.Post("/password-reset/request", handler.EmailAuth.RequestPasswordReset)
@@ -130,6 +133,7 @@ func main() {
 
 		// Role & Permissions
 		auth.Get("/roles", handler.Role.List)
+		auth.Get("/roles/capabilities", handler.ProjectMember.RoleCapabilities)
 		auth.Get("/permissions", handler.Role.ListPermissions)
 		auth.Get("/timezones", handler.Timezone.List)
 
@@ -167,7 +171,11 @@ func main() {
 		// Project Members
 		auth.Get("/projects/{id}/members", handler.ProjectMember.ListMembers)
 		auth.Put("/projects/{id}/members/{user_id}", handler.ProjectMember.UpsertMember)
+		auth.Patch("/projects/{id}/members/{user_id}", handler.ProjectMember.UpsertMember)
 		auth.Delete("/projects/{id}/members/{user_id}", handler.ProjectMember.DeleteMember)
+		auth.Post("/projects/{id}/invitations", handler.ProjectMember.CreateInvitation)
+		auth.Post("/projects/{id}/invitations/{invitation_id}/resend", handler.ProjectMember.ResendInvitation)
+		auth.Delete("/projects/{id}/invitations/{invitation_id}", handler.ProjectMember.RevokeInvitation)
 
 		// Project Tasks
 		auth.Get("/projects/{id}/tasks", handler.Project.ListTasks)

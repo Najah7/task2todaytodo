@@ -59,10 +59,16 @@ LIMIT sqlc.arg(page_limit)::integer;
 
 -- name: ListProjectCandidates :many
 SELECT p.*, pm.weight AS priority_weight,
-       project_has_permission(p.id, sqlc.arg(user_id)::text, 'project', 'update') AS can_update,
-       project_has_permission(p.id, sqlc.arg(user_id)::text, 'project', 'delete') AS can_delete
+       (p.deleted_at IS NULL AND project_has_permission(p.id, sqlc.arg(user_id)::text, 'project', 'update')) AS can_update,
+       project_has_permission(p.id, sqlc.arg(user_id)::text, 'project', 'delete') AS can_delete,
+       member_counts.member_count, member_counts.pending_invitation_count
 FROM projects AS p
 JOIN priority_master AS pm ON pm.priority = p.priority
+LEFT JOIN LATERAL (
+    SELECT (1 + (SELECT count(*) FROM project_members m WHERE m.project_id = p.id))::bigint AS member_count,
+           (SELECT count(*) FROM project_invitations i WHERE i.project_id = p.id
+              AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now())::bigint AS pending_invitation_count
+) member_counts ON true
 WHERE (sqlc.arg(is_trash)::boolean AND p.deleted_at IS NOT NULL
        AND project_has_permission(p.id, sqlc.arg(user_id)::text, 'project', 'delete'))
    OR (NOT sqlc.arg(is_trash)::boolean AND p.deleted_at IS NULL
@@ -72,10 +78,16 @@ ORDER BY p.created_at DESC, p.id DESC;
 
 -- name: ListProjectPageBySort :many
 SELECT p.*, pm.weight AS priority_weight,
-       project_has_permission(p.id, sqlc.arg(user_id)::text, 'project', 'update') AS can_update,
-       project_has_permission(p.id, sqlc.arg(user_id)::text, 'project', 'delete') AS can_delete
+       (p.deleted_at IS NULL AND project_has_permission(p.id, sqlc.arg(user_id)::text, 'project', 'update')) AS can_update,
+       project_has_permission(p.id, sqlc.arg(user_id)::text, 'project', 'delete') AS can_delete,
+       member_counts.member_count, member_counts.pending_invitation_count
 FROM projects AS p
 JOIN priority_master AS pm ON pm.priority = p.priority
+LEFT JOIN LATERAL (
+    SELECT (1 + (SELECT count(*) FROM project_members m WHERE m.project_id = p.id))::bigint AS member_count,
+           (SELECT count(*) FROM project_invitations i WHERE i.project_id = p.id
+              AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now())::bigint AS pending_invitation_count
+) member_counts ON true
 WHERE ((sqlc.arg(is_trash)::boolean AND p.deleted_at IS NOT NULL
         AND project_has_permission(p.id, sqlc.arg(user_id)::text, 'project', 'delete'))
     OR (NOT sqlc.arg(is_trash)::boolean AND p.deleted_at IS NULL

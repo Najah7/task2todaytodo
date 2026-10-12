@@ -16,17 +16,18 @@ import (
 )
 
 type UOW struct {
-	Auth           authusecase.UOW
-	AuthAccount    authusecase.UOW
-	Project        projectusecase.UnitOfWork
-	ProjectRead    projectusecase.UnitOfWork
-	Task           taskusecase.UOW
-	TaskRead       taskusecase.UOW
-	Schedule       scheduleusecase.UOW
-	ScheduleRead   scheduleusecase.UOW
-	Allocation     allocationusecase.UnitOfWork
-	AllocationRead allocationusecase.UnitOfWork
-	Todo           todousecase.UOW
+	Auth                        authusecase.UOW
+	AuthAccount                 authusecase.UOW
+	Project                     projectusecase.UnitOfWork
+	ProjectInvitationAcceptance projectusecase.InvitationAcceptanceUnitOfWork
+	ProjectRead                 projectusecase.UnitOfWork
+	Task                        taskusecase.UOW
+	TaskRead                    taskusecase.UOW
+	Schedule                    scheduleusecase.UOW
+	ScheduleRead                scheduleusecase.UOW
+	Allocation                  allocationusecase.UnitOfWork
+	AllocationRead              allocationusecase.UnitOfWork
+	Todo                        todousecase.UOW
 }
 
 func NewUOW(pool *pgxpool.Pool, authStore AuthStore, projectStore ProjectStore, taskStore TaskStore, scheduleStore ScheduleStore, allocationStore *allocationrepository.AllocationRepository, availability ...func(pgx.Tx) authusecase.UserAvailabilityValidator) UOW {
@@ -44,16 +45,17 @@ func NewUOWWithID(pool *pgxpool.Pool, authStore AuthStore, projectStore ProjectS
 	}
 	store := Store{Auth: authStore, Project: projectStore, Task: taskStore, Schedule: scheduleStore, Allocation: allocationStore}
 	return UOW{
-		Auth:           NewAuthUOW(pool, authStore, availability...),
-		AuthAccount:    NewAuthAccountUOW(pool, authStore),
-		Project:        NewProjectUOW(pool, projectStore, taskStore, scheduleStore),
-		ProjectRead:    NewProjectReadUOW(pool, projectStore, taskStore, scheduleStore),
-		Task:           NewTaskUOW(pool, taskStore, projectStore, scheduleStore, newID),
-		TaskRead:       NewTaskReadUOW(pool, taskStore, projectStore, scheduleStore, newID),
-		Schedule:       NewScheduleUOW(pool, scheduleStore, projectStore, store, taskStore, newID),
-		ScheduleRead:   NewScheduleReadUOW(pool, scheduleStore, projectStore, store, taskStore, newID),
-		Allocation:     NewAllocationUOW(pool, allocationStore),
-		AllocationRead: NewAllocationReadUOW(pool, allocationStore),
-		Todo:           NewTodoUOW(pool, store, taskStore, projectStore, scheduleStore, newID, nil),
+		Auth:                        NewAuthUOW(pool, authStore, availability...),
+		AuthAccount:                 NewAuthAccountUOW(pool, authStore),
+		Project:                     NewProjectUOW(pool, projectStore, taskStore, scheduleStore),
+		ProjectInvitationAcceptance: NewProjectInvitationAcceptanceUOW(pool, projectStore, authStore),
+		ProjectRead:                 NewProjectReadUOW(pool, projectStore, taskStore, scheduleStore),
+		Task:                        NewTaskUOW(pool, taskStore, projectStore, scheduleStore, newID),
+		TaskRead:                    NewTaskReadUOW(pool, taskStore, projectStore, scheduleStore, newID),
+		Schedule:                    NewScheduleUOW(pool, scheduleStore, projectStore, store, taskStore, newID),
+		ScheduleRead:                NewScheduleReadUOW(pool, scheduleStore, projectStore, store, taskStore, newID),
+		Allocation:                  NewAllocationUOW(pool, allocationStore),
+		AllocationRead:              NewAllocationReadUOW(pool, allocationStore),
+		Todo:                        NewTodoUOW(pool, store, taskStore, projectStore, scheduleStore, newID, nil),
 	}
 }

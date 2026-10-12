@@ -23,20 +23,23 @@ func (uc *UpsertProjectMemberUseCase) Execute(ctx context.Context, actor domain.
 	}
 
 	return uc.uow.Do(ctx, func(ctx context.Context, repo Repository, _ ProjectChildrenDeleter) error {
-		allowed, err := repo.CheckProjectMemberUpsertPermission(ctx, actor, project, member)
+		if err := repo.LockProjectForMemberChange(ctx, project); err != nil {
+			return err
+		}
+		allowed, err := repo.CheckProjectMemberUpsertPermission(ctx, actor, project, member, role)
 		if err != nil {
 			return err
 		}
 		if !allowed {
 			return ErrPermissionDenied
 		}
-		if err := repo.LockProjectForMemberChange(ctx, project); err != nil {
-			return err
-		}
 		grant, err := domain.NewProjectMember(project, member, role, actor)
 		if err != nil {
 			return ErrProjectMemberInvalidInput
 		}
-		return repo.UpsertProjectMember(ctx, grant)
+		if err := repo.UpsertProjectMember(ctx, grant); err != nil {
+			return err
+		}
+		return repo.RevokeInvitationsForInviterWithoutPermission(ctx, project, member)
 	})
 }

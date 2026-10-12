@@ -225,19 +225,49 @@ func TestProjectUpdateGrantDoesNotRequireProjectRead(t *testing.T) {
 	}
 }
 
-func TestProjectMemberCreateAndUpdatePermissionsAreDistinctAndDynamic(t *testing.T) {
+func TestProjectDeletionIsOwnerOnlyEvenWithStoredDeleteGrant(t *testing.T) {
 	pool := projectRepositoryIntegrationPool(t)
 	f := newProjectRepositoryFixture(t, pool)
-	actor, existing, newMember := f.user(t), f.user(t), f.user(t)
+	actor := f.user(t)
+	roleID := f.customRole(t, pool)
+	f.addMember(t, actor, roleID)
+	f.commit(t)
+	deleteAllow := projectPermissionID(t, pool, "project", "delete", "allow")
+	readAllow := projectPermissionID(t, pool, "project", "read", "allow")
+	for _, permissionID := range []int64{deleteAllow, readAllow} {
+		if _, err := pool.Exec(t.Context(), `INSERT INTO role_permissions(role_id,permission_id) VALUES($1,$2)`, roleID, permissionID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	deleteProject := projectusecase.NewDeleteProjectUseCase(projectRepositoryTestUOW{pool}, nil)
+	if err := deleteProject.Execute(t.Context(), domain.UserID(actor), domain.ProjectID(f.projectID), 1); !errors.Is(err, projectusecase.ErrPermissionDenied) {
+		t.Fatalf("non-owner with project/delete grant deleted project: %v", err)
+	}
+	if err := deleteProject.Execute(t.Context(), domain.UserID(f.ownerID), domain.ProjectID(f.projectID), 1); err != nil {
+		t.Fatalf("owner could not delete project: %v", err)
+	}
+	var deleted bool
+	if err := pool.QueryRow(t.Context(), `SELECT deleted_at IS NOT NULL FROM projects WHERE id=$1`, f.projectID).Scan(&deleted); err != nil {
+		t.Fatal(err)
+	}
+	if !deleted {
+		t.Fatal("owner delete did not move project to trash")
+	}
+}
+
+func TestMemberRoleEndpointCannotCreateMembershipAndEnforcesOwnerAdminPolicy(t *testing.T) {
+	pool := projectRepositoryIntegrationPool(t)
+	f := newProjectRepositoryFixture(t, pool)
+	actor, admin, existing, administrator, newMember := f.user(t), f.user(t), f.user(t), f.user(t), f.user(t)
 	roleID := f.customRole(t, pool)
 	f.addMember(t, actor, roleID)
 	f.addMember(t, existing, "viewer")
+	f.addMember(t, admin, "admin")
+	f.addMember(t, administrator, "admin")
 	f.commit(t)
 
 	createAllow := projectPermissionID(t, pool, "project_member", "create", "allow")
-	createDeny := projectPermissionID(t, pool, "project_member", "create", "deny")
 	updateAllow := projectPermissionID(t, pool, "project_member", "update", "allow")
-	updateDeny := projectPermissionID(t, pool, "project_member", "update", "deny")
 	grant := func(id int64) {
 		t.Helper()
 		if _, err := pool.Exec(t.Context(), `INSERT INTO role_permissions(role_id,permission_id) VALUES($1,$2)`, roleID, id); err != nil {
@@ -246,26 +276,31 @@ func TestProjectMemberCreateAndUpdatePermissionsAreDistinctAndDynamic(t *testing
 	}
 	upsert := projectusecase.NewUpsertProjectMemberUseCase(projectRepositoryTestUOW{pool}, nil)
 	grant(createAllow)
-	if err := pool.QueryRow(t.Context(), `SELECT role_id FROM project_members WHERE project_id=$1 AND user_id=$2`, f.projectID, actor).Scan(new(string)); err != nil {
-		t.Fatal(err)
+	grant(updateAllow)
+	if err := upsert.Execute(t.Context(), domain.UserID(actor), domain.ProjectID(f.projectID), domain.UserID(newMember), "viewer"); !errors.Is(err, projectusecase.ErrPermissionDenied) {
+		t.Fatalf("role permissions let a non-manager add membership: %v", err)
 	}
-	if err := upsert.Execute(t.Context(), domain.UserID(actor), domain.ProjectID(f.projectID), domain.UserID(newMember), "viewer"); err != nil {
-		t.Fatalf("create grant failed to add member: %v", err)
+	if err := upsert.Execute(t.Context(), domain.UserID(f.ownerID), domain.ProjectID(f.projectID), domain.UserID(newMember), "viewer"); !errors.Is(err, projectusecase.ErrPermissionDenied) {
+		t.Fatalf("owner role endpoint added a new member without acceptance: %v", err)
 	}
 	if err := upsert.Execute(t.Context(), domain.UserID(actor), domain.ProjectID(f.projectID), domain.UserID(existing), "admin"); !errors.Is(err, projectusecase.ErrPermissionDenied) {
-		t.Fatalf("create grant changed existing role: %v", err)
+		t.Fatalf("ordinary project member changed a role despite grants: %v", err)
 	}
-	grant(updateAllow)
-	if err := upsert.Execute(t.Context(), domain.UserID(actor), domain.ProjectID(f.projectID), domain.UserID(existing), "admin"); err != nil {
-		t.Fatalf("new update grant did not take effect: %v", err)
+	if err := upsert.Execute(t.Context(), domain.UserID(admin), domain.ProjectID(f.projectID), domain.UserID(existing), "editor"); err != nil {
+		t.Fatalf("admin could not update an editor/viewer role: %v", err)
 	}
-	grant(updateDeny)
-	if err := upsert.Execute(t.Context(), domain.UserID(actor), domain.ProjectID(f.projectID), domain.UserID(existing), "viewer"); !errors.Is(err, projectusecase.ErrPermissionDenied) {
-		t.Fatalf("matching update deny did not override allow: %v", err)
+	if err := upsert.Execute(t.Context(), domain.UserID(admin), domain.ProjectID(f.projectID), domain.UserID(administrator), "viewer"); !errors.Is(err, projectusecase.ErrPermissionDenied) {
+		t.Fatalf("admin changed another admin's role: %v", err)
 	}
-	grant(createDeny)
-	if err := upsert.Execute(t.Context(), domain.UserID(actor), domain.ProjectID(f.projectID), domain.UserID(ulid.Make().String()), "viewer"); !errors.Is(err, projectusecase.ErrPermissionDenied) {
-		t.Fatalf("matching create deny did not override allow: %v", err)
+	if err := upsert.Execute(t.Context(), domain.UserID(f.ownerID), domain.ProjectID(f.projectID), domain.UserID(administrator), "viewer"); err != nil {
+		t.Fatalf("owner could not change an admin role: %v", err)
+	}
+	var newMemberCount int
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM project_members WHERE project_id=$1 AND user_id=$2`, f.projectID, newMember).Scan(&newMemberCount); err != nil {
+		t.Fatal(err)
+	}
+	if newMemberCount != 0 {
+		t.Fatalf("role endpoint created %d membership rows; explicit acceptance should be required", newMemberCount)
 	}
 }
 

@@ -226,19 +226,26 @@ func TestProjectListTrashRequiresDeletePermissionAndReturnsWholeTabCounts(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(deleteActorLive.Items) != 0 || deleteActorLive.Summary.TotalCount != 0 || deleteActorLive.Summary.TrashCount != 1 {
-		t.Fatalf("delete-only actor live page rows=%v summary=%+v; want no live read and one accessible trash item", projectListActualIDs(deleteActorLive.Items), deleteActorLive.Summary)
+	if len(deleteActorLive.Items) != 0 || deleteActorLive.Summary.TotalCount != 0 || deleteActorLive.Summary.TrashCount != 0 {
+		t.Fatalf("non-owner delete-grant actor live page rows=%v summary=%+v; want no project or trash access", projectListActualIDs(deleteActorLive.Items), deleteActorLive.Summary)
 	}
 	request.Status, request.Trash = "", true
 	deleteActorTrash, err := list.ExecuteFilteredPage(ctx, projectdomain.UserID(deleteActor), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := projectListActualIDs(deleteActorTrash.Items); !reflect.DeepEqual(got, []string{trashedProjectID}) {
-		t.Fatalf("delete-only actor trash IDs=%v, want [%s]", got, trashedProjectID)
+	if len(deleteActorTrash.Items) != 0 || deleteActorTrash.Summary.TotalCount != 0 || deleteActorTrash.Summary.TrashCount != 0 {
+		t.Fatalf("non-owner delete-grant actor trash rows=%v summary=%+v; want no trash access", projectListActualIDs(deleteActorTrash.Items), deleteActorTrash.Summary)
 	}
-	if deleteActorTrash.Summary.TotalCount != 1 || deleteActorTrash.Summary.TrashCount != 1 || !deleteActorTrash.Items[0].CanDelete || deleteActorTrash.Items[0].CanUpdate {
-		t.Fatalf("delete-only trash summary/permissions = %+v / update=%t delete=%t", deleteActorTrash.Summary, deleteActorTrash.Items[0].CanUpdate, deleteActorTrash.Items[0].CanDelete)
+	ownerTrash, err := list.ExecuteFilteredPage(ctx, projectdomain.UserID(fixture.ownerID), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := projectListActualIDs(ownerTrash.Items); !reflect.DeepEqual(got, []string{trashedProjectID}) {
+		t.Fatalf("owner trash IDs=%v, want [%s]", got, trashedProjectID)
+	}
+	if ownerTrash.Summary.TotalCount != 1 || ownerTrash.Summary.TrashCount != 1 || !ownerTrash.Items[0].CanDelete || ownerTrash.Items[0].CanUpdate {
+		t.Fatalf("owner trash summary/permissions = %+v / update=%t delete=%t", ownerTrash.Summary, ownerTrash.Items[0].CanUpdate, ownerTrash.Items[0].CanDelete)
 	}
 
 	request.Trash = false

@@ -1,5 +1,7 @@
 package dao
 
+import "time"
+
 type ProjectProgressSources struct {
 	Tasks     []ProjectTaskProgress
 	Schedules []ProjectScheduleProgress
@@ -26,6 +28,8 @@ type Project struct {
 	Progress                 int
 	Priority                 Priority
 	CanUpdate, CanDelete     bool
+	MemberCount              int64
+	PendingInvitationCount   int64
 	RemainingDays            *int
 	StartDate, EndDate       *string
 	CreatedAt, UpdatedAt     int64
@@ -55,6 +59,23 @@ type Priority struct {
 type ProjectMember struct {
 	ProjectID, UserID, RoleID, RoleName, FirstName, LastName, Email, AddedBy string
 	CreatedAt, UpdatedAt                                                     int64
+	Status, InvitationID                                                     string
+	ExpiresAt                                                                int64
+	CursorCreatedAt, CursorID                                                string
+	CanEditRole, CanRemove                                                   bool
+}
+
+type ProjectRosterPage struct {
+	Items                  []ProjectMember
+	TotalCount             int64
+	MemberCount            int64
+	PendingInvitationCount int64
+	HasMore                bool
+}
+
+type ProjectInvitation struct {
+	ID, ProjectID, Email, RoleID, InvitedBy, ProjectTitle, ProjectOwnerID, InviterRoleID, RecipientStatus string
+	ExpiresAt, UsedAt, RevokedAt, ProjectDeletedAt                                                        time.Time
 }
 type ProjectRevision struct {
 	ID                                               string

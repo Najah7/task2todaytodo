@@ -150,7 +150,7 @@ func TestSignupVerificationRequiresOriginalPasswordAndConsumesLinkOnce(t *testin
 	}
 	link := f.mailer.tokenAt(t, 0)
 	assertLinkLifetime(t, f, link, time.Hour)
-	if err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), link, "WrongPassword1!"); !errors.Is(err, usecase.ErrInvalidAuthLink) {
+	if _, err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), link, "WrongPassword1!"); !errors.Is(err, usecase.ErrInvalidAuthLink) {
 		t.Fatalf("wrong-password verification returned unexpected error: %v", err)
 	}
 	var usedAt *time.Time
@@ -160,10 +160,17 @@ func TestSignupVerificationRequiresOriginalPasswordAndConsumesLinkOnce(t *testin
 	if usedAt != nil {
 		t.Fatal("wrong password consumed the verification link")
 	}
-	if err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), link, oldPassword); err != nil {
+	confirmedPAT, err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), link, oldPassword)
+	if err != nil {
 		t.Fatalf("confirm verification: %v", err)
 	}
-	if err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), link, oldPassword); !errors.Is(err, usecase.ErrInvalidAuthLink) {
+	if confirmedPAT.Token == "" {
+		t.Fatal("email verification did not issue a personal access token")
+	}
+	if got, err := f.uc.PersonalAccessToken.Authenticate.Execute(t.Context(), confirmedPAT.Token); err != nil || string(got) != f.userID {
+		t.Fatalf("verification PAT was not accepted for its account (error=%v)", err)
+	}
+	if _, err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), link, oldPassword); !errors.Is(err, usecase.ErrInvalidAuthLink) {
 		t.Fatalf("reused verification link returned unexpected error: %v", err)
 	}
 	pat, err := f.uc.PersonalAccessToken.LoginAndIssue.Execute(t.Context(), f.email, oldPassword)
@@ -173,7 +180,7 @@ func TestSignupVerificationRequiresOriginalPasswordAndConsumesLinkOnce(t *testin
 	if got, err := f.uc.PersonalAccessToken.Authenticate.Execute(t.Context(), pat.Token); err != nil || string(got) != f.userID {
 		t.Fatalf("issued access token was not accepted for its account (error=%v)", err)
 	}
-	if err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), "malformed", oldPassword); !errors.Is(err, usecase.ErrInvalidAuthLink) {
+	if _, err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), "malformed", oldPassword); !errors.Is(err, usecase.ErrInvalidAuthLink) {
 		t.Fatalf("malformed verification token returned unexpected error: %v", err)
 	}
 }
@@ -207,7 +214,7 @@ func TestPasswordResetVerifiesPendingAccountAndInvalidatesOldCredentials(t *test
 	if verifiedAt == nil || !strings.HasPrefix(hash, "$argon2id$") {
 		t.Fatal("password reset did not verify the pending account and retain an Argon2id hash")
 	}
-	if err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), verifyToken, oldPassword); !errors.Is(err, usecase.ErrInvalidAuthLink) {
+	if _, err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), verifyToken, oldPassword); !errors.Is(err, usecase.ErrInvalidAuthLink) {
 		t.Fatalf("pre-reset verification link remained usable: %v", err)
 	}
 	if _, err := f.uc.PersonalAccessToken.LoginAndIssue.Execute(t.Context(), f.email, oldPassword); !errors.Is(err, usecase.ErrInvalidCredentials) {
@@ -221,7 +228,7 @@ func TestPasswordResetVerifiesPendingAccountAndInvalidatesOldCredentials(t *test
 func TestPasswordResetRevokesExistingPATAndAllActiveAuthLinks(t *testing.T) {
 	f := newFixture(t)
 	f.register(oldPassword)
-	if err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), f.mailer.tokenAt(t, 0), oldPassword); err != nil {
+	if _, err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), f.mailer.tokenAt(t, 0), oldPassword); err != nil {
 		t.Fatalf("confirm verification: %v", err)
 	}
 	pat, err := f.uc.PersonalAccessToken.LoginAndIssue.Execute(t.Context(), f.email, oldPassword)
@@ -251,7 +258,7 @@ func TestPasswordResetRevokesExistingPATAndAllActiveAuthLinks(t *testing.T) {
 func TestPasswordResetDatabaseFailureRollsBackConsumptionAndCredentialChanges(t *testing.T) {
 	f := newFixture(t)
 	f.register(oldPassword)
-	if err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), f.mailer.tokenAt(t, 0), oldPassword); err != nil {
+	if _, err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), f.mailer.tokenAt(t, 0), oldPassword); err != nil {
 		t.Fatalf("confirm verification: %v", err)
 	}
 	pat, err := f.uc.PersonalAccessToken.LoginAndIssue.Execute(t.Context(), f.email, oldPassword)
@@ -302,11 +309,15 @@ func TestPasswordResetDatabaseFailureRollsBackConsumptionAndCredentialChanges(t 
 	}
 }
 
-func TestLoginReturnsPATInsertFailureWithoutEmptySuccessOrPersistedToken(t *testing.T) {
+func TestLoginReturnsPATInsertFailureWithoutEmptySuccessOrAdditionalPersistedToken(t *testing.T) {
 	f := newFixture(t)
 	f.register(oldPassword)
-	if err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), f.mailer.tokenAt(t, 0), oldPassword); err != nil {
+	if _, err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), f.mailer.tokenAt(t, 0), oldPassword); err != nil {
 		t.Fatalf("confirm verification: %v", err)
+	}
+	var baseline int
+	if err := f.pool.QueryRow(t.Context(), `SELECT count(*) FROM personal_access_tokens WHERE user_id = $1`, f.userID).Scan(&baseline); err != nil {
+		t.Fatalf("count access tokens before failed login: %v", err)
 	}
 	removeTrigger := installPATInsertFailureTrigger(t, f)
 	pat, err := f.uc.PersonalAccessToken.LoginAndIssue.Execute(t.Context(), f.email, oldPassword)
@@ -320,8 +331,8 @@ func TestLoginReturnsPATInsertFailureWithoutEmptySuccessOrPersistedToken(t *test
 	if err := f.pool.QueryRow(t.Context(), `SELECT count(*) FROM personal_access_tokens WHERE user_id = $1`, f.userID).Scan(&count); err != nil {
 		t.Fatalf("count access tokens after failed login: %v", err)
 	}
-	if count != 0 {
-		t.Fatalf("failed login persisted %d access tokens", count)
+	if count != baseline {
+		t.Fatalf("failed login changed persisted access-token count from %d to %d", baseline, count)
 	}
 	removeTrigger()
 	pat, err = f.uc.PersonalAccessToken.LoginAndIssue.Execute(t.Context(), f.email, oldPassword)
@@ -424,7 +435,7 @@ func TestDuplicateSignupDoesNotOverwritePasswordAndRateLimitIsShared(t *testing.
 	if storedHash != originalHash {
 		t.Fatal("duplicate signup overwrote the existing password hash")
 	}
-	if err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), f.mailer.tokenAt(t, 0), oldPassword); err != nil {
+	if _, err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), f.mailer.tokenAt(t, 0), oldPassword); err != nil {
 		t.Fatalf("case-variant email registration changed original credentials: %v", err)
 	}
 	if _, err := f.uc.PersonalAccessToken.LoginAndIssue.Execute(t.Context(), strings.ToUpper(f.email), oldPassword); err != nil {
@@ -442,7 +453,7 @@ func TestAuthLinkExpiryAndWrongPurposeAreRejected(t *testing.T) {
 	if _, err := f.pool.Exec(t.Context(), `UPDATE auth_link_tokens SET expires_at = now() - interval '1 second' WHERE token_hash = $1`, tokenHash(verify)); err != nil {
 		t.Fatalf("expire test-owned link: %v", err)
 	}
-	if err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), verify, oldPassword); !errors.Is(err, usecase.ErrInvalidAuthLink) {
+	if _, err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), verify, oldPassword); !errors.Is(err, usecase.ErrInvalidAuthLink) {
 		t.Fatalf("expired verification link returned unexpected error: %v", err)
 	}
 }
@@ -458,7 +469,8 @@ func TestConcurrentVerificationConsumesLinkExactlyOnce(t *testing.T) {
 			<-start
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
-			results <- f.uc.EmailAuth.ConfirmVerification.Execute(ctx, link, oldPassword)
+			_, err := f.uc.EmailAuth.ConfirmVerification.Execute(ctx, link, oldPassword)
+			results <- err
 		}()
 	}
 	close(start)
@@ -500,7 +512,8 @@ func TestVerificationConfirmationRacesResendWithoutDeadlock(t *testing.T) {
 		<-start
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		results <- result{operation: "confirm", err: f.uc.EmailAuth.ConfirmVerification.Execute(ctx, oldLink, oldPassword)}
+		_, err := f.uc.EmailAuth.ConfirmVerification.Execute(ctx, oldLink, oldPassword)
+		results <- result{operation: "confirm", err: err}
 	}()
 	go func() {
 		<-start
@@ -548,7 +561,7 @@ func TestVerificationConfirmationRacesResendWithoutDeadlock(t *testing.T) {
 func TestLoginAndResetRaceCannotLeaveOldPasswordPATUsable(t *testing.T) {
 	f := newFixture(t)
 	f.register(oldPassword)
-	if err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), f.mailer.tokenAt(t, 0), oldPassword); err != nil {
+	if _, err := f.uc.EmailAuth.ConfirmVerification.Execute(t.Context(), f.mailer.tokenAt(t, 0), oldPassword); err != nil {
 		t.Fatalf("confirm verification: %v", err)
 	}
 	ageFixtureEmailAttempts(t, f)

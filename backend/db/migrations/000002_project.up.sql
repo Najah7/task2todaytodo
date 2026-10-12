@@ -53,6 +53,22 @@ CREATE TABLE project_members (
     PRIMARY KEY (project_id, user_id)
 );
 
+CREATE TABLE project_invitations (
+    id text PRIMARY KEY CHECK (id ~ '^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$'),
+    project_id text NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    email citext NOT NULL,
+    role_id text NOT NULL REFERENCES roles(role_id) ON DELETE RESTRICT CHECK (role_id IN ('admin', 'editor', 'viewer')),
+    invited_by text NOT NULL REFERENCES users(id),
+    token_hash bytea NOT NULL UNIQUE CHECK (octet_length(token_hash) = 32),
+    expires_at timestamptz NOT NULL,
+    used_at timestamptz,
+    revoked_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_project_invitations_project_created
+    ON project_invitations(project_id, created_at DESC, id DESC);
+
 CREATE TABLE project_revisions (
     id text NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
     revision integer NOT NULL CHECK (revision > 0),
@@ -112,6 +128,7 @@ RETURNS boolean LANGUAGE sql STABLE AS $$
         SELECT 1
         FROM projects AS p
         WHERE p.id = project_key
+          AND (resource_key <> 'project' OR action_key <> 'delete' OR p.user_id = actor_key)
           AND (
               p.user_id = actor_key
               OR EXISTS (

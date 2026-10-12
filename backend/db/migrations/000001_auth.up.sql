@@ -623,7 +623,8 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT 'viewer', permission_id
 FROM permissions
 WHERE effect = 'allow' AND (resource_id, action) IN (
-    ('project', 'read'), ('task', 'read'), ('action_item', 'read'), ('schedule', 'read')
+    ('project', 'read'), ('task', 'read'), ('action_item', 'read'), ('schedule', 'read'),
+    ('project_member', 'read')
 );
 
 INSERT INTO role_permissions (role_id, permission_id)
@@ -633,14 +634,16 @@ WHERE effect = 'allow' AND (resource_id, action) IN (
     ('project', 'read'), ('project', 'update'),
     ('task', 'read'), ('task', 'create'), ('task', 'update'),
     ('action_item', 'read'), ('action_item', 'create'), ('action_item', 'update'),
-    ('schedule', 'read'), ('schedule', 'create'), ('schedule', 'update'),
+    ('schedule', 'read'), ('schedule', 'create'), ('schedule', 'update'), ('project_member', 'read'),
     ('task_assignment', 'update'), ('schedule_assignment', 'update'), ('occurrence', 'update')
 );
 
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 'admin', permission_id
 FROM permissions
-WHERE effect = 'allow' AND resource_id NOT IN ('admin_job', 'admin_operation');
+WHERE effect = 'allow'
+  AND resource_id NOT IN ('admin_job', 'admin_operation')
+  AND NOT (resource_id = 'project' AND action = 'delete');
 
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 'sysadmin', permission_id FROM permissions

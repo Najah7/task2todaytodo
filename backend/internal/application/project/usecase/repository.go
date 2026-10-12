@@ -63,10 +63,22 @@ type Repository interface {
 	RestoreByUserID(context.Context, domain.UserID, domain.ProjectID, int32) (dao.Project, error)
 	DeleteByUserID(context.Context, domain.UserID, domain.ProjectID, int32) error
 	LockProjectForMemberChange(context.Context, domain.ProjectID) error
-	CheckProjectMemberUpsertPermission(context.Context, domain.UserID, domain.ProjectID, domain.UserID) (bool, error)
+	CheckProjectMemberUpsertPermission(context.Context, domain.UserID, domain.ProjectID, domain.UserID, string) (bool, error)
 	UpsertProjectMember(context.Context, domain.ProjectMember) error
 	DeleteProjectMember(context.Context, domain.UserID, domain.ProjectID, domain.UserID) error
 	ListProjectMembers(context.Context, domain.UserID, domain.ProjectID) ([]dao.ProjectMember, error)
+	ListProjectRosterPage(context.Context, domain.UserID, domain.ProjectID, int, *CursorAnchor) (dao.ProjectRosterPage, error)
+	GetProjectMemberActorRole(context.Context, domain.UserID, domain.ProjectID) (string, error)
+	GetProjectInvitationByTokenHash(context.Context, []byte) (dao.ProjectInvitation, error)
+	GetProjectInvitationForResend(context.Context, domain.ProjectID, string) (dao.ProjectInvitation, error)
+	CreateProjectInvitation(context.Context, domain.UserID, domain.ProjectID, string, string, string, []byte, time.Time) (dao.ProjectInvitation, error)
+	ResendProjectInvitation(context.Context, domain.UserID, domain.ProjectID, string, []byte, time.Time) (dao.ProjectInvitation, error)
+	RevokeProjectInvitation(context.Context, domain.UserID, domain.ProjectID, string) error
+	RevokeInvitationsForInviterWithoutPermission(context.Context, domain.ProjectID, domain.UserID) error
+	LockInvitationEmailDelivery(context.Context, []byte) error
+	DeleteExpiredInvitationEmailDeliveryAttempts(context.Context, []byte, time.Time) error
+	CountInvitationEmailDeliveryAttemptsSince(context.Context, []byte, time.Time) (int64, error)
+	CreateInvitationEmailDeliveryAttempt(context.Context, []byte, time.Time) error
 	ListProjectRevisionsByActor(context.Context, domain.UserID, domain.ProjectID, int, *CursorAnchor) ([]dao.ProjectRevision, error)
 	ListProjectTypes(context.Context) ([]dao.ProjectType, error)
 	ListProjectPriorities(context.Context) ([]dao.Priority, error)

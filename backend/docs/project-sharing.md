@@ -22,7 +22,14 @@ Seeded grants:
 | --- | --- |
 | `viewer` | Read projects, tasks, action items, and schedules |
 | `editor` | Viewer grants; update projects; create and update tasks, action items, and schedules; update Task and Schedule assignment and recurrence occurrences |
-| `admin` | All seeded resource actions, including delete and project-member management; read deleted-resource history |
+| `admin` | Editor grants; delete tasks, action items, and schedules; manage editor/viewer members and invitations; read deleted-resource history |
+
+Project owners have the admin grants plus project deletion and authority to
+assign, change, or remove administrator roles. Administrators cannot manage
+other administrators or delete the Project. Every active participant can read
+the roster and pending or expired invitation addresses. The global
+`GET /api/roles/capabilities` endpoint returns the current catalog-derived
+resource/action matrix and the owner-specific member-management capabilities.
 
 The resource catalog includes `project`, `task`, `action_item`, `schedule`,
 `task_assignment`, `schedule_assignment`, `occurrence`, `project_member`, and
@@ -36,7 +43,7 @@ All routes below use the `/api` prefix and require bearer authentication.
 
 | Route | Behavior |
 | --- | --- |
-| `GET /projects` | Lists projects owned by the caller or shared with current read access |
+| `GET /projects` | Lists projects owned by the caller or shared with current read access; includes accepted `member_count` and active `pending_invitation_count` |
 | `GET /projects/options` | Returns the shared Project type, priority, and status catalogs |
 | `GET /projects/{id}` | Reads project details and calculated progress |
 | `PATCH /projects/{id}/status` | Changes only Project status; requires the current Project ETag in `If-Match` |
@@ -44,9 +51,14 @@ All routes below use the `/api` prefix and require bearer authentication.
 | `GET /projects/{id}/tasks` | Lists visible Tasks in that Project, regardless of assignee |
 | `GET /projects/{id}/schedules` | Lists visible Schedules in that Project, regardless of assignee |
 | `POST /projects/{id}/schedules` | Creates a Schedule owned by the Project owner and initially assigned to that owner |
-| `GET /projects/{id}/members` | Lists explicit Project members; requires `project_member/read` |
-| `PUT /projects/{id}/members/{user_id}` | Adds a member or changes their role; requires `project_member/create` for a new entry or `project_member/update` for an existing entry |
-| `DELETE /projects/{id}/members/{user_id}` | Removes a member and reassigns their Tasks and Schedules to the Project owner atomically; requires `project_member/delete` |
+| `GET /projects/{id}/members` | Cursor-pages the owner, accepted members, and pending/expired invitations; requires `project_member/read` |
+| `PUT` or `PATCH /projects/{id}/members/{user_id}` | Changes the role of an existing member; it cannot create membership. Owners may manage admin/editor/viewer; admins may manage editor/viewer only. A manager's unaccepted invitations are revoked when that manager loses permission. |
+| `DELETE /projects/{id}/members/{user_id}` | Removes a member and reassigns their Tasks and Schedules to the Project owner atomically. Owners may remove members; admins may remove editors/viewers. |
+| `POST /projects/{id}/invitations` | Sends one invitation email; owners may invite any member role and admins may invite editor/viewer. Sending creates neither an account nor a membership. |
+| `POST /projects/{id}/invitations/{invitation_id}/resend` | Replaces the active token and renews its seven-day expiry. |
+| `DELETE /projects/{id}/invitations/{invitation_id}` | Revokes an unaccepted invitation. |
+| `POST /invitations/preview` | Reads invitation details from a token in the JSON body without consuming it. |
+| `POST /invitations/accept` | Explicitly accepts after recipient identity/password requirements are met. |
 | `GET /tasks` | Lists only Tasks assigned to the caller, including shared-Project Tasks |
 | `GET /tasks/{id}` | Reads a Task when Task read access is granted |
 | `GET /tasks/{id}/assignees` | Lists the Project owner and current Project members eligible for assignment |

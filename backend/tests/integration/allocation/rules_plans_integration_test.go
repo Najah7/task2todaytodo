@@ -330,10 +330,7 @@ func TestAllocationHTTPCollectionsStayPrivateForSharedProjects(t *testing.T) {
 	ownerID := api.seedUser(t, "Asia/Tokyo")
 	memberID := api.seedUser(t, "Asia/Tokyo")
 	projectID := createAllocationProject(t, api, ownerID, "Shared collection project")
-	shared := api.request(t, ownerID, http.MethodPut, fmt.Sprintf("/api/projects/%s/members/%s", projectID, memberID), `{"role_id":"viewer"}`)
-	if shared.Code != http.StatusNoContent {
-		t.Fatalf("PUT project member status/body=%d/%s", shared.Code, shared.Body.String())
-	}
+	api.seedProjectMember(t, projectID, memberID, ownerID, "viewer")
 
 	ownerRules := getAllocationRules(t, api, ownerID)
 	if response := putAllocationRules(t, api, ownerID, ownerRules.Revision, []allocationRuleWriteItem{{

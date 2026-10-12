@@ -218,6 +218,20 @@ type Project struct {
 	UpdatedAt   pgtype.Timestamptz
 }
 
+type ProjectInvitation struct {
+	ID        string
+	ProjectID string
+	Email     string
+	RoleID    string
+	InvitedBy string
+	TokenHash []byte
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	RevokedAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type ProjectMember struct {
 	ProjectID string
 	UserID    string

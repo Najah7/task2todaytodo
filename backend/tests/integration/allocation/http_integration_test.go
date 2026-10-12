@@ -599,10 +599,7 @@ func TestAllocationHTTPSharedProjectKeepsEachOwnersAllocationsPrivate(t *testing
 	ownerID := api.seedUser(t, "Asia/Tokyo")
 	memberID := api.seedUser(t, "Asia/Tokyo")
 	projectID := createAllocationProject(t, api, ownerID, "Shared allocation project")
-	shared := api.request(t, ownerID, http.MethodPut, fmt.Sprintf("/api/projects/%s/members/%s", projectID, memberID), `{"role_id":"viewer"}`)
-	if shared.Code != http.StatusNoContent {
-		t.Fatalf("PUT project member status/body=%d/%s", shared.Code, shared.Body.String())
-	}
+	api.seedProjectMember(t, projectID, memberID, ownerID, "viewer")
 	project := api.request(t, memberID, http.MethodGet, "/api/projects/"+projectID, "")
 	if project.Code != http.StatusOK {
 		t.Fatalf("shared member cannot read Project status/body=%d/%s", project.Code, project.Body.String())

@@ -15,24 +15,26 @@ import (
 )
 
 type UseCase struct {
-	User                authusecase.UserUseCases
-	EmailAuth           authusecase.EmailAuthUseCases
-	PersonalAccessToken authusecase.PersonalAccessTokenUseCases
-	Role                authusecase.RoleUseCases
-	Project             *projectusecase.UseCases
-	Task                taskusecase.TaskUseCases
-	ActionItem          taskusecase.ActionItemUseCases
-	Schedule            scheduleusecase.ScheduleUseCases
-	Timezone            authusecase.TimezoneUseCases
-	Admin               AdminUseCases
-	Inbox               inboxusecase.InboxUseCases
-	Allocation          allocationusecase.UseCases
-	Todo                todousecase.UseCases
+	User                    authusecase.UserUseCases
+	EmailAuth               authusecase.EmailAuthUseCases
+	PersonalAccessToken     authusecase.PersonalAccessTokenUseCases
+	Role                    authusecase.RoleUseCases
+	Project                 *projectusecase.UseCases
+	AcceptProjectInvitation *projectusecase.AcceptProjectInvitationUseCase
+	Task                    taskusecase.TaskUseCases
+	ActionItem              taskusecase.ActionItemUseCases
+	Schedule                scheduleusecase.ScheduleUseCases
+	Timezone                authusecase.TimezoneUseCases
+	Admin                   AdminUseCases
+	Inbox                   inboxusecase.InboxUseCases
+	Allocation              allocationusecase.UseCases
+	Todo                    todousecase.UseCases
 }
 
 type AuthEmailSettings struct {
-	Sender      authusecase.AuthLinkSender
-	FrontendURL string
+	Sender           authusecase.AuthLinkSender
+	InvitationSender projectusecase.ProjectInvitationSender
+	FrontendURL      string
 }
 
 func NewUseCase(store Store, uow UOW, id IDIssuer, logger telemetry.Logger, emailSettings ...AuthEmailSettings) (UseCase, func(context.Context) error) {
@@ -44,18 +46,19 @@ func NewUseCase(store Store, uow UOW, id IDIssuer, logger telemetry.Logger, emai
 	prefill := allocationusecase.NewPrefillAllocationsExecutor(store.Allocation, uow.Allocation, id.NewULID)
 	admin, closeAdmin := NewAdminUseCases(store.Admin, schedules.Backfill, id, logger, prefill)
 	return UseCase{
-		User:                NewUserUseCases(store.Auth, uow.Auth, uow.AuthAccount, logger),
-		EmailAuth:           authusecase.NewEmailAuthUseCases(uow.AuthAccount, email.Sender, email.FrontendURL, logger),
-		PersonalAccessToken: NewPersonalAccessTokenUseCases(store.Auth, uow.AuthAccount, logger),
-		Role:                NewRoleUseCases(store.Auth, logger),
-		Timezone:            NewTimezoneUseCases(store.Auth, logger),
-		Project:             NewProjectUseCases(store.Project, uow.Project, logger, uow.ProjectRead),
-		Task:                NewTaskUseCases(store.Task, uow.Task, store.Auth, id, logger, uow.TaskRead),
-		ActionItem:          NewActionItemUseCases(uow.Task, logger, uow.TaskRead),
-		Schedule:            schedules,
-		Admin:               admin,
-		Inbox:               NewInboxUseCases(store.Auth, store.Task, schedules, store.Inbox, logger),
-		Allocation:          allocationusecase.NewUseCases(store.Allocation, uow.Allocation, id.NewULID, time.Now, uow.AllocationRead),
-		Todo:                todousecase.NewUseCases(uow.Todo, id.NewULID, logger),
+		User:                    NewUserUseCases(store.Auth, uow.Auth, uow.AuthAccount, logger),
+		EmailAuth:               authusecase.NewEmailAuthUseCases(uow.AuthAccount, email.Sender, email.FrontendURL, logger),
+		PersonalAccessToken:     NewPersonalAccessTokenUseCases(store.Auth, uow.AuthAccount, logger),
+		Role:                    NewRoleUseCases(store.Auth, logger),
+		Timezone:                NewTimezoneUseCases(store.Auth, logger),
+		Project:                 NewProjectUseCases(store.Project, uow.Project, logger, email.InvitationSender, email.FrontendURL, uow.ProjectRead),
+		AcceptProjectInvitation: projectusecase.NewAcceptProjectInvitationUseCase(uow.ProjectInvitationAcceptance, logger),
+		Task:                    NewTaskUseCases(store.Task, uow.Task, store.Auth, id, logger, uow.TaskRead),
+		ActionItem:              NewActionItemUseCases(uow.Task, logger, uow.TaskRead),
+		Schedule:                schedules,
+		Admin:                   admin,
+		Inbox:                   NewInboxUseCases(store.Auth, store.Task, schedules, store.Inbox, logger),
+		Allocation:              allocationusecase.NewUseCases(store.Allocation, uow.Allocation, id.NewULID, time.Now, uow.AllocationRead),
+		Todo:                    todousecase.NewUseCases(uow.Todo, id.NewULID, logger),
 	}, closeAdmin
 }

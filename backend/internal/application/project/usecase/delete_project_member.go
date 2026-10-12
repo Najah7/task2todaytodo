@@ -33,6 +33,9 @@ func (uc *DeleteProjectMemberUseCase) Execute(ctx context.Context, actor domain.
 		if err := children.ReassignSchedulesAfterProjectMemberRemoval(ctx, string(actor), string(project), string(member)); err != nil {
 			return err
 		}
-		return repo.DeleteProjectMember(ctx, actor, project, member)
+		if err := repo.DeleteProjectMember(ctx, actor, project, member); err != nil {
+			return err
+		}
+		return repo.RevokeInvitationsForInviterWithoutPermission(ctx, project, member)
 	})
 }

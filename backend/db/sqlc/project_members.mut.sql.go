@@ -7,6 +7,8 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deleteProjectMember = `-- name: DeleteProjectMember :execrows
@@ -17,7 +19,13 @@ WHERE p.id = pm.project_id
   AND pm.user_id = $2::text
   AND p.deleted_at IS NULL
   AND p.user_id <> pm.user_id
-  AND project_has_permission(p.id, $3::text, 'project_member', 'delete')
+  AND (
+      p.user_id = $3::text
+      OR (
+          EXISTS (SELECT 1 FROM project_members actor_member WHERE actor_member.project_id = p.id AND actor_member.user_id = $3::text AND actor_member.role_id = 'admin')
+          AND pm.role_id IN ('editor', 'viewer')
+      )
+  )
 `
 
 type DeleteProjectMemberParams struct {
@@ -39,24 +47,37 @@ SELECT project_has_permission(
     p.id,
     $1::text,
     'project_member',
-    CASE WHEN EXISTS (
-        SELECT 1 FROM project_members AS existing
-        WHERE existing.project_id = p.id AND existing.user_id = $2::text
-    ) THEN 'update'::action ELSE 'create'::action END
+    'update'::action
+) AND (
+    p.user_id = $1::text
+    OR (
+        EXISTS (SELECT 1 FROM project_members actor_member WHERE actor_member.project_id = p.id AND actor_member.user_id = $1::text AND actor_member.role_id = 'admin')
+        AND $2::text IN ('editor', 'viewer')
+        AND NOT EXISTS (SELECT 1 FROM project_members target WHERE target.project_id = p.id AND target.user_id = $3::text AND target.role_id = 'admin')
+    )
+) AND EXISTS (
+    SELECT 1 FROM project_members existing
+    WHERE existing.project_id = p.id AND existing.user_id = $3::text
 ) AS allowed
 FROM projects AS p
-WHERE p.id = $3::text AND p.deleted_at IS NULL
+WHERE p.id = $4::text AND p.deleted_at IS NULL
 `
 
 type HasProjectMemberUpsertPermissionParams struct {
 	ActorID   string
+	RoleID    string
 	MemberID  string
 	ProjectID string
 }
 
-func (q *Queries) HasProjectMemberUpsertPermission(ctx context.Context, arg HasProjectMemberUpsertPermissionParams) (bool, error) {
-	row := q.db.QueryRow(ctx, hasProjectMemberUpsertPermission, arg.ActorID, arg.MemberID, arg.ProjectID)
-	var allowed bool
+func (q *Queries) HasProjectMemberUpsertPermission(ctx context.Context, arg HasProjectMemberUpsertPermissionParams) (pgtype.Bool, error) {
+	row := q.db.QueryRow(ctx, hasProjectMemberUpsertPermission,
+		arg.ActorID,
+		arg.RoleID,
+		arg.MemberID,
+		arg.ProjectID,
+	)
+	var allowed pgtype.Bool
 	err := row.Scan(&allowed)
 	return allowed, err
 }
@@ -104,41 +125,39 @@ func (q *Queries) ReassignProjectMemberTasks(ctx context.Context, arg ReassignPr
 }
 
 const upsertProjectMember = `-- name: UpsertProjectMember :execrows
-INSERT INTO project_members (project_id, user_id, role_id, added_by)
-SELECT p.id, $1::text, $2::text, $3::text
-FROM projects AS p
-WHERE p.id = $4::text
-  AND p.deleted_at IS NULL
-  AND p.user_id <> $1::text
-  AND project_has_permission(
-      p.id,
-      $3::text,
-      'project_member',
-      CASE WHEN EXISTS (
-          SELECT 1 FROM project_members AS existing
-          WHERE existing.project_id = p.id AND existing.user_id = $1::text
-      ) THEN 'update'::action ELSE 'create'::action END
-  )
-ON CONFLICT (project_id, user_id) DO UPDATE
-SET role_id = EXCLUDED.role_id,
-    added_by = EXCLUDED.added_by,
+UPDATE project_members AS pm
+SET role_id = $1::text,
     updated_at = now()
-WHERE project_has_permission(EXCLUDED.project_id, $3::text, 'project_member', 'update')
+FROM projects AS p
+WHERE p.id = $2::text
+  AND p.id = pm.project_id
+  AND p.deleted_at IS NULL
+  AND pm.user_id = $3::text
+  AND pm.role_id <> 'sysadmin'
+  AND $1::text <> 'sysadmin'
+  AND (
+      p.user_id = $4::text
+      OR (
+          EXISTS (SELECT 1 FROM project_members actor_member WHERE actor_member.project_id = p.id AND actor_member.user_id = $4::text AND actor_member.role_id = 'admin')
+          AND $1::text IN ('editor', 'viewer')
+          AND pm.role_id IN ('editor', 'viewer')
+      )
+  )
 `
 
 type UpsertProjectMemberParams struct {
-	MemberID  string
 	RoleID    string
-	ActorID   string
 	ProjectID string
+	MemberID  string
+	ActorID   string
 }
 
 func (q *Queries) UpsertProjectMember(ctx context.Context, arg UpsertProjectMemberParams) (int64, error) {
 	result, err := q.db.Exec(ctx, upsertProjectMember,
-		arg.MemberID,
 		arg.RoleID,
-		arg.ActorID,
 		arg.ProjectID,
+		arg.MemberID,
+		arg.ActorID,
 	)
 	if err != nil {
 		return 0, err

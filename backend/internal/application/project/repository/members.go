@@ -19,12 +19,12 @@ func (r *ProjectRepository) LockProjectForMemberChange(ctx context.Context, id d
 	}
 	return nil
 }
-func (r *ProjectRepository) CheckProjectMemberUpsertPermission(ctx context.Context, actor domain.UserID, project domain.ProjectID, member domain.UserID) (bool, error) {
-	ok, err := r.queries.HasProjectMemberUpsertPermission(ctx, sqlc.HasProjectMemberUpsertPermissionParams{ActorID: string(actor), ProjectID: string(project), MemberID: string(member)})
+func (r *ProjectRepository) CheckProjectMemberUpsertPermission(ctx context.Context, actor domain.UserID, project domain.ProjectID, member domain.UserID, role string) (bool, error) {
+	ok, err := r.queries.HasProjectMemberUpsertPermission(ctx, sqlc.HasProjectMemberUpsertPermissionParams{ActorID: string(actor), ProjectID: string(project), MemberID: string(member), RoleID: role})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, domain.ErrProjectNotFound
 	}
-	return ok, err
+	return ok.Valid && ok.Bool, err
 }
 func (r *ProjectRepository) UpsertProjectMember(ctx context.Context, m domain.ProjectMember) error {
 	n, err := r.queries.UpsertProjectMember(ctx, sqlc.UpsertProjectMemberParams{MemberID: string(m.UserID), RoleID: m.RoleID, ActorID: string(m.AddedBy), ProjectID: string(m.ProjectID)})
@@ -32,14 +32,7 @@ func (r *ProjectRepository) UpsertProjectMember(ctx context.Context, m domain.Pr
 		return memberError(err)
 	}
 	if n == 0 {
-		ok, e := r.CheckProjectMemberUpsertPermission(ctx, m.AddedBy, m.ProjectID, m.UserID)
-		if e != nil {
-			return e
-		}
-		if !ok {
-			return projectusecase.ErrPermissionDenied
-		}
-		return projectusecase.ErrProjectMemberUpsertRejected
+		return projectusecase.ErrProjectMemberNotFound
 	}
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/auth/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/auth/domain"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
@@ -18,11 +19,12 @@ func NewConfirmEmailVerificationUseCase(uow UOW, logger telemetry.Logger) *Confi
 	return &ConfirmEmailVerificationUseCase{uow: uow, logger: telemetry.OrNop(logger), now: time.Now}
 }
 
-func (uc *ConfirmEmailVerificationUseCase) Execute(ctx context.Context, rawToken, password string) error {
+func (uc *ConfirmEmailVerificationUseCase) Execute(ctx context.Context, rawToken, password string) (dao.PersonalAccessToken, error) {
 	hash, err := parseAuthLinkToken(rawToken)
 	if err != nil {
-		return ErrInvalidAuthLink
+		return dao.PersonalAccessToken{}, ErrInvalidAuthLink
 	}
+	var issued dao.PersonalAccessToken
 	err = uc.uow.Do(ctx, func(ctx context.Context, repositories Repositories) error {
 		authRepo := repositories.EmailAuth()
 		initial, err := authRepo.GetAuthLinkToken(ctx, hash)
@@ -66,14 +68,22 @@ func (uc *ConfirmEmailVerificationUseCase) Execute(ctx context.Context, rawToken
 		if err := authRepo.MarkUserEmailVerified(ctx, user.ID); err != nil {
 			return err
 		}
-		return authRepo.RevokeActiveUserAuthLinkTokensForPurpose(ctx, user.ID, EmailVerificationPurpose)
+		if err := authRepo.RevokeActiveUserAuthLinkTokensForPurpose(ctx, user.ID, EmailVerificationPurpose); err != nil {
+			return err
+		}
+		accessToken, err := domain.NewPersonalAccessToken(domain.UserID(user.ID))
+		if err != nil {
+			return err
+		}
+		issued, err = repositories.PersonalAccessTokens().CreateForAuth(ctx, accessToken, user.AuthVersion)
+		return err
 	})
 	if err != nil {
 		if err != ErrInvalidAuthLink {
 			logUnexpectedFailure(uc.logger, ctx, "email_verification.confirm", err)
 		}
-		return err
+		return dao.PersonalAccessToken{}, err
 	}
 	uc.logger.Info(ctx, "email verification completed", "operation", "email_verification.confirm")
-	return nil
+	return issued, nil
 }

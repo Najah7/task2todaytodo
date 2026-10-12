@@ -68,7 +68,7 @@ func (h *EmailAuthHandler) ResendVerification(w http.ResponseWriter, r *http.Req
 //	@Accept		json
 //	@Produce	json
 //	@Param		request	body		EmailVerificationConfirmRequest	true	"Verification token and registration password"
-//	@Success	200		{object}	AuthLinkResult
+//	@Success	200		{object}	PersonalAccessTokenResponse
 //	@Failure	400		{object}	ErrResponse
 //	@Router		/email-verification/confirm [post]
 func (h *EmailAuthHandler) ConfirmVerification(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +78,8 @@ func (h *EmailAuthHandler) ConfirmVerification(w http.ResponseWriter, r *http.Re
 		WriteError(w, http.StatusBadRequest, ErrSpecUsersCreateFailed, ErrDetailInvalidRequestBody)
 		return
 	}
-	if err := h.usecases.ConfirmVerification.Execute(r.Context(), req.Token, req.Password); err != nil {
+	issued, err := h.usecases.ConfirmVerification.Execute(r.Context(), req.Token, req.Password)
+	if err != nil {
 		if errors.Is(err, authusecase.ErrInvalidAuthLink) {
 			WriteError(w, http.StatusBadRequest, ErrSpecUsersCreateFailed, invalidAuthLinkDetail())
 			return
@@ -90,7 +91,7 @@ func (h *EmailAuthHandler) ConfirmVerification(w http.ResponseWriter, r *http.Re
 		WriteError(w, http.StatusInternalServerError, ErrSpecUsersCreateFailed, ErrDetailInternalServerError)
 		return
 	}
-	WriteJSON(w, http.StatusOK, AuthLinkResult{Message: "Email address verified. Please log in."})
+	WriteJSON(w, http.StatusOK, personalAccessTokenResponse(issued))
 }
 
 // RequestPasswordReset sends a reset link when the address is eligible.

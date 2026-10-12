@@ -121,10 +121,16 @@ func (q *Queries) GetProjectByUserIDForPermission(ctx context.Context, arg GetPr
 
 const listProjectCandidates = `-- name: ListProjectCandidates :many
 SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.status, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at, pm.weight AS priority_weight,
-       project_has_permission(p.id, $1::text, 'project', 'update') AS can_update,
-       project_has_permission(p.id, $1::text, 'project', 'delete') AS can_delete
+       (p.deleted_at IS NULL AND project_has_permission(p.id, $1::text, 'project', 'update')) AS can_update,
+       project_has_permission(p.id, $1::text, 'project', 'delete') AS can_delete,
+       member_counts.member_count, member_counts.pending_invitation_count
 FROM projects AS p
 JOIN priority_master AS pm ON pm.priority = p.priority
+LEFT JOIN LATERAL (
+    SELECT (1 + (SELECT count(*) FROM project_members m WHERE m.project_id = p.id))::bigint AS member_count,
+           (SELECT count(*) FROM project_invitations i WHERE i.project_id = p.id
+              AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now())::bigint AS pending_invitation_count
+) member_counts ON true
 WHERE ($2::boolean AND p.deleted_at IS NOT NULL
        AND project_has_permission(p.id, $1::text, 'project', 'delete'))
    OR (NOT $2::boolean AND p.deleted_at IS NULL
@@ -140,24 +146,26 @@ type ListProjectCandidatesParams struct {
 }
 
 type ListProjectCandidatesRow struct {
-	ID             string
-	UserID         string
-	Type           string
-	Title          string
-	Goal           pgtype.Text
-	Description    pgtype.Text
-	Priority       string
-	Status         string
-	StartDate      pgtype.Date
-	EndDate        pgtype.Date
-	Revision       int32
-	DeletedAt      pgtype.Timestamptz
-	ChangedBy      string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	PriorityWeight int32
-	CanUpdate      bool
-	CanDelete      bool
+	ID                     string
+	UserID                 string
+	Type                   string
+	Title                  string
+	Goal                   pgtype.Text
+	Description            pgtype.Text
+	Priority               string
+	Status                 string
+	StartDate              pgtype.Date
+	EndDate                pgtype.Date
+	Revision               int32
+	DeletedAt              pgtype.Timestamptz
+	ChangedBy              string
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
+	PriorityWeight         int32
+	CanUpdate              pgtype.Bool
+	CanDelete              bool
+	MemberCount            int64
+	PendingInvitationCount int64
 }
 
 func (q *Queries) ListProjectCandidates(ctx context.Context, arg ListProjectCandidatesParams) ([]ListProjectCandidatesRow, error) {
@@ -188,6 +196,8 @@ func (q *Queries) ListProjectCandidates(ctx context.Context, arg ListProjectCand
 			&i.PriorityWeight,
 			&i.CanUpdate,
 			&i.CanDelete,
+			&i.MemberCount,
+			&i.PendingInvitationCount,
 		); err != nil {
 			return nil, err
 		}
@@ -201,10 +211,16 @@ func (q *Queries) ListProjectCandidates(ctx context.Context, arg ListProjectCand
 
 const listProjectPageBySort = `-- name: ListProjectPageBySort :many
 SELECT p.id, p.user_id, p.type, p.title, p.goal, p.description, p.priority, p.status, p.start_date, p.end_date, p.revision, p.deleted_at, p.changed_by, p.created_at, p.updated_at, pm.weight AS priority_weight,
-       project_has_permission(p.id, $1::text, 'project', 'update') AS can_update,
-       project_has_permission(p.id, $1::text, 'project', 'delete') AS can_delete
+       (p.deleted_at IS NULL AND project_has_permission(p.id, $1::text, 'project', 'update')) AS can_update,
+       project_has_permission(p.id, $1::text, 'project', 'delete') AS can_delete,
+       member_counts.member_count, member_counts.pending_invitation_count
 FROM projects AS p
 JOIN priority_master AS pm ON pm.priority = p.priority
+LEFT JOIN LATERAL (
+    SELECT (1 + (SELECT count(*) FROM project_members m WHERE m.project_id = p.id))::bigint AS member_count,
+           (SELECT count(*) FROM project_invitations i WHERE i.project_id = p.id
+              AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now())::bigint AS pending_invitation_count
+) member_counts ON true
 WHERE (($2::boolean AND p.deleted_at IS NOT NULL
         AND project_has_permission(p.id, $1::text, 'project', 'delete'))
     OR (NOT $2::boolean AND p.deleted_at IS NULL
@@ -293,24 +309,26 @@ type ListProjectPageBySortParams struct {
 }
 
 type ListProjectPageBySortRow struct {
-	ID             string
-	UserID         string
-	Type           string
-	Title          string
-	Goal           pgtype.Text
-	Description    pgtype.Text
-	Priority       string
-	Status         string
-	StartDate      pgtype.Date
-	EndDate        pgtype.Date
-	Revision       int32
-	DeletedAt      pgtype.Timestamptz
-	ChangedBy      string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	PriorityWeight int32
-	CanUpdate      bool
-	CanDelete      bool
+	ID                     string
+	UserID                 string
+	Type                   string
+	Title                  string
+	Goal                   pgtype.Text
+	Description            pgtype.Text
+	Priority               string
+	Status                 string
+	StartDate              pgtype.Date
+	EndDate                pgtype.Date
+	Revision               int32
+	DeletedAt              pgtype.Timestamptz
+	ChangedBy              string
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
+	PriorityWeight         int32
+	CanUpdate              pgtype.Bool
+	CanDelete              bool
+	MemberCount            int64
+	PendingInvitationCount int64
 }
 
 func (q *Queries) ListProjectPageBySort(ctx context.Context, arg ListProjectPageBySortParams) ([]ListProjectPageBySortRow, error) {
@@ -354,6 +372,8 @@ func (q *Queries) ListProjectPageBySort(ctx context.Context, arg ListProjectPage
 			&i.PriorityWeight,
 			&i.CanUpdate,
 			&i.CanDelete,
+			&i.MemberCount,
+			&i.PendingInvitationCount,
 		); err != nil {
 			return nil, err
 		}
@@ -679,9 +699,8 @@ FOR UPDATE
 
 func (q *Queries) LockProjectForLifecycle(ctx context.Context, id string) (string, error) {
 	row := q.db.QueryRow(ctx, lockProjectForLifecycle, id)
-	var id_2 string
-	err := row.Scan(&id_2)
-	return id_2, err
+	err := row.Scan(&id)
+	return id, err
 }
 
 const readProjectListSummary = `-- name: ReadProjectListSummary :one

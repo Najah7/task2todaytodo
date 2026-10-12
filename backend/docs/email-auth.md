@@ -4,8 +4,8 @@
 
 Signup creates an unverified account and sends a verification link. Opening the
 link only renders a form; the user must submit the registration password to
-confirm the address. Successful confirmation returns to login and does not
-create a session.
+confirm the address. Successful confirmation returns a personal access token
+and signs the user in.
 
 Password recovery works for verified and unverified addresses. A submitted
 reset form changes the password, verifies an unverified address, and invalidates
@@ -68,18 +68,28 @@ and [production access request guide](https://docs.aws.amazon.com/ses/latest/dg/
 These are operator steps; the repository does not create cloud resources or
 send setup mail.
 
-## Future project invitations (design only)
+## Project invitations
 
 Invitations are separate from signup, verification, and password reset. A
 project invitation does not create a user or membership when sent. An
 unregistered recipient follows the invite link, chooses a password, and accepts
 in one transaction that creates a verified user, adds project membership, and
-consumes the invitation. A verified existing recipient must first sign in
-with the invited email and explicitly accept; another account/email cannot
-accept it. An unverified existing recipient follows the invitation, chooses a
-fresh password, and accepts in one transaction that reuses and verifies the
-user, revokes prior sessions and auth links, adds membership, and consumes the
+consumes the invitation. A verified existing recipient must sign in with the
+invited email and explicitly accept; another account/email cannot accept it.
+An unverified existing recipient follows the invitation, chooses a fresh
+password, and accepts in one transaction that reuses and verifies the user,
+revokes prior sessions and auth links, adds membership, and consumes the
 invitation. The invitation itself proves control of the address, so no extra
 verification email is sent. Normal email verification never grants project
-membership. This flow is design guidance only; there is no invitation endpoint,
-table, or generic invitation engine yet.
+membership.
+
+Invitation tokens contain 32 random bytes; only SHA-256 digests are stored.
+Tokens last seven days and can be used once. The raw token stays in the URL
+fragment. `POST /api/invitations/preview` reads details without consuming the
+token; `POST /api/invitations/accept` performs the explicit acceptance. The
+preview accepts the token in its JSON body so it is omitted from access logs.
+Invitation email is sent with Japanese first and English second in both HTML
+and plain text. Delivery uses the configured Mailpit or SES adapter. Invitation
+sends and resends use a per-address cooldown and rolling-hour limit; a delivery
+failure leaves the committed invitation recorded, and a manager can resend it
+after the limit allows.

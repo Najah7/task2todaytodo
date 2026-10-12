@@ -724,7 +724,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.AuthLinkResult"
+                            "$ref": "#/definitions/rest.PersonalAccessTokenResponse"
                         }
                     },
                     "400": {
@@ -855,6 +855,111 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Failed to list inbox",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/invitations/accept": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project Invitations"
+                ],
+                "summary": "Accept project invitation",
+                "parameters": [
+                    {
+                        "description": "Invitation token and, for a new or unverified account, password",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectInvitationAcceptanceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Account created or verified and signed in",
+                        "schema": {
+                            "$ref": "#/definitions/rest.PersonalAccessTokenResponse"
+                        }
+                    },
+                    "204": {
+                        "description": "Verified recipient joined project"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/invitations/preview": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project Invitations"
+                ],
+                "summary": "Preview project invitation",
+                "parameters": [
+                    {
+                        "description": "Invitation token",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectInvitationPreviewRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectInvitationPreviewResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -1476,6 +1581,212 @@ const docTemplate = `{
                 }
             }
         },
+        "/projects/{id}/invitations": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Invite a project member",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Invitation",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectInvitationCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectInvitationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}/invitations/{invitation_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Revoke project invitation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Invitation ID",
+                        "name": "invitation_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}/invitations/{invitation_id}/resend": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Resend project invitation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Invitation ID",
+                        "name": "invitation_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/projects/{id}/members": {
             "get": {
                 "security": [
@@ -1497,6 +1808,24 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 50, maximum 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque cursor for the next page",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Response field mask",
+                        "name": "fields",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1549,7 +1878,7 @@ const docTemplate = `{
                 "tags": [
                     "Projects"
                 ],
-                "summary": "Add or update a project member",
+                "summary": "Update a project member role",
                 "parameters": [
                     {
                         "type": "string",
@@ -1640,6 +1969,83 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Update a project member role",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Member user ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Member role",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectMemberUpsertRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
                     },
                     "401": {
                         "description": "Unauthorized",
@@ -2666,6 +3072,36 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/rest.RoleListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/capabilities": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "List project role capabilities",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ProjectMemberRoleCapabilitiesResponse"
                         }
                     },
                     "401": {
@@ -6754,6 +7190,125 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.ProjectInvitationAcceptanceRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ProjectInvitationCreateRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "role_id"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "string",
+                    "enum": [
+                        "admin",
+                        "editor",
+                        "viewer"
+                    ]
+                }
+            }
+        },
+        "rest.ProjectInvitationPreviewRequest": {
+            "type": "object",
+            "required": [
+                "token"
+            ],
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ProjectInvitationPreviewResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "integer"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "project_title": {
+                    "type": "string"
+                },
+                "recipient_status": {
+                    "type": "string",
+                    "enum": [
+                        "new",
+                        "unverified",
+                        "verified"
+                    ]
+                },
+                "role_id": {
+                    "type": "string",
+                    "enum": [
+                        "admin",
+                        "editor",
+                        "viewer"
+                    ]
+                },
+                "role_name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "pending",
+                        "expired",
+                        "accepted",
+                        "revoked",
+                        "project_deleted"
+                    ]
+                }
+            }
+        },
+        "rest.ProjectInvitationResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "string",
+                    "enum": [
+                        "admin",
+                        "editor",
+                        "viewer"
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "pending"
+                    ]
+                }
+            }
+        },
         "rest.ProjectListResponse": {
             "type": "object",
             "required": [
@@ -6818,11 +7373,35 @@ const docTemplate = `{
         "rest.ProjectMemberListResponse": {
             "type": "object",
             "properties": {
+                "assignable_roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ProjectMemberRoleOptionResponse"
+                    }
+                },
+                "can_invite": {
+                    "type": "boolean"
+                },
                 "items": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/rest.ProjectMemberResponse"
                     }
+                },
+                "member_count": {
+                    "type": "integer"
+                },
+                "next_page_token": {
+                    "type": "string"
+                },
+                "pending_invitation_count": {
+                    "type": "integer"
+                },
+                "previous_page_token": {
+                    "type": "string"
+                },
+                "total_count": {
+                    "type": "integer"
                 }
             }
         },
@@ -6832,13 +7411,26 @@ const docTemplate = `{
                 "added_by": {
                     "type": "string"
                 },
+                "can_edit_role": {
+                    "type": "boolean"
+                },
+                "can_remove": {
+                    "type": "boolean"
+                },
                 "created_at": {
                     "type": "integer"
                 },
                 "email": {
                     "type": "string"
                 },
+                "expires_at": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
                 "first_name": {
+                    "type": "string"
+                },
+                "invitation_id": {
                     "type": "string"
                 },
                 "last_name": {
@@ -6853,10 +7445,102 @@ const docTemplate = `{
                 "role_name": {
                     "type": "string"
                 },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "owner",
+                        "accepted",
+                        "pending",
+                        "expired"
+                    ]
+                },
                 "updated_at": {
                     "type": "integer"
                 },
                 "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ProjectMemberRoleCapabilitiesResponse": {
+            "type": "object",
+            "properties": {
+                "capabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ProjectMemberRoleCapabilityResponse"
+                    }
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ProjectMemberRoleOptionResponse"
+                    }
+                }
+            }
+        },
+        "rest.ProjectMemberRoleCapabilityResponse": {
+            "type": "object",
+            "properties": {
+                "admin": {
+                    "type": "boolean"
+                },
+                "editor": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string",
+                    "enum": [
+                        "project.read",
+                        "project.update",
+                        "project.delete",
+                        "task.read",
+                        "task.create",
+                        "task.update",
+                        "task.delete",
+                        "action_item.read",
+                        "action_item.create",
+                        "action_item.update",
+                        "action_item.delete",
+                        "schedule.read",
+                        "schedule.create",
+                        "schedule.update",
+                        "schedule.delete",
+                        "task_assignment.update",
+                        "schedule_assignment.update",
+                        "occurrence.update",
+                        "project_member.read",
+                        "project_member.invite",
+                        "project_member.manage_basic",
+                        "project_member.manage_admin"
+                    ]
+                },
+                "name": {
+                    "type": "string"
+                },
+                "owner": {
+                    "type": "boolean"
+                },
+                "viewer": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "rest.ProjectMemberRoleOptionResponse": {
+            "type": "object",
+            "properties": {
+                "assignable": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string",
+                    "enum": [
+                        "admin",
+                        "editor",
+                        "viewer"
+                    ]
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -6931,6 +7615,8 @@ const docTemplate = `{
                 "end_date",
                 "goal",
                 "id",
+                "member_count",
+                "pending_invitation_count",
                 "priority",
                 "progress",
                 "remaining_days",
@@ -6968,6 +7654,12 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "member_count": {
+                    "type": "integer"
+                },
+                "pending_invitation_count": {
+                    "type": "integer"
                 },
                 "priority": {
                     "$ref": "#/definitions/rest.ProjectPriorityResponse"

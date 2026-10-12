@@ -131,7 +131,8 @@ func (r *ProjectRepository) ListProjectCandidates(ctx context.Context, actor dom
 	for _, row := range rows {
 		project := projectDAO(sqlc.Project{ID: row.ID, UserID: row.UserID, Type: row.Type, Title: row.Title, Goal: row.Goal, Description: row.Description, Priority: row.Priority, StartDate: row.StartDate, EndDate: row.EndDate, Revision: row.Revision, DeletedAt: row.DeletedAt, ChangedBy: row.ChangedBy, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Status: row.Status})
 		project.Priority.Weight = int(row.PriorityWeight)
-		project.CanUpdate, project.CanDelete = row.CanUpdate, row.CanDelete
+		project.CanUpdate, project.CanDelete = row.CanUpdate.Valid && row.CanUpdate.Bool, row.CanDelete
+		project.MemberCount, project.PendingInvitationCount = row.MemberCount, row.PendingInvitationCount
 		out = append(out, project)
 	}
 	return out, nil
@@ -174,7 +175,8 @@ func (r *ProjectRepository) ListProjectPage(ctx context.Context, actor domain.Us
 	for _, row := range rows {
 		project := projectDAO(sqlc.Project{ID: row.ID, UserID: row.UserID, Type: row.Type, Title: row.Title, Goal: row.Goal, Description: row.Description, Priority: row.Priority, StartDate: row.StartDate, EndDate: row.EndDate, Revision: row.Revision, DeletedAt: row.DeletedAt, ChangedBy: row.ChangedBy, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Status: row.Status})
 		project.Priority.Weight = int(row.PriorityWeight)
-		project.CanUpdate, project.CanDelete = row.CanUpdate, row.CanDelete
+		project.CanUpdate, project.CanDelete = row.CanUpdate.Valid && row.CanUpdate.Bool, row.CanDelete
+		project.MemberCount, project.PendingInvitationCount = row.MemberCount, row.PendingInvitationCount
 		out = append(out, project)
 	}
 	return out, nil

@@ -48,24 +48,26 @@ type ProjectPriorityResponse struct {
 }
 
 type ProjectResponse struct {
-	ID            string                  `json:"id" validate:"required"`
-	UserID        string                  `json:"user_id" validate:"required"`
-	Type          ProjectTypeResponse     `json:"type" validate:"required"`
-	Title         string                  `json:"title" validate:"required"`
-	Goal          string                  `json:"goal" validate:"required"`
-	Description   string                  `json:"description" validate:"required"`
-	Progress      int                     `json:"progress" validate:"required"`
-	Status        string                  `json:"status" validate:"required" enums:"open,pending,waiting_on_others,in_progress,done"`
-	Priority      ProjectPriorityResponse `json:"priority" validate:"required"`
-	StartDate     *string                 `json:"start_date" validate:"required" extensions:"x-nullable"`
-	EndDate       *string                 `json:"end_date" validate:"required" extensions:"x-nullable"`
-	RemainingDays *int                    `json:"remaining_days" validate:"required" extensions:"x-nullable"`
-	DeletedAt     *int64                  `json:"deleted_at" validate:"required" extensions:"x-nullable"`
-	CanUpdate     bool                    `json:"can_update" validate:"required"`
-	CanDelete     bool                    `json:"can_delete" validate:"required"`
-	CreatedAt     int64                   `json:"created_at" validate:"required"`
-	UpdatedAt     int64                   `json:"updated_at" validate:"required"`
-	Revision      int32                   `json:"revision" validate:"required"`
+	ID                     string                  `json:"id" validate:"required"`
+	UserID                 string                  `json:"user_id" validate:"required"`
+	Type                   ProjectTypeResponse     `json:"type" validate:"required"`
+	Title                  string                  `json:"title" validate:"required"`
+	Goal                   string                  `json:"goal" validate:"required"`
+	Description            string                  `json:"description" validate:"required"`
+	Progress               int                     `json:"progress" validate:"required"`
+	Status                 string                  `json:"status" validate:"required" enums:"open,pending,waiting_on_others,in_progress,done"`
+	Priority               ProjectPriorityResponse `json:"priority" validate:"required"`
+	StartDate              *string                 `json:"start_date" validate:"required" extensions:"x-nullable"`
+	EndDate                *string                 `json:"end_date" validate:"required" extensions:"x-nullable"`
+	RemainingDays          *int                    `json:"remaining_days" validate:"required" extensions:"x-nullable"`
+	DeletedAt              *int64                  `json:"deleted_at" validate:"required" extensions:"x-nullable"`
+	CanUpdate              bool                    `json:"can_update" validate:"required"`
+	CanDelete              bool                    `json:"can_delete" validate:"required"`
+	MemberCount            int64                   `json:"member_count" validate:"required"`
+	PendingInvitationCount int64                   `json:"pending_invitation_count" validate:"required"`
+	CreatedAt              int64                   `json:"created_at" validate:"required"`
+	UpdatedAt              int64                   `json:"updated_at" validate:"required"`
+	Revision               int32                   `json:"revision" validate:"required"`
 }
 
 type ProjectListResponse struct {
@@ -1005,6 +1007,7 @@ func projectResponse(project projectdao.Project) ProjectResponse {
 		Priority:  ProjectPriorityResponse{Value: project.Priority.Value, Label: project.Priority.Label, LabelJp: project.Priority.LabelJp, Weight: project.Priority.Weight},
 		StartDate: cloneProjectString(project.StartDate), EndDate: cloneProjectString(project.EndDate),
 		RemainingDays: cloneProjectInt(project.RemainingDays), DeletedAt: cloneInt64(project.DeletedAt), CanUpdate: project.CanUpdate, CanDelete: project.CanDelete,
+		MemberCount: project.MemberCount, PendingInvitationCount: project.PendingInvitationCount,
 		CreatedAt: project.CreatedAt, UpdatedAt: project.UpdatedAt, Revision: project.Revision,
 	}
 }

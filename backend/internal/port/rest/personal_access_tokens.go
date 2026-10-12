@@ -3,7 +3,9 @@ package rest
 import (
 	"errors"
 	"net/http"
+	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/auth/dao"
 	authusecase "github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
 )
 
@@ -24,6 +26,13 @@ func NewPersonalAccessTokenHandler(personalAccessToken authusecase.PersonalAcces
 type PersonalAccessTokenResponse struct {
 	PersonalAccessToken string `json:"personal_access_token"`
 	ExpiresAt           string `json:"expires_at"`
+}
+
+func personalAccessTokenResponse(token dao.PersonalAccessToken) PersonalAccessTokenResponse {
+	return PersonalAccessTokenResponse{
+		PersonalAccessToken: token.Token,
+		ExpiresAt:           time.Unix(token.ExpiresAt, 0).In(time.FixedZone("JST", 9*60*60)).Format("2006-01-02 15:04:05"),
+	}
 }
 
 // Revoke godoc

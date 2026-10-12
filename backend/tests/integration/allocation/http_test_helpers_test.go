@@ -117,6 +117,15 @@ func (api *allocationHTTP) seedUser(t *testing.T, timezone string) string {
 	return id
 }
 
+// seedProjectMember creates an already accepted membership for fixture setup.
+// Production memberships are created by explicit invitation acceptance.
+func (api *allocationHTTP) seedProjectMember(t *testing.T, projectID, userID, ownerID, roleID string) {
+	t.Helper()
+	if _, err := api.pool.Exec(t.Context(), `INSERT INTO project_members(project_id,user_id,role_id,added_by) VALUES($1,$2,$3,$4)`, projectID, userID, roleID, ownerID); err != nil {
+		t.Fatalf("insert accepted test project member: %v", err)
+	}
+}
+
 func (api *allocationHTTP) trackProject(t *testing.T, id string) {
 	t.Helper()
 	api.projects = append(api.projects, id)

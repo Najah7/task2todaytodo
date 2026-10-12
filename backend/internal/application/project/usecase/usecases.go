@@ -7,6 +7,14 @@ type ProjectMemberUseCases struct {
 	UpsertMember *UpsertProjectMemberUseCase
 	DeleteMember *DeleteProjectMemberUseCase
 }
+
+type ProjectInvitationUseCases struct {
+	Create  *CreateProjectInvitationUseCase
+	Resend  *ResendProjectInvitationUseCase
+	Revoke  *RevokeProjectInvitationUseCase
+	Preview *PreviewProjectInvitationUseCase
+}
+
 type UseCases struct {
 	Create       *CreateProjectUseCase
 	List         *ListProjectsUseCase
@@ -14,6 +22,7 @@ type UseCases struct {
 	Update       *UpdateProjectUseCase
 	Delete       *DeleteProjectUseCase
 	Members      *ProjectMemberUseCases
+	Invitations  *ProjectInvitationUseCases
 	Revisions    *ListProjectRevisionsUseCase
 	Types        *ListProjectTypesUseCase
 	Options      *ListProjectOptionsUseCase
@@ -21,18 +30,24 @@ type UseCases struct {
 	Restore      *RestoreProjectUseCase
 }
 
-func NewUseCases(repo Repository, tx UnitOfWork, logger telemetry.Logger, readTxs ...UnitOfWork) *UseCases {
+func NewUseCases(repo Repository, tx UnitOfWork, logger telemetry.Logger, invitationSender ProjectInvitationSender, frontendURL string, readTxs ...UnitOfWork) *UseCases {
 	readTx := tx
 	if len(readTxs) > 0 && readTxs[0] != nil {
 		readTx = readTxs[0]
 	}
 	return &UseCases{
-		Create:       NewCreateProjectUseCase(repo, logger),
-		List:         NewListProjectsUseCase(repo, repo, logger),
-		Get:          NewGetProjectUseCase(repo, repo, logger),
-		Update:       NewUpdateProjectUseCase(repo, repo, logger),
-		Delete:       NewDeleteProjectUseCase(tx, logger),
-		Members:      &ProjectMemberUseCases{ListMembers: NewListProjectMembersUseCase(readTx, logger), UpsertMember: NewUpsertProjectMemberUseCase(tx, logger), DeleteMember: NewDeleteProjectMemberUseCase(tx, logger)},
+		Create:  NewCreateProjectUseCase(repo, logger),
+		List:    NewListProjectsUseCase(repo, repo, logger),
+		Get:     NewGetProjectUseCase(repo, repo, logger),
+		Update:  NewUpdateProjectUseCase(repo, repo, logger),
+		Delete:  NewDeleteProjectUseCase(tx, logger),
+		Members: &ProjectMemberUseCases{ListMembers: NewListProjectMembersUseCase(readTx, logger), UpsertMember: NewUpsertProjectMemberUseCase(tx, logger), DeleteMember: NewDeleteProjectMemberUseCase(tx, logger)},
+		Invitations: &ProjectInvitationUseCases{
+			Create:  NewCreateProjectInvitationUseCase(tx, invitationSender, frontendURL, logger),
+			Resend:  NewResendProjectInvitationUseCase(tx, invitationSender, frontendURL, logger),
+			Revoke:  NewRevokeProjectInvitationUseCase(tx, logger),
+			Preview: NewPreviewProjectInvitationUseCase(repo, logger),
+		},
 		Revisions:    NewListProjectRevisionsUseCase(repo, logger),
 		Types:        NewListProjectTypesUseCase(repo, logger),
 		Options:      NewListProjectOptionsUseCase(repo, logger),

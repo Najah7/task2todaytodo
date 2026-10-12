@@ -727,6 +727,88 @@ definitions:
     required:
     - title
     type: object
+  rest.ProjectInvitationAcceptanceRequest:
+    properties:
+      password:
+        type: string
+      token:
+        type: string
+    type: object
+  rest.ProjectInvitationCreateRequest:
+    properties:
+      email:
+        type: string
+      role_id:
+        enum:
+        - admin
+        - editor
+        - viewer
+        type: string
+    required:
+    - email
+    - role_id
+    type: object
+  rest.ProjectInvitationPreviewRequest:
+    properties:
+      token:
+        type: string
+    required:
+    - token
+    type: object
+  rest.ProjectInvitationPreviewResponse:
+    properties:
+      email:
+        type: string
+      expires_at:
+        type: integer
+      project_id:
+        type: string
+      project_title:
+        type: string
+      recipient_status:
+        enum:
+        - new
+        - unverified
+        - verified
+        type: string
+      role_id:
+        enum:
+        - admin
+        - editor
+        - viewer
+        type: string
+      role_name:
+        type: string
+      status:
+        enum:
+        - pending
+        - expired
+        - accepted
+        - revoked
+        - project_deleted
+        type: string
+    type: object
+  rest.ProjectInvitationResponse:
+    properties:
+      email:
+        type: string
+      expires_at:
+        type: integer
+      id:
+        type: string
+      project_id:
+        type: string
+      role_id:
+        enum:
+        - admin
+        - editor
+        - viewer
+        type: string
+      status:
+        enum:
+        - pending
+        type: string
+    type: object
   rest.ProjectListResponse:
     properties:
       items:
@@ -772,20 +854,45 @@ definitions:
     type: object
   rest.ProjectMemberListResponse:
     properties:
+      assignable_roles:
+        items:
+          $ref: '#/definitions/rest.ProjectMemberRoleOptionResponse'
+        type: array
+      can_invite:
+        type: boolean
       items:
         items:
           $ref: '#/definitions/rest.ProjectMemberResponse'
         type: array
+      member_count:
+        type: integer
+      next_page_token:
+        type: string
+      pending_invitation_count:
+        type: integer
+      previous_page_token:
+        type: string
+      total_count:
+        type: integer
     type: object
   rest.ProjectMemberResponse:
     properties:
       added_by:
         type: string
+      can_edit_role:
+        type: boolean
+      can_remove:
+        type: boolean
       created_at:
         type: integer
       email:
         type: string
+      expires_at:
+        type: integer
+        x-nullable: true
       first_name:
+        type: string
+      invitation_id:
         type: string
       last_name:
         type: string
@@ -795,9 +902,78 @@ definitions:
         type: string
       role_name:
         type: string
+      status:
+        enum:
+        - owner
+        - accepted
+        - pending
+        - expired
+        type: string
       updated_at:
         type: integer
       user_id:
+        type: string
+    type: object
+  rest.ProjectMemberRoleCapabilitiesResponse:
+    properties:
+      capabilities:
+        items:
+          $ref: '#/definitions/rest.ProjectMemberRoleCapabilityResponse'
+        type: array
+      roles:
+        items:
+          $ref: '#/definitions/rest.ProjectMemberRoleOptionResponse'
+        type: array
+    type: object
+  rest.ProjectMemberRoleCapabilityResponse:
+    properties:
+      admin:
+        type: boolean
+      editor:
+        type: boolean
+      id:
+        enum:
+        - project.read
+        - project.update
+        - project.delete
+        - task.read
+        - task.create
+        - task.update
+        - task.delete
+        - action_item.read
+        - action_item.create
+        - action_item.update
+        - action_item.delete
+        - schedule.read
+        - schedule.create
+        - schedule.update
+        - schedule.delete
+        - task_assignment.update
+        - schedule_assignment.update
+        - occurrence.update
+        - project_member.read
+        - project_member.invite
+        - project_member.manage_basic
+        - project_member.manage_admin
+        type: string
+      name:
+        type: string
+      owner:
+        type: boolean
+      viewer:
+        type: boolean
+    type: object
+  rest.ProjectMemberRoleOptionResponse:
+    properties:
+      assignable:
+        type: boolean
+      id:
+        enum:
+        - admin
+        - editor
+        - viewer
+        type: string
+      name:
         type: string
     type: object
   rest.ProjectMemberUpsertRequest:
@@ -860,6 +1036,10 @@ definitions:
         type: string
       id:
         type: string
+      member_count:
+        type: integer
+      pending_invitation_count:
+        type: integer
       priority:
         $ref: '#/definitions/rest.ProjectPriorityResponse'
       progress:
@@ -897,6 +1077,8 @@ definitions:
     - end_date
     - goal
     - id
+    - member_count
+    - pending_invitation_count
     - priority
     - progress
     - remaining_days
@@ -2420,7 +2602,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rest.AuthLinkResult'
+            $ref: '#/definitions/rest.PersonalAccessTokenResponse'
         "400":
           description: Bad Request
           schema:
@@ -2515,6 +2697,74 @@ paths:
       summary: List inbox
       tags:
       - Inbox
+  /invitations/accept:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Invitation token and, for a new or unverified account, password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.ProjectInvitationAcceptanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Account created or verified and signed in
+          schema:
+            $ref: '#/definitions/rest.PersonalAccessTokenResponse'
+        "204":
+          description: Verified recipient joined project
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      summary: Accept project invitation
+      tags:
+      - Project Invitations
+  /invitations/preview:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Invitation token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.ProjectInvitationPreviewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.ProjectInvitationPreviewResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      summary: Preview project invitation
+      tags:
+      - Project Invitations
   /login:
     post:
       consumes:
@@ -2891,6 +3141,138 @@ paths:
       summary: Update project
       tags:
       - Projects
+  /projects/{id}/invitations:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Invitation
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.ProjectInvitationCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/rest.ProjectInvitationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Invite a project member
+      tags:
+      - Projects
+  /projects/{id}/invitations/{invitation_id}:
+    delete:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Invitation ID
+        in: path
+        name: invitation_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke project invitation
+      tags:
+      - Projects
+  /projects/{id}/invitations/{invitation_id}/resend:
+    post:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Invitation ID
+        in: path
+        name: invitation_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Resend project invitation
+      tags:
+      - Projects
   /projects/{id}/members:
     get:
       parameters:
@@ -2898,6 +3280,18 @@ paths:
         in: path
         name: id
         required: true
+        type: string
+      - description: Items per page (default 50, maximum 100)
+        in: query
+        name: page_size
+        type: integer
+      - description: Opaque cursor for the next page
+        in: query
+        name: page_token
+        type: string
+      - description: Response field mask
+        in: query
+        name: fields
         type: string
       produces:
       - application/json
@@ -2964,6 +3358,56 @@ paths:
       summary: Remove a project member
       tags:
       - Projects
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Member user ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Member role
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.ProjectMemberUpsertRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a project member role
+      tags:
+      - Projects
     put:
       consumes:
       - application/json
@@ -3011,7 +3455,7 @@ paths:
             $ref: '#/definitions/rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Add or update a project member
+      summary: Update a project member role
       tags:
       - Projects
   /projects/{id}/restore:
@@ -3685,6 +4129,24 @@ paths:
       summary: List roles
       tags:
       - Authorization
+  /roles/capabilities:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.ProjectMemberRoleCapabilitiesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: List project role capabilities
+      tags:
+      - Projects
   /schedule-rules:
     post:
       consumes:

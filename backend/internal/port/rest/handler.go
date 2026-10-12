@@ -8,22 +8,23 @@ import (
 )
 
 type Handler struct {
-	User                *UserHandler
-	Signup              *SignupHandler
-	EmailAuth           *EmailAuthHandler
-	Login               *LoginHandler
-	PersonalAccessToken *PersonalAccessTokenHandler
-	Project             *ProjectHandler
-	Task                *TaskHandler
-	ActionItem          *ActionItemHandler
-	Schedule            *ScheduleHandler
-	ProjectMember       *ProjectMemberHandler
-	Role                *RoleHandler
-	Timezone            *TimezoneHandler
-	Admin               *AdminHandler
-	Inbox               *InboxHandler
-	Allocation          *AllocationHandler
-	Todos               *TodosHandler
+	User                        *UserHandler
+	Signup                      *SignupHandler
+	EmailAuth                   *EmailAuthHandler
+	Login                       *LoginHandler
+	PersonalAccessToken         *PersonalAccessTokenHandler
+	Project                     *ProjectHandler
+	Task                        *TaskHandler
+	ActionItem                  *ActionItemHandler
+	Schedule                    *ScheduleHandler
+	ProjectMember               *ProjectMemberHandler
+	ProjectInvitationAcceptance *ProjectInvitationAcceptanceHandler
+	Role                        *RoleHandler
+	Timezone                    *TimezoneHandler
+	Admin                       *AdminHandler
+	Inbox                       *InboxHandler
+	Allocation                  *AllocationHandler
+	Todos                       *TodosHandler
 }
 
 func NewHandler(usecases application.UseCase, issueID func() string, pageTokenKey []byte) (*Handler, error) {
@@ -33,21 +34,22 @@ func NewHandler(usecases application.UseCase, issueID func() string, pageTokenKe
 	}
 
 	return &Handler{
-		User:                NewUserHandler(usecases.User),
-		Signup:              NewSignupHandler(usecases.EmailAuth.RegisterUser, issueID),
-		EmailAuth:           NewEmailAuthHandler(usecases.EmailAuth),
-		Login:               NewLoginHandler(usecases.PersonalAccessToken),
-		PersonalAccessToken: NewPersonalAccessTokenHandler(usecases.PersonalAccessToken),
-		Project:             NewProjectHandler(usecases.Project, usecases.Task, issueID, pageTokens),
-		Task:                NewTaskHandler(usecases.Task, issueID, pageTokens),
-		ActionItem:          NewActionItemHandler(usecases.ActionItem, issueID, pageTokens),
-		Schedule:            NewScheduleHandler(usecases.Schedule, pageTokens),
-		ProjectMember:       NewProjectMemberHandler(usecases.Project),
-		Role:                NewRoleHandler(usecases.Role),
-		Timezone:            NewTimezoneHandler(usecases.Timezone),
-		Admin:               NewAdminHandler(usecases.Admin.Job, usecases.Admin.Operation, pageTokens),
-		Inbox:               NewInboxHandler(usecases.Inbox, pageTokens),
-		Allocation:          NewAllocationHandler(usecases.Allocation),
-		Todos:               NewTodosHandler(TodosUseCases{GetToday: usecases.Todo.GetToday, Regenerate: usecases.Todo.Regenerate, AddActionItem: usecases.Todo.AddActionItem, AddTask: usecases.Todo.AddTask, Reflow: usecases.Todo.Reflow, CompleteFrame: usecases.Todo.CompleteFrame, ReopenFrame: usecases.Todo.ReopenFrame, RemoveActionItem: usecases.Todo.RemoveActionItem, HideSchedule: usecases.Todo.HideSchedule, RestoreSchedule: usecases.Todo.RestoreSchedule}),
+		User:                        NewUserHandler(usecases.User),
+		Signup:                      NewSignupHandler(usecases.EmailAuth.RegisterUser, issueID),
+		EmailAuth:                   NewEmailAuthHandler(usecases.EmailAuth),
+		Login:                       NewLoginHandler(usecases.PersonalAccessToken),
+		PersonalAccessToken:         NewPersonalAccessTokenHandler(usecases.PersonalAccessToken),
+		Project:                     NewProjectHandler(usecases.Project, usecases.Task, issueID, pageTokens),
+		Task:                        NewTaskHandler(usecases.Task, issueID, pageTokens),
+		ActionItem:                  NewActionItemHandler(usecases.ActionItem, issueID, pageTokens),
+		Schedule:                    NewScheduleHandler(usecases.Schedule, pageTokens),
+		ProjectMember:               NewProjectMemberHandler(usecases.Project, pageTokens, issueID, usecases.Role.List),
+		ProjectInvitationAcceptance: NewProjectInvitationAcceptanceHandler(usecases.AcceptProjectInvitation, issueID),
+		Role:                        NewRoleHandler(usecases.Role),
+		Timezone:                    NewTimezoneHandler(usecases.Timezone),
+		Admin:                       NewAdminHandler(usecases.Admin.Job, usecases.Admin.Operation, pageTokens),
+		Inbox:                       NewInboxHandler(usecases.Inbox, pageTokens),
+		Allocation:                  NewAllocationHandler(usecases.Allocation),
+		Todos:                       NewTodosHandler(TodosUseCases{GetToday: usecases.Todo.GetToday, Regenerate: usecases.Todo.Regenerate, AddActionItem: usecases.Todo.AddActionItem, AddTask: usecases.Todo.AddTask, Reflow: usecases.Todo.Reflow, CompleteFrame: usecases.Todo.CompleteFrame, ReopenFrame: usecases.Todo.ReopenFrame, RemoveActionItem: usecases.Todo.RemoveActionItem, HideSchedule: usecases.Todo.HideSchedule, RestoreSchedule: usecases.Todo.RestoreSchedule}),
 	}, nil
 }
