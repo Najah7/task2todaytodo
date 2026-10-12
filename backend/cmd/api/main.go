@@ -243,6 +243,9 @@ func main() {
 		auth.Post("/schedules/{rule_id}/{occurrence_date}:restore", handler.Schedule.RestoreOccurrence)
 		auth.Post("/schedules/{rule_id}/{occurrence_date}:reschedule", handler.Schedule.RescheduleOccurrence)
 
+		// Metrics
+		auth.Get("/metrics/todo-completion", handler.Metrics.TodoCompletion)
+		auth.Get("/metrics/overdue-work", handler.Metrics.OverdueWork)
 	})
 
 	srv := &http.Server{

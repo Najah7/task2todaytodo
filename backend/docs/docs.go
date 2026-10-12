@@ -1025,6 +1025,99 @@ const docTemplate = `{
                 }
             }
         },
+        "/metrics/overdue-work": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Metrics"
+                ],
+                "summary": "Get overdue work metrics",
+                "operationId": "GetOverdueWorkMetrics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.OverdueWorkMetricsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/metrics/todo-completion": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Metrics"
+                ],
+                "summary": "Get Todo completion metrics",
+                "operationId": "GetTodoCompletionMetrics",
+                "parameters": [
+                    {
+                        "enum": [
+                            7,
+                            30
+                        ],
+                        "type": "integer",
+                        "default": 7,
+                        "description": "Calendar days ending today (7 or 30; default 7)",
+                        "name": "days",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.TodoCompletionMetricsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/password-reset/confirm": {
             "post": {
                 "consumes": [
@@ -7086,6 +7179,45 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.OverdueProjectResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "project_id": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "project_title": {
+                    "type": "string",
+                    "x-nullable": true
+                }
+            }
+        },
+        "rest.OverdueWorkMetricsResponse": {
+            "type": "object",
+            "properties": {
+                "as_of_date": {
+                    "type": "string"
+                },
+                "other_count": {
+                    "type": "integer"
+                },
+                "projects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.OverdueProjectResponse"
+                    }
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "total_overdue_count": {
+                    "type": "integer"
+                }
+            }
+        },
         "rest.PasswordResetConfirmRequest": {
             "type": "object",
             "properties": {
@@ -8941,6 +9073,54 @@ const docTemplate = `{
                     "maximum": 2147483647,
                     "minimum": 0,
                     "x-nullable": true
+                }
+            }
+        },
+        "rest.TodoCompletionDayResponse": {
+            "type": "object",
+            "properties": {
+                "completed_items": {
+                    "type": "integer"
+                },
+                "completion_ratio": {
+                    "type": "number",
+                    "x-nullable": true
+                },
+                "date": {
+                    "type": "string"
+                },
+                "planned_items": {
+                    "type": "integer"
+                }
+            }
+        },
+        "rest.TodoCompletionMetricsResponse": {
+            "type": "object",
+            "properties": {
+                "completed_items": {
+                    "type": "integer"
+                },
+                "completion_ratio": {
+                    "type": "number",
+                    "x-nullable": true
+                },
+                "days": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.TodoCompletionDayResponse"
+                    }
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "total_planned_items": {
+                    "type": "integer"
                 }
             }
         },

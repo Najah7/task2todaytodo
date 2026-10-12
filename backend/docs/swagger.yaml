@@ -659,6 +659,32 @@ definitions:
           type: integer
         type: object
     type: object
+  rest.OverdueProjectResponse:
+    properties:
+      count:
+        type: integer
+      project_id:
+        type: string
+        x-nullable: true
+      project_title:
+        type: string
+        x-nullable: true
+    type: object
+  rest.OverdueWorkMetricsResponse:
+    properties:
+      as_of_date:
+        type: string
+      other_count:
+        type: integer
+      projects:
+        items:
+          $ref: '#/definitions/rest.OverdueProjectResponse'
+        type: array
+      timezone:
+        type: string
+      total_overdue_count:
+        type: integer
+    type: object
   rest.PasswordResetConfirmRequest:
     properties:
       password:
@@ -1928,6 +1954,38 @@ definitions:
         type: integer
         x-nullable: true
     type: object
+  rest.TodoCompletionDayResponse:
+    properties:
+      completed_items:
+        type: integer
+      completion_ratio:
+        type: number
+        x-nullable: true
+      date:
+        type: string
+      planned_items:
+        type: integer
+    type: object
+  rest.TodoCompletionMetricsResponse:
+    properties:
+      completed_items:
+        type: integer
+      completion_ratio:
+        type: number
+        x-nullable: true
+      days:
+        items:
+          $ref: '#/definitions/rest.TodoCompletionDayResponse'
+        type: array
+      end_date:
+        type: string
+      start_date:
+        type: string
+      timezone:
+        type: string
+      total_planned_items:
+        type: integer
+    type: object
   rest.TodoItemResponse:
     properties:
       action_item_id:
@@ -2803,6 +2861,65 @@ paths:
       summary: Log in
       tags:
       - Personal Access Tokens
+  /metrics/overdue-work:
+    get:
+      operationId: GetOverdueWorkMetrics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.OverdueWorkMetricsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Get overdue work metrics
+      tags:
+      - Metrics
+  /metrics/todo-completion:
+    get:
+      operationId: GetTodoCompletionMetrics
+      parameters:
+      - default: 7
+        description: Calendar days ending today (7 or 30; default 7)
+        enum:
+        - 7
+        - 30
+        in: query
+        name: days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.TodoCompletionMetricsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Todo completion metrics
+      tags:
+      - Metrics
   /password-reset/confirm:
     post:
       consumes:

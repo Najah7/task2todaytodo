@@ -7,6 +7,7 @@ import (
 	allocationusecase "github.com/Najah7/task2todaytodo/internal/application/allocation/usecase"
 	authusecase "github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
 	inboxusecase "github.com/Najah7/task2todaytodo/internal/application/inbox/usecase"
+	metricusecase "github.com/Najah7/task2todaytodo/internal/application/metric/usecase"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
@@ -29,6 +30,7 @@ type UseCase struct {
 	Inbox                   inboxusecase.InboxUseCases
 	Allocation              allocationusecase.UseCases
 	Todo                    todousecase.UseCases
+	Metric                  metricusecase.UseCases
 }
 
 type AuthEmailSettings struct {
@@ -60,5 +62,9 @@ func NewUseCase(store Store, uow UOW, id IDIssuer, logger telemetry.Logger, emai
 		Inbox:                   NewInboxUseCases(store.Auth, store.Task, schedules, store.Inbox, logger),
 		Allocation:              allocationusecase.NewUseCases(store.Allocation, uow.Allocation, id.NewULID, time.Now, uow.AllocationRead),
 		Todo:                    todousecase.NewUseCases(uow.Todo, id.NewULID, logger),
+		Metric: metricusecase.UseCases{
+			TodoCompletion: metricusecase.NewTodoCompletionUseCase(store.Metric),
+			OverdueWork:    metricusecase.NewOverdueWorkUseCase(store.Metric),
+		},
 	}, closeAdmin
 }
