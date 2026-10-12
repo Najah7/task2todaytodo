@@ -1,6 +1,7 @@
 erDiagram
-    %% External references: users, projects, priority_master, roles, and project_members.
-    %% Composite FK: tasks(project_id, user_id) -> projects(id, user_id).
+    %% Tables created by 000003_task.up.sql.
+    %% External references: users (auth.mmd), projects (project.mmd), priority_master and status_master (project.mmd).
+    %% tasks(project_id, user_id) references projects(id, user_id); task_revisions stores project_id as a snapshot without an FK.
 
     users {
         text id PK "NOT NULL"
@@ -17,10 +18,6 @@ erDiagram
 
     status_master {
         text status PK "NOT NULL"
-        text label "NOT NULL"
-        text label_jp "NOT NULL"
-        timestamptz created_at "NOT NULL"
-        timestamptz updated_at "NOT NULL"
     }
 
     frequency_master {
@@ -39,7 +36,7 @@ erDiagram
         text title "NOT NULL"
         text description "NULL"
         date due_date "NULL"
-        integer estimated_minutes "NULL"
+        integer manual_estimated_minutes "NULL"
         integer actual_minutes "NULL"
         text priority FK "NOT NULL"
         text status FK "NOT NULL"
@@ -59,7 +56,7 @@ erDiagram
         text title "NOT NULL"
         text description "NULL"
         date due_date "NULL"
-        integer estimated_minutes "NULL"
+        integer manual_estimated_minutes "NULL"
         integer actual_minutes "NULL"
         text priority "NOT NULL"
         text status "NOT NULL"
@@ -78,17 +75,22 @@ erDiagram
         date due_date "NULL"
         boolean completed "NOT NULL"
         integer position "NOT NULL"
+        integer estimated_minutes "NULL"
+        text priority FK "NOT NULL"
         timestamptz deleted_at "NULL"
         timestamptz created_at "NOT NULL"
         timestamptz updated_at "NOT NULL"
     }
 
     users ||..o{ tasks : owns
-    users ||..o{ tasks : assignee
+    users ||..o{ tasks : assigned_to
     users ||..o{ tasks : changed_by
     projects |o..o{ tasks : optional_project_owner_pair
     priority_master ||..o{ tasks : prioritizes
-    status_master ||..o{ tasks : status
+    status_master ||..o{ tasks : current_status
     tasks ||--o{ task_revisions : has_revisions
+    users ||..o{ task_revisions : revision_owner
+    users ||..o{ task_revisions : assigned_to
     users ||..o{ task_revisions : changed_by
     tasks ||..o{ action_items : contains
+    priority_master ||..o{ action_items : prioritizes

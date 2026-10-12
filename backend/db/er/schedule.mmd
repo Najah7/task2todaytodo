@@ -1,5 +1,9 @@
 erDiagram
-    %% users and projects are reference-only entities owned by other diagrams.
+    %% Tables created by 000004_schedule.up.sql.
+    %% External references: users (auth.mmd), projects (project.mmd), timezone_master (auth.mmd).
+    %% Composite unique keys: schedule_rules(id, user_id), schedule_rule_revisions(id, rule_id, user_id), schedules(id, rule_id), schedules(rule_id, occurrence_date).
+    %% schedule_exceptions key (rule_id, occurrence_date) also references schedules(rule_id, occurrence_date).
+
     users {
         text id PK "NOT NULL"
     }
@@ -13,46 +17,48 @@ erDiagram
         text timezone PK "NOT NULL"
     }
 
-    schedule_blueprints {
+    schedule_rules {
         text id PK "NOT NULL"
         text user_id FK "NOT NULL"
         timestamptz deleted_at "NULL"
         timestamptz created_at "NOT NULL"
     }
 
-    schedule_blueprint_revisions {
+    schedule_rule_revisions {
         text id PK "NOT NULL"
-        text blueprint_id FK "NOT NULL"
+        text rule_id FK "NOT NULL"
         text user_id FK "NOT NULL"
         integer revision "NOT NULL"
         date effective_from "NOT NULL"
         date recurrence_anchor_date "NOT NULL"
         timestamp local_start "NOT NULL"
         timestamp local_end "NOT NULL"
+        boolean all_day "NOT NULL"
         text timezone FK "NOT NULL"
         text frequency "NOT NULL"
         integer interval_count "NOT NULL"
         text_array weekdays "NOT NULL"
         date end_date "NULL"
-        date cutoff_after "NULL"
         text title "NOT NULL"
         text description "NULL"
         text location "NULL"
         text project_id FK "NULL"
         text assignee_id FK "NOT NULL"
         timestamptz superseded_at "NULL"
+        date cutoff_after "NULL"
         text changed_by FK "NOT NULL"
         timestamptz created_at "NOT NULL"
     }
 
     schedules {
         text id PK "NOT NULL"
-        text blueprint_id FK "NOT NULL"
+        text rule_id FK "NOT NULL"
         text source_revision_id FK "NOT NULL"
         text user_id FK "NOT NULL"
         date occurrence_date "NOT NULL"
         timestamptz start_at "NOT NULL"
         timestamptz end_at "NOT NULL"
+        boolean all_day "NOT NULL"
         text title "NOT NULL"
         text description "NULL"
         text location "NULL"
@@ -62,7 +68,6 @@ erDiagram
         boolean completed "NOT NULL"
         timestamptz skipped_at "NULL"
         timestamptz deleted_at "NULL"
-        boolean is_override "NOT NULL"
         integer revision "NOT NULL"
         text changed_by FK "NOT NULL"
         timestamptz created_at "NOT NULL"
@@ -77,6 +82,7 @@ erDiagram
         date occurrence_date "NOT NULL"
         timestamptz start_at "NOT NULL"
         timestamptz end_at "NOT NULL"
+        boolean all_day "NOT NULL"
         text title "NOT NULL"
         text description "NULL"
         text location "NULL"
@@ -86,14 +92,35 @@ erDiagram
         boolean completed "NOT NULL"
         timestamptz skipped_at "NULL"
         timestamptz deleted_at "NULL"
-        boolean is_override "NOT NULL"
         text changed_by FK "NOT NULL"
         timestamptz changed_at "NOT NULL"
     }
 
+    schedule_exceptions {
+        text rule_id PK, FK "NOT NULL"
+        date occurrence_date PK, FK "NOT NULL"
+        text source_revision_id FK "NOT NULL"
+        text user_id FK "NOT NULL"
+        timestamptz start_at "NOT NULL"
+        timestamptz end_at "NOT NULL"
+        boolean all_day "NOT NULL"
+        text title "NOT NULL"
+        text description "NULL"
+        text location "NULL"
+        text project_id FK "NULL"
+        text assignee_id FK "NOT NULL"
+        text timezone FK "NOT NULL"
+        boolean completed "NOT NULL"
+        timestamptz skipped_at "NULL"
+        timestamptz deleted_at "NULL"
+        text changed_by FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
     schedule_project_pause_intervals {
         text project_id PK, FK "NOT NULL"
-        text blueprint_id PK, FK "NOT NULL"
+        text rule_id PK, FK "NOT NULL"
         timestamptz paused_at PK "NOT NULL"
         timestamptz resumed_at "NULL"
         text paused_by FK "NOT NULL"
@@ -106,19 +133,36 @@ erDiagram
         timestamptz updated_at "NOT NULL"
     }
 
-    users ||--o{ schedule_blueprints : owns
-    schedule_blueprints ||--o{ schedule_blueprint_revisions : defines
-    users ||--o{ schedule_blueprint_revisions : owns
-    projects |o--o{ schedule_blueprint_revisions : assigned_project
-    timezone_master ||--o{ schedule_blueprint_revisions : local_time_zone
-    users ||--o{ schedule_blueprint_revisions : assignee
-    schedule_blueprints ||--o{ schedules : generates
-    schedule_blueprint_revisions ||--o{ schedules : source_definition
-    projects |o--o{ schedules : assigned_project
-    timezone_master ||--o{ schedules : snapshot_time_zone
-    users ||--o{ schedules : assignee
-    schedules ||--o{ schedule_revisions : audit
-    timezone_master ||--o{ schedule_revisions : audited_time_zone
-    schedule_blueprints ||--o{ schedule_project_pause_intervals : paused_in_project
-    projects ||--o{ schedule_project_pause_intervals : pauses
-    schedule_blueprint_revisions ||--o| schedule_backfill_checkpoints : backfill_checkpoint
+    users ||..o{ schedule_rules : owns
+    schedule_rules ||..o{ schedule_rule_revisions : revision_of_rule
+    users ||..o{ schedule_rule_revisions : owned_by
+    projects |o..o{ schedule_rule_revisions : assigned_project_owner_pair
+    timezone_master ||..o{ schedule_rule_revisions : local_timezone
+    users ||..o{ schedule_rule_revisions : assigned_to
+    users ||..o{ schedule_rule_revisions : changed_by
+    schedule_rules ||..o{ schedules : generates
+    schedule_rule_revisions ||..o{ schedules : source_definition
+    users ||..o{ schedules : owned_by
+    projects |o..o{ schedules : assigned_project_owner_pair
+    users ||..o{ schedules : assigned_to
+    timezone_master ||..o{ schedules : snapshot_timezone
+    users ||..o{ schedules : changed_by
+    schedules ||--o{ schedule_revisions : has_revisions
+    schedule_rule_revisions ||..o{ schedule_revisions : source_definition
+    users ||..o{ schedule_revisions : owned_by
+    users ||..o{ schedule_revisions : assigned_to
+    timezone_master ||..o{ schedule_revisions : snapshot_timezone
+    users ||..o{ schedule_revisions : changed_by
+    schedule_rules ||..o{ schedule_exceptions : exception_for_rule
+    schedule_rule_revisions ||..o{ schedule_exceptions : source_definition
+    schedules ||--o| schedule_exceptions : synchronized_projection
+    users ||..o{ schedule_exceptions : owned_by
+    projects |o..o{ schedule_exceptions : assigned_project_owner_pair
+    users ||..o{ schedule_exceptions : assigned_to
+    timezone_master ||..o{ schedule_exceptions : snapshot_timezone
+    users ||..o{ schedule_exceptions : changed_by
+    projects ||--o{ schedule_project_pause_intervals : paused_project
+    schedule_rules ||--o{ schedule_project_pause_intervals : paused_rule
+    users ||..o{ schedule_project_pause_intervals : paused_by
+    users |o..o{ schedule_project_pause_intervals : resumed_by
+    schedule_rule_revisions ||--o| schedule_backfill_checkpoints : backfill_checkpoint

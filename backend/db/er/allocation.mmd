@@ -1,0 +1,130 @@
+erDiagram
+    %% Tables created by 000007_allocation.up.sql.
+    %% External references: users (auth.mmd), projects (project.mmd), timezone_master (auth.mmd).
+    %% Composite keys: project_time_allocation_rules(id, user_id); project_time_allocation_rule_revisions(id, rule_id, user_id); project_time_allocations(rule_id, occurrence_date); project_time_allocation_exceptions(rule_id, occurrence_date); project_time_allocation_pause_intervals(project_id, rule_id, paused_at); daily_sleep_exceptions(user_id, local_date).
+    %% Composite FKs bind rule, source revision, and user. project_time_allocation_rule_revisions also has unique keys (rule_id, revision) and (id, rule_id, user_id).
+
+    users {
+        text id PK "NOT NULL"
+    }
+
+    projects {
+        text id PK "NOT NULL"
+    }
+
+    timezone_master {
+        text timezone PK "NOT NULL"
+    }
+
+    project_time_allocation_rules {
+        text id PK "NOT NULL"
+        text user_id FK "NOT NULL"
+        text project_id FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz deleted_at "NULL"
+        date stopped_after "NULL"
+        text pause_reason "NULL"
+        timestamptz paused_at "NULL"
+    }
+
+    project_time_allocation_plans {
+        text user_id PK, FK "NOT NULL"
+        text project_id PK, FK "NOT NULL"
+        integer target_minutes "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    project_time_allocation_rule_revisions {
+        text id PK "NOT NULL"
+        text rule_id FK "NOT NULL"
+        text user_id FK "NOT NULL"
+        text project_id FK "NOT NULL"
+        integer revision "NOT NULL"
+        date effective_from "NOT NULL"
+        date recurrence_start_date "NOT NULL"
+        timestamptz effective_at "NOT NULL"
+        smallint weekday "NOT NULL"
+        time local_start "NOT NULL"
+        time local_end "NOT NULL"
+        smallint end_day_offset "NOT NULL"
+        text timezone FK "NOT NULL"
+        text frequency "NOT NULL"
+        timestamptz superseded_at "NULL"
+        text changed_by FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+    }
+
+    project_time_allocations {
+        text id PK "NOT NULL"
+        text rule_id FK "NOT NULL"
+        text source_revision_id FK "NOT NULL"
+        text user_id FK "NOT NULL"
+        text project_id FK "NOT NULL"
+        date occurrence_date "NOT NULL"
+        timestamptz start_at "NOT NULL"
+        timestamptz end_at "NOT NULL"
+        text timezone FK "NOT NULL"
+        timestamptz deleted_at "NULL"
+        integer revision "NOT NULL"
+        text changed_by FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    project_time_allocation_exceptions {
+        text rule_id PK, FK "NOT NULL"
+        date occurrence_date PK "NOT NULL"
+        text source_revision_id FK "NOT NULL"
+        text user_id FK "NOT NULL"
+        text project_id FK "NOT NULL"
+        timestamptz start_at "NOT NULL"
+        timestamptz end_at "NOT NULL"
+        text timezone FK "NOT NULL"
+        timestamptz deleted_at "NULL"
+        text changed_by FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    project_time_allocation_pause_intervals {
+        text project_id PK, FK "NOT NULL"
+        text rule_id PK, FK "NOT NULL"
+        timestamptz paused_at PK "NOT NULL"
+        timestamptz resumed_at "NULL"
+    }
+
+    daily_sleep_exceptions {
+        text user_id PK, FK "NOT NULL"
+        date local_date PK "NOT NULL"
+        timestamp wake_local "NOT NULL"
+        timestamp bedtime_local "NOT NULL"
+        text timezone FK "NOT NULL"
+        integer revision "NOT NULL"
+        timestamptz changed_at "NOT NULL"
+    }
+
+    users ||..o{ project_time_allocation_rules : owns
+    projects ||..o{ project_time_allocation_rules : allocates_for
+    users ||--o{ project_time_allocation_plans : plan_owner
+    projects ||--o{ project_time_allocation_plans : plan_project
+    project_time_allocation_rules ||..o{ project_time_allocation_rule_revisions : has_revisions
+    users ||..o{ project_time_allocation_rule_revisions : revision_owner
+    projects ||..o{ project_time_allocation_rule_revisions : revision_project
+    timezone_master ||..o{ project_time_allocation_rule_revisions : local_timezone
+    users ||..o{ project_time_allocation_rule_revisions : changed_by
+    project_time_allocation_rules ||..o{ project_time_allocations : generates
+    project_time_allocation_rule_revisions ||..o{ project_time_allocations : source_revision
+    users ||..o{ project_time_allocations : allocation_owner
+    projects ||..o{ project_time_allocations : allocated_project
+    timezone_master ||..o{ project_time_allocations : snapshot_timezone
+    users ||..o{ project_time_allocations : changed_by
+    project_time_allocation_rules ||--o{ project_time_allocation_exceptions : has_exceptions
+    project_time_allocation_rule_revisions ||..o{ project_time_allocation_exceptions : source_revision
+    users ||..o{ project_time_allocation_exceptions : exception_owner
+    projects ||..o{ project_time_allocation_exceptions : exception_project
+    timezone_master ||..o{ project_time_allocation_exceptions : snapshot_timezone
+    users ||..o{ project_time_allocation_exceptions : changed_by
+    projects ||--o{ project_time_allocation_pause_intervals : paused_project
+    project_time_allocation_rules ||--o{ project_time_allocation_pause_intervals : paused_rule
+    users ||--o{ daily_sleep_exceptions : sleep_owner
+    timezone_master ||..o{ daily_sleep_exceptions : local_timezone

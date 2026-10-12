@@ -1,6 +1,7 @@
 erDiagram
-    %% users and roles are defined in auth.mmd; project_members is shown here for permissions.
-    %% Composite unique key: projects(id, user_id).
+    %% Tables created by 000002_project.up.sql.
+    %% users is defined in auth.mmd; composite unique key: projects(id, user_id).
+    %% project_members key: (project_id, user_id); project_revisions key: (id, revision).
 
     users {
         text id PK "NOT NULL"
@@ -10,19 +11,19 @@ erDiagram
         text role_id PK "NOT NULL"
     }
 
-    project_type_master {
-        text type PK "NOT NULL"
-        text label "NOT NULL"
-        text label_jp "NOT NULL"
-        timestamptz created_at "NOT NULL"
-        timestamptz updated_at "NOT NULL"
-    }
-
     priority_master {
         text priority PK "NOT NULL"
         text label "NOT NULL"
         text label_jp "NOT NULL"
         integer weight "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    project_type_master {
+        text type PK "NOT NULL"
+        text label "NOT NULL"
+        text label_jp "NOT NULL"
         timestamptz created_at "NOT NULL"
         timestamptz updated_at "NOT NULL"
     }
@@ -85,9 +86,11 @@ erDiagram
     users ||..o{ projects : changed_by
     project_type_master ||..o{ projects : classifies
     priority_master ||..o{ projects : prioritizes
-    status_master ||..o{ projects : status
-    projects ||--o{ project_members : shares_with
+    status_master ||..o{ projects : current_status
+    projects ||--o{ project_members : has_members
     users ||--o{ project_members : member
     roles ||..o{ project_members : assigned_role
+    users ||..o{ project_members : added_by
     projects ||--o{ project_revisions : has_revisions
+    users ||..o{ project_revisions : revision_owner
     users ||..o{ project_revisions : changed_by

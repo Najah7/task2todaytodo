@@ -1,0 +1,29 @@
+erDiagram
+    %% Tables created by 000006_admin_operations.up.sql.
+    %% users is defined in auth.mmd.
+
+    users {
+        text id PK "NOT NULL"
+    }
+
+    admin_operations {
+        text id PK "NOT NULL"
+        text job_name "NOT NULL"
+        text state "NOT NULL"
+        text requested_by FK "NOT NULL"
+        timestamptz cutoff "NOT NULL"
+        timestamptz started_at "NOT NULL"
+        timestamptz finished_at "NULL"
+        timestamptz heartbeat_at "NOT NULL"
+        timestamptz lease_expires_at "NOT NULL"
+        text lease_token "NOT NULL"
+        bigint processed_rules "NOT NULL"
+        bigint generated_schedules "NOT NULL"
+        bigint generated_occurrences "NOT NULL"
+        jsonb response "NULL"
+        text error_code "NULL"
+        text error_message "NULL"
+        timestamptz created_at "NOT NULL"
+    }
+
+    users ||..o{ admin_operations : requested_by

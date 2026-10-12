@@ -1,5 +1,11 @@
 erDiagram
-    %% Composite unique constraint: permissions(resource_id, action, effect).
+    %% Tables created by 000001_auth.up.sql.
+    %% permissions(resource_id, action, effect) is unique.
+
+    timezone_master {
+        text timezone PK "NOT NULL"
+    }
+
     users {
         text id PK "NOT NULL"
         text first_name "NOT NULL"
@@ -8,15 +14,9 @@ erDiagram
         text password "NOT NULL"
         timestamptz created_at "NOT NULL"
         timestamptz updated_at "NOT NULL"
-        text timezone "NOT NULL"
-    }
-
-    personal_access_tokens {
-        text token PK "NOT NULL"
-        text user_id FK "NOT NULL"
-        timestamptz expires_at "NOT NULL"
-        timestamptz revoked_at "NULL"
-        timestamptz created_at "NOT NULL"
+        text timezone FK "NOT NULL"
+        time wake_up_time "NOT NULL"
+        time bedtime "NOT NULL"
     }
 
     roles {
@@ -46,7 +46,24 @@ erDiagram
         timestamptz created_at "NOT NULL"
     }
 
-    users ||..o{ personal_access_tokens : owns
-    managed_resources ||..o{ permissions : defines
+    system_user_roles {
+        text user_id PK, FK "NOT NULL"
+        text role_id PK, FK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+    }
+
+    personal_access_tokens {
+        text token PK "NOT NULL"
+        text user_id FK "NOT NULL"
+        timestamptz expires_at "NOT NULL"
+        timestamptz revoked_at "NULL"
+        timestamptz created_at "NOT NULL"
+    }
+
+    timezone_master ||..o{ users : local_timezone
+    users ||--o{ system_user_roles : system_role
+    roles ||--o{ system_user_roles : assigned_system_role
     roles ||--o{ role_permissions : grants
     permissions ||--o{ role_permissions : granted_as
+    managed_resources ||..o{ permissions : defines
+    users ||..o{ personal_access_tokens : owns
