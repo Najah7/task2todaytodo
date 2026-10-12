@@ -32,11 +32,11 @@ type projectStatusChildrenFake struct {
 	paused, resumed int
 }
 
-func (f *projectStatusChildrenFake) PauseProjectBlueprints(context.Context, string, string, time.Time) error {
+func (f *projectStatusChildrenFake) PauseProjectRules(context.Context, string, string, time.Time) error {
 	f.paused++
 	return nil
 }
-func (f *projectStatusChildrenFake) ResumeProjectBlueprints(context.Context, string, string, time.Time) error {
+func (f *projectStatusChildrenFake) ResumeProjectRules(context.Context, string, string, time.Time) error {
 	f.resumed++
 	return nil
 }
@@ -57,9 +57,9 @@ func TestChangeProjectStatusRunsScheduleLifecycleInSameUOW(t *testing.T) {
 		wantPause  int
 		wantResume int
 	}{
-		{name: "manual completion pauses recurring blueprints", from: "open", to: "done", wantPause: 1},
-		{name: "manual reopening resumes project-paused blueprints", from: "done", to: "open", wantResume: 1},
-		{name: "other status change does not touch blueprints", from: "pending", to: "in_progress"},
+		{name: "manual completion pauses recurring rules", from: "open", to: "done", wantPause: 1},
+		{name: "manual reopening resumes project-paused rules", from: "done", to: "open", wantResume: 1},
+		{name: "other status change does not touch rules", from: "pending", to: "in_progress"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

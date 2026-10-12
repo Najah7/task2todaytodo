@@ -1,11 +1,11 @@
--- name: ReassignProjectMemberBlueprintRevisions :execrows
+-- name: ReassignProjectMemberRuleRevisions :execrows
 WITH active AS (
     SELECT revision.*, (now() AT TIME ZONE revision.timezone)::date AS local_today
-    FROM schedule_blueprint_revisions revision
-    JOIN schedule_blueprints blueprint ON blueprint.id = revision.blueprint_id AND blueprint.deleted_at IS NULL
+    FROM schedule_rule_revisions revision
+    JOIN schedule_rules rule ON rule.id = revision.rule_id AND rule.deleted_at IS NULL
     WHERE revision.superseded_at IS NULL
 ), current_ranked AS (
-    SELECT active.*, row_number() OVER (PARTITION BY active.blueprint_id ORDER BY active.effective_from DESC, active.revision DESC) AS position
+    SELECT active.*, row_number() OVER (PARTITION BY active.rule_id ORDER BY active.effective_from DESC, active.revision DESC) AS position
     FROM active WHERE active.effective_from <= active.local_today
 ), candidate_keys AS (
     SELECT current_ranked.id AS source_revision_id,
@@ -30,27 +30,27 @@ WITH active AS (
     JOIN active ON active.id = candidate_keys.source_revision_id
 ), numbered AS (
     SELECT candidates.*,
-           row_number() OVER (ORDER BY blueprint_id, target_effective_from, id) AS ordinal,
-           row_number() OVER (PARTITION BY blueprint_id ORDER BY target_effective_from, id) AS blueprint_ordinal,
-           (SELECT max(all_revisions.revision) FROM schedule_blueprint_revisions all_revisions
-            WHERE all_revisions.blueprint_id = candidates.blueprint_id) AS max_revision
+           row_number() OVER (ORDER BY rule_id, target_effective_from, id) AS ordinal,
+           row_number() OVER (PARTITION BY rule_id ORDER BY target_effective_from, id) AS rule_ordinal,
+           (SELECT max(all_revisions.revision) FROM schedule_rule_revisions all_revisions
+            WHERE all_revisions.rule_id = candidates.rule_id) AS max_revision
     FROM candidates
 ), provided_ids AS (
     SELECT value AS revision_id, ordinality AS ordinal
     FROM unnest(sqlc.arg(revision_ids)::text[]) WITH ORDINALITY AS ids(value, ordinality)
 ), superseded AS (
-    UPDATE schedule_blueprint_revisions old SET superseded_at = now()
+    UPDATE schedule_rule_revisions old SET superseded_at = now()
     FROM numbered
     WHERE old.id = numbered.id AND old.effective_from >= numbered.local_today
     RETURNING old.id
 ), inserted AS (
-    INSERT INTO schedule_blueprint_revisions (
-        id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
+    INSERT INTO schedule_rule_revisions (
+        id, rule_id, user_id, revision, effective_from, recurrence_anchor_date,
         local_start, local_end, all_day, timezone, frequency, interval_count, weekdays, end_date,
         cutoff_after, title, description, location, project_id, assignee_id, changed_by
     )
-    SELECT provided_ids.revision_id, numbered.blueprint_id, numbered.user_id,
-           numbered.max_revision + numbered.blueprint_ordinal, numbered.target_effective_from,
+    SELECT provided_ids.revision_id, numbered.rule_id, numbered.user_id,
+           numbered.max_revision + numbered.rule_ordinal, numbered.target_effective_from,
            numbered.recurrence_anchor_date, numbered.local_start, numbered.local_end,
            numbered.all_day, numbered.timezone, numbered.frequency, numbered.interval_count, numbered.weekdays,
            numbered.end_date, numbered.cutoff_after, numbered.title, numbered.description,

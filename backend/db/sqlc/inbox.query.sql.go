@@ -49,26 +49,26 @@ func (q *Queries) ListInboxProjectNames(ctx context.Context, arg ListInboxProjec
 	return items, nil
 }
 
-const listInboxScheduleBlueprintCreatedAt = `-- name: ListInboxScheduleBlueprintCreatedAt :many
+const listInboxScheduleRuleCreatedAt = `-- name: ListInboxScheduleRuleCreatedAt :many
 SELECT id, created_at
-FROM schedule_blueprints
+FROM schedule_rules
 WHERE id = ANY($1::text[])
 `
 
-type ListInboxScheduleBlueprintCreatedAtRow struct {
+type ListInboxScheduleRuleCreatedAtRow struct {
 	ID        string
 	CreatedAt pgtype.Timestamptz
 }
 
-func (q *Queries) ListInboxScheduleBlueprintCreatedAt(ctx context.Context, blueprintIds []string) ([]ListInboxScheduleBlueprintCreatedAtRow, error) {
-	rows, err := q.db.Query(ctx, listInboxScheduleBlueprintCreatedAt, blueprintIds)
+func (q *Queries) ListInboxScheduleRuleCreatedAt(ctx context.Context, ruleIds []string) ([]ListInboxScheduleRuleCreatedAtRow, error) {
+	rows, err := q.db.Query(ctx, listInboxScheduleRuleCreatedAt, ruleIds)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListInboxScheduleBlueprintCreatedAtRow
+	var items []ListInboxScheduleRuleCreatedAtRow
 	for rows.Next() {
-		var i ListInboxScheduleBlueprintCreatedAtRow
+		var i ListInboxScheduleRuleCreatedAtRow
 		if err := rows.Scan(&i.ID, &i.CreatedAt); err != nil {
 			return nil, err
 		}

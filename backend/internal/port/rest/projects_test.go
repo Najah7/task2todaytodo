@@ -428,10 +428,10 @@ func (projectHandlerChildren) ReassignTasksAfterProjectMemberRemoval(context.Con
 func (projectHandlerChildren) ReassignSchedulesAfterProjectMemberRemoval(context.Context, string, string, string) error {
 	return nil
 }
-func (projectHandlerChildren) PauseProjectBlueprints(context.Context, string, string, time.Time) error {
+func (projectHandlerChildren) PauseProjectRules(context.Context, string, string, time.Time) error {
 	return nil
 }
-func (projectHandlerChildren) ResumeProjectBlueprints(context.Context, string, string, time.Time) error {
+func (projectHandlerChildren) ResumeProjectRules(context.Context, string, string, time.Time) error {
 	return nil
 }
 

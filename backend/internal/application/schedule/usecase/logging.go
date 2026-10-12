@@ -26,11 +26,11 @@ func isExpectedScheduleError(err error) bool {
 		ErrOccurrenceDateRequired, ErrOccurrenceNotFound, ErrOccurrenceInactive, ErrOccurrenceCompleted,
 		ErrOccurrenceRevisionMismatch, ErrOccurrenceTimeInvalid, ErrOccurrenceTitleEmpty,
 		ErrOccurrenceRuleMismatch, ErrRescheduleDateMismatch, ErrInvalidSchedulePage, ErrPermissionDenied,
-		domain.ErrBlueprintIDEmpty, domain.ErrBlueprintTitleEmpty, domain.ErrBlueprintTimezoneEmpty,
-		domain.ErrBlueprintFrequency, domain.ErrBlueprintInterval, domain.ErrBlueprintWeekdays,
-		domain.ErrBlueprintDateRange, domain.ErrBlueprintTimeRange,
-		domain.ErrRecurrenceTimezoneInvalid, domain.ErrBlueprintFrequencyInvalid,
-		domain.ErrBlueprintIntervalInvalid, domain.ErrBlueprintRangeInvalid,
+		domain.ErrRuleIDEmpty, domain.ErrRuleTitleEmpty, domain.ErrRuleTimezoneEmpty,
+		domain.ErrRuleFrequency, domain.ErrRuleInterval, domain.ErrRuleWeekdays,
+		domain.ErrRuleDateRange, domain.ErrRuleTimeRange,
+		domain.ErrRecurrenceTimezoneInvalid, domain.ErrRuleFrequencyInvalid,
+		domain.ErrRuleIntervalInvalid, domain.ErrRuleRangeInvalid,
 	} {
 		if errors.Is(err, expected) {
 			return true

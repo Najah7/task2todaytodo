@@ -79,6 +79,244 @@ definitions:
       next_page_token:
         type: string
     type: object
+  rest.AllocationConflictMetadata:
+    properties:
+      end_at:
+        type: string
+      kind:
+        type: string
+      occurrence_date:
+        type: string
+      project_id:
+        type: string
+      rule_id:
+        type: string
+      start_at:
+        type: string
+    type: object
+  rest.AllocationDayResponse:
+    properties:
+      allocated_minutes:
+        type: integer
+      bedtime_at:
+        type: string
+      date:
+        type: string
+      free_minutes:
+        type: integer
+      has_sleep_exception:
+        type: boolean
+      sleep_revision:
+        type: integer
+      wake_at:
+        type: string
+    type: object
+  rest.AllocationOccurrenceResponse:
+    properties:
+      can_delete:
+        type: boolean
+      can_delete_following:
+        type: boolean
+      can_update:
+        type: boolean
+      can_update_following:
+        type: boolean
+      end_at:
+        type: string
+      id:
+        type: string
+      is_exception:
+        type: boolean
+      occurrence_date:
+        type: string
+      project_id:
+        type: string
+      project_title:
+        type: string
+      revision:
+        type: integer
+      rule_id:
+        type: string
+      rule_revision:
+        type: integer
+      source_revision_id:
+        type: string
+      start_at:
+        type: string
+      timezone:
+        type: string
+    type: object
+  rest.AllocationPlanItemRequest:
+    properties:
+      project_id:
+        type: string
+      target_minutes:
+        type: integer
+    type: object
+  rest.AllocationPlanItemResponse:
+    properties:
+      project_id:
+        type: string
+      target_minutes:
+        type: integer
+      title:
+        type: string
+    type: object
+  rest.AllocationPlansRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/rest.AllocationPlanItemRequest'
+        type: array
+    type: object
+  rest.AllocationPlansResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/rest.AllocationPlanItemResponse'
+        type: array
+      revision:
+        type: string
+    type: object
+  rest.AllocationRuleRequest:
+    properties:
+      end_day_offset:
+        type: integer
+      end_time:
+        example: "10:30"
+        type: string
+      id:
+        type: string
+      project_id:
+        type: string
+      revision:
+        type: integer
+      start_time:
+        example: "09:00"
+        type: string
+      timezone:
+        example: Asia/Tokyo
+        type: string
+      weekday:
+        example: 0
+        type: integer
+    type: object
+  rest.AllocationRuleResponse:
+    properties:
+      end_day_offset:
+        type: integer
+      end_time:
+        type: string
+      id:
+        type: string
+      paused_reason:
+        type: string
+      project_id:
+        type: string
+      project_title:
+        type: string
+      revision:
+        type: integer
+      start_time:
+        type: string
+      timezone:
+        type: string
+      weekday:
+        type: integer
+    type: object
+  rest.AllocationRulesRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/rest.AllocationRuleRequest'
+        type: array
+    type: object
+  rest.AllocationRulesResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/rest.AllocationRuleResponse'
+        type: array
+      revision:
+        type: string
+      timezone:
+        type: string
+    type: object
+  rest.AllocationWeekProjectResponse:
+    properties:
+      allocated_minutes:
+        type: integer
+      color_index:
+        type: integer
+      difference_minutes:
+        type: integer
+      project_id:
+        type: string
+      target_minutes:
+        type: integer
+      title:
+        type: string
+    type: object
+  rest.AllocationWeekResponse:
+    properties:
+      allocated_minutes:
+        type: integer
+      allocations:
+        items:
+          $ref: '#/definitions/rest.AllocationOccurrenceResponse'
+        type: array
+      days:
+        items:
+          $ref: '#/definitions/rest.AllocationDayResponse'
+        type: array
+      difference_minutes:
+        type: integer
+      free_minutes:
+        type: integer
+      paused_rules:
+        items:
+          $ref: '#/definitions/rest.PausedAllocationRuleResponse'
+        type: array
+      projects:
+        items:
+          $ref: '#/definitions/rest.AllocationWeekProjectResponse'
+        type: array
+      sleep_intervals:
+        items:
+          $ref: '#/definitions/rest.SleepIntervalResponse'
+        type: array
+      target_minutes:
+        type: integer
+      timezone:
+        type: string
+      week_start:
+        type: string
+    type: object
+  rest.CreateAllocationRequest:
+    properties:
+      end_at:
+        type: string
+      project_id:
+        type: string
+      repeat_weekly:
+        type: boolean
+      start_at:
+        type: string
+      timezone:
+        type: string
+    type: object
+  rest.DailySleepExceptionRequest:
+    properties:
+      bedtime_local:
+        example: 2026-10-13T01:00
+        type: string
+      timezone:
+        example: Asia/Tokyo
+        type: string
+      wake_local:
+        example: 2026-10-12T07:00
+        type: string
+    type: object
   rest.Err:
     properties:
       code:
@@ -100,6 +338,8 @@ definitions:
         type: string
       message:
         type: string
+      metadata:
+        $ref: '#/definitions/rest.AllocationConflictMetadata'
     type: object
   rest.ErrResponse:
     properties:
@@ -185,8 +425,6 @@ definitions:
         type: boolean
       assignee_id:
         type: string
-      blueprint_id:
-        type: string
       can_assign:
         type: boolean
       can_update:
@@ -208,6 +446,8 @@ definitions:
         x-nullable: true
       revision:
         type: integer
+      rule_id:
+        type: string
       skipped:
         type: boolean
       source_revision_id:
@@ -219,7 +459,6 @@ definitions:
     required:
     - all_day
     - assignee_id
-    - blueprint_id
     - can_assign
     - can_update
     - can_update_following
@@ -230,6 +469,7 @@ definitions:
     - occurrence_date
     - occurrence_id
     - revision
+    - rule_id
     - skipped
     - source_revision_id
     - start_at
@@ -318,9 +558,11 @@ definitions:
         type: string
       finished_at:
         type: string
+      generated_occurrences:
+        type: integer
       generated_schedules:
         type: integer
-      processed_blueprints:
+      processed_rules:
         type: integer
       started_at:
         type: string
@@ -339,8 +581,18 @@ definitions:
         type: string
       response:
         additionalProperties:
+          format: int64
           type: integer
         type: object
+    type: object
+  rest.PausedAllocationRuleResponse:
+    properties:
+      project_id:
+        type: string
+      reason:
+        type: string
+      rule_id:
+        type: string
     type: object
   rest.PermissionListResponse:
     properties:
@@ -798,7 +1050,139 @@ definitions:
       last_name:
         type: string
     type: object
-  rest.ScheduleBlueprintCreateRequest:
+  rest.ScheduleOccurrenceListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/rest.ScheduleOccurrenceResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
+  rest.ScheduleOccurrenceRescheduleRequest:
+    properties:
+      end_at:
+        type: string
+      start_at:
+        type: string
+    type: object
+  rest.ScheduleOccurrenceResponse:
+    properties:
+      all_day:
+        type: boolean
+      assignee_id:
+        type: string
+      can_assign:
+        type: boolean
+      can_delete:
+        type: boolean
+      can_delete_following:
+        type: boolean
+      can_skip:
+        type: boolean
+      can_update:
+        type: boolean
+      can_update_following:
+        type: boolean
+      completed:
+        type: boolean
+      created_at:
+        type: integer
+      deleted:
+        type: boolean
+      description:
+        type: string
+      end_at:
+        type: string
+      id:
+        type: string
+      location:
+        type: string
+      occurrence_date:
+        type: string
+      persisted:
+        type: boolean
+      project_id:
+        type: string
+      revision:
+        type: integer
+      rule_id:
+        type: string
+      skipped:
+        type: boolean
+      source_revision_id:
+        type: string
+      start_at:
+        type: string
+      timezone:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: integer
+      user_id:
+        type: string
+    type: object
+  rest.ScheduleOccurrenceRevisionResponse:
+    properties:
+      all_day:
+        type: boolean
+      assignee_id:
+        type: string
+      changed_at:
+        type: integer
+      changed_by:
+        type: string
+      completed:
+        type: boolean
+      deleted_at:
+        type: integer
+      description:
+        type: string
+      end_at:
+        type: string
+      location:
+        type: string
+      occurrence_date:
+        type: string
+      project_id:
+        type: string
+      revision:
+        type: integer
+      skipped_at:
+        type: integer
+      source_revision_id:
+        type: string
+      start_at:
+        type: string
+      timezone:
+        type: string
+      title:
+        type: string
+      user_id:
+        type: string
+    type: object
+  rest.ScheduleOccurrenceUpdateRequest:
+    properties:
+      all_day:
+        type: boolean
+      assignee_id:
+        type: string
+      description:
+        type: string
+      end_at:
+        type: string
+      location:
+        type: string
+      project_id:
+        type: string
+        x-nullable: true
+      start_at:
+        type: string
+      title:
+        type: string
+    type: object
+  rest.ScheduleRuleCreateRequest:
     properties:
       all_day:
         type: boolean
@@ -829,7 +1213,7 @@ definitions:
           type: string
         type: array
     type: object
-  rest.ScheduleBlueprintResponse:
+  rest.ScheduleRuleResponse:
     properties:
       all_day:
         type: boolean
@@ -876,7 +1260,7 @@ definitions:
           type: string
         type: array
     type: object
-  rest.ScheduleBlueprintRevisionResponse:
+  rest.ScheduleRuleRevisionResponse:
     properties:
       all_day:
         type: boolean
@@ -933,7 +1317,7 @@ definitions:
           type: string
         type: array
     type: object
-  rest.ScheduleBlueprintUpdateRequest:
+  rest.ScheduleRuleUpdateRequest:
     properties:
       all_day:
         type: boolean
@@ -970,147 +1354,35 @@ definitions:
           type: string
         type: array
     type: object
-  rest.ScheduleOccurrenceListResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/rest.ScheduleOccurrenceResponse'
-        type: array
-      next_page_token:
-        type: string
-    type: object
-  rest.ScheduleOccurrenceRescheduleRequest:
-    properties:
-      end_at:
-        type: string
-      start_at:
-        type: string
-    type: object
-  rest.ScheduleOccurrenceResponse:
-    properties:
-      all_day:
-        type: boolean
-      assignee_id:
-        type: string
-      blueprint_id:
-        type: string
-      can_assign:
-        type: boolean
-      can_delete:
-        type: boolean
-      can_delete_following:
-        type: boolean
-      can_skip:
-        type: boolean
-      can_update:
-        type: boolean
-      can_update_following:
-        type: boolean
-      completed:
-        type: boolean
-      created_at:
-        type: integer
-      deleted:
-        type: boolean
-      description:
-        type: string
-      end_at:
-        type: string
-      id:
-        type: string
-      is_override:
-        type: boolean
-      location:
-        type: string
-      occurrence_date:
-        type: string
-      persisted:
-        type: boolean
-      project_id:
-        type: string
-      revision:
-        type: integer
-      skipped:
-        type: boolean
-      source_revision_id:
-        type: string
-      start_at:
-        type: string
-      timezone:
-        type: string
-      title:
-        type: string
-      updated_at:
-        type: integer
-      user_id:
-        type: string
-    type: object
-  rest.ScheduleOccurrenceRevisionResponse:
-    properties:
-      all_day:
-        type: boolean
-      assignee_id:
-        type: string
-      changed_at:
-        type: integer
-      changed_by:
-        type: string
-      completed:
-        type: boolean
-      deleted_at:
-        type: integer
-      description:
-        type: string
-      end_at:
-        type: string
-      is_override:
-        type: boolean
-      location:
-        type: string
-      occurrence_date:
-        type: string
-      project_id:
-        type: string
-      revision:
-        type: integer
-      skipped_at:
-        type: integer
-      source_revision_id:
-        type: string
-      start_at:
-        type: string
-      timezone:
-        type: string
-      title:
-        type: string
-      user_id:
-        type: string
-    type: object
-  rest.ScheduleOccurrenceUpdateRequest:
-    properties:
-      all_day:
-        type: boolean
-      assignee_id:
-        type: string
-      description:
-        type: string
-      end_at:
-        type: string
-      location:
-        type: string
-      project_id:
-        type: string
-        x-nullable: true
-      start_at:
-        type: string
-      title:
-        type: string
-    type: object
   rest.SignupRequest:
     properties:
       email:
         type: string
       password:
+        type: string
+    type: object
+  rest.SleepExceptionResponse:
+    properties:
+      bedtime_local:
+        type: string
+      has_exception:
+        type: boolean
+      local_date:
+        type: string
+      revision:
+        type: integer
+      timezone:
+        type: string
+      wake_local:
+        type: string
+    type: object
+  rest.SleepIntervalResponse:
+    properties:
+      end_at:
+        type: string
+      local_date:
+        type: string
+      start_at:
         type: string
     type: object
   rest.TaskAssigneeListResponse:
@@ -1342,6 +1614,20 @@ definitions:
           type: string
         type: array
     type: object
+  rest.UpdateAllocationRequest:
+    properties:
+      end_at:
+        type: string
+      project_id:
+        type: string
+      rule_revision:
+        type: integer
+      scope:
+        example: current
+        type: string
+      start_at:
+        type: string
+    type: object
   rest.UserInfoUpdateRequest:
     properties:
       first_name:
@@ -1356,6 +1642,8 @@ definitions:
     type: object
   rest.UserResponse:
     properties:
+      bedtime:
+        type: string
       email:
         type: string
       timezone:
@@ -1364,19 +1652,19 @@ definitions:
         type: string
       user_name:
         type: string
+      wake_up_time:
+        type: string
+    type: object
+  rest.UserSleepSettingsUpdateRequest:
+    properties:
+      bedtime:
+        type: string
+      wake_up_time:
+        type: string
     type: object
   rest.UserTimezoneUpdateRequest:
     properties:
       timezone:
-        type: string
-    type: object
-  rest.listEnvelope-rest_ScheduleBlueprintRevisionResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/rest.ScheduleBlueprintRevisionResponse'
-        type: array
-      next_page_token:
         type: string
     type: object
   rest.listEnvelope-rest_ScheduleOccurrenceRevisionResponse:
@@ -1384,6 +1672,15 @@ definitions:
       items:
         items:
           $ref: '#/definitions/rest.ScheduleOccurrenceRevisionResponse'
+        type: array
+      next_page_token:
+        type: string
+    type: object
+  rest.listEnvelope-rest_ScheduleRuleRevisionResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/rest.ScheduleRuleRevisionResponse'
         type: array
       next_page_token:
         type: string
@@ -1418,6 +1715,32 @@ paths:
       security:
       - BearerAuth: []
       summary: Run schedule backfill
+      tags:
+      - Admin
+  /admin/jobs/prefill-allocations:run:
+    post:
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/rest.OperationResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Materialize allocation occurrences
       tags:
       - Admin
   /admin/operations:
@@ -1483,13 +1806,328 @@ paths:
       summary: Get admin operation
       tags:
       - Admin
+  /allocation-plans:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.AllocationPlansResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Get weekly allocation plans
+      tags:
+      - Allocations
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Current allocation plans revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Weekly plans
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.AllocationPlansRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.AllocationPlansResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "412":
+          description: Precondition Failed
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "428":
+          description: Precondition Required
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Replace weekly allocation plans
+      tags:
+      - Allocations
+  /allocation-rules:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.AllocationRulesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Get allocation Rules
+      tags:
+      - Allocations
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Current allocation rules revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Weekly Rules
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.AllocationRulesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.AllocationRulesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "412":
+          description: Precondition Failed
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "428":
+          description: Precondition Required
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Replace weekly allocation Rules
+      tags:
+      - Allocations
+  /allocation-weeks/{week_start}:
+    get:
+      parameters:
+      - description: Monday date (YYYY-MM-DD)
+        in: path
+        name: week_start
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.AllocationWeekResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Get project allocation week
+      tags:
+      - Allocations
+  /allocations:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Allocation
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.CreateAllocationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/rest.AllocationOccurrenceResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Create Project allocation
+      tags:
+      - Allocations
+  /allocations/{rule_id}/{occurrence_date}:
+    delete:
+      parameters:
+      - description: Rule ID
+        in: path
+        name: rule_id
+        required: true
+        type: string
+      - description: Original local occurrence date
+        in: path
+        name: occurrence_date
+        required: true
+        type: string
+      - description: Occurrence revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: current or following
+        in: query
+        name: scope
+        required: true
+        type: string
+      - description: Rule revision when scope is following
+        in: query
+        name: rule_revision
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete Project allocation occurrence
+      tags:
+      - Allocations
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Rule ID
+        in: path
+        name: rule_id
+        required: true
+        type: string
+      - description: Original local occurrence date
+        in: path
+        name: occurrence_date
+        required: true
+        type: string
+      - description: Occurrence revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Occurrence update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.UpdateAllocationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.AllocationOccurrenceResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update Project allocation occurrence
+      tags:
+      - Allocations
+  /daily-sleep-exceptions/{local_date}:
+    delete:
+      parameters:
+      - description: Waking date
+        in: path
+        name: local_date
+        required: true
+        type: string
+      - description: Exception revision
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Reset daily sleep exception
+      tags:
+      - Allocations
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Waking date
+        in: path
+        name: local_date
+        required: true
+        type: string
+      - description: Exception revision, or 0 when absent
+        in: header
+        name: If-Match
+        required: true
+        type: string
+      - description: Sleep exception
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.DailySleepExceptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.SleepExceptionResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Set daily sleep exception
+      tags:
+      - Allocations
   /inbox:
     get:
       description: Returns a paginated, read-only projection of all incomplete Tasks
         assigned to the caller and uncompleted, unskipped Schedule occurrences from
         the caller's local today through six days later, including virtual recurring
-        occurrences. Results are ordered by original Task or Schedule blueprint creation
-        time descending; occurrences from one blueprint are ordered by scheduled start
+        occurrences. Results are ordered by original Task or Schedule rule creation
+        time descending; occurrences from one rule are ordered by scheduled start
         time ascending.
       operationId: listInbox
       parameters:
@@ -2136,17 +2774,17 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.ScheduleBlueprintCreateRequest'
+          $ref: '#/definitions/rest.ScheduleRuleCreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/rest.ScheduleBlueprintResponse'
+            $ref: '#/definitions/rest.ScheduleRuleResponse'
       security:
       - BearerAuth: []
-      summary: Create Project schedule blueprint
+      summary: Create Project schedule rule
       tags:
       - Schedules
   /projects/{id}/status:
@@ -2661,7 +3299,7 @@ paths:
       summary: List roles
       tags:
       - Authorization
-  /schedule-blueprints:
+  /schedule-rules:
     post:
       consumes:
       - application/json
@@ -2671,23 +3309,23 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.ScheduleBlueprintCreateRequest'
+          $ref: '#/definitions/rest.ScheduleRuleCreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/rest.ScheduleBlueprintResponse'
+            $ref: '#/definitions/rest.ScheduleRuleResponse'
       security:
       - BearerAuth: []
-      summary: Create schedule blueprint
+      summary: Create schedule rule
       tags:
       - Schedules
-  /schedule-blueprints/{id}:
+  /schedule-rules/{id}:
     get:
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
         name: id
         required: true
@@ -2698,22 +3336,22 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rest.ScheduleBlueprintResponse'
+            $ref: '#/definitions/rest.ScheduleRuleResponse'
       security:
       - BearerAuth: []
-      summary: Get schedule blueprint
+      summary: Get schedule rule
       tags:
       - Schedules
     patch:
       consumes:
       - application/json
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
         name: id
         required: true
         type: string
-      - description: Current blueprint revision
+      - description: Current rule revision
         in: header
         name: If-Match
         required: true
@@ -2723,23 +3361,23 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.ScheduleBlueprintUpdateRequest'
+          $ref: '#/definitions/rest.ScheduleRuleUpdateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rest.ScheduleBlueprintResponse'
+            $ref: '#/definitions/rest.ScheduleRuleResponse'
       security:
       - BearerAuth: []
-      summary: Update schedule blueprint
+      summary: Update schedule rule
       tags:
       - Schedules
-  /schedule-blueprints/{id}/assignees:
+  /schedule-rules/{id}/assignees:
     get:
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
         name: id
         required: true
@@ -2756,10 +3394,10 @@ paths:
       summary: List schedule assignees
       tags:
       - Schedules
-  /schedule-blueprints/{id}/following/{occurrence_date}:
+  /schedule-rules/{id}/following/{occurrence_date}:
     delete:
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
         name: id
         required: true
@@ -2769,7 +3407,7 @@ paths:
         name: occurrence_date
         required: true
         type: string
-      - description: Current blueprint revision
+      - description: Current rule revision
         in: header
         name: If-Match
         required: true
@@ -2782,10 +3420,10 @@ paths:
       summary: Delete following schedule occurrences
       tags:
       - Schedules
-  /schedule-blueprints/{id}/revisions:
+  /schedule-rules/{id}/revisions:
     get:
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
         name: id
         required: true
@@ -2804,10 +3442,10 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rest.listEnvelope-rest_ScheduleBlueprintRevisionResponse'
+            $ref: '#/definitions/rest.listEnvelope-rest_ScheduleRuleRevisionResponse'
       security:
       - BearerAuth: []
-      summary: List schedule blueprint revisions
+      summary: List schedule rule revisions
       tags:
       - Schedules
   /schedules:
@@ -2847,12 +3485,12 @@ paths:
       summary: List schedule occurrences
       tags:
       - Schedules
-  /schedules/{blueprint_id}/{occurrence_date}:
+  /schedules/{rule_id}/{occurrence_date}:
     delete:
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
-        name: blueprint_id
+        name: rule_id
         required: true
         type: string
       - description: Original local occurrence date
@@ -2875,9 +3513,9 @@ paths:
       - Schedules
     get:
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
-        name: blueprint_id
+        name: rule_id
         required: true
         type: string
       - description: Original local occurrence date
@@ -2901,9 +3539,9 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
-        name: blueprint_id
+        name: rule_id
         required: true
         type: string
       - description: Original local occurrence date
@@ -2934,12 +3572,12 @@ paths:
       summary: Update schedule occurrence
       tags:
       - Schedules
-  /schedules/{blueprint_id}/{occurrence_date}/revisions:
+  /schedules/{rule_id}/{occurrence_date}/revisions:
     get:
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
-        name: blueprint_id
+        name: rule_id
         required: true
         type: string
       - description: Original local occurrence date
@@ -2967,12 +3605,12 @@ paths:
       summary: List schedule occurrence revisions
       tags:
       - Schedules
-  /schedules/{blueprint_id}/{occurrence_date}:complete:
+  /schedules/{rule_id}/{occurrence_date}:complete:
     post:
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
-        name: blueprint_id
+        name: rule_id
         required: true
         type: string
       - description: Original local occurrence date
@@ -2993,12 +3631,12 @@ paths:
       summary: Complete schedule occurrence
       tags:
       - Schedules
-  /schedules/{blueprint_id}/{occurrence_date}:reopen:
+  /schedules/{rule_id}/{occurrence_date}:reopen:
     post:
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
-        name: blueprint_id
+        name: rule_id
         required: true
         type: string
       - description: Original local occurrence date
@@ -3019,14 +3657,14 @@ paths:
       summary: Reopen schedule occurrence
       tags:
       - Schedules
-  /schedules/{blueprint_id}/{occurrence_date}:reschedule:
+  /schedules/{rule_id}/{occurrence_date}:reschedule:
     post:
       consumes:
       - application/json
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
-        name: blueprint_id
+        name: rule_id
         required: true
         type: string
       - description: Original local occurrence date
@@ -3057,12 +3695,12 @@ paths:
       summary: Reschedule occurrence
       tags:
       - Schedules
-  /schedules/{blueprint_id}/{occurrence_date}:restore:
+  /schedules/{rule_id}/{occurrence_date}:restore:
     post:
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
-        name: blueprint_id
+        name: rule_id
         required: true
         type: string
       - description: Original local occurrence date
@@ -3083,12 +3721,12 @@ paths:
       summary: Restore schedule occurrence
       tags:
       - Schedules
-  /schedules/{blueprint_id}/{occurrence_date}:skip:
+  /schedules/{rule_id}/{occurrence_date}:skip:
     post:
       parameters:
-      - description: Blueprint ID
+      - description: Rule ID
         in: path
-        name: blueprint_id
+        name: rule_id
         required: true
         type: string
       - description: Original local occurrence date
@@ -4188,6 +4826,41 @@ paths:
       security:
       - BearerAuth: []
       summary: Update current user password
+      tags:
+      - Users
+  /users/me/sleep:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Sleep settings
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.UserSleepSettingsUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update current user sleep settings
       tags:
       - Users
   /users/me/timezone:

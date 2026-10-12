@@ -12,9 +12,10 @@ import (
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application"
-	admindao "github.com/Najah7/task2todaytodo/internal/application/admin/dao"
-	adminrepo "github.com/Najah7/task2todaytodo/internal/application/admin/repository"
-	adminusecase "github.com/Najah7/task2todaytodo/internal/application/admin/usecase"
+	jobusecase "github.com/Najah7/task2todaytodo/internal/application/admin/job/usecase"
+	admindao "github.com/Najah7/task2todaytodo/internal/application/admin/operation/dao"
+	adminrepo "github.com/Najah7/task2todaytodo/internal/application/admin/operation/repository"
+	operationusecase "github.com/Najah7/task2todaytodo/internal/application/admin/operation/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/port/adapter"
 	"github.com/Najah7/task2todaytodo/internal/settings"
@@ -79,7 +80,7 @@ func TestApplicationCompositionAndCleanup(t *testing.T) {
 	}
 	testdb.RegisterShutdown(t, closeApp)
 
-	if app.UseCase.Admin.GetOperation == nil || app.UseCase.Admin.ListOperations == nil || app.UseCase.Admin.RunBackfill == nil {
+	if app.UseCase.Admin.Operation.GetOperation == nil || app.UseCase.Admin.Operation.ListOperations == nil || app.UseCase.Admin.Job.RunBackfill == nil {
 		t.Fatalf("admin use cases are not fully wired: %+v", app.UseCase.Admin)
 	}
 	if app.Store.Admin.Operations == nil {
@@ -118,7 +119,7 @@ func TestExpiredLeaseProjectsFailureAndNextRunPersistsIt(t *testing.T) {
 	if _, err := pool.Exec(t.Context(), `UPDATE admin_operations SET lease_expires_at=now()-interval '1 second' WHERE id=$1`, first.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.Fail(t.Context(), first.ID, token, "interrupted", "safe interrupted detail"); !errors.Is(err, adminusecase.ErrLeaseLost) {
+	if err := repo.Fail(t.Context(), first.ID, token, "interrupted", "safe interrupted detail"); !errors.Is(err, operationusecase.ErrLeaseLost) {
 		t.Fatalf("Fail after lease expiration = %v, want ErrLeaseLost", err)
 	}
 	projected, err := repo.Get(t.Context(), first.ID)
@@ -138,6 +139,31 @@ func TestExpiredLeaseProjectsFailureAndNextRunPersistsIt(t *testing.T) {
 	}
 	if state != "failed" || code != "interrupted" || message == "" {
 		t.Fatalf("persisted stale operation = %s %s %q", state, code, message)
+	}
+}
+
+func TestDifferentJobNamesCanBeActiveIndependently(t *testing.T) {
+	pool := testdb.Open(t)
+	userID := seedUser(t, pool)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM admin_operations WHERE requested_by=$1`, userID)
+	})
+	repo := adminrepo.NewOperationRepository(pool)
+	backfill, created, _, err := repo.CreateOrGetActive(t.Context(), newOperation(userID), ulid.Make().String(), time.Minute)
+	if err != nil || !created {
+		t.Fatalf("create backfill operation: created=%v err=%v", created, err)
+	}
+	if same, created, _, err := repo.CreateOrGetActive(t.Context(), newOperation(userID), ulid.Make().String(), time.Minute); err != nil || created || same.ID != backfill.ID {
+		t.Fatalf("reuse active backfill: operation=%+v created=%v err=%v", same, created, err)
+	}
+	prefillCandidate := newOperation(userID)
+	prefillCandidate.JobName = "prefill-allocations"
+	prefill, created, _, err := repo.CreateOrGetActive(t.Context(), prefillCandidate, ulid.Make().String(), time.Minute)
+	if err != nil || !created || prefill.ID == backfill.ID || prefill.JobName != prefillCandidate.JobName {
+		t.Fatalf("create independent prefill operation: operation=%+v created=%v err=%v", prefill, created, err)
+	}
+	if same, created, _, err := repo.CreateOrGetActive(t.Context(), prefillCandidate, ulid.Make().String(), time.Minute); err != nil || created || same.ID != prefill.ID {
+		t.Fatalf("reuse active prefill: operation=%+v created=%v err=%v", same, created, err)
 	}
 }
 
@@ -256,19 +282,21 @@ func TestAdminUseCasesEnforcePermissionsBeforeOperationAccess(t *testing.T) {
 
 	repo := adminrepo.NewOperationRepository(pool)
 	runner := &integrationRunnerFake{}
-	uses := adminusecase.UseCases{
-		RunBackfill:    adminusecase.NewRunBackfillSchedulesUseCase(repo, runner, adapter.NewIDIssuer(), integrationClockFake{}, time.Minute),
-		ListOperations: adminusecase.NewListOperationsUseCase(repo),
-		GetOperation:   adminusecase.NewGetOperationUseCase(repo),
+	jobUses := jobusecase.UseCases{
+		RunBackfill: jobusecase.NewBackfillSchedulesUseCase(repo, runner, adapter.NewIDIssuer(), integrationClockFake{}, time.Minute),
+	}
+	operationUses := operationusecase.UseCases{
+		ListOperations: operationusecase.NewListOperationsUseCase(repo),
+		GetOperation:   operationusecase.NewGetOperationUseCase(repo),
 	}
 	for _, actorID := range []string{ordinaryID, projectAdminID} {
-		if _, err := uses.RunBackfill.Execute(t.Context(), actorID); !errors.Is(err, adminusecase.ErrPermissionDenied) {
+		if _, err := jobUses.RunBackfill.Execute(t.Context(), actorID); !errors.Is(err, jobusecase.ErrPermissionDenied) {
 			t.Errorf("RunBackfill(%s) error = %v, want permission denied", actorID, err)
 		}
-		if _, err := uses.ListOperations.Execute(t.Context(), actorID, "", 10); !errors.Is(err, adminusecase.ErrPermissionDenied) {
+		if _, err := operationUses.ListOperations.Execute(t.Context(), actorID, "", 10); !errors.Is(err, operationusecase.ErrPermissionDenied) {
 			t.Errorf("ListOperations(%s) error = %v, want permission denied", actorID, err)
 		}
-		if _, err := uses.GetOperation.Execute(t.Context(), actorID, ulid.Make().String()); !errors.Is(err, adminusecase.ErrPermissionDenied) {
+		if _, err := operationUses.GetOperation.Execute(t.Context(), actorID, ulid.Make().String()); !errors.Is(err, operationusecase.ErrPermissionDenied) {
 			t.Errorf("GetOperation(%s) error = %v, want permission denied", actorID, err)
 		}
 	}
@@ -276,17 +304,17 @@ func TestAdminUseCasesEnforcePermissionsBeforeOperationAccess(t *testing.T) {
 		t.Fatalf("runner calls after denied runs = %d", runner.calls)
 	}
 
-	operation, err := uses.RunBackfill.Execute(t.Context(), sysadminID)
+	operation, err := jobUses.RunBackfill.Execute(t.Context(), sysadminID)
 	if err != nil {
 		t.Fatalf("sysadmin RunBackfill() error = %v", err)
 	}
 	if runner.calls != 1 || runner.actorID != sysadminID {
 		t.Fatalf("runner calls=%d actor=%q", runner.calls, runner.actorID)
 	}
-	if _, err := uses.ListOperations.Execute(t.Context(), sysadminID, "", 10); err != nil {
+	if _, err := operationUses.ListOperations.Execute(t.Context(), sysadminID, "", 10); err != nil {
 		t.Fatalf("sysadmin ListOperations() error = %v", err)
 	}
-	if _, err := uses.GetOperation.Execute(t.Context(), sysadminID, operation.ID); err != nil {
+	if _, err := operationUses.GetOperation.Execute(t.Context(), sysadminID, operation.ID); err != nil {
 		t.Fatalf("sysadmin GetOperation() error = %v", err)
 	}
 	if err := repo.Fail(t.Context(), operation.ID, runner.leaseToken, "test_complete", "integration cleanup"); err != nil {

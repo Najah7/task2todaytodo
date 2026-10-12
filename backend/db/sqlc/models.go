@@ -114,22 +114,33 @@ type ActionItem struct {
 }
 
 type AdminOperation struct {
-	ID                  string
-	JobName             string
-	State               string
-	RequestedBy         string
-	Cutoff              pgtype.Timestamptz
-	StartedAt           pgtype.Timestamptz
-	FinishedAt          pgtype.Timestamptz
-	HeartbeatAt         pgtype.Timestamptz
-	LeaseExpiresAt      pgtype.Timestamptz
-	LeaseToken          string
-	ProcessedBlueprints int64
-	GeneratedSchedules  int64
-	Response            []byte
-	ErrorCode           pgtype.Text
-	ErrorMessage        pgtype.Text
-	CreatedAt           pgtype.Timestamptz
+	ID                   string
+	JobName              string
+	State                string
+	RequestedBy          string
+	Cutoff               pgtype.Timestamptz
+	StartedAt            pgtype.Timestamptz
+	FinishedAt           pgtype.Timestamptz
+	HeartbeatAt          pgtype.Timestamptz
+	LeaseExpiresAt       pgtype.Timestamptz
+	LeaseToken           string
+	ProcessedRules       int64
+	GeneratedSchedules   int64
+	GeneratedOccurrences int64
+	Response             []byte
+	ErrorCode            pgtype.Text
+	ErrorMessage         pgtype.Text
+	CreatedAt            pgtype.Timestamptz
+}
+
+type DailySleepException struct {
+	UserID       string
+	LocalDate    pgtype.Date
+	WakeLocal    pgtype.Timestamp
+	BedtimeLocal pgtype.Timestamp
+	Timezone     string
+	Revision     int32
+	ChangedAt    pgtype.Timestamptz
 }
 
 type FrequencyMaster struct {
@@ -218,6 +229,83 @@ type ProjectRevision struct {
 	ChangedAt   pgtype.Timestamptz
 }
 
+type ProjectTimeAllocation struct {
+	ID               string
+	RuleID           string
+	SourceRevisionID string
+	UserID           string
+	ProjectID        string
+	OccurrenceDate   pgtype.Date
+	StartAt          pgtype.Timestamptz
+	EndAt            pgtype.Timestamptz
+	Timezone         string
+	DeletedAt        pgtype.Timestamptz
+	Revision         int32
+	ChangedBy        string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type ProjectTimeAllocationException struct {
+	RuleID           string
+	OccurrenceDate   pgtype.Date
+	SourceRevisionID string
+	UserID           string
+	ProjectID        string
+	StartAt          pgtype.Timestamptz
+	EndAt            pgtype.Timestamptz
+	Timezone         string
+	DeletedAt        pgtype.Timestamptz
+	ChangedBy        string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type ProjectTimeAllocationPauseInterval struct {
+	ProjectID string
+	RuleID    string
+	PausedAt  pgtype.Timestamptz
+	ResumedAt pgtype.Timestamptz
+}
+
+type ProjectTimeAllocationPlan struct {
+	UserID        string
+	ProjectID     string
+	TargetMinutes int32
+	UpdatedAt     pgtype.Timestamptz
+}
+
+type ProjectTimeAllocationRule struct {
+	ID           string
+	UserID       string
+	ProjectID    string
+	CreatedAt    pgtype.Timestamptz
+	DeletedAt    pgtype.Timestamptz
+	StoppedAfter pgtype.Date
+	PauseReason  pgtype.Text
+	PausedAt     pgtype.Timestamptz
+}
+
+type ProjectTimeAllocationRuleRevision struct {
+	ID                  string
+	RuleID              string
+	UserID              string
+	ProjectID           string
+	Revision            int32
+	EffectiveFrom       pgtype.Date
+	RecurrenceStartDate pgtype.Date
+	EffectiveAt         pgtype.Timestamptz
+	Weekday             int16
+	LocalStart          pgtype.Time
+	LocalEnd            pgtype.Time
+	EndDayOffset        int16
+	Timezone            string
+	Frequency           string
+	SupersededAt        pgtype.Timestamptz
+	ChangedBy           string
+	CreatedAt           pgtype.Timestamptz
+}
+
 type ProjectTypeMaster struct {
 	Type      string
 	Label     string
@@ -240,7 +328,7 @@ type RolePermission struct {
 
 type Schedule struct {
 	ID               string
-	BlueprintID      string
+	RuleID           string
 	SourceRevisionID string
 	UserID           string
 	OccurrenceDate   pgtype.Date
@@ -256,7 +344,6 @@ type Schedule struct {
 	Completed        bool
 	SkippedAt        pgtype.Timestamptz
 	DeletedAt        pgtype.Timestamptz
-	IsOverride       bool
 	Revision         int32
 	ChangedBy        string
 	CreatedAt        pgtype.Timestamptz
@@ -269,16 +356,69 @@ type ScheduleBackfillCheckpoint struct {
 	UpdatedAt   pgtype.Timestamptz
 }
 
-type ScheduleBlueprint struct {
+type ScheduleException struct {
+	RuleID           string
+	OccurrenceDate   pgtype.Date
+	SourceRevisionID string
+	UserID           string
+	StartAt          pgtype.Timestamptz
+	EndAt            pgtype.Timestamptz
+	AllDay           bool
+	Title            string
+	Description      pgtype.Text
+	Location         pgtype.Text
+	ProjectID        pgtype.Text
+	AssigneeID       string
+	Timezone         string
+	Completed        bool
+	SkippedAt        pgtype.Timestamptz
+	DeletedAt        pgtype.Timestamptz
+	ChangedBy        string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type ScheduleProjectPauseInterval struct {
+	ProjectID string
+	RuleID    string
+	PausedAt  pgtype.Timestamptz
+	ResumedAt pgtype.Timestamptz
+	PausedBy  string
+	ResumedBy pgtype.Text
+}
+
+type ScheduleRevision struct {
+	ScheduleID       string
+	Revision         int32
+	SourceRevisionID string
+	UserID           string
+	OccurrenceDate   pgtype.Date
+	StartAt          pgtype.Timestamptz
+	EndAt            pgtype.Timestamptz
+	AllDay           bool
+	Title            string
+	Description      pgtype.Text
+	Location         pgtype.Text
+	ProjectID        pgtype.Text
+	AssigneeID       string
+	Timezone         string
+	Completed        bool
+	SkippedAt        pgtype.Timestamptz
+	DeletedAt        pgtype.Timestamptz
+	ChangedBy        string
+	ChangedAt        pgtype.Timestamptz
+}
+
+type ScheduleRule struct {
 	ID        string
 	UserID    string
 	DeletedAt pgtype.Timestamptz
 	CreatedAt pgtype.Timestamptz
 }
 
-type ScheduleBlueprintRevision struct {
+type ScheduleRuleRevision struct {
 	ID                   string
-	BlueprintID          string
+	RuleID               string
 	UserID               string
 	Revision             int32
 	EffectiveFrom        pgtype.Date
@@ -300,38 +440,6 @@ type ScheduleBlueprintRevision struct {
 	CutoffAfter          pgtype.Date
 	ChangedBy            string
 	CreatedAt            pgtype.Timestamptz
-}
-
-type ScheduleProjectPauseInterval struct {
-	ProjectID   string
-	BlueprintID string
-	PausedAt    pgtype.Timestamptz
-	ResumedAt   pgtype.Timestamptz
-	PausedBy    string
-	ResumedBy   pgtype.Text
-}
-
-type ScheduleRevision struct {
-	ScheduleID       string
-	Revision         int32
-	SourceRevisionID string
-	UserID           string
-	OccurrenceDate   pgtype.Date
-	StartAt          pgtype.Timestamptz
-	EndAt            pgtype.Timestamptz
-	AllDay           bool
-	Title            string
-	Description      pgtype.Text
-	Location         pgtype.Text
-	ProjectID        pgtype.Text
-	AssigneeID       string
-	Timezone         string
-	Completed        bool
-	SkippedAt        pgtype.Timestamptz
-	DeletedAt        pgtype.Timestamptz
-	IsOverride       bool
-	ChangedBy        string
-	ChangedAt        pgtype.Timestamptz
 }
 
 type StatusMaster struct {
@@ -413,12 +521,14 @@ type TodoListSchedule struct {
 }
 
 type User struct {
-	ID        string
-	FirstName string
-	LastName  string
-	Email     string
-	Password  string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-	Timezone  string
+	ID         string
+	FirstName  string
+	LastName   string
+	Email      string
+	Password   string
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+	Timezone   string
+	WakeUpTime pgtype.Time
+	Bedtime    pgtype.Time
 }

@@ -21,30 +21,30 @@ func NewBackfillUseCase(uow UOW, issueID func() string) *BackfillUseCase {
 	return &BackfillUseCase{uow: uow, issueID: issueID}
 }
 
-func (uc *BackfillUseCase) Execute(ctx context.Context, actorID string, cutoff time.Time, report func(processedBlueprints, generatedSchedules int) error) (processedBlueprints, generatedSchedules int, err error) {
-	var candidates []dao.BlueprintRevision
+func (uc *BackfillUseCase) Execute(ctx context.Context, actorID string, cutoff time.Time, report func(processedRules, generatedSchedules int) error) (processedRules, generatedSchedules int, err error) {
+	var candidates []dao.RuleRevision
 	if err := uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		var err error
-		candidates, err = repos.Blueprints().ListRevisionsForBackfill(ctx)
+		candidates, err = repos.Rules().ListRevisionsForBackfill(ctx)
 		return err
 	}); err != nil {
 		return 0, 0, err
 	}
 
-	blueprintSet := make(map[string]struct{}, len(candidates))
+	ruleSet := make(map[string]struct{}, len(candidates))
 	for _, revision := range candidates {
-		blueprintSet[revision.ID] = struct{}{}
+		ruleSet[revision.ID] = struct{}{}
 	}
-	blueprintIDs := make([]string, 0, len(blueprintSet))
-	for id := range blueprintSet {
-		blueprintIDs = append(blueprintIDs, id)
+	ruleIDs := make([]string, 0, len(ruleSet))
+	for id := range ruleSet {
+		ruleIDs = append(ruleIDs, id)
 	}
-	sort.Strings(blueprintIDs)
+	sort.Strings(ruleIDs)
 
 	cutoff = cutoff.UTC()
-	for _, blueprintID := range blueprintIDs {
+	for _, ruleID := range ruleIDs {
 		if err := ctx.Err(); err != nil {
-			return processedBlueprints, generatedSchedules, err
+			return processedRules, generatedSchedules, err
 		}
 
 		var generated int
@@ -52,8 +52,8 @@ func (uc *BackfillUseCase) Execute(ctx context.Context, actorID string, cutoff t
 		err := uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 			// Read the current associations before locking Projects. If a Project
 			// was deleted since the job's initial scan, the repository omits it and
-			// this blueprint can be skipped without repeatedly failing the job.
-			before, err := repos.Blueprints().ListRevisionsForBlueprintBackfill(ctx, blueprintID)
+			// this rule can be skipped without repeatedly failing the job.
+			before, err := repos.Rules().ListRevisionsForRuleBackfill(ctx, ruleID)
 			if err != nil {
 				return err
 			}
@@ -66,14 +66,14 @@ func (uc *BackfillUseCase) Execute(ctx context.Context, actorID string, cutoff t
 					return err
 				}
 			}
-			if err := repos.Blueprints().LockBlueprintForBackfill(ctx, blueprintID); err != nil {
+			if err := repos.Rules().LockRuleForBackfill(ctx, ruleID); err != nil {
 				return err
 			}
 
-			// The Project locks and blueprint lock serialize this run against
+			// The Project locks and rule lock serialize this run against
 			// association edits. A changed lock set is a stable conflict: stop the
-			// job, retain earlier per-blueprint commits, and let the next run resume.
-			after, err := repos.Blueprints().ListRevisionsForBlueprintBackfill(ctx, blueprintID)
+			// job, retain earlier per-rule commits, and let the next run resume.
+			after, err := repos.Rules().ListRevisionsForRuleBackfill(ctx, ruleID)
 			if err != nil {
 				return err
 			}
@@ -91,22 +91,22 @@ func (uc *BackfillUseCase) Execute(ctx context.Context, actorID string, cutoff t
 			return nil
 		})
 		if err != nil {
-			return processedBlueprints, generatedSchedules, err
+			return processedRules, generatedSchedules, err
 		}
 		if processed {
-			processedBlueprints++
+			processedRules++
 		}
 		generatedSchedules += generated
 		if processed && report != nil {
-			if err := report(processedBlueprints, generatedSchedules); err != nil {
-				return processedBlueprints, generatedSchedules, err
+			if err := report(processedRules, generatedSchedules); err != nil {
+				return processedRules, generatedSchedules, err
 			}
 		}
 	}
-	return processedBlueprints, generatedSchedules, nil
+	return processedRules, generatedSchedules, nil
 }
 
-func (uc *BackfillUseCase) backfillRevision(ctx context.Context, repos Repositories, actorID string, revision dao.BlueprintRevision, cutoff time.Time) (int, error) {
+func (uc *BackfillUseCase) backfillRevision(ctx context.Context, repos Repositories, actorID string, revision dao.RuleRevision, cutoff time.Time) (int, error) {
 	location, err := time.LoadLocation(revision.Timezone)
 	if err != nil {
 		return 0, domain.ErrRecurrenceTimezoneInvalid
@@ -127,13 +127,13 @@ func (uc *BackfillUseCase) backfillRevision(ctx context.Context, repos Repositor
 		}
 		ruleEnd = &value
 	}
-	rule := domain.BlueprintRule{
+	rule := domain.RecurrenceRule{
 		Start: start, AnchorDate: anchor, End: end, Timezone: revision.Timezone,
 		Frequency: revision.Frequency, Interval: revision.Interval,
 		Weekdays: mustParseWeekdays(revision.Weekdays), EndDate: ruleEnd,
 	}
 
-	checkpoint, err := repos.Blueprints().GetRevisionBackfillCheckpoint(ctx, revision.RevisionID)
+	checkpoint, err := repos.Rules().GetRevisionBackfillCheckpoint(ctx, revision.RevisionID)
 	if err != nil {
 		return 0, err
 	}
@@ -173,7 +173,7 @@ func (uc *BackfillUseCase) backfillRevision(ctx context.Context, repos Repositor
 		return 0, nil
 	}
 
-	occurrences, err := domain.GenerateBlueprintOccurrences(rule, from, through)
+	occurrences, err := domain.GenerateOccurrences(rule, from, through)
 	if err != nil {
 		return 0, err
 	}
@@ -184,13 +184,13 @@ func (uc *BackfillUseCase) backfillRevision(ctx context.Context, repos Repositor
 		}
 		id := uc.issueID()
 		row := dao.ScheduleOccurrence{
-			ID: &id, BlueprintID: revision.ID, OccurrenceDate: occurrence.Date.Format("2006-01-02"),
+			ID: &id, RuleID: revision.ID, OccurrenceDate: occurrence.Date.Format("2006-01-02"),
 			SourceRevisionID: revision.RevisionID, UserID: revision.UserID, ProjectID: revision.ProjectID,
 			AssigneeID: revision.AssigneeID, Title: revision.Title, Description: revision.Description,
 			Location: revision.Location, Timezone: revision.Timezone, AllDay: revision.AllDay,
 			StartAt: occurrence.StartAt.Unix(), EndAt: occurrence.EndAt.Unix(),
 		}
-		inserted, err := repos.Blueprints().BackfillOccurrence(ctx, actorID, row)
+		inserted, err := repos.Rules().BackfillOccurrence(ctx, actorID, row)
 		if err != nil {
 			return generated, err
 		}
@@ -198,14 +198,14 @@ func (uc *BackfillUseCase) backfillRevision(ctx context.Context, repos Repositor
 			generated++
 		}
 	}
-	return generated, repos.Blueprints().AdvanceRevisionBackfillCheckpoint(ctx, revision.RevisionID, through.Format("2006-01-02"))
+	return generated, repos.Rules().AdvanceRevisionBackfillCheckpoint(ctx, revision.RevisionID, through.Format("2006-01-02"))
 }
 
-func lastSafeBackfillDate(rule domain.BlueprintRule, from, through, localCutoffDate time.Time, cutoff time.Time) (time.Time, error) {
+func lastSafeBackfillDate(rule domain.RecurrenceRule, from, through, localCutoffDate time.Time, cutoff time.Time) (time.Time, error) {
 	if through.Before(from) || localCutoffDate.Before(from) || through.Before(localCutoffDate) {
 		return through, nil
 	}
-	todays, err := domain.GenerateBlueprintOccurrences(rule, localCutoffDate, localCutoffDate)
+	todays, err := domain.GenerateOccurrences(rule, localCutoffDate, localCutoffDate)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -215,7 +215,7 @@ func lastSafeBackfillDate(rule domain.BlueprintRule, from, through, localCutoffD
 	return through, nil
 }
 
-func uniqueProjectIDs(revisions []dao.BlueprintRevision) []string {
+func uniqueProjectIDs(revisions []dao.RuleRevision) []string {
 	seen := map[string]struct{}{}
 	for _, revision := range revisions {
 		if revision.ProjectID != "" {

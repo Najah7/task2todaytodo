@@ -15,15 +15,15 @@ func NewListOccurrenceRevisionsUseCase(uow UOW) *ListOccurrenceRevisionsUseCase 
 	return &ListOccurrenceRevisionsUseCase{uow: uow}
 }
 
-func (uc *ListOccurrenceRevisionsUseCase) ExecutePage(ctx context.Context, actorID, blueprintID, occurrenceDate string, size int, beforeRevision int32) (CursorPage[dao.ScheduleOccurrenceRevision], error) {
+func (uc *ListOccurrenceRevisionsUseCase) ExecutePage(ctx context.Context, actorID, ruleID, occurrenceDate string, size int, beforeRevision int32) (CursorPage[dao.ScheduleOccurrenceRevision], error) {
 	if size < 1 || size > pagination.MaxPageSize || beforeRevision < 0 {
 		return CursorPage[dao.ScheduleOccurrenceRevision]{}, ErrInvalidSchedulePage
 	}
 	var page CursorPage[dao.ScheduleOccurrenceRevision]
 	err := uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		_, err := repos.Blueprints().GetPersistedOccurrenceForHistory(ctx, actorID, blueprintID, occurrenceDate)
+		_, err := repos.Rules().GetPersistedOccurrenceForHistory(ctx, actorID, ruleID, occurrenceDate)
 		if errors.Is(err, ErrOccurrenceNotFound) {
-			if _, virtualErr := virtualOccurrenceForDate(ctx, repos.Blueprints(), actorID, blueprintID, occurrenceDate, shared.ScheduleRead()); virtualErr != nil {
+			if _, virtualErr := virtualOccurrenceForDate(ctx, repos.Rules(), actorID, ruleID, occurrenceDate, shared.ScheduleRead()); virtualErr != nil {
 				return virtualErr
 			}
 			page = CursorPage[dao.ScheduleOccurrenceRevision]{Items: []dao.ScheduleOccurrenceRevision{}}
@@ -32,7 +32,7 @@ func (uc *ListOccurrenceRevisionsUseCase) ExecutePage(ctx context.Context, actor
 		if err != nil {
 			return err
 		}
-		rows, err := repos.Blueprints().ListOccurrenceRevisions(ctx, actorID, blueprintID, occurrenceDate, size+1, beforeRevision)
+		rows, err := repos.Rules().ListOccurrenceRevisions(ctx, actorID, ruleID, occurrenceDate, size+1, beforeRevision)
 		if err != nil {
 			return err
 		}

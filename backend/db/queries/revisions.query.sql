@@ -18,8 +18,8 @@ LIMIT sqlc.arg(page_limit)::integer;
 SELECT history.*
 FROM schedule_revisions history
 JOIN schedules occurrence ON occurrence.id = history.schedule_id
-JOIN schedule_blueprints blueprint ON blueprint.id = occurrence.blueprint_id AND blueprint.deleted_at IS NULL
-WHERE occurrence.blueprint_id = sqlc.arg(blueprint_id)::text
+JOIN schedule_rules rule ON rule.id = occurrence.rule_id AND rule.deleted_at IS NULL
+WHERE occurrence.rule_id = sqlc.arg(rule_id)::text
   AND occurrence.occurrence_date = sqlc.arg(occurrence_date)::date
   AND (
       (occurrence.deleted_at IS NOT NULL AND occurrence.user_id = sqlc.arg(actor_id)::text)

@@ -1,8 +1,8 @@
 package dao
 
-type ScheduleBlueprintMetadata struct {
-	BlueprintID string
-	CreatedAt   string
+type ScheduleRuleMetadata struct {
+	RuleID    string
+	CreatedAt string
 }
 
 type ProjectMetadata struct {

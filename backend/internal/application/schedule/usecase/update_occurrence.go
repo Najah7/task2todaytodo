@@ -17,7 +17,7 @@ var (
 	ErrOccurrenceTimeInvalid            = errors.New("occurrence end must be after start")
 	ErrOccurrenceTitleEmpty             = errors.New("occurrence title cannot be empty")
 	ErrOccurrenceIDGeneratorUnavailable = errors.New("occurrence ID generator unavailable")
-	ErrBlueprintIDGeneratorUnavailable  = errors.New("blueprint revision ID generator unavailable")
+	ErrRuleIDGeneratorUnavailable       = errors.New("rule revision ID generator unavailable")
 )
 
 type UpdateOccurrenceUseCase struct {
@@ -31,15 +31,15 @@ func NewUpdateOccurrenceUseCase(uow UOW, logger telemetry.Logger, issueID func()
 	return &UpdateOccurrenceUseCase{uow: uow, logger: telemetry.OrNop(logger), issueID: issueID, now: time.Now}
 }
 
-func (uc *UpdateOccurrenceUseCase) Execute(ctx context.Context, actorID, blueprintID, occurrenceDate string, input UpdateScheduleInput, expectedRevision int32) (dao.ScheduleOccurrence, error) {
-	return uc.execute(ctx, actorID, blueprintID, occurrenceDate, input, expectedRevision, "schedule.occurrence.update")
+func (uc *UpdateOccurrenceUseCase) Execute(ctx context.Context, actorID, ruleID, occurrenceDate string, input UpdateScheduleInput, expectedRevision int32) (dao.ScheduleOccurrence, error) {
+	return uc.execute(ctx, actorID, ruleID, occurrenceDate, input, expectedRevision, "schedule.occurrence.update")
 }
 
-func (uc *UpdateOccurrenceUseCase) execute(ctx context.Context, actorID, blueprintID, occurrenceDate string, input UpdateScheduleInput, expectedRevision int32, operation string) (output dao.ScheduleOccurrence, err error) {
+func (uc *UpdateOccurrenceUseCase) execute(ctx context.Context, actorID, ruleID, occurrenceDate string, input UpdateScheduleInput, expectedRevision int32, operation string) (output dao.ScheduleOccurrence, err error) {
 	defer func() { logUnexpectedScheduleFailure(uc.logger, ctx, "UpdateOccurrenceUseCase.Execute", err) }()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		capability := occurrenceUpdateCapability(input)
-		initial, err := resolveOccurrenceForMutation(ctx, repos.Blueprints(), actorID, blueprintID, occurrenceDate, capability, false)
+		initial, err := resolveOccurrenceForMutation(ctx, repos.Rules(), actorID, ruleID, occurrenceDate, capability, false)
 		if err != nil {
 			return err
 		}
@@ -56,7 +56,7 @@ func (uc *UpdateOccurrenceUseCase) execute(ctx context.Context, actorID, bluepri
 		if input.ProjectID != nil {
 			targetProject = *input.ProjectID
 		}
-		current, before, err := lockAndReloadOccurrence(ctx, repos, actorID, blueprintID, occurrenceDate, initial, expectedRevision, capability,
+		current, before, err := lockAndReloadOccurrence(ctx, repos, actorID, ruleID, occurrenceDate, initial, expectedRevision, capability,
 			[]string{initial.value.ProjectID, targetProject}, uc.now().UTC(), false)
 		if err != nil {
 			return err
@@ -88,16 +88,15 @@ func (uc *UpdateOccurrenceUseCase) execute(ctx context.Context, actorID, bluepri
 			output = current.value
 			return nil
 		}
-		updated.IsOverride = true
 		if !current.persisted {
 			id, err := virtualOccurrenceID(uc.issueID)
 			if err != nil {
 				return err
 			}
 			updated.ID = &id
-			output, err = repos.Blueprints().MaterializeOccurrence(ctx, actorID, updated, capability)
+			output, err = repos.Rules().MaterializeOccurrence(ctx, actorID, updated, capability)
 		} else {
-			output, err = repos.Blueprints().UpdatePersistedOccurrence(ctx, actorID, updated, expectedRevision, capability)
+			output, err = repos.Rules().UpdatePersistedOccurrence(ctx, actorID, updated, expectedRevision, capability)
 		}
 		if err != nil {
 			return mapOccurrenceConflict(err)
@@ -105,7 +104,7 @@ func (uc *UpdateOccurrenceUseCase) execute(ctx context.Context, actorID, bluepri
 		return finishScheduleProjectMutation(ctx, repos, domain.UserID(actorID), before, uc.now().UTC())
 	})
 	if err == nil {
-		logScheduleStateChange(uc.logger, ctx, operation, domain.UserID(actorID), domain.ScheduleID(blueprintID))
+		logScheduleStateChange(uc.logger, ctx, operation, domain.UserID(actorID), domain.ScheduleID(ruleID))
 	}
 	return output, err
 }
@@ -167,7 +166,7 @@ func authorizeOccurrencePatch(ctx context.Context, repos Repositories, actorID s
 		}
 		return nil
 	}
-	allowed, err := repos.Blueprints().IsAssigneeEligible(ctx, projectID, current.UserID, assigneeID)
+	allowed, err := repos.Rules().IsAssigneeEligible(ctx, projectID, current.UserID, assigneeID)
 	if err != nil {
 		return err
 	}
@@ -192,14 +191,14 @@ func occurrenceTargetAssignee(ctx context.Context, repos Repositories, current d
 	if projectID == "" {
 		return current.UserID, nil
 	}
-	allowed, err := repos.Blueprints().IsAssigneeEligible(ctx, projectID, current.UserID, assigneeID)
+	allowed, err := repos.Rules().IsAssigneeEligible(ctx, projectID, current.UserID, assigneeID)
 	if err != nil {
 		return "", err
 	}
 	if allowed {
 		return assigneeID, nil
 	}
-	ownerAllowed, err := repos.Blueprints().IsAssigneeEligible(ctx, projectID, current.UserID, current.UserID)
+	ownerAllowed, err := repos.Rules().IsAssigneeEligible(ctx, projectID, current.UserID, current.UserID)
 	if err != nil {
 		return "", err
 	}
@@ -223,7 +222,7 @@ func normalizeOccurrenceAllDayBounds(occurrence *dao.ScheduleOccurrence, input U
 	start := time.Unix(occurrence.StartAt, 0).In(location)
 	end := time.Unix(occurrence.EndAt, 0).In(location)
 	if input.StartAt != nil && !isMidnight(start) || input.EndAt != nil && !isMidnight(end) {
-		return domain.ErrBlueprintAllDayTime
+		return domain.ErrRuleAllDayTime
 	}
 	startDate := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, location)
 	endDate := time.Date(end.Year(), end.Month(), end.Day(), 0, 0, 0, 0, location)

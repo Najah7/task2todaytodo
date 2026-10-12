@@ -1,22 +1,22 @@
 package usecase
 
 type ScheduleUseCases struct {
-	CreateBlueprint           *CreateBlueprintUseCase
-	GetBlueprint              *GetBlueprintUseCase
-	ListBlueprintRevisions    *ListBlueprintRevisionsUseCase
-	OccurrenceRevisions       *ListOccurrenceRevisionsUseCase
-	UpdateBlueprint           *UpdateBlueprintUseCase
-	DeleteBlueprintFollowing  *DeleteBlueprintFollowingUseCase
-	ListOccurrences           *ListOccurrencesUseCase
-	GetOccurrence             *GetOccurrenceUseCase
-	UpdateOccurrence          *UpdateOccurrenceUseCase
-	CompleteOccurrence        *SetOccurrenceStateUseCase
-	ReopenOccurrence          *SetOccurrenceStateUseCase
-	SkipOccurrence            *SetOccurrenceStateUseCase
-	RestoreOccurrence         *SetOccurrenceStateUseCase
-	DeleteOccurrence          *SetOccurrenceStateUseCase
-	RescheduleOccurrence      *RescheduleOccurrenceUseCase
-	Backfill                  ScheduleBackfill
-	ProjectBlueprintLifecycle ProjectBlueprintLifecycle
-	ListAssignees             *ListScheduleAssigneesUseCase
+	CreateRule           *CreateRuleUseCase
+	GetRule              *GetRuleUseCase
+	ListRuleRevisions    *ListRuleRevisionsUseCase
+	OccurrenceRevisions  *ListOccurrenceRevisionsUseCase
+	UpdateRule           *UpdateRuleUseCase
+	DeleteRuleFollowing  *DeleteRuleFollowingUseCase
+	ListOccurrences      *ListOccurrencesUseCase
+	GetOccurrence        *GetOccurrenceUseCase
+	UpdateOccurrence     *UpdateOccurrenceUseCase
+	CompleteOccurrence   *SetOccurrenceStateUseCase
+	ReopenOccurrence     *SetOccurrenceStateUseCase
+	SkipOccurrence       *SetOccurrenceStateUseCase
+	RestoreOccurrence    *SetOccurrenceStateUseCase
+	DeleteOccurrence     *SetOccurrenceStateUseCase
+	RescheduleOccurrence *RescheduleOccurrenceUseCase
+	Backfill             ScheduleBackfill
+	ProjectRuleLifecycle ProjectRuleLifecycle
+	ListAssignees        *ListScheduleAssigneesUseCase
 }

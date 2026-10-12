@@ -27,7 +27,7 @@ func New(database settings.DatabaseSettings, id IDIssuer, logger telemetry.Logge
 	}
 
 	store := NewStore(pool)
-	uow := NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
+	uow := NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule, store.Allocation)
 	uc, stopUseCases := NewUseCase(store, uow, id, logger)
 	closeApp := func(ctx context.Context) error {
 		if err := stopUseCases(ctx); err != nil {

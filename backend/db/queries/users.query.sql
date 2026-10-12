@@ -13,6 +13,12 @@ SELECT timezone
 FROM users
 WHERE id = $1;
 
+-- name: GetUserSleepSettings :one
+SELECT to_char(wake_up_time, 'HH24:MI') AS wake_up_time,
+       to_char(bedtime, 'HH24:MI') AS bedtime
+FROM users
+WHERE id = sqlc.arg(user_id)::text;
+
 -- name: GetTimezoneChoices :many
 SELECT timezone FROM timezone_master ORDER BY timezone;
 

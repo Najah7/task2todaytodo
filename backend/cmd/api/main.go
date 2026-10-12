@@ -88,6 +88,17 @@ func main() {
 		r.Post("/login", handler.Login.Login)
 		auth := r.With(middleware.NewAuthMiddleware(app.UseCase.PersonalAccessToken.Authenticate))
 
+		// Admin
+		auth.Route("/admin", func(admin chi.Router) {
+			// Admin Jobs
+			admin.Post("/jobs/backfill-schedules:run", handler.Admin.RunBackfill)
+			admin.Post("/jobs/prefill-allocations:run", handler.Admin.RunAllocationPrefill)
+
+			// Admin Operations
+			admin.Get("/operations", handler.Admin.ListOperations)
+			admin.Get("/operations/{id}", handler.Admin.GetOperation)
+		})
+
 		// Personal Access Tokens
 		auth.Delete("/personal-access-token:revoke", handler.PersonalAccessToken.Revoke)
 
@@ -95,17 +106,13 @@ func main() {
 		auth.Get("/users/me", handler.User.Get)
 		auth.Patch("/users/me", handler.User.UpdateBasicInfo)
 		auth.Patch("/users/me/timezone", handler.User.UpdateTimezone)
+		auth.Patch("/users/me/sleep", handler.User.UpdateSleepSettings)
 		auth.Patch("/users/me/password", handler.User.UpdatePassword)
 
 		// Role & Permissions
 		auth.Get("/roles", handler.Role.List)
 		auth.Get("/permissions", handler.Role.ListPermissions)
 		auth.Get("/timezones", handler.Timezone.List)
-
-		// Admin operations
-		auth.Post("/admin/jobs/backfill-schedules:run", handler.Admin.RunBackfill)
-		auth.Get("/admin/operations", handler.Admin.ListOperations)
-		auth.Get("/admin/operations/{id}", handler.Admin.GetOperation)
 
 		// Inbox
 		auth.Get("/inbox", handler.Inbox.List)
@@ -139,7 +146,19 @@ func main() {
 
 		// Project Schedules
 		auth.Get("/projects/{id}/schedules", handler.Schedule.ListProjectOccurrences)
-		auth.Post("/projects/{id}/schedules", handler.Schedule.CreateProjectBlueprint)
+		auth.Post("/projects/{id}/schedules", handler.Schedule.CreateProjectRule)
+
+		// Project time allocations
+		auth.Get("/allocation-weeks/{week_start}", handler.Allocation.GetWeek)
+		auth.Get("/allocation-rules", handler.Allocation.GetRules)
+		auth.Put("/allocation-rules", handler.Allocation.PutRules)
+		auth.Get("/allocation-plans", handler.Allocation.GetPlans)
+		auth.Put("/allocation-plans", handler.Allocation.PutPlans)
+		auth.Post("/allocations", handler.Allocation.Create)
+		auth.Patch("/allocations/{rule_id}/{occurrence_date}", handler.Allocation.Update)
+		auth.Delete("/allocations/{rule_id}/{occurrence_date}", handler.Allocation.Delete)
+		auth.Put("/daily-sleep-exceptions/{local_date}", handler.Allocation.PutSleepException)
+		auth.Delete("/daily-sleep-exceptions/{local_date}", handler.Allocation.DeleteSleepException)
 
 		// Tasks
 		auth.Get("/tasks", handler.Task.List)
@@ -165,25 +184,25 @@ func main() {
 		auth.Patch("/tasks/{taskId}/action-items/{id}", handler.ActionItem.Update)
 		auth.Delete("/tasks/{taskId}/action-items/{id}", handler.ActionItem.Delete)
 
-		// Schedule blueprints
-		auth.Post("/schedule-blueprints", handler.Schedule.CreateBlueprint)
-		auth.Get("/schedule-blueprints/{id}", handler.Schedule.GetBlueprint)
-		auth.Get("/schedule-blueprints/{id}/revisions", handler.Schedule.ListBlueprintRevisions)
-		auth.Patch("/schedule-blueprints/{id}", handler.Schedule.UpdateBlueprint)
-		auth.Delete("/schedule-blueprints/{id}/following/{occurrence_date}", handler.Schedule.DeleteBlueprintFollowing)
-		auth.Get("/schedule-blueprints/{id}/assignees", handler.Schedule.ListAssignees)
+		// Schedule rules
+		auth.Post("/schedule-rules", handler.Schedule.CreateRule)
+		auth.Get("/schedule-rules/{id}", handler.Schedule.GetRule)
+		auth.Get("/schedule-rules/{id}/revisions", handler.Schedule.ListRuleRevisions)
+		auth.Patch("/schedule-rules/{id}", handler.Schedule.UpdateRule)
+		auth.Delete("/schedule-rules/{id}/following/{occurrence_date}", handler.Schedule.DeleteRuleFollowing)
+		auth.Get("/schedule-rules/{id}/assignees", handler.Schedule.ListAssignees)
 
 		// Schedules
 		auth.Get("/schedules", handler.Schedule.ListOccurrences)
-		auth.Get("/schedules/{blueprint_id}/{occurrence_date}", handler.Schedule.GetOccurrence)
-		auth.Get("/schedules/{blueprint_id}/{occurrence_date}/revisions", handler.Schedule.ListOccurrenceRevisions)
-		auth.Patch("/schedules/{blueprint_id}/{occurrence_date}", handler.Schedule.UpdateOccurrence)
-		auth.Delete("/schedules/{blueprint_id}/{occurrence_date}", handler.Schedule.DeleteOccurrence)
-		auth.Post("/schedules/{blueprint_id}/{occurrence_date}:complete", handler.Schedule.CompleteOccurrence)
-		auth.Post("/schedules/{blueprint_id}/{occurrence_date}:reopen", handler.Schedule.ReopenOccurrence)
-		auth.Post("/schedules/{blueprint_id}/{occurrence_date}:skip", handler.Schedule.SkipOccurrence)
-		auth.Post("/schedules/{blueprint_id}/{occurrence_date}:restore", handler.Schedule.RestoreOccurrence)
-		auth.Post("/schedules/{blueprint_id}/{occurrence_date}:reschedule", handler.Schedule.RescheduleOccurrence)
+		auth.Get("/schedules/{rule_id}/{occurrence_date}", handler.Schedule.GetOccurrence)
+		auth.Get("/schedules/{rule_id}/{occurrence_date}/revisions", handler.Schedule.ListOccurrenceRevisions)
+		auth.Patch("/schedules/{rule_id}/{occurrence_date}", handler.Schedule.UpdateOccurrence)
+		auth.Delete("/schedules/{rule_id}/{occurrence_date}", handler.Schedule.DeleteOccurrence)
+		auth.Post("/schedules/{rule_id}/{occurrence_date}:complete", handler.Schedule.CompleteOccurrence)
+		auth.Post("/schedules/{rule_id}/{occurrence_date}:reopen", handler.Schedule.ReopenOccurrence)
+		auth.Post("/schedules/{rule_id}/{occurrence_date}:skip", handler.Schedule.SkipOccurrence)
+		auth.Post("/schedules/{rule_id}/{occurrence_date}:restore", handler.Schedule.RestoreOccurrence)
+		auth.Post("/schedules/{rule_id}/{occurrence_date}:reschedule", handler.Schedule.RescheduleOccurrence)
 
 	})
 

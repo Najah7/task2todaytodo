@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	allocationrepository "github.com/Najah7/task2todaytodo/internal/application/allocation/repository"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	scheduleDomain "github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	scheduleRepository "github.com/Najah7/task2todaytodo/internal/application/schedule/repository"
@@ -26,16 +27,19 @@ func NewProjectUOW(pool *pgxpool.Pool, projects ProjectStore, tasks TaskStore, s
 
 func (uow *ProjectUOW) Do(ctx context.Context, fn func(context.Context, projectusecase.Repository, projectusecase.ProjectChildrenDeleter) error) error {
 	return RunInTx(ctx, uow.pool, func(tx pgx.Tx) error {
+		allocationRepository := allocationrepository.NewAllocationRepository(uow.pool).WithTx(tx)
 		return fn(ctx, uow.projects.WithTx(tx).Projects, projectChildrenAdapter{
-			tasks:     uow.tasks.WithTx(tx).Tasks,
-			schedules: uow.schedules.WithTx(tx).Schedules,
+			tasks:       uow.tasks.WithTx(tx).Tasks,
+			schedules:   uow.schedules.WithTx(tx).Schedules,
+			allocations: allocationProjectLifecycleAdapter{repository: allocationRepository},
 		})
 	})
 }
 
 type projectChildrenAdapter struct {
-	tasks     *taskRepository.TaskRepository
-	schedules *scheduleRepository.ScheduleRepository
+	tasks       *taskRepository.TaskRepository
+	schedules   *scheduleRepository.ScheduleRepository
+	allocations allocationProjectLifecycleAdapter
 }
 
 func (adapter projectChildrenAdapter) DeleteProjectTasks(ctx context.Context, actorID, projectID string) error {
@@ -54,12 +58,20 @@ func (adapter projectChildrenAdapter) ReassignSchedulesAfterProjectMemberRemoval
 	return adapter.schedules.ReassignProjectMemberSchedules(ctx, scheduleDomain.UserID(actorID), scheduleDomain.ProjectID(projectID), scheduleDomain.UserID(memberID))
 }
 
-func (adapter projectChildrenAdapter) PauseProjectBlueprints(ctx context.Context, actorID, projectID string, at time.Time) error {
-	return adapter.schedules.PauseProjectBlueprints(ctx, actorID, projectID, at)
+func (adapter projectChildrenAdapter) PauseProjectRules(ctx context.Context, actorID, projectID string, at time.Time) error {
+	return adapter.schedules.PauseProjectRules(ctx, actorID, projectID, at)
 }
 
-func (adapter projectChildrenAdapter) ResumeProjectBlueprints(ctx context.Context, actorID, projectID string, at time.Time) error {
-	return adapter.schedules.ResumeProjectBlueprints(ctx, actorID, projectID, at)
+func (adapter projectChildrenAdapter) ResumeProjectRules(ctx context.Context, actorID, projectID string, at time.Time) error {
+	return adapter.schedules.ResumeProjectRules(ctx, actorID, projectID, at)
+}
+
+func (adapter projectChildrenAdapter) PauseProjectAllocations(ctx context.Context, actorID, projectID string, at time.Time) error {
+	return adapter.allocations.PauseProjectAllocations(ctx, actorID, projectID, at)
+}
+
+func (adapter projectChildrenAdapter) ResumeProjectAllocations(ctx context.Context, actorID, projectID string, at time.Time) error {
+	return adapter.allocations.ResumeProjectAllocations(ctx, actorID, projectID, at)
 }
 
 var _ projectusecase.UnitOfWork = (*ProjectUOW)(nil)

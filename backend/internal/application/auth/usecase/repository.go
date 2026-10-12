@@ -13,6 +13,7 @@ type UserRepository interface {
 	Create(ctx context.Context, user domain.User) (dao.User, error)
 	Update(ctx context.Context, user domain.User) (dao.User, error)
 	UpdateTimezone(ctx context.Context, id domain.UserID, timezone domain.UserTimezone) error
+	UpdateSleepSettings(ctx context.Context, id domain.UserID, wakeUpTime, bedtime string) error
 	TimezoneExists(ctx context.Context, timezone string) (bool, error)
 }
 

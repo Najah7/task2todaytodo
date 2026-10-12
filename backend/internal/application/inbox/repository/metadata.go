@@ -16,21 +16,21 @@ func NewMetadataRepository(db sqlc.DBTX) *MetadataRepository {
 	return &MetadataRepository{queries: sqlc.New(db)}
 }
 
-func (r MetadataRepository) ListScheduleBlueprintMetadata(ctx context.Context, blueprintIDs []string) ([]dao.ScheduleBlueprintMetadata, error) {
-	if len(blueprintIDs) == 0 {
-		return []dao.ScheduleBlueprintMetadata{}, nil
+func (r MetadataRepository) ListScheduleRuleMetadata(ctx context.Context, ruleIDs []string) ([]dao.ScheduleRuleMetadata, error) {
+	if len(ruleIDs) == 0 {
+		return []dao.ScheduleRuleMetadata{}, nil
 	}
-	rows, err := r.queries.ListInboxScheduleBlueprintCreatedAt(ctx, blueprintIDs)
+	rows, err := r.queries.ListInboxScheduleRuleCreatedAt(ctx, ruleIDs)
 	if err != nil {
 		return nil, err
 	}
-	metadata := make([]dao.ScheduleBlueprintMetadata, 0, len(rows))
+	metadata := make([]dao.ScheduleRuleMetadata, 0, len(rows))
 	for _, row := range rows {
 		if !row.CreatedAt.Valid {
 			continue
 		}
-		metadata = append(metadata, dao.ScheduleBlueprintMetadata{
-			BlueprintID: row.ID, CreatedAt: row.CreatedAt.Time.UTC().Format(time.RFC3339Nano),
+		metadata = append(metadata, dao.ScheduleRuleMetadata{
+			RuleID: row.ID, CreatedAt: row.CreatedAt.Time.UTC().Format(time.RFC3339Nano),
 		})
 	}
 	return metadata, nil

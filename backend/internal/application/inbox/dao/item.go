@@ -39,7 +39,7 @@ type TaskPayload struct {
 
 type SchedulePayload struct {
 	OccurrenceID       *string
-	BlueprintID        string
+	RuleID             string
 	OccurrenceDate     string
 	SourceRevisionID   string
 	AssigneeID         string

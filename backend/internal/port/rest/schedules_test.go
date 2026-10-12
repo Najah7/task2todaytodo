@@ -11,10 +11,10 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func TestScheduleHandlerRejectsUnauthenticatedBlueprintCreate(t *testing.T) {
+func TestScheduleHandlerRejectsUnauthenticatedRuleCreate(t *testing.T) {
 	handler := NewScheduleHandler(scheduleusecase.ScheduleUseCases{}, nil)
 	response := httptest.NewRecorder()
-	handler.CreateBlueprint(response, httptest.NewRequest(http.MethodPost, "/schedule-blueprints", nil))
+	handler.CreateRule(response, httptest.NewRequest(http.MethodPost, "/schedule-rules", nil))
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("unauthenticated create status = %d, want 401", response.Code)
 	}
@@ -24,8 +24,8 @@ func TestScheduleHandlerRequiresCompoundOccurrenceIdentity(t *testing.T) {
 	handler := NewScheduleHandler(scheduleusecase.ScheduleUseCases{}, nil)
 	ctx := context.WithValue(context.Background(), UserIDContextKey, "user-1")
 	routeContext := chi.NewRouteContext()
-	routeContext.URLParams.Add("blueprint_id", "blueprint-1")
-	request := httptest.NewRequest(http.MethodGet, "/schedules/blueprint-1/", nil)
+	routeContext.URLParams.Add("rule_id", "rule-1")
+	request := httptest.NewRequest(http.MethodGet, "/schedules/rule-1/", nil)
 	request = request.WithContext(context.WithValue(ctx, chi.RouteCtxKey, routeContext))
 	response := httptest.NewRecorder()
 	handler.GetOccurrence(response, request)
@@ -34,20 +34,20 @@ func TestScheduleHandlerRequiresCompoundOccurrenceIdentity(t *testing.T) {
 	}
 }
 
-func TestScheduleUseCaseErrorsMapBlueprintValidationAndRevisionConflicts(t *testing.T) {
+func TestScheduleUseCaseErrorsMapRuleValidationAndRevisionConflicts(t *testing.T) {
 	for _, test := range []struct {
 		name  string
 		err   error
 		field string
 		code  string
 	}{
-		{"title", scheduledomain.ErrBlueprintTitleEmpty, "title", "required"},
-		{"timezone", scheduledomain.ErrBlueprintTimezoneEmpty, "timezone", "required"},
-		{"frequency", scheduledomain.ErrBlueprintFrequency, "frequency", "invalid_frequency"},
-		{"interval", scheduledomain.ErrBlueprintInterval, "interval", "invalid_interval"},
-		{"weekdays", scheduledomain.ErrBlueprintWeekdays, "weekdays", "invalid_weekdays"},
-		{"end date", scheduledomain.ErrBlueprintDateRange, "end_date", "invalid_date_range"},
-		{"time range", scheduledomain.ErrBlueprintTimeRange, "end_at", "invalid_time_range"},
+		{"title", scheduledomain.ErrRuleTitleEmpty, "title", "required"},
+		{"timezone", scheduledomain.ErrRuleTimezoneEmpty, "timezone", "required"},
+		{"frequency", scheduledomain.ErrRuleFrequency, "frequency", "invalid_frequency"},
+		{"interval", scheduledomain.ErrRuleInterval, "interval", "invalid_interval"},
+		{"weekdays", scheduledomain.ErrRuleWeekdays, "weekdays", "invalid_weekdays"},
+		{"end date", scheduledomain.ErrRuleDateRange, "end_date", "invalid_date_range"},
+		{"time range", scheduledomain.ErrRuleTimeRange, "end_at", "invalid_time_range"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			status, detail := scheduleUseCaseError(test.err)

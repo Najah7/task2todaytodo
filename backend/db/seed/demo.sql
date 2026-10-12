@@ -14,8 +14,8 @@ TRUNCATE TABLE
     schedule_backfill_checkpoints,
     schedule_project_pause_intervals,
     schedules,
-    schedule_blueprint_revisions,
-    schedule_blueprints,
+    schedule_rule_revisions,
+    schedule_rules,
     action_items,
     tasks,
     projects,
@@ -93,14 +93,14 @@ SELECT
     0
 FROM generate_series(0, 27) AS series(n);
 
--- A recurring blueprint keeps its recurrence definition in revisions; the backfill
+-- A recurring rule keeps its recurrence definition in revisions; the backfill
 -- job materializes concrete occurrences later. Effective revisions demonstrate a
 -- future change without rewriting prior schedule occurrences.
-INSERT INTO schedule_blueprints (id, user_id) VALUES
+INSERT INTO schedule_rules (id, user_id) VALUES
     ('00000000000000000000000501', '00000000000000000000000001');
 
-INSERT INTO schedule_blueprint_revisions (
-    id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
+INSERT INTO schedule_rule_revisions (
+    id, rule_id, user_id, revision, effective_from, recurrence_anchor_date,
     local_start, local_end, timezone, frequency, interval_count, weekdays,
     title, description, location, project_id, assignee_id, changed_by
 ) VALUES
@@ -115,7 +115,7 @@ INSERT INTO schedule_blueprint_revisions (
      '改善チーム朝会', '進捗と今日の優先事項を共有（時間変更）', 'オンライン', '00000000000000000000000101',
      '00000000000000000000000001', '00000000000000000000000001');
 
--- One-off appointments have both a blueprint/revision and their concrete occurrence.
+-- One-off appointments have both a rule/revision and their concrete occurrence.
 WITH fixtures AS (
     SELECT * FROM (VALUES
         ('00000000000000000000000504', '00000000000000000000000514', '00000000000000000000000207', '郵便局に立ち寄る', '郵便を出してから帰宅', '駅前郵便局', CURRENT_DATE, time '16:00', time '16:20'),
@@ -125,7 +125,7 @@ WITH fixtures AS (
     SELECT f.*, t.user_id, t.project_id, t.assignee_id
     FROM fixtures f JOIN tasks t ON t.id=f.task_id
 )
-INSERT INTO schedule_blueprints (id, user_id)
+INSERT INTO schedule_rules (id, user_id)
 SELECT schedule_id, user_id FROM source;
 
 WITH fixtures AS (
@@ -137,8 +137,8 @@ WITH fixtures AS (
     SELECT f.*, t.user_id, t.project_id, t.assignee_id
     FROM fixtures f JOIN tasks t ON t.id=f.task_id
 )
-INSERT INTO schedule_blueprint_revisions (
-    id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
+INSERT INTO schedule_rule_revisions (
+    id, rule_id, user_id, revision, effective_from, recurrence_anchor_date,
     local_start, local_end, timezone, frequency, interval_count, weekdays,
     title, description, location, project_id, assignee_id, changed_by
 )
@@ -157,7 +157,7 @@ WITH fixtures AS (
     FROM fixtures f JOIN tasks t ON t.id=f.task_id
 )
 INSERT INTO schedules (
-    id, blueprint_id, source_revision_id, user_id, occurrence_date,
+    id, rule_id, source_revision_id, user_id, occurrence_date,
     start_at, end_at, title, description, location, project_id,
     assignee_id, timezone, changed_by
 )
@@ -168,7 +168,7 @@ SELECT schedule_id, schedule_id, revision_id, user_id, occurrence_date,
 FROM source;
 
 -- Additional one-off fixtures support list pagination while keeping the same
--- blueprint -> revision -> occurrence relationship as the primary examples.
+-- rule -> revision -> occurrence relationship as the primary examples.
 WITH source AS (
     SELECT lpad((506+n)::text, 26, '0') AS schedule_id,
            lpad((806+n)::text, 26, '0') AS revision_id,
@@ -181,7 +181,7 @@ WITH source AS (
     FROM generate_series(0, 19) AS series(n)
     JOIN tasks t ON t.id=lpad((220+n)::text, 26, '0')
 )
-INSERT INTO schedule_blueprints (id, user_id)
+INSERT INTO schedule_rules (id, user_id)
 SELECT schedule_id, user_id FROM source;
 
 WITH source AS (
@@ -196,8 +196,8 @@ WITH source AS (
     FROM generate_series(0, 19) AS series(n)
     JOIN tasks t ON t.id=lpad((220+n)::text, 26, '0')
 )
-INSERT INTO schedule_blueprint_revisions (
-    id, blueprint_id, user_id, revision, effective_from, recurrence_anchor_date,
+INSERT INTO schedule_rule_revisions (
+    id, rule_id, user_id, revision, effective_from, recurrence_anchor_date,
     local_start, local_end, timezone, frequency, interval_count, weekdays,
     title, description, location, project_id, assignee_id, changed_by
 )
@@ -220,7 +220,7 @@ WITH source AS (
     JOIN tasks t ON t.id=lpad((220+n)::text, 26, '0')
 )
 INSERT INTO schedules (
-    id, blueprint_id, source_revision_id, user_id, occurrence_date,
+    id, rule_id, source_revision_id, user_id, occurrence_date,
     start_at, end_at, title, description, location, project_id,
     assignee_id, timezone, changed_by
 )

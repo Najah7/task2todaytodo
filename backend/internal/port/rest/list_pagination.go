@@ -20,7 +20,7 @@ type listAnchor struct {
 	Name           string `json:"name,omitempty"`
 	Position       int    `json:"position,omitempty"`
 	SeriesID       string `json:"series_id,omitempty"`
-	BlueprintID    string `json:"blueprint_id,omitempty"`
+	RuleID         string `json:"rule_id,omitempty"`
 	OccurrenceDate string `json:"occurrence_date,omitempty"`
 	AsOf           string `json:"as_of,omitempty"`
 	Direction      string `json:"direction,omitempty"`

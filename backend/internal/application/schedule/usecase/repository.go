@@ -42,7 +42,7 @@ type ScheduleRepository interface {
 type Repositories interface {
 	ProjectLifecycle() shared.ProjectWorkLifecycle
 	Schedules() ScheduleRepository
-	Blueprints() BlueprintRepository
+	Rules() RuleRepository
 }
 
 type UOW interface {

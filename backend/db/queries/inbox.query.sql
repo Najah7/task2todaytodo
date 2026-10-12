@@ -1,7 +1,7 @@
--- name: ListInboxScheduleBlueprintCreatedAt :many
+-- name: ListInboxScheduleRuleCreatedAt :many
 SELECT id, created_at
-FROM schedule_blueprints
-WHERE id = ANY(sqlc.arg(blueprint_ids)::text[]);
+FROM schedule_rules
+WHERE id = ANY(sqlc.arg(rule_ids)::text[]);
 
 -- name: ListInboxProjectNames :many
 SELECT p.id, p.title

@@ -94,58 +94,58 @@ func TestVirtualOccurrenceMutationRequiresGeneratedIdentity(t *testing.T) {
 	}
 }
 
-type occurrenceReloadBlueprintRepo struct {
-	BlueprintRepository
-	revision dao.BlueprintRevision
+type occurrenceReloadRuleRepo struct {
+	RuleRepository
+	revision dao.RuleRevision
 }
 
-func (r *occurrenceReloadBlueprintRepo) GetPersistedOccurrenceForMutation(context.Context, string, string, string, shared.Capability) (dao.ScheduleOccurrence, error) {
+func (r *occurrenceReloadRuleRepo) GetPersistedOccurrenceForMutation(context.Context, string, string, string, shared.Capability) (dao.ScheduleOccurrence, error) {
 	return dao.ScheduleOccurrence{}, ErrOccurrenceNotFound
 }
-func (r *occurrenceReloadBlueprintRepo) GetEffectiveRevisionForDate(context.Context, string, string, string, shared.Capability) (dao.BlueprintRevision, error) {
+func (r *occurrenceReloadRuleRepo) GetEffectiveRevisionForDate(context.Context, string, string, string, shared.Capability) (dao.RuleRevision, error) {
 	return r.revision, nil
 }
-func (*occurrenceReloadBlueprintRepo) ListPauseIntervals(context.Context, string, string) ([]dao.ProjectPauseInterval, error) {
+func (*occurrenceReloadRuleRepo) ListPauseIntervals(context.Context, string, string) ([]dao.ProjectPauseInterval, error) {
 	return nil, nil
 }
-func (*occurrenceReloadBlueprintRepo) ListOccurrenceOrigins(context.Context, string, []string, time.Time, time.Time) ([]dao.ScheduleOccurrenceOrigin, error) {
+func (*occurrenceReloadRuleRepo) ListOccurrenceOrigins(context.Context, string, []string, time.Time, time.Time) ([]dao.ScheduleOccurrenceOrigin, error) {
 	return nil, nil
 }
-func (*occurrenceReloadBlueprintRepo) LockOccurrenceForMutation(context.Context, string, string, string, shared.Capability) error {
+func (*occurrenceReloadRuleRepo) LockOccurrenceForMutation(context.Context, string, string, string, shared.Capability) error {
 	return nil
 }
 
 type occurrenceReloadRepositories struct {
-	blueprints *occurrenceReloadBlueprintRepo
+	rules *occurrenceReloadRuleRepo
 }
 
 func (r occurrenceReloadRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle { return nil }
 func (occurrenceReloadRepositories) Schedules() ScheduleRepository                   { return nil }
-func (r occurrenceReloadRepositories) Blueprints() BlueprintRepository               { return r.blueprints }
+func (r occurrenceReloadRepositories) Rules() RuleRepository                         { return r.rules }
 
 func TestLockedReloadRejectsAChangedVirtualSourceRevision(t *testing.T) {
 	date := time.Now().UTC().AddDate(0, 0, 1).Format("2006-01-02")
-	makeRevision := func(id string) dao.BlueprintRevision {
-		return dao.BlueprintRevision{Blueprint: dao.Blueprint{
-			ID: "blueprint", UserID: "owner", Revision: 1, EffectiveFrom: date, RecurrenceAnchorDate: date,
+	makeRevision := func(id string) dao.RuleRevision {
+		return dao.RuleRevision{Rule: dao.Rule{
+			ID: "rule", UserID: "owner", Revision: 1, EffectiveFrom: date, RecurrenceAnchorDate: date,
 			LocalStart: date + "T09:00:00", LocalEnd: date + "T10:00:00", Timezone: "UTC",
 			Frequency: "daily", Interval: 1, Title: "daily work", AssigneeID: "owner",
 		}, RevisionID: id}
 	}
-	repo := &occurrenceReloadBlueprintRepo{revision: makeRevision("revision-before")}
-	repositories := occurrenceReloadRepositories{blueprints: repo}
-	initial, err := resolveOccurrenceForMutation(context.Background(), repo, "owner", "blueprint", date, shared.ScheduleUpdate(), false)
+	repo := &occurrenceReloadRuleRepo{revision: makeRevision("revision-before")}
+	repositories := occurrenceReloadRepositories{rules: repo}
+	initial, err := resolveOccurrenceForMutation(context.Background(), repo, "owner", "rule", date, shared.ScheduleUpdate(), false)
 	if err != nil {
 		t.Fatalf("resolve initial virtual occurrence: %v", err)
 	}
 	if initial.persisted || initial.value.SourceRevisionID != "revision-before" {
 		t.Fatalf("unexpected initial projection: %+v", initial)
 	}
-	// A following blueprint edit changes the projected source while preserving
+	// A following rule edit changes the projected source while preserving
 	// the virtual row's revision (zero), project, and assignee. The reload after
 	// locking must still reject this stale mutation.
 	repo.revision = makeRevision("revision-after")
-	_, _, err = lockAndReloadOccurrence(context.Background(), repositories, "owner", "blueprint", date,
+	_, _, err = lockAndReloadOccurrence(context.Background(), repositories, "owner", "rule", date,
 		initial, initial.value.Revision, shared.ScheduleUpdate(), nil, time.Now().UTC(), false)
 	if !errors.Is(err, ErrOccurrenceRevisionMismatch) {
 		t.Fatalf("locked reload error=%v, want ErrOccurrenceRevisionMismatch", err)

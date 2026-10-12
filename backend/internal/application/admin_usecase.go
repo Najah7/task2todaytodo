@@ -4,15 +4,33 @@ import (
 	"context"
 	"time"
 
-	adminusecase "github.com/Najah7/task2todaytodo/internal/application/admin/usecase"
+	jobusecase "github.com/Najah7/task2todaytodo/internal/application/admin/job/usecase"
+	operationusecase "github.com/Najah7/task2todaytodo/internal/application/admin/operation/usecase"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
-func NewAdminUseCases(store AdminStore, backfill adminusecase.BackfillExecutor, id IDIssuer, logger telemetry.Logger) (adminusecase.UseCases, func(context.Context) error) {
-	runner := adminusecase.NewAsyncRunner(store.Operations, backfill, context.Background(), 30*time.Second, 10*time.Second, logger)
-	return adminusecase.UseCases{
-		RunBackfill:    adminusecase.NewRunBackfillSchedulesUseCase(store.Operations, runner, id, adminusecase.NewSystemClock(), 30*time.Second),
-		ListOperations: adminusecase.NewListOperationsUseCase(store.Operations),
-		GetOperation:   adminusecase.NewGetOperationUseCase(store.Operations),
-	}, runner.Shutdown
+type AdminUseCases struct {
+	Job       jobusecase.UseCases
+	Operation operationusecase.UseCases
+}
+
+func NewAdminUseCases(store AdminStore, backfill jobusecase.JobExecutor, id IDIssuer, logger telemetry.Logger, allocations ...jobusecase.JobExecutor) (AdminUseCases, func(context.Context) error) {
+	executors := map[string]jobusecase.JobExecutor{"backfill-schedules": backfill}
+	if len(allocations) > 0 {
+		executors["prefill-allocations"] = allocations[0]
+	}
+	runner := jobusecase.NewAsyncJobRunner(store.Operations, executors, context.Background(), 30*time.Second, 10*time.Second, logger)
+	usecases := AdminUseCases{
+		Job: jobusecase.UseCases{
+			RunBackfill: jobusecase.NewBackfillSchedulesUseCase(store.Operations, runner, id, jobusecase.NewSystemClock(), 30*time.Second),
+		},
+		Operation: operationusecase.UseCases{
+			ListOperations: operationusecase.NewListOperationsUseCase(store.Operations),
+			GetOperation:   operationusecase.NewGetOperationUseCase(store.Operations),
+		},
+	}
+	if len(allocations) > 0 {
+		usecases.Job.RunPrefillAllocations = jobusecase.NewPrefillAllocationsUseCase(store.Operations, runner, id, jobusecase.NewSystemClock(), 30*time.Second)
+	}
+	return usecases, runner.Shutdown
 }

@@ -60,6 +60,11 @@ func (uc *ChangeProjectStatusUseCase) Execute(ctx context.Context, actor domain.
 		if err := transitionProjectSchedules(ctx, children, string(actor), string(id), currentStatus.String(), statusValue.String(), time.Now()); err != nil {
 			return err
 		}
+		if allocations, ok := children.(ProjectAllocationLifecycle); ok {
+			if err := transitionProjectAllocations(ctx, allocations, string(actor), string(id), currentStatus.String(), statusValue.String(), time.Now()); err != nil {
+				return err
+			}
+		}
 		project.CanUpdate = true
 		project.CanDelete, err = repo.HasPermission(ctx, actor, id, shared.ProjectDelete())
 		return err

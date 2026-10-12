@@ -8,6 +8,7 @@ type UOW interface {
 
 type Repositories interface {
 	Users() UserRepository
+	Availability() UserAvailabilityValidator
 	PersonalAccessTokens() PersonalAccessTokenRepository
 	Roles() RoleCatalogRepository
 }

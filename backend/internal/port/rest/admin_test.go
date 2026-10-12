@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	admindao "github.com/Najah7/task2todaytodo/internal/application/admin/dao"
-	adminusecase "github.com/Najah7/task2todaytodo/internal/application/admin/usecase"
+	jobusecase "github.com/Najah7/task2todaytodo/internal/application/admin/job/usecase"
+	admindao "github.com/Najah7/task2todaytodo/internal/application/admin/operation/dao"
+	operationusecase "github.com/Najah7/task2todaytodo/internal/application/admin/operation/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/port/rest/pagination"
 	"github.com/go-chi/chi/v5"
@@ -65,16 +66,18 @@ func (adminClockFake) Now() time.Time { return time.Unix(1, 0).UTC() }
 func TestAdminEndpointsAuthorizeThroughUseCases(t *testing.T) {
 	operation := admindao.Operation{ID: "01J00000000000000000000000", Name: "admin/operations/01J00000000000000000000000", JobName: "backfill-schedules", State: "running", CreatedAt: time.Unix(1, 0).UTC(), StartedAt: time.Unix(1, 0).UTC(), Cutoff: time.Unix(1, 0).UTC()}
 	repo := &adminRepositoryFake{operation: operation}
-	uses := adminusecase.UseCases{
-		RunBackfill:    adminusecase.NewRunBackfillSchedulesUseCase(repo, adminRunnerFake{}, adminIDFake{}, adminClockFake{}, time.Minute),
-		ListOperations: adminusecase.NewListOperationsUseCase(repo),
-		GetOperation:   adminusecase.NewGetOperationUseCase(repo),
+	jobs := jobusecase.UseCases{
+		RunBackfill: jobusecase.NewBackfillSchedulesUseCase(repo, adminRunnerFake{}, adminIDFake{}, adminClockFake{}, time.Minute),
+	}
+	operations := operationusecase.UseCases{
+		ListOperations: operationusecase.NewListOperationsUseCase(repo),
+		GetOperation:   operationusecase.NewGetOperationUseCase(repo),
 	}
 	codec, err := pagination.NewCodec([]byte("01234567890123456789012345678901"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := NewAdminHandler(uses, codec)
+	handler := NewAdminHandler(jobs, operations, codec)
 
 	requests := []struct {
 		name string

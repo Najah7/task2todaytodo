@@ -63,7 +63,7 @@ func (h *ScheduleHandler) listOccurrences(w http.ResponseWriter, r *http.Request
 		WriteError(w, http.StatusUnauthorized, scheduleOccurrenceListFailure, ErrDetailUnauthorized)
 		return
 	}
-	request, err := parseListRequestWithRange(r, h.pageTokens, string(actor), "schedule_occurrences", projectID, "start_at_asc_blueprint_id_asc_occurrence_date_asc", listEnvelope[ScheduleOccurrenceResponse]{})
+	request, err := parseListRequestWithRange(r, h.pageTokens, string(actor), "schedule_occurrences", projectID, "start_at_asc_rule_id_asc_occurrence_date_asc", listEnvelope[ScheduleOccurrenceResponse]{})
 	if err != nil {
 		writeListError(w, scheduleOccurrenceListFailure, err)
 		return
@@ -82,8 +82,8 @@ func (h *ScheduleHandler) listOccurrences(w http.ResponseWriter, r *http.Request
 	for _, row := range page.Items {
 		items = append(items, scheduleOccurrenceResponse(row))
 		anchors = append(anchors, listAnchor{
-			At:          time.Unix(row.StartAt, 0).UTC().Format(time.RFC3339Nano),
-			BlueprintID: row.BlueprintID, OccurrenceDate: row.OccurrenceDate,
+			At:     time.Unix(row.StartAt, 0).UTC().Format(time.RFC3339Nano),
+			RuleID: row.RuleID, OccurrenceDate: row.OccurrenceDate,
 		})
 	}
 	writeListResponse(w, items, anchors, page.Next != nil, request, h.pageTokens, scheduleOccurrenceListFailure)
@@ -93,7 +93,7 @@ func occurrenceCursorAnchor(anchor *listAnchor) *scheduleusecase.CursorAnchor {
 	if anchor == nil {
 		return nil
 	}
-	return &scheduleusecase.CursorAnchor{At: anchor.At, BlueprintID: anchor.BlueprintID, OccurrenceDate: anchor.OccurrenceDate}
+	return &scheduleusecase.CursorAnchor{At: anchor.At, RuleID: anchor.RuleID, OccurrenceDate: anchor.OccurrenceDate}
 }
 
 // GetOccurrence returns a saved or virtual schedule.
@@ -102,21 +102,21 @@ func occurrenceCursorAnchor(anchor *listAnchor) *scheduleusecase.CursorAnchor {
 //	@Tags		Schedules
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		blueprint_id	path		string	true	"Blueprint ID"
+//	@Param		rule_id	path		string	true	"Rule ID"
 //	@Param		occurrence_date	path		string	true	"Original local occurrence date"
 //	@Success	200				{object}	ScheduleOccurrenceResponse
-//	@Router		/schedules/{blueprint_id}/{occurrence_date} [get]
+//	@Router		/schedules/{rule_id}/{occurrence_date} [get]
 func (h *ScheduleHandler) GetOccurrence(w http.ResponseWriter, r *http.Request) {
 	actor, ok := scheduleActor(r.Context())
 	if !ok {
 		WriteError(w, http.StatusUnauthorized, scheduleOccurrenceGetFailure, ErrDetailUnauthorized)
 		return
 	}
-	blueprintID, occurrenceDate, ok := scheduleOccurrencePath(w, r, scheduleOccurrenceGetFailure)
+	ruleID, occurrenceDate, ok := scheduleOccurrencePath(w, r, scheduleOccurrenceGetFailure)
 	if !ok {
 		return
 	}
-	row, err := h.schedules.GetOccurrence.Execute(r.Context(), string(actor), blueprintID, occurrenceDate)
+	row, err := h.schedules.GetOccurrence.Execute(r.Context(), string(actor), ruleID, occurrenceDate)
 	if err != nil {
 		writeScheduleUseCaseError(w, scheduleOccurrenceGetFailure, err)
 		return
@@ -142,7 +142,6 @@ type ScheduleOccurrenceRevisionResponse struct {
 	Completed        bool   `json:"completed"`
 	SkippedAt        *int64 `json:"skipped_at,omitempty"`
 	DeletedAt        *int64 `json:"deleted_at,omitempty"`
-	IsOverride       bool   `json:"is_override"`
 	ChangedBy        string `json:"changed_by"`
 	ChangedAt        int64  `json:"changed_at"`
 }
@@ -153,12 +152,12 @@ type ScheduleOccurrenceRevisionResponse struct {
 //	@Tags		Schedules
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		blueprint_id	path		string	true	"Blueprint ID"
+//	@Param		rule_id	path		string	true	"Rule ID"
 //	@Param		occurrence_date	path		string	true	"Original local occurrence date"
 //	@Param		page_size		query		int		false	"Items per page"
 //	@Param		page_token		query		string	false	"Opaque page token"
 //	@Success	200				{object}	listEnvelope[ScheduleOccurrenceRevisionResponse]
-//	@Router		/schedules/{blueprint_id}/{occurrence_date}/revisions [get]
+//	@Router		/schedules/{rule_id}/{occurrence_date}/revisions [get]
 func (h *ScheduleHandler) ListOccurrenceRevisions(w http.ResponseWriter, r *http.Request) {
 	spec := scheduleOccurrenceGetFailure
 	actor, ok := scheduleActor(r.Context())
@@ -166,17 +165,17 @@ func (h *ScheduleHandler) ListOccurrenceRevisions(w http.ResponseWriter, r *http
 		WriteError(w, http.StatusUnauthorized, spec, ErrDetailUnauthorized)
 		return
 	}
-	blueprintID, occurrenceDate, ok := scheduleOccurrencePath(w, r, spec)
+	ruleID, occurrenceDate, ok := scheduleOccurrencePath(w, r, spec)
 	if !ok {
 		return
 	}
-	parent := blueprintID + "/" + occurrenceDate
+	parent := ruleID + "/" + occurrenceDate
 	request, err := parseListRequest(r, h.pageTokens, actor, "schedule_revisions", parent, "revision_desc", listEnvelope[ScheduleOccurrenceRevisionResponse]{})
 	if err != nil {
 		writeListError(w, spec, err)
 		return
 	}
-	page, err := h.schedules.OccurrenceRevisions.ExecutePage(r.Context(), actor, blueprintID, occurrenceDate, request.Size, anchorRevision(request.Anchor))
+	page, err := h.schedules.OccurrenceRevisions.ExecutePage(r.Context(), actor, ruleID, occurrenceDate, request.Size, anchorRevision(request.Anchor))
 	if err != nil {
 		writeScheduleUseCaseError(w, spec, err)
 		return
@@ -189,7 +188,7 @@ func (h *ScheduleHandler) ListOccurrenceRevisions(w http.ResponseWriter, r *http
 			OccurrenceDate: row.OccurrenceDate, StartAt: time.Unix(row.StartAt, 0).UTC().Format(time.RFC3339),
 			EndAt: time.Unix(row.EndAt, 0).UTC().Format(time.RFC3339), AllDay: row.AllDay, Title: row.Title, Description: row.Description,
 			Location: row.Location, ProjectID: row.ProjectID, AssigneeID: row.AssigneeID, Timezone: row.Timezone,
-			Completed: row.Completed, SkippedAt: row.SkippedAt, DeletedAt: row.DeletedAt, IsOverride: row.IsOverride,
+			Completed: row.Completed, SkippedAt: row.SkippedAt, DeletedAt: row.DeletedAt,
 			ChangedBy: row.ChangedBy, ChangedAt: row.ChangedAt,
 		})
 		anchors = append(anchors, listAnchor{Revision: row.Revision})
@@ -204,12 +203,12 @@ func (h *ScheduleHandler) ListOccurrenceRevisions(w http.ResponseWriter, r *http
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		blueprint_id	path		string							true	"Blueprint ID"
+//	@Param		rule_id	path		string							true	"Rule ID"
 //	@Param		occurrence_date	path		string							true	"Original local occurrence date"
 //	@Param		If-Match		header		string							true	"Current occurrence revision, or 0 for a virtual occurrence"
 //	@Param		request			body		ScheduleOccurrenceUpdateRequest	true	"Occurrence fields"
 //	@Success	200				{object}	ScheduleOccurrenceResponse
-//	@Router		/schedules/{blueprint_id}/{occurrence_date} [patch]
+//	@Router		/schedules/{rule_id}/{occurrence_date} [patch]
 func (h *ScheduleHandler) UpdateOccurrence(w http.ResponseWriter, r *http.Request) {
 	actor, ok := scheduleActor(r.Context())
 	if !ok {
@@ -220,7 +219,7 @@ func (h *ScheduleHandler) UpdateOccurrence(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
-	blueprintID, occurrenceDate, ok := scheduleOccurrencePath(w, r, scheduleOccurrenceUpdateFailure)
+	ruleID, occurrenceDate, ok := scheduleOccurrencePath(w, r, scheduleOccurrenceUpdateFailure)
 	if !ok {
 		return
 	}
@@ -234,7 +233,7 @@ func (h *ScheduleHandler) UpdateOccurrence(w http.ResponseWriter, r *http.Reques
 		writeScheduleRequestError(w, scheduleOccurrenceUpdateFailure, err)
 		return
 	}
-	row, err := h.schedules.UpdateOccurrence.Execute(r.Context(), string(actor), blueprintID, occurrenceDate, input, expected)
+	row, err := h.schedules.UpdateOccurrence.Execute(r.Context(), string(actor), ruleID, occurrenceDate, input, expected)
 	if err != nil {
 		writeScheduleUseCaseError(w, scheduleOccurrenceUpdateFailure, err)
 		return
@@ -248,11 +247,11 @@ func (h *ScheduleHandler) UpdateOccurrence(w http.ResponseWriter, r *http.Reques
 //	@Summary	Complete schedule occurrence
 //	@Tags		Schedules
 //	@Security	BearerAuth
-//	@Param		blueprint_id	path	string	true	"Blueprint ID"
+//	@Param		rule_id	path	string	true	"Rule ID"
 //	@Param		occurrence_date	path	string	true	"Original local occurrence date"
 //	@Param		If-Match		header	string	true	"Current occurrence revision, or 0 for a virtual occurrence"
 //	@Success	204
-//	@Router		/schedules/{blueprint_id}/{occurrence_date}:complete [post]
+//	@Router		/schedules/{rule_id}/{occurrence_date}:complete [post]
 func (h *ScheduleHandler) CompleteOccurrence(w http.ResponseWriter, r *http.Request) {
 	h.setOccurrenceState(w, r, h.schedules.CompleteOccurrence, "Completed")
 }
@@ -262,11 +261,11 @@ func (h *ScheduleHandler) CompleteOccurrence(w http.ResponseWriter, r *http.Requ
 //	@Summary	Reopen schedule occurrence
 //	@Tags		Schedules
 //	@Security	BearerAuth
-//	@Param		blueprint_id	path	string	true	"Blueprint ID"
+//	@Param		rule_id	path	string	true	"Rule ID"
 //	@Param		occurrence_date	path	string	true	"Original local occurrence date"
 //	@Param		If-Match		header	string	true	"Current occurrence revision, or 0 for a virtual occurrence"
 //	@Success	204
-//	@Router		/schedules/{blueprint_id}/{occurrence_date}:reopen [post]
+//	@Router		/schedules/{rule_id}/{occurrence_date}:reopen [post]
 func (h *ScheduleHandler) ReopenOccurrence(w http.ResponseWriter, r *http.Request) {
 	h.setOccurrenceState(w, r, h.schedules.ReopenOccurrence, "Reopened")
 }
@@ -276,11 +275,11 @@ func (h *ScheduleHandler) ReopenOccurrence(w http.ResponseWriter, r *http.Reques
 //	@Summary	Skip schedule occurrence
 //	@Tags		Schedules
 //	@Security	BearerAuth
-//	@Param		blueprint_id	path	string	true	"Blueprint ID"
+//	@Param		rule_id	path	string	true	"Rule ID"
 //	@Param		occurrence_date	path	string	true	"Original local occurrence date"
 //	@Param		If-Match		header	string	true	"Current occurrence revision, or 0 for a virtual occurrence"
 //	@Success	204
-//	@Router		/schedules/{blueprint_id}/{occurrence_date}:skip [post]
+//	@Router		/schedules/{rule_id}/{occurrence_date}:skip [post]
 func (h *ScheduleHandler) SkipOccurrence(w http.ResponseWriter, r *http.Request) {
 	h.setOccurrenceState(w, r, h.schedules.SkipOccurrence, "Skipped")
 }
@@ -290,11 +289,11 @@ func (h *ScheduleHandler) SkipOccurrence(w http.ResponseWriter, r *http.Request)
 //	@Summary	Restore schedule occurrence
 //	@Tags		Schedules
 //	@Security	BearerAuth
-//	@Param		blueprint_id	path	string	true	"Blueprint ID"
+//	@Param		rule_id	path	string	true	"Rule ID"
 //	@Param		occurrence_date	path	string	true	"Original local occurrence date"
 //	@Param		If-Match		header	string	true	"Current occurrence revision, or 0 for a virtual occurrence"
 //	@Success	204
-//	@Router		/schedules/{blueprint_id}/{occurrence_date}:restore [post]
+//	@Router		/schedules/{rule_id}/{occurrence_date}:restore [post]
 func (h *ScheduleHandler) RestoreOccurrence(w http.ResponseWriter, r *http.Request) {
 	h.setOccurrenceState(w, r, h.schedules.RestoreOccurrence, "Restored")
 }
@@ -304,11 +303,11 @@ func (h *ScheduleHandler) RestoreOccurrence(w http.ResponseWriter, r *http.Reque
 //	@Summary	Delete schedule occurrence
 //	@Tags		Schedules
 //	@Security	BearerAuth
-//	@Param		blueprint_id	path	string	true	"Blueprint ID"
+//	@Param		rule_id	path	string	true	"Rule ID"
 //	@Param		occurrence_date	path	string	true	"Original local occurrence date"
 //	@Param		If-Match		header	string	true	"Current occurrence revision, or 0 for a virtual occurrence"
 //	@Success	204
-//	@Router		/schedules/{blueprint_id}/{occurrence_date} [delete]
+//	@Router		/schedules/{rule_id}/{occurrence_date} [delete]
 func (h *ScheduleHandler) DeleteOccurrence(w http.ResponseWriter, r *http.Request) {
 	h.setOccurrenceState(w, r, h.schedules.DeleteOccurrence, "Deleted")
 }
@@ -324,7 +323,7 @@ func (h *ScheduleHandler) setOccurrenceState(w http.ResponseWriter, r *http.Requ
 	if !ok {
 		return
 	}
-	blueprintID, occurrenceDate, ok := scheduleOccurrencePath(w, r, spec)
+	ruleID, occurrenceDate, ok := scheduleOccurrencePath(w, r, spec)
 	if !ok {
 		return
 	}
@@ -332,7 +331,7 @@ func (h *ScheduleHandler) setOccurrenceState(w http.ResponseWriter, r *http.Requ
 		WriteError(w, http.StatusInternalServerError, spec, ErrDetailInternalServerError)
 		return
 	}
-	if err := uc.Execute(r.Context(), string(actor), blueprintID, occurrenceDate, expected); err != nil {
+	if err := uc.Execute(r.Context(), string(actor), ruleID, occurrenceDate, expected); err != nil {
 		writeScheduleUseCaseError(w, spec, err)
 		return
 	}
@@ -351,12 +350,12 @@ type ScheduleOccurrenceRescheduleRequest struct {
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		blueprint_id	path		string								true	"Blueprint ID"
+//	@Param		rule_id	path		string								true	"Rule ID"
 //	@Param		occurrence_date	path		string								true	"Original local occurrence date"
 //	@Param		If-Match		header		string								true	"Current occurrence revision, or 0 for a virtual occurrence"
 //	@Param		request			body		ScheduleOccurrenceRescheduleRequest	true	"New interval"
 //	@Success	200				{object}	ScheduleOccurrenceResponse
-//	@Router		/schedules/{blueprint_id}/{occurrence_date}:reschedule [post]
+//	@Router		/schedules/{rule_id}/{occurrence_date}:reschedule [post]
 func (h *ScheduleHandler) RescheduleOccurrence(w http.ResponseWriter, r *http.Request) {
 	spec := NewFailureErrSpec("schedule_occurrences", "reschedule", "Failed to reschedule schedule occurrence")
 	actor, ok := scheduleActor(r.Context())
@@ -368,7 +367,7 @@ func (h *ScheduleHandler) RescheduleOccurrence(w http.ResponseWriter, r *http.Re
 	if !ok {
 		return
 	}
-	blueprintID, occurrenceDate, ok := scheduleOccurrencePath(w, r, spec)
+	ruleID, occurrenceDate, ok := scheduleOccurrencePath(w, r, spec)
 	if !ok {
 		return
 	}
@@ -387,7 +386,7 @@ func (h *ScheduleHandler) RescheduleOccurrence(w http.ResponseWriter, r *http.Re
 		WriteError(w, http.StatusBadRequest, spec, scheduleField("end_at", "invalid_timestamp", "Timestamp must be a valid RFC3339 instant"))
 		return
 	}
-	row, err := h.schedules.RescheduleOccurrence.Execute(r.Context(), string(actor), blueprintID, occurrenceDate, startAt, endAt, expected)
+	row, err := h.schedules.RescheduleOccurrence.Execute(r.Context(), string(actor), ruleID, occurrenceDate, startAt, endAt, expected)
 	if err != nil {
 		writeScheduleUseCaseError(w, spec, err)
 		return
@@ -397,10 +396,10 @@ func (h *ScheduleHandler) RescheduleOccurrence(w http.ResponseWriter, r *http.Re
 }
 
 func scheduleOccurrencePath(w http.ResponseWriter, r *http.Request, spec ErrSpec) (string, string, bool) {
-	blueprintID := chi.URLParam(r, "blueprint_id")
+	ruleID := chi.URLParam(r, "rule_id")
 	date := chi.URLParam(r, "occurrence_date")
-	if blueprintID == "" {
-		WriteError(w, http.StatusBadRequest, spec, scheduleField("blueprint_id", "required", "Blueprint ID is required"))
+	if ruleID == "" {
+		WriteError(w, http.StatusBadRequest, spec, scheduleField("rule_id", "required", "Rule ID is required"))
 		return "", "", false
 	}
 	if date == "" {
@@ -411,7 +410,7 @@ func scheduleOccurrencePath(w http.ResponseWriter, r *http.Request, spec ErrSpec
 		WriteError(w, http.StatusBadRequest, spec, scheduleField("occurrence_date", "invalid_date", "Occurrence date must use YYYY-MM-DD"))
 		return "", "", false
 	}
-	return blueprintID, date, true
+	return ruleID, date, true
 }
 
 func (request ScheduleOccurrenceUpdateRequest) input() (scheduleusecase.UpdateScheduleInput, error) {
@@ -472,12 +471,12 @@ func (request ScheduleOccurrenceUpdateRequest) input() (scheduleusecase.UpdateSc
 
 func scheduleOccurrenceResponse(row dao.ScheduleOccurrence) ScheduleOccurrenceResponse {
 	return ScheduleOccurrenceResponse{
-		ID: row.ID, Persisted: row.ID != nil, BlueprintID: row.BlueprintID,
+		ID: row.ID, Persisted: row.ID != nil, RuleID: row.RuleID,
 		OccurrenceDate: row.OccurrenceDate, SourceRevisionID: row.SourceRevisionID,
 		UserID: row.UserID, ProjectID: row.ProjectID, AssigneeID: row.AssigneeID,
 		Title: row.Title, Description: row.Description, Location: row.Location, Timezone: row.Timezone,
 		StartAt: time.Unix(row.StartAt, 0).UTC().Format(time.RFC3339), EndAt: time.Unix(row.EndAt, 0).UTC().Format(time.RFC3339), AllDay: row.AllDay,
-		Completed: row.Completed, Skipped: row.Skipped, Deleted: row.Deleted, IsOverride: row.IsOverride,
+		Completed: row.Completed, Skipped: row.Skipped, Deleted: row.Deleted,
 		CanUpdate: row.CanUpdate, CanDelete: row.CanDelete, CanSkip: row.CanSkip, CanAssign: row.CanAssign,
 		CanUpdateFollowing: row.CanUpdateFollowing, CanDeleteFollowing: row.CanDeleteFollowing,
 		Revision: row.Revision, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,

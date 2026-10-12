@@ -25,7 +25,7 @@ func NewSetOccurrenceStateUseCase(uow UOW, state string, logger telemetry.Logger
 	return &SetOccurrenceStateUseCase{uow: uow, state: state, logger: telemetry.OrNop(logger), issueID: issueID, now: time.Now}
 }
 
-func (uc *SetOccurrenceStateUseCase) Execute(ctx context.Context, actorID, blueprintID, occurrenceDate string, expectedRevision int32) (err error) {
+func (uc *SetOccurrenceStateUseCase) Execute(ctx context.Context, actorID, ruleID, occurrenceDate string, expectedRevision int32) (err error) {
 	defer func() { logUnexpectedScheduleFailure(uc.logger, ctx, "SetOccurrenceStateUseCase.Execute", err) }()
 	capability, err := occurrenceStateCapability(uc.state)
 	if err != nil {
@@ -33,7 +33,7 @@ func (uc *SetOccurrenceStateUseCase) Execute(ctx context.Context, actorID, bluep
 	}
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		includeInactive := uc.state == "restore" || uc.state == "skip"
-		initial, err := resolveOccurrenceForMutation(ctx, repos.Blueprints(), actorID, blueprintID, occurrenceDate, capability, includeInactive)
+		initial, err := resolveOccurrenceForMutation(ctx, repos.Rules(), actorID, ruleID, occurrenceDate, capability, includeInactive)
 		if err != nil {
 			return err
 		}
@@ -49,7 +49,7 @@ func (uc *SetOccurrenceStateUseCase) Execute(ctx context.Context, actorID, bluep
 		if uc.state == "restore" && !initial.persisted {
 			return ErrOccurrenceNotFound
 		}
-		current, before, err := lockAndReloadOccurrence(ctx, repos, actorID, blueprintID, occurrenceDate, initial, expectedRevision, capability,
+		current, before, err := lockAndReloadOccurrence(ctx, repos, actorID, ruleID, occurrenceDate, initial, expectedRevision, capability,
 			[]string{initial.value.ProjectID}, uc.now().UTC(), includeInactive)
 		if err != nil {
 			return err
@@ -74,19 +74,18 @@ func (uc *SetOccurrenceStateUseCase) Execute(ctx context.Context, actorID, bluep
 			return nil
 		}
 		updated.UpdatedAt = uc.now().UTC().Unix()
-		updated.IsOverride = true
 		if !current.persisted {
 			id, err := virtualOccurrenceID(uc.issueID)
 			if err != nil {
 				return err
 			}
 			updated.ID = &id
-			_, err = repos.Blueprints().MaterializeOccurrence(ctx, actorID, updated, capability)
+			_, err = repos.Rules().MaterializeOccurrence(ctx, actorID, updated, capability)
 			if err != nil {
 				return mapOccurrenceConflict(err)
 			}
 		} else {
-			_, err = repos.Blueprints().UpdatePersistedOccurrence(ctx, actorID, updated, expectedRevision, capability)
+			_, err = repos.Rules().UpdatePersistedOccurrence(ctx, actorID, updated, expectedRevision, capability)
 			if err != nil {
 				return mapOccurrenceConflict(err)
 			}
@@ -94,7 +93,7 @@ func (uc *SetOccurrenceStateUseCase) Execute(ctx context.Context, actorID, bluep
 		return finishScheduleProjectMutation(ctx, repos, domain.UserID(actorID), before, uc.now().UTC())
 	})
 	if err == nil {
-		logScheduleStateChange(uc.logger, ctx, "schedule.occurrence."+uc.state, domain.UserID(actorID), domain.ScheduleID(blueprintID))
+		logScheduleStateChange(uc.logger, ctx, "schedule.occurrence."+uc.state, domain.UserID(actorID), domain.ScheduleID(ruleID))
 	}
 	return err
 }

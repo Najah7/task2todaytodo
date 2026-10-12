@@ -38,7 +38,7 @@ func newInboxREST(t *testing.T, timezone string) *inboxREST {
 	insertInboxUser(t, pool, actor, timezone)
 
 	store := application.NewStore(pool)
-	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
+	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule, store.Allocation)
 	usecases, stop := application.NewUseCase(store, uow, adapter.NewIDIssuer(), nil)
 	testdb.RegisterShutdown(t, stop)
 	codec, err := pagination.NewCodec([]byte(strings.Repeat("i", 32)))
@@ -80,7 +80,7 @@ type inboxTask struct {
 
 type inboxSchedule struct {
 	OccurrenceID       *string `json:"occurrence_id"`
-	BlueprintID        string  `json:"blueprint_id"`
+	RuleID             string  `json:"rule_id"`
 	OccurrenceDate     string  `json:"occurrence_date"`
 	Timezone           string  `json:"timezone"`
 	AllDay             bool    `json:"all_day"`
@@ -148,8 +148,8 @@ func TestRESTInboxAppliesAssignmentProjectACLStateFiltersAndBidirectionalPaginat
 	}
 	start := todayStart.Add(9 * time.Hour)
 	sharedSchedule := f.schedule(owner, sharedProject, api.actor, "Project Gamma", start, start.Add(time.Hour), "once", false, false, false)
-	if _, err := f.pool.Exec(t.Context(), `UPDATE schedule_blueprints SET created_at=$2 WHERE id=$1`, sharedSchedule.BlueprintID, now.Add(-3*time.Hour)); err != nil {
-		t.Fatalf("set Schedule blueprint creation time: %v", err)
+	if _, err := f.pool.Exec(t.Context(), `UPDATE schedule_rules SET created_at=$2 WHERE id=$1`, sharedSchedule.RuleID, now.Add(-3*time.Hour)); err != nil {
+		t.Fatalf("set Schedule rule creation time: %v", err)
 	}
 	f.schedule(owner, sharedProject, api.actor, "Completed schedule", start.Add(time.Hour), start.Add(2*time.Hour), "once", true, false, false)
 	f.schedule(owner, sharedProject, api.actor, "Skipped schedule", start.Add(2*time.Hour), start.Add(3*time.Hour), "once", false, true, false)
@@ -187,7 +187,7 @@ func TestRESTInboxAppliesAssignmentProjectACLStateFiltersAndBidirectionalPaginat
 	}
 	thirdResponse := api.request("/inbox?"+url.Values{"page_size": {"1"}, "page_token": {second.NextPageToken}}.Encode(), api.actor)
 	third := decodeInboxPage(t, thirdResponse)
-	if thirdResponse.Code != http.StatusOK || len(third.Items) != 1 || third.Items[0].Type != "schedule" || third.Items[0].ID != sharedSchedule.BlueprintID+"/"+today {
+	if thirdResponse.Code != http.StatusOK || len(third.Items) != 1 || third.Items[0].Type != "schedule" || third.Items[0].ID != sharedSchedule.RuleID+"/"+today {
 		t.Fatalf("third inbox page status/items=%d/%+v body=%s", thirdResponse.Code, third.Items, thirdResponse.Body.String())
 	}
 	backResponse := api.request("/inbox?"+url.Values{"page_size": {"1"}, "page_token": {third.PreviousPageToken}}.Encode(), api.actor)
@@ -239,8 +239,8 @@ func TestInboxDSTWindowIncludesVirtualOvernightAndFloatingAllDayWithoutMateriali
 	start := time.Date(2026, time.March, 7, 23, 30, 0, 0, newYork)
 	firstEnd := time.Date(2026, time.March, 8, 1, 30, 0, 0, newYork)
 	series := f.schedule(owner, "", api.actor, "Overnight daily", start, firstEnd, "daily", false, false, false)
-	if _, err := f.pool.Exec(t.Context(), `UPDATE schedule_blueprints SET created_at=$2 WHERE id=$1`, series.BlueprintID, asOf.Add(-24*time.Hour)); err != nil {
-		t.Fatalf("set recurrence blueprint creation time: %v", err)
+	if _, err := f.pool.Exec(t.Context(), `UPDATE schedule_rules SET created_at=$2 WHERE id=$1`, series.RuleID, asOf.Add(-24*time.Hour)); err != nil {
+		t.Fatalf("set recurrence rule creation time: %v", err)
 	}
 
 	kiritimati, err := time.LoadLocation("Pacific/Kiritimati")
@@ -277,7 +277,7 @@ func TestInboxDSTWindowIncludesVirtualOvernightAndFloatingAllDayWithoutMateriali
 		if item.Type != inboxdao.ItemTypeSchedule || item.Schedule == nil {
 			continue
 		}
-		if item.Schedule.BlueprintID == series.BlueprintID {
+		if item.Schedule.RuleID == series.RuleID {
 			if item.Schedule.OccurrenceDate == today && item.Schedule.OccurrenceID == nil {
 				t.Fatalf("origin occurrence %s unexpectedly virtual", item.Schedule.OccurrenceDate)
 			}
@@ -286,10 +286,10 @@ func TestInboxDSTWindowIncludesVirtualOvernightAndFloatingAllDayWithoutMateriali
 			}
 			virtualDates[item.Schedule.OccurrenceDate] = true
 		}
-		if item.Schedule.BlueprintID == allDay.BlueprintID {
+		if item.Schedule.RuleID == allDay.RuleID {
 			allDayFound = item.Schedule.AllDay && item.Schedule.OccurrenceDate == "2026-03-08"
 		}
-		if item.Schedule.BlueprintID == outsideFloating.BlueprintID {
+		if item.Schedule.RuleID == outsideFloating.RuleID {
 			priorAllDayFound = true
 		}
 	}
@@ -323,13 +323,13 @@ func TestInboxDSTWindowIncludesVirtualOvernightAndFloatingAllDayWithoutMateriali
 		t.Fatalf("materializing a virtual occurrence changed Inbox order: before=%v after=%v", beforeOrder, got)
 	}
 	for _, item := range materializedPage.Items {
-		if item.Type == inboxdao.ItemTypeSchedule && item.Schedule != nil && item.Schedule.BlueprintID == series.BlueprintID && item.Schedule.OccurrenceDate == materializedDate && item.Schedule.OccurrenceID == nil {
+		if item.Type == inboxdao.ItemTypeSchedule && item.Schedule != nil && item.Schedule.RuleID == series.RuleID && item.Schedule.OccurrenceDate == materializedDate && item.Schedule.OccurrenceID == nil {
 			t.Fatal("materialized recurrence still has a nil occurrence ID")
 		}
 	}
 }
 
-func TestRESTInboxSameBlueprintOccurrencesPageForwardAndBackward(t *testing.T) {
+func TestRESTInboxSameOccurrencesPageForwardAndBackward(t *testing.T) {
 	api := newInboxREST(t, "UTC")
 	f := newInboxFixtures(t, api.pool, api.actor)
 	owner := api.actor
@@ -350,8 +350,8 @@ func TestRESTInboxSameBlueprintOccurrencesPageForwardAndBackward(t *testing.T) {
 			t.Fatalf("forward page %d items=%+v; want one Schedule occurrence", offset+1, page.Items)
 		}
 		wantDate := today.AddDate(0, 0, offset).Format("2006-01-02")
-		if page.Items[0].Schedule.BlueprintID != series.BlueprintID || page.Items[0].Schedule.OccurrenceDate != wantDate {
-			t.Fatalf("forward page %d occurrence=%+v; want blueprint/date %s/%s", offset+1, page.Items[0].Schedule, series.BlueprintID, wantDate)
+		if page.Items[0].Schedule.RuleID != series.RuleID || page.Items[0].Schedule.OccurrenceDate != wantDate {
+			t.Fatalf("forward page %d occurrence=%+v; want rule/date %s/%s", offset+1, page.Items[0].Schedule, series.RuleID, wantDate)
 		}
 		pages = append(pages, page)
 		if offset < 6 {
@@ -366,7 +366,7 @@ func TestRESTInboxSameBlueprintOccurrencesPageForwardAndBackward(t *testing.T) {
 	}
 	back := api.request("/inbox?"+url.Values{"page_size": {"1"}, "page_token": {pages[6].PreviousPageToken}}.Encode(), api.actor)
 	if back.Code != http.StatusOK {
-		t.Fatalf("backward same-blueprint page status/body=%d/%s", back.Code, back.Body.String())
+		t.Fatalf("backward same-rule page status/body=%d/%s", back.Code, back.Body.String())
 	}
 	backPage := decodeInboxPage(t, back)
 	if len(backPage.Items) != 1 || backPage.Items[0].ID != pages[5].Items[0].ID || backPage.Items[0].Schedule.OccurrenceDate != pages[5].Items[0].Schedule.OccurrenceDate {
@@ -403,10 +403,10 @@ func materializeDailyOccurrence(t *testing.T, pool *pgxpool.Pool, fixture inboxS
 	localStart := time.Date(localDate.Year(), localDate.Month(), localDate.Day(), fixture.StartAt.In(location).Hour(), fixture.StartAt.In(location).Minute(), 0, 0, location)
 	localEnd := localStart.Add(2 * time.Hour)
 	if _, err := pool.Exec(t.Context(), `
-		INSERT INTO schedules(id,blueprint_id,source_revision_id,user_id,occurrence_date,start_at,end_at,title,description,
+		INSERT INTO schedules(id,rule_id,source_revision_id,user_id,occurrence_date,start_at,end_at,title,description,
 			location,project_id,assignee_id,timezone,completed,changed_by)
 		VALUES($1,$2,$3,$4,$5::date,$6,$7,$8,'','',$9,$10,$11,false,$4)
-	`, ulid.Make().String(), fixture.BlueprintID, fixture.RevisionID, ownerID, date, localStart, localEnd,
+	`, ulid.Make().String(), fixture.RuleID, fixture.RevisionID, ownerID, date, localStart, localEnd,
 		fixture.Title, nil, actorID, "America/New_York"); err != nil {
 		t.Fatalf("materialize recurrence occurrence %s: %v", date, err)
 	}
@@ -420,12 +420,12 @@ func insertInboxUser(t *testing.T, pool *pgxpool.Pool, id, timezone string) {
 }
 
 type inboxFixtures struct {
-	t          *testing.T
-	pool       *pgxpool.Pool
-	users      []string
-	projects   []string
-	blueprints []string
-	roles      []string
+	t        *testing.T
+	pool     *pgxpool.Pool
+	users    []string
+	projects []string
+	rules    []string
+	roles    []string
 }
 
 func newInboxFixtures(t *testing.T, pool *pgxpool.Pool, actorID string) *inboxFixtures {
@@ -492,26 +492,26 @@ func (f *inboxFixtures) task(ownerID, assigneeID, title, projectID string, creat
 }
 
 type inboxScheduleFixture struct {
-	BlueprintID string
-	RevisionID  string
-	ScheduleID  string
-	Title       string
-	StartAt     time.Time
+	RuleID     string
+	RevisionID string
+	ScheduleID string
+	Title      string
+	StartAt    time.Time
 }
 
 func (f *inboxFixtures) schedule(ownerID, projectID, assigneeID, title string, startAt, endAt time.Time, frequency string, completed, skipped, deleted bool) inboxScheduleFixture {
 	f.t.Helper()
-	blueprintID, revisionID, scheduleID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
-	f.blueprints = append(f.blueprints, blueprintID)
+	ruleID, revisionID, scheduleID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
+	f.rules = append(f.rules, ruleID)
 	if err := testdb.InsertScheduleFixture(f.t.Context(), f.pool, testdb.ScheduleFixture{
-		BlueprintID: blueprintID, RevisionID: revisionID, ScheduleID: scheduleID,
+		RuleID: ruleID, RevisionID: revisionID, ScheduleID: scheduleID,
 		UserID: ownerID, ProjectID: projectID, AssigneeID: assigneeID, Title: title,
 		Timezone: startAt.Location().String(), Frequency: frequency, Interval: 1,
 		StartAt: startAt, EndAt: endAt, Completed: completed, Skipped: skipped, Deleted: deleted,
 	}); err != nil {
 		f.t.Fatalf("insert Schedule fixture %q: %v", title, err)
 	}
-	return inboxScheduleFixture{BlueprintID: blueprintID, RevisionID: revisionID, ScheduleID: scheduleID, Title: title, StartAt: startAt}
+	return inboxScheduleFixture{RuleID: ruleID, RevisionID: revisionID, ScheduleID: scheduleID, Title: title, StartAt: startAt}
 }
 
 func (f *inboxFixtures) scheduleRowCounts(ownerID string) (schedules, revisions int) {
@@ -528,9 +528,9 @@ func (f *inboxFixtures) scheduleRowCounts(ownerID string) (schedules, revisions 
 func (f *inboxFixtures) cleanup() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	for _, blueprintID := range f.blueprints {
-		if err := testdb.DeleteScheduleFixture(ctx, f.pool, blueprintID); err != nil {
-			f.t.Errorf("delete Schedule fixture %s: %v", blueprintID, err)
+	for _, ruleID := range f.rules {
+		if err := testdb.DeleteScheduleFixture(ctx, f.pool, ruleID); err != nil {
+			f.t.Errorf("delete Schedule fixture %s: %v", ruleID, err)
 		}
 	}
 	_, _ = f.pool.Exec(ctx, `DELETE FROM action_items WHERE task_id IN (SELECT id FROM tasks WHERE user_id=ANY($1::text[]))`, f.users)

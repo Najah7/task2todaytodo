@@ -11,51 +11,51 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const pauseScheduleBlueprintsForProject = `-- name: PauseScheduleBlueprintsForProject :exec
+const pauseScheduleRulesForProject = `-- name: PauseScheduleRulesForProject :exec
 WITH current_or_planned_revisions AS (
-    SELECT revision.id, revision.blueprint_id, revision.user_id, revision.revision, revision.effective_from, revision.recurrence_anchor_date, revision.local_start, revision.local_end, revision.all_day, revision.timezone, revision.frequency, revision.interval_count, revision.weekdays, revision.end_date, revision.title, revision.description, revision.location, revision.project_id, revision.assignee_id, revision.superseded_at, revision.cutoff_after, revision.changed_by, revision.created_at
-    FROM schedule_blueprint_revisions revision
-    JOIN schedule_blueprints blueprint ON blueprint.id = revision.blueprint_id
+    SELECT revision.id, revision.rule_id, revision.user_id, revision.revision, revision.effective_from, revision.recurrence_anchor_date, revision.local_start, revision.local_end, revision.all_day, revision.timezone, revision.frequency, revision.interval_count, revision.weekdays, revision.end_date, revision.title, revision.description, revision.location, revision.project_id, revision.assignee_id, revision.superseded_at, revision.cutoff_after, revision.changed_by, revision.created_at
+    FROM schedule_rule_revisions revision
+    JOIN schedule_rules rule ON rule.id = revision.rule_id
     WHERE revision.superseded_at IS NULL
       AND (
           revision.effective_from > ($1::timestamptz AT TIME ZONE revision.timezone)::date
           OR ((revision.cutoff_after IS NULL OR revision.cutoff_after >= ($1::timestamptz AT TIME ZONE revision.timezone)::date)
               AND NOT EXISTS (
-              SELECT 1 FROM schedule_blueprint_revisions later
-              WHERE later.blueprint_id = revision.blueprint_id
+              SELECT 1 FROM schedule_rule_revisions later
+              WHERE later.rule_id = revision.rule_id
                 AND later.superseded_at IS NULL
                 AND later.effective_from <= ($1::timestamptz AT TIME ZONE revision.timezone)::date
                 AND later.effective_from > revision.effective_from
               ))
       )
-      AND blueprint.deleted_at IS NULL
+      AND rule.deleted_at IS NULL
 ), inserted AS (
     INSERT INTO schedule_project_pause_intervals (
-        project_id, blueprint_id, paused_at, paused_by
+        project_id, rule_id, paused_at, paused_by
     )
-    SELECT $2::text, current.blueprint_id,
+    SELECT $2::text, current.rule_id,
            $1::timestamptz, $3::text
     FROM current_or_planned_revisions current
     WHERE current.project_id = $2::text
       AND current.frequency <> 'once'
       AND (current.end_date IS NULL OR current.end_date >= ($1::timestamptz AT TIME ZONE current.timezone)::date)
-    ON CONFLICT (project_id, blueprint_id) WHERE resumed_at IS NULL DO NOTHING
+    ON CONFLICT (project_id, rule_id) WHERE resumed_at IS NULL DO NOTHING
 )
 SELECT 1
 `
 
-type PauseScheduleBlueprintsForProjectParams struct {
+type PauseScheduleRulesForProjectParams struct {
 	PausedAt  pgtype.Timestamptz
 	ProjectID string
 	ActorID   string
 }
 
-func (q *Queries) PauseScheduleBlueprintsForProject(ctx context.Context, arg PauseScheduleBlueprintsForProjectParams) error {
-	_, err := q.db.Exec(ctx, pauseScheduleBlueprintsForProject, arg.PausedAt, arg.ProjectID, arg.ActorID)
+func (q *Queries) PauseScheduleRulesForProject(ctx context.Context, arg PauseScheduleRulesForProjectParams) error {
+	_, err := q.db.Exec(ctx, pauseScheduleRulesForProject, arg.PausedAt, arg.ProjectID, arg.ActorID)
 	return err
 }
 
-const resumeScheduleBlueprintsForProject = `-- name: ResumeScheduleBlueprintsForProject :exec
+const resumeScheduleRulesForProject = `-- name: ResumeScheduleRulesForProject :exec
 UPDATE schedule_project_pause_intervals
 SET resumed_at = $1::timestamptz,
     resumed_by = $2::text
@@ -63,13 +63,13 @@ WHERE project_id = $3::text
   AND resumed_at IS NULL
 `
 
-type ResumeScheduleBlueprintsForProjectParams struct {
+type ResumeScheduleRulesForProjectParams struct {
 	ResumedAt pgtype.Timestamptz
 	ActorID   string
 	ProjectID string
 }
 
-func (q *Queries) ResumeScheduleBlueprintsForProject(ctx context.Context, arg ResumeScheduleBlueprintsForProjectParams) error {
-	_, err := q.db.Exec(ctx, resumeScheduleBlueprintsForProject, arg.ResumedAt, arg.ActorID, arg.ProjectID)
+func (q *Queries) ResumeScheduleRulesForProject(ctx context.Context, arg ResumeScheduleRulesForProjectParams) error {
+	_, err := q.db.Exec(ctx, resumeScheduleRulesForProject, arg.ResumedAt, arg.ActorID, arg.ProjectID)
 	return err
 }

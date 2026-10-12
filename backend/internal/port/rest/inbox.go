@@ -43,7 +43,7 @@ type InboxTaskPayloadResponse struct {
 
 type InboxSchedulePayloadResponse struct {
 	OccurrenceID       *string `json:"occurrence_id" validate:"required" extensions:"x-nullable"`
-	BlueprintID        string  `json:"blueprint_id" validate:"required"`
+	RuleID             string  `json:"rule_id" validate:"required"`
 	OccurrenceDate     string  `json:"occurrence_date" validate:"required"`
 	SourceRevisionID   string  `json:"source_revision_id" validate:"required"`
 	AssigneeID         string  `json:"assignee_id" validate:"required"`
@@ -90,7 +90,7 @@ type inboxPageAnchor struct {
 	ID              string `json:"id,omitempty"`
 	Type            string `json:"type,omitempty"`
 	Direction       string `json:"direction,omitempty"`
-	BlueprintID     string `json:"blueprint_id,omitempty"`
+	RuleID          string `json:"rule_id,omitempty"`
 	OccurrenceDate  string `json:"occurrence_date,omitempty"`
 	ScheduleStartAt int64  `json:"schedule_start_at,omitempty"`
 	AsOf            string `json:"as_of,omitempty"`
@@ -102,7 +102,7 @@ type inboxPageAnchor struct {
 //
 //	@ID				listInbox
 //	@Summary		List inbox
-//	@Description	Returns a paginated, read-only projection of all incomplete Tasks assigned to the caller and uncompleted, unskipped Schedule occurrences from the caller's local today through six days later, including virtual recurring occurrences. Results are ordered by original Task or Schedule blueprint creation time descending; occurrences from one blueprint are ordered by scheduled start time ascending.
+//	@Description	Returns a paginated, read-only projection of all incomplete Tasks assigned to the caller and uncompleted, unskipped Schedule occurrences from the caller's local today through six days later, including virtual recurring occurrences. Results are ordered by original Task or Schedule rule creation time descending; occurrences from one rule are ordered by scheduled start time ascending.
 //	@Tags			Inbox
 //	@Produce		json
 //	@Security		BearerAuth
@@ -173,7 +173,7 @@ func (h *InboxHandler) List(w http.ResponseWriter, r *http.Request) {
 		}
 		request.Anchor = &inboxusecase.CursorAnchor{
 			CreatedAt: anchor.At, Type: inboxdao.ItemType(anchor.Type), ID: anchor.ID, Direction: anchor.Direction,
-			BlueprintID: anchor.BlueprintID, OccurrenceDate: anchor.OccurrenceDate, ScheduleStartAt: anchor.ScheduleStartAt,
+			RuleID: anchor.RuleID, OccurrenceDate: anchor.OccurrenceDate, ScheduleStartAt: anchor.ScheduleStartAt,
 		}
 		request.Snapshot = inboxusecase.Snapshot{AsOf: asOf, Timezone: anchor.Timezone, Today: anchor.Today}
 	}
@@ -223,7 +223,7 @@ func (h *InboxHandler) List(w http.ResponseWriter, r *http.Request) {
 func encodeInboxPageToken(codec *pagination.Codec, scope pagination.Scope, anchor inboxusecase.CursorAnchor, snapshot inboxusecase.Snapshot) (string, error) {
 	return pagination.Encode(codec, scope, inboxPageAnchor{
 		At: anchor.CreatedAt, ID: anchor.ID, Type: string(anchor.Type), Direction: anchor.Direction,
-		BlueprintID: anchor.BlueprintID, OccurrenceDate: anchor.OccurrenceDate, ScheduleStartAt: anchor.ScheduleStartAt,
+		RuleID: anchor.RuleID, OccurrenceDate: anchor.OccurrenceDate, ScheduleStartAt: anchor.ScheduleStartAt,
 		AsOf: snapshot.AsOf.UTC().Format(time.RFC3339Nano), Timezone: snapshot.Timezone, Today: snapshot.Today,
 	})
 }
@@ -250,7 +250,7 @@ func inboxItemResponse(item inboxdao.Item) InboxItemResponse {
 	}
 	if item.Schedule != nil {
 		response.Schedule = &InboxSchedulePayloadResponse{
-			OccurrenceID: cloneString(item.Schedule.OccurrenceID), BlueprintID: item.Schedule.BlueprintID,
+			OccurrenceID: cloneString(item.Schedule.OccurrenceID), RuleID: item.Schedule.RuleID,
 			OccurrenceDate: item.Schedule.OccurrenceDate, SourceRevisionID: item.Schedule.SourceRevisionID,
 			AssigneeID: item.Schedule.AssigneeID, Description: item.Schedule.Description,
 			Location: item.Schedule.Location, Timezone: item.Schedule.Timezone,

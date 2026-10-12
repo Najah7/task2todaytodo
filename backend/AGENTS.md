@@ -15,7 +15,7 @@ internal/application/<context>/usecase/  Single-operation use cases, ports, test
 internal/application/<context>/repository/ DB adapter and sqlc mapping
 internal/application/shared/             Cross-context application contracts
 internal/application/shared/pagination/  Transport-independent List page policy
-internal/application/schedule/domain/    Schedule models and blueprint recurrence rules
+internal/application/schedule/domain/    Schedule models and rule recurrence rules
 internal/config/                          Process environment loading and validation
 internal/telemetry/                       Structured logging and OpenTelemetry setup, propagation and trace export
 internal/port/rest/                      HTTP handlers, response and error mapping
@@ -25,7 +25,7 @@ internal/port/rest/fieldmask/            Read response field masks
 internal/port/adapter/                   External adapters, including ULID and UUID
 ```
 
-`<context>` means `auth`, `project`, `task`, `schedule`, `inbox`, or `admin`.
+`<context>` means `auth`, `project`, `task`, `schedule`, `allocation`, `inbox`, or `admin`.
 Their HTTP handlers all live in `internal/port/rest`.
 
 ## Commands

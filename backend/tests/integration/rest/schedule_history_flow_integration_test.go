@@ -37,15 +37,16 @@ func TestRESTProjectScheduleOccurrenceHistoryFlow(t *testing.T) {
 			t.Fatalf("insert user: %v", err)
 		}
 	}
-	var projectID, blueprintID, occurrenceID string
+	var projectID, ruleID, occurrenceID string
 	t.Cleanup(func() {
-		if blueprintID != "" {
-			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_revisions WHERE schedule_id IN (SELECT id FROM schedules WHERE blueprint_id=$1)`, blueprintID)
-			_, _ = pool.Exec(context.Background(), `DELETE FROM schedules WHERE blueprint_id=$1`, blueprintID)
-			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_backfill_checkpoints WHERE revision_id IN (SELECT id FROM schedule_blueprint_revisions WHERE blueprint_id=$1)`, blueprintID)
-			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_project_pause_intervals WHERE blueprint_id=$1`, blueprintID)
-			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_blueprint_revisions WHERE blueprint_id=$1`, blueprintID)
-			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_blueprints WHERE id=$1`, blueprintID)
+		if ruleID != "" {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_exceptions WHERE rule_id=$1`, ruleID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_revisions WHERE schedule_id IN (SELECT id FROM schedules WHERE rule_id=$1)`, ruleID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM schedules WHERE rule_id=$1`, ruleID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_backfill_checkpoints WHERE revision_id IN (SELECT id FROM schedule_rule_revisions WHERE rule_id=$1)`, ruleID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_project_pause_intervals WHERE rule_id=$1`, ruleID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_rule_revisions WHERE rule_id=$1`, ruleID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM schedule_rules WHERE id=$1`, ruleID)
 		}
 		if projectID != "" {
 			_, _ = pool.Exec(context.Background(), `DELETE FROM project_revisions WHERE id=$1`, projectID)
@@ -56,7 +57,7 @@ func TestRESTProjectScheduleOccurrenceHistoryFlow(t *testing.T) {
 
 	ids := scheduleFlowIDs{}
 	store := application.NewStore(pool)
-	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
+	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule, store.Allocation)
 	usecases, stopUseCases := application.NewUseCase(store, uow, adapter.NewIDIssuer(), nil)
 	testdb.RegisterShutdown(t, stopUseCases)
 	pageTokens, err := pagination.NewCodec([]byte(strings.Repeat("x", 32)))
@@ -67,12 +68,12 @@ func TestRESTProjectScheduleOccurrenceHistoryFlow(t *testing.T) {
 	scheduleHandler := restapi.NewScheduleHandler(usecases.Schedule, pageTokens)
 	router := chi.NewRouter()
 	router.Post("/projects", projectHandler.Create)
-	router.Post("/projects/{id}/schedules", scheduleHandler.CreateProjectBlueprint)
+	router.Post("/projects/{id}/schedules", scheduleHandler.CreateProjectRule)
 	router.Get("/projects/{id}/schedules", scheduleHandler.ListProjectOccurrences)
 	router.Get("/schedules", scheduleHandler.ListOccurrences)
-	router.Get("/schedules/{blueprint_id}/{occurrence_date}", scheduleHandler.GetOccurrence)
-	router.Get("/schedules/{blueprint_id}/{occurrence_date}/revisions", scheduleHandler.ListOccurrenceRevisions)
-	router.Patch("/schedules/{blueprint_id}/{occurrence_date}", scheduleHandler.UpdateOccurrence)
+	router.Get("/schedules/{rule_id}/{occurrence_date}", scheduleHandler.GetOccurrence)
+	router.Get("/schedules/{rule_id}/{occurrence_date}/revisions", scheduleHandler.ListOccurrenceRevisions)
+	router.Patch("/schedules/{rule_id}/{occurrence_date}", scheduleHandler.UpdateOccurrence)
 	request := func(method, path, body, actor string, headers ...[2]string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(method, path, strings.NewReader(body))
 		req = req.WithContext(context.WithValue(req.Context(), restapi.UserIDContextKey, actor))
@@ -102,17 +103,17 @@ func TestRESTProjectScheduleOccurrenceHistoryFlow(t *testing.T) {
 	weekdayCodes := [...]string{"sun", "mon", "tue", "wed", "thu", "fri", "sat"}
 	createBody := fmt.Sprintf(`{"title":"Project Schedule","timezone":"Asia/Tokyo","local_start":%q,"local_end":%q,"frequency":"weekly","interval":1,"weekdays":[%q]}`,
 		start.Format("2006-01-02T15:04:05"), start.Add(time.Hour).Format("2006-01-02T15:04:05"), weekdayCodes[start.Weekday()])
-	blueprintResponse := request(http.MethodPost, "/projects/"+projectID+"/schedules", createBody, ownerID)
-	if blueprintResponse.Code != http.StatusCreated {
-		t.Fatalf("POST /projects/{id}/schedules status/body=%d/%s", blueprintResponse.Code, blueprintResponse.Body.String())
+	ruleResponse := request(http.MethodPost, "/projects/"+projectID+"/schedules", createBody, ownerID)
+	if ruleResponse.Code != http.StatusCreated {
+		t.Fatalf("POST /projects/{id}/schedules status/body=%d/%s", ruleResponse.Code, ruleResponse.Body.String())
 	}
-	var blueprint restapi.ScheduleBlueprintResponse
-	if err := json.Unmarshal(blueprintResponse.Body.Bytes(), &blueprint); err != nil {
+	var rule restapi.ScheduleRuleResponse
+	if err := json.Unmarshal(ruleResponse.Body.Bytes(), &rule); err != nil {
 		t.Fatal(err)
 	}
-	blueprintID = blueprint.ID
+	ruleID = rule.ID
 	occurrenceDate := start.Format("2006-01-02")
-	updatePath := "/schedules/" + blueprintID + "/" + occurrenceDate
+	updatePath := "/schedules/" + ruleID + "/" + occurrenceDate
 	updateResponse := request(http.MethodPatch, updatePath, `{"title":"Saved occurrence"}`, ownerID, [2]string{"If-Match", `"0"`})
 	if updateResponse.Code != http.StatusOK {
 		t.Fatalf("PATCH occurrence status/body=%d/%s", updateResponse.Code, updateResponse.Body.String())
@@ -121,7 +122,7 @@ func TestRESTProjectScheduleOccurrenceHistoryFlow(t *testing.T) {
 	if err := json.Unmarshal(updateResponse.Body.Bytes(), &occurrence); err != nil {
 		t.Fatal(err)
 	}
-	if occurrence.ID == nil || !occurrence.Persisted || !occurrence.IsOverride || occurrence.BlueprintID != blueprintID {
+	if occurrence.ID == nil || !occurrence.Persisted || occurrence.RuleID != ruleID {
 		t.Fatalf("saved occurrence response=%+v", occurrence)
 	}
 	occurrenceID = *occurrence.ID
@@ -145,7 +146,7 @@ func TestRESTProjectScheduleOccurrenceHistoryFlow(t *testing.T) {
 	}
 	foundSaved := false
 	for _, item := range page.Items {
-		if item.BlueprintID == blueprintID && item.OccurrenceDate == occurrenceDate {
+		if item.RuleID == ruleID && item.OccurrenceDate == occurrenceDate {
 			foundSaved = item.ID != nil && *item.ID == occurrenceID && item.Title == "Saved occurrence"
 		}
 	}

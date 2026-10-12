@@ -78,11 +78,11 @@ func (q *Queries) ListProjectRevisionsByActor(ctx context.Context, arg ListProje
 }
 
 const listScheduleOccurrenceRevisionsByActor = `-- name: ListScheduleOccurrenceRevisionsByActor :many
-SELECT history.schedule_id, history.revision, history.source_revision_id, history.user_id, history.occurrence_date, history.start_at, history.end_at, history.all_day, history.title, history.description, history.location, history.project_id, history.assignee_id, history.timezone, history.completed, history.skipped_at, history.deleted_at, history.is_override, history.changed_by, history.changed_at
+SELECT history.schedule_id, history.revision, history.source_revision_id, history.user_id, history.occurrence_date, history.start_at, history.end_at, history.all_day, history.title, history.description, history.location, history.project_id, history.assignee_id, history.timezone, history.completed, history.skipped_at, history.deleted_at, history.changed_by, history.changed_at
 FROM schedule_revisions history
 JOIN schedules occurrence ON occurrence.id = history.schedule_id
-JOIN schedule_blueprints blueprint ON blueprint.id = occurrence.blueprint_id AND blueprint.deleted_at IS NULL
-WHERE occurrence.blueprint_id = $1::text
+JOIN schedule_rules rule ON rule.id = occurrence.rule_id AND rule.deleted_at IS NULL
+WHERE occurrence.rule_id = $1::text
   AND occurrence.occurrence_date = $2::date
   AND (
       (occurrence.deleted_at IS NOT NULL AND occurrence.user_id = $3::text)
@@ -97,7 +97,7 @@ LIMIT $5::integer
 `
 
 type ListScheduleOccurrenceRevisionsByActorParams struct {
-	BlueprintID    string
+	RuleID         string
 	OccurrenceDate pgtype.Date
 	ActorID        string
 	CursorRevision pgtype.Int4
@@ -106,7 +106,7 @@ type ListScheduleOccurrenceRevisionsByActorParams struct {
 
 func (q *Queries) ListScheduleOccurrenceRevisionsByActor(ctx context.Context, arg ListScheduleOccurrenceRevisionsByActorParams) ([]ScheduleRevision, error) {
 	rows, err := q.db.Query(ctx, listScheduleOccurrenceRevisionsByActor,
-		arg.BlueprintID,
+		arg.RuleID,
 		arg.OccurrenceDate,
 		arg.ActorID,
 		arg.CursorRevision,
@@ -137,7 +137,6 @@ func (q *Queries) ListScheduleOccurrenceRevisionsByActor(ctx context.Context, ar
 			&i.Completed,
 			&i.SkippedAt,
 			&i.DeletedAt,
-			&i.IsOverride,
 			&i.ChangedBy,
 			&i.ChangedAt,
 		); err != nil {

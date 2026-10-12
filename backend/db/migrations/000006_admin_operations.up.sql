@@ -1,6 +1,6 @@
 CREATE TABLE admin_operations (
     id text PRIMARY KEY CHECK (id ~ '^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$'),
-    job_name text NOT NULL CHECK (job_name = 'backfill-schedules'),
+    job_name text NOT NULL CHECK (job_name IN ('backfill-schedules', 'prefill-allocations')),
     state text NOT NULL CHECK (state IN ('running', 'succeeded', 'failed')),
     requested_by text NOT NULL REFERENCES users(id),
     cutoff timestamptz NOT NULL,
@@ -9,8 +9,9 @@ CREATE TABLE admin_operations (
     heartbeat_at timestamptz NOT NULL,
     lease_expires_at timestamptz NOT NULL,
     lease_token text NOT NULL,
-    processed_blueprints bigint NOT NULL DEFAULT 0 CHECK (processed_blueprints >= 0),
+    processed_rules bigint NOT NULL DEFAULT 0 CHECK (processed_rules >= 0),
     generated_schedules bigint NOT NULL DEFAULT 0 CHECK (generated_schedules >= 0),
+    generated_occurrences bigint NOT NULL DEFAULT 0 CHECK (generated_occurrences >= 0),
     response jsonb,
     error_code text,
     error_message text,

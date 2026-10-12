@@ -28,16 +28,71 @@ func (q *Queries) AdvanceScheduleRevisionBackfillCheckpoint(ctx context.Context,
 	return err
 }
 
+const applyScheduleRuleRevisionToOccurrence = `-- name: ApplyScheduleRuleRevisionToOccurrence :execrows
+UPDATE schedules s
+SET source_revision_id = $1::text,
+    start_at = $2::timestamptz, end_at = $3::timestamptz,
+    all_day = $4::boolean,
+    title = $5::text, description = $6::text,
+    location = $7::text, project_id = $8::text,
+    assignee_id = $9::text, timezone = $10::text,
+    changed_by = $11::text
+WHERE s.rule_id = $12::text
+  AND s.occurrence_date = $13::date
+  AND NOT EXISTS (
+      SELECT 1 FROM schedule_exceptions exception_row
+      WHERE exception_row.rule_id = s.rule_id AND exception_row.occurrence_date = s.occurrence_date
+  )
+`
+
+type ApplyScheduleRuleRevisionToOccurrenceParams struct {
+	SourceRevisionID string
+	StartAt          pgtype.Timestamptz
+	EndAt            pgtype.Timestamptz
+	AllDay           bool
+	Title            string
+	Description      pgtype.Text
+	Location         pgtype.Text
+	ProjectID        pgtype.Text
+	AssigneeID       string
+	Timezone         string
+	ActorID          string
+	RuleID           string
+	OccurrenceDate   pgtype.Date
+}
+
+func (q *Queries) ApplyScheduleRuleRevisionToOccurrence(ctx context.Context, arg ApplyScheduleRuleRevisionToOccurrenceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, applyScheduleRuleRevisionToOccurrence,
+		arg.SourceRevisionID,
+		arg.StartAt,
+		arg.EndAt,
+		arg.AllDay,
+		arg.Title,
+		arg.Description,
+		arg.Location,
+		arg.ProjectID,
+		arg.AssigneeID,
+		arg.Timezone,
+		arg.ActorID,
+		arg.RuleID,
+		arg.OccurrenceDate,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const backfillScheduleOccurrence = `-- name: BackfillScheduleOccurrence :execrows
 INSERT INTO schedules (
-    id, blueprint_id, source_revision_id, user_id, occurrence_date, start_at, end_at,
+    id, rule_id, source_revision_id, user_id, occurrence_date, start_at, end_at,
     all_day, title, description, location, project_id, assignee_id, timezone, changed_by
 )
-SELECT $1::text, r.blueprint_id, r.id, b.user_id, $2::date,
+SELECT $1::text, r.rule_id, r.id, b.user_id, $2::date,
        $3::timestamptz, $4::timestamptz, r.all_day,
        r.title, r.description, r.location, r.project_id, r.assignee_id, r.timezone, $5::text
-FROM schedule_blueprint_revisions r
-JOIN schedule_blueprints b ON b.id = r.blueprint_id
+FROM schedule_rule_revisions r
+JOIN schedule_rules b ON b.id = r.rule_id
 WHERE r.id = $6::text AND b.deleted_at IS NULL
   AND r.frequency <> 'once'
   AND (r.end_date IS NULL OR r.end_date >= $2::date)
@@ -46,18 +101,22 @@ WHERE r.id = $6::text AND b.deleted_at IS NULL
   AND r.superseded_at IS NULL
   AND (r.project_id IS NULL OR EXISTS (SELECT 1 FROM projects p WHERE p.id = r.project_id AND p.deleted_at IS NULL))
   AND NOT EXISTS (
-      SELECT 1 FROM schedule_blueprint_revisions later
-      WHERE later.blueprint_id = r.blueprint_id AND later.superseded_at IS NULL
+      SELECT 1 FROM schedule_rule_revisions later
+      WHERE later.rule_id = r.rule_id AND later.superseded_at IS NULL
         AND later.effective_from <= $2::date
         AND later.effective_from > r.effective_from
   )
   AND NOT EXISTS (
       SELECT 1 FROM schedule_project_pause_intervals pauses
-      WHERE pauses.blueprint_id = r.blueprint_id AND pauses.project_id = r.project_id
+      WHERE pauses.rule_id = r.rule_id AND pauses.project_id = r.project_id
         AND pauses.paused_at <= $3::timestamptz
         AND (pauses.resumed_at IS NULL OR $3::timestamptz < pauses.resumed_at)
   )
-ON CONFLICT (blueprint_id, occurrence_date) DO NOTHING
+  AND NOT EXISTS (
+      SELECT 1 FROM schedule_exceptions exception_row
+      WHERE exception_row.rule_id = r.rule_id AND exception_row.occurrence_date = $2::date
+  )
+ON CONFLICT (rule_id, occurrence_date) DO NOTHING
 `
 
 type BackfillScheduleOccurrenceParams struct {
@@ -86,16 +145,16 @@ func (q *Queries) BackfillScheduleOccurrence(ctx context.Context, arg BackfillSc
 
 const createScheduleOccurrence = `-- name: CreateScheduleOccurrence :one
 INSERT INTO schedules (
-    id, blueprint_id, source_revision_id, user_id, occurrence_date, start_at, end_at,
+    id, rule_id, source_revision_id, user_id, occurrence_date, start_at, end_at,
     all_day, title, description, location, project_id, assignee_id, timezone, changed_by
 )
-SELECT $1::text, r.blueprint_id, r.id, r.user_id, $2::date,
+SELECT $1::text, r.rule_id, r.id, r.user_id, $2::date,
        $3::timestamptz, $4::timestamptz, r.all_day,
        r.title, r.description, r.location, r.project_id, r.assignee_id, r.timezone, $5::text
-FROM schedule_blueprint_revisions r
+FROM schedule_rule_revisions r
 WHERE r.id = $6::text
-ON CONFLICT (blueprint_id, occurrence_date) DO NOTHING
-RETURNING id, blueprint_id, source_revision_id, user_id, occurrence_date, start_at, end_at, all_day, title, description, location, project_id, assignee_id, timezone, completed, skipped_at, deleted_at, is_override, revision, changed_by, created_at, updated_at
+ON CONFLICT (rule_id, occurrence_date) DO NOTHING
+RETURNING id, rule_id, source_revision_id, user_id, occurrence_date, start_at, end_at, all_day, title, description, location, project_id, assignee_id, timezone, completed, skipped_at, deleted_at, revision, changed_by, created_at, updated_at
 `
 
 type CreateScheduleOccurrenceParams struct {
@@ -119,7 +178,7 @@ func (q *Queries) CreateScheduleOccurrence(ctx context.Context, arg CreateSchedu
 	var i Schedule
 	err := row.Scan(
 		&i.ID,
-		&i.BlueprintID,
+		&i.RuleID,
 		&i.SourceRevisionID,
 		&i.UserID,
 		&i.OccurrenceDate,
@@ -135,7 +194,6 @@ func (q *Queries) CreateScheduleOccurrence(ctx context.Context, arg CreateSchedu
 		&i.Completed,
 		&i.SkippedAt,
 		&i.DeletedAt,
-		&i.IsOverride,
 		&i.Revision,
 		&i.ChangedBy,
 		&i.CreatedAt,
@@ -144,19 +202,25 @@ func (q *Queries) CreateScheduleOccurrence(ctx context.Context, arg CreateSchedu
 	return i, err
 }
 
-const deleteProjectBlueprintOccurrencesByActor = `-- name: DeleteProjectBlueprintOccurrencesByActor :execrows
+const deleteProjectRuleOccurrencesByActor = `-- name: DeleteProjectRuleOccurrencesByActor :execrows
+WITH exception_changes AS (
+    UPDATE schedule_exceptions
+    SET deleted_at = now(), changed_by = $1::text, updated_at = now()
+    WHERE project_id = $2::text AND deleted_at IS NULL
+    RETURNING rule_id, occurrence_date
+)
 UPDATE schedules s
 SET deleted_at = now(), changed_by = $1::text, updated_at = now()
 WHERE s.project_id = $2::text AND s.deleted_at IS NULL
 `
 
-type DeleteProjectBlueprintOccurrencesByActorParams struct {
+type DeleteProjectRuleOccurrencesByActorParams struct {
 	ActorID   string
 	ProjectID string
 }
 
-func (q *Queries) DeleteProjectBlueprintOccurrencesByActor(ctx context.Context, arg DeleteProjectBlueprintOccurrencesByActorParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteProjectBlueprintOccurrencesByActor, arg.ActorID, arg.ProjectID)
+func (q *Queries) DeleteProjectRuleOccurrencesByActor(ctx context.Context, arg DeleteProjectRuleOccurrencesByActorParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteProjectRuleOccurrencesByActor, arg.ActorID, arg.ProjectID)
 	if err != nil {
 		return 0, err
 	}
@@ -178,7 +242,7 @@ func (q *Queries) GetScheduleRevisionBackfillCheckpoint(ctx context.Context, rev
 const listScheduleOccurrenceProjectIDsForFollowing = `-- name: ListScheduleOccurrenceProjectIDsForFollowing :many
 SELECT DISTINCT occurrence.project_id
 FROM schedules occurrence
-WHERE occurrence.blueprint_id = $1::text
+WHERE occurrence.rule_id = $1::text
   AND occurrence.occurrence_date >= $2::date
   AND occurrence.deleted_at IS NULL
   AND occurrence.project_id IS NOT NULL
@@ -186,12 +250,12 @@ ORDER BY occurrence.project_id
 `
 
 type ListScheduleOccurrenceProjectIDsForFollowingParams struct {
-	BlueprintID    string
+	RuleID         string
 	OccurrenceDate pgtype.Date
 }
 
 func (q *Queries) ListScheduleOccurrenceProjectIDsForFollowing(ctx context.Context, arg ListScheduleOccurrenceProjectIDsForFollowingParams) ([]pgtype.Text, error) {
-	rows, err := q.db.Query(ctx, listScheduleOccurrenceProjectIDsForFollowing, arg.BlueprintID, arg.OccurrenceDate)
+	rows, err := q.db.Query(ctx, listScheduleOccurrenceProjectIDsForFollowing, arg.RuleID, arg.OccurrenceDate)
 	if err != nil {
 		return nil, err
 	}
@@ -210,40 +274,42 @@ func (q *Queries) ListScheduleOccurrenceProjectIDsForFollowing(ctx context.Conte
 	return items, nil
 }
 
-const lockScheduleBlueprintForBackfill = `-- name: LockScheduleBlueprintForBackfill :one
-SELECT id FROM schedule_blueprints
-WHERE id = $1::text AND deleted_at IS NULL
-FOR UPDATE
+const lockScheduleOccurrenceForMutation = `-- name: LockScheduleOccurrenceForMutation :one
+WITH locked AS (
+    SELECT b.id
+    FROM schedule_rules b
+    WHERE b.id = $1::text AND b.deleted_at IS NULL
+      AND (
+        EXISTS (SELECT 1 FROM schedules s WHERE s.rule_id = b.id AND s.occurrence_date = $2::date
+            AND schedule_occurrence_has_permission(s.id, $3::text,
+                $4::text, $5::action))
+        OR (NOT EXISTS (SELECT 1 FROM schedules s WHERE s.rule_id = b.id AND s.occurrence_date = $2::date)
+            AND schedule_rule_has_permission_at(b.id, $2::date, $3::text,
+                $4::text, $5::action))
+      )
+      FOR UPDATE
+), saved AS (
+    SELECT s.id
+    FROM schedules s JOIN locked b ON b.id = s.rule_id
+    WHERE s.occurrence_date = $2::date
+      AND schedule_occurrence_has_permission(s.id, $3::text,
+          $4::text, $5::action)
+    FOR UPDATE OF s
+)
+SELECT id FROM locked WHERE (SELECT count(*) FROM saved) >= 0
 `
 
-func (q *Queries) LockScheduleBlueprintForBackfill(ctx context.Context, blueprintID string) (string, error) {
-	row := q.db.QueryRow(ctx, lockScheduleBlueprintForBackfill, blueprintID)
-	var id string
-	err := row.Scan(&id)
-	return id, err
-}
-
-const lockScheduleBlueprintForRevisionMutation = `-- name: LockScheduleBlueprintForRevisionMutation :one
-SELECT blueprint.id
-FROM schedule_blueprints blueprint
-WHERE blueprint.id = $1::text
-  AND blueprint.deleted_at IS NULL
-  AND schedule_blueprint_has_permission_at(blueprint.id, $2::date,
-      $3::text, $4::text, $5::action)
-FOR UPDATE
-`
-
-type LockScheduleBlueprintForRevisionMutationParams struct {
-	BlueprintID    string
+type LockScheduleOccurrenceForMutationParams struct {
+	RuleID         string
 	OccurrenceDate pgtype.Date
 	ActorID        string
 	ResourceID     string
 	Action         Action
 }
 
-func (q *Queries) LockScheduleBlueprintForRevisionMutation(ctx context.Context, arg LockScheduleBlueprintForRevisionMutationParams) (string, error) {
-	row := q.db.QueryRow(ctx, lockScheduleBlueprintForRevisionMutation,
-		arg.BlueprintID,
+func (q *Queries) LockScheduleOccurrenceForMutation(ctx context.Context, arg LockScheduleOccurrenceForMutationParams) (string, error) {
+	row := q.db.QueryRow(ctx, lockScheduleOccurrenceForMutation,
+		arg.RuleID,
 		arg.OccurrenceDate,
 		arg.ActorID,
 		arg.ResourceID,
@@ -254,42 +320,40 @@ func (q *Queries) LockScheduleBlueprintForRevisionMutation(ctx context.Context, 
 	return id, err
 }
 
-const lockScheduleOccurrenceForMutation = `-- name: LockScheduleOccurrenceForMutation :one
-WITH locked AS (
-    SELECT b.id
-    FROM schedule_blueprints b
-    WHERE b.id = $1::text AND b.deleted_at IS NULL
-      AND (
-        EXISTS (SELECT 1 FROM schedules s WHERE s.blueprint_id = b.id AND s.occurrence_date = $2::date
-            AND schedule_occurrence_has_permission(s.id, $3::text,
-                $4::text, $5::action))
-        OR (NOT EXISTS (SELECT 1 FROM schedules s WHERE s.blueprint_id = b.id AND s.occurrence_date = $2::date)
-            AND schedule_blueprint_has_permission_at(b.id, $2::date, $3::text,
-                $4::text, $5::action))
-      )
-      FOR UPDATE
-), saved AS (
-    SELECT s.id
-    FROM schedules s JOIN locked b ON b.id = s.blueprint_id
-    WHERE s.occurrence_date = $2::date
-      AND schedule_occurrence_has_permission(s.id, $3::text,
-          $4::text, $5::action)
-    FOR UPDATE OF s
-)
-SELECT id FROM locked WHERE (SELECT count(*) FROM saved) >= 0
+const lockScheduleRuleForBackfill = `-- name: LockScheduleRuleForBackfill :one
+SELECT id FROM schedule_rules
+WHERE id = $1::text AND deleted_at IS NULL
+FOR UPDATE
 `
 
-type LockScheduleOccurrenceForMutationParams struct {
-	BlueprintID    string
+func (q *Queries) LockScheduleRuleForBackfill(ctx context.Context, ruleID string) (string, error) {
+	row := q.db.QueryRow(ctx, lockScheduleRuleForBackfill, ruleID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const lockScheduleRuleForRevisionMutation = `-- name: LockScheduleRuleForRevisionMutation :one
+SELECT rule.id
+FROM schedule_rules rule
+WHERE rule.id = $1::text
+  AND rule.deleted_at IS NULL
+  AND schedule_rule_has_permission_at(rule.id, $2::date,
+      $3::text, $4::text, $5::action)
+FOR UPDATE
+`
+
+type LockScheduleRuleForRevisionMutationParams struct {
+	RuleID         string
 	OccurrenceDate pgtype.Date
 	ActorID        string
 	ResourceID     string
 	Action         Action
 }
 
-func (q *Queries) LockScheduleOccurrenceForMutation(ctx context.Context, arg LockScheduleOccurrenceForMutationParams) (string, error) {
-	row := q.db.QueryRow(ctx, lockScheduleOccurrenceForMutation,
-		arg.BlueprintID,
+func (q *Queries) LockScheduleRuleForRevisionMutation(ctx context.Context, arg LockScheduleRuleForRevisionMutationParams) (string, error) {
+	row := q.db.QueryRow(ctx, lockScheduleRuleForRevisionMutation,
+		arg.RuleID,
 		arg.OccurrenceDate,
 		arg.ActorID,
 		arg.ResourceID,
@@ -301,24 +365,39 @@ func (q *Queries) LockScheduleOccurrenceForMutation(ctx context.Context, arg Loc
 }
 
 const materializeScheduleOccurrenceByActor = `-- name: MaterializeScheduleOccurrenceByActor :one
-INSERT INTO schedules (
-    id, blueprint_id, source_revision_id, user_id, occurrence_date, start_at, end_at,
-    all_day, title, description, location, project_id, assignee_id, timezone, completed,
-    skipped_at, deleted_at, is_override, changed_by
+WITH saved_exception AS (
+    INSERT INTO schedule_exceptions (
+        rule_id, occurrence_date, source_revision_id, user_id, start_at, end_at,
+        all_day, title, description, location, project_id, assignee_id, timezone,
+        completed, skipped_at, deleted_at, changed_by
+    )
+    SELECT r.rule_id, $2::date, r.id, r.user_id,
+           $3::timestamptz, $4::timestamptz,
+           $5::boolean, $6::text, $7::text,
+           $8::text, $9::text, $10::text,
+           $11::text, $12::boolean,
+           $13::timestamptz, $14::timestamptz,
+           $15::text
+    FROM schedule_rule_revisions r
+    WHERE r.id = $16::text
+      AND r.rule_id = $17::text
+      AND schedule_rule_has_permission_at(r.rule_id, $2::date,
+          $15::text, $18::text, $19::action)
+    ON CONFLICT (rule_id, occurrence_date) DO NOTHING
+    RETURNING rule_id, occurrence_date, source_revision_id, user_id, start_at, end_at, all_day, title, description, location, project_id, assignee_id, timezone, completed, skipped_at, deleted_at, changed_by, created_at, updated_at
 )
-SELECT $1::text, r.blueprint_id, r.id, r.user_id, $2::date,
-       $3::timestamptz, $4::timestamptz, $5::boolean,
-       $6::text, $7::text, $8::text, $9::text,
-       $10::text, $11::text, $12::boolean,
-       $13::timestamptz, $14::timestamptz,
-       $15::boolean, $16::text
-FROM schedule_blueprint_revisions r
-WHERE r.id = $17::text
-  AND r.blueprint_id = $18::text
-  AND schedule_blueprint_has_permission_at(r.blueprint_id, $2::date,
-      $16::text, $19::text, $20::action)
-ON CONFLICT (blueprint_id, occurrence_date) DO NOTHING
-RETURNING id, blueprint_id, source_revision_id, user_id, occurrence_date, start_at, end_at, all_day, title, description, location, project_id, assignee_id, timezone, completed, skipped_at, deleted_at, is_override, revision, changed_by, created_at, updated_at
+INSERT INTO schedules (
+    id, rule_id, source_revision_id, user_id, occurrence_date, start_at, end_at,
+    all_day, title, description, location, project_id, assignee_id, timezone,
+    completed, skipped_at, deleted_at, changed_by
+)
+SELECT $1::text, exception_row.rule_id, exception_row.source_revision_id, exception_row.user_id,
+       exception_row.occurrence_date, exception_row.start_at, exception_row.end_at, exception_row.all_day,
+       exception_row.title, exception_row.description, exception_row.location, exception_row.project_id,
+       exception_row.assignee_id, exception_row.timezone, exception_row.completed, exception_row.skipped_at,
+       exception_row.deleted_at, exception_row.changed_by
+FROM saved_exception exception_row
+RETURNING id, rule_id, source_revision_id, user_id, occurrence_date, start_at, end_at, all_day, title, description, location, project_id, assignee_id, timezone, completed, skipped_at, deleted_at, revision, changed_by, created_at, updated_at
 `
 
 type MaterializeScheduleOccurrenceByActorParams struct {
@@ -336,10 +415,9 @@ type MaterializeScheduleOccurrenceByActorParams struct {
 	Completed        bool
 	SkippedAt        pgtype.Timestamptz
 	DeletedAt        pgtype.Timestamptz
-	IsOverride       bool
 	ActorID          string
 	SourceRevisionID string
-	BlueprintID      string
+	RuleID           string
 	ResourceID       string
 	Action           Action
 }
@@ -360,17 +438,16 @@ func (q *Queries) MaterializeScheduleOccurrenceByActor(ctx context.Context, arg 
 		arg.Completed,
 		arg.SkippedAt,
 		arg.DeletedAt,
-		arg.IsOverride,
 		arg.ActorID,
 		arg.SourceRevisionID,
-		arg.BlueprintID,
+		arg.RuleID,
 		arg.ResourceID,
 		arg.Action,
 	)
 	var i Schedule
 	err := row.Scan(
 		&i.ID,
-		&i.BlueprintID,
+		&i.RuleID,
 		&i.SourceRevisionID,
 		&i.UserID,
 		&i.OccurrenceDate,
@@ -386,7 +463,6 @@ func (q *Queries) MaterializeScheduleOccurrenceByActor(ctx context.Context, arg 
 		&i.Completed,
 		&i.SkippedAt,
 		&i.DeletedAt,
-		&i.IsOverride,
 		&i.Revision,
 		&i.ChangedBy,
 		&i.CreatedAt,
@@ -395,22 +471,30 @@ func (q *Queries) MaterializeScheduleOccurrenceByActor(ctx context.Context, arg 
 	return i, err
 }
 
-const reassignProjectMemberBlueprintOccurrencesByActor = `-- name: ReassignProjectMemberBlueprintOccurrencesByActor :execrows
+const reassignProjectMemberRuleOccurrencesByActor = `-- name: ReassignProjectMemberRuleOccurrencesByActor :execrows
+WITH project AS (
+    SELECT id, user_id FROM projects WHERE id = $3::text
+), exception_changes AS (
+    UPDATE schedule_exceptions exception_row
+    SET assignee_id = project.user_id, changed_by = $1::text, updated_at = now()
+    FROM project
+    WHERE exception_row.project_id = project.id AND exception_row.assignee_id = $2::text
+    RETURNING exception_row.rule_id, exception_row.occurrence_date
+)
 UPDATE schedules s
-SET assignee_id = p.user_id, changed_by = $1::text, updated_at = now()
-FROM projects p
-WHERE s.project_id = p.id AND p.id = $2::text
-  AND s.assignee_id = $3::text
+SET assignee_id = project.user_id, changed_by = $1::text, updated_at = now()
+FROM project
+WHERE s.project_id = project.id AND s.assignee_id = $2::text
 `
 
-type ReassignProjectMemberBlueprintOccurrencesByActorParams struct {
+type ReassignProjectMemberRuleOccurrencesByActorParams struct {
 	ActorID   string
-	ProjectID string
 	MemberID  string
+	ProjectID string
 }
 
-func (q *Queries) ReassignProjectMemberBlueprintOccurrencesByActor(ctx context.Context, arg ReassignProjectMemberBlueprintOccurrencesByActorParams) (int64, error) {
-	result, err := q.db.Exec(ctx, reassignProjectMemberBlueprintOccurrencesByActor, arg.ActorID, arg.ProjectID, arg.MemberID)
+func (q *Queries) ReassignProjectMemberRuleOccurrencesByActor(ctx context.Context, arg ReassignProjectMemberRuleOccurrencesByActorParams) (int64, error) {
+	result, err := q.db.Exec(ctx, reassignProjectMemberRuleOccurrencesByActor, arg.ActorID, arg.MemberID, arg.ProjectID)
 	if err != nil {
 		return 0, err
 	}
@@ -418,25 +502,59 @@ func (q *Queries) ReassignProjectMemberBlueprintOccurrencesByActor(ctx context.C
 }
 
 const updatePersistedScheduleOccurrenceByActor = `-- name: UpdatePersistedScheduleOccurrenceByActor :one
+WITH locked AS (
+    SELECT s.id
+    FROM schedules s
+    WHERE s.rule_id = $1::text
+      AND s.occurrence_date = $2::date
+      AND s.revision = $3::integer
+      AND schedule_occurrence_has_permission(s.id, $4::text,
+          $5::text, $6::action)
+    FOR UPDATE
+), saved_exception AS (
+    INSERT INTO schedule_exceptions (
+        rule_id, occurrence_date, source_revision_id, user_id, start_at, end_at,
+        all_day, title, description, location, project_id, assignee_id, timezone,
+        completed, skipped_at, deleted_at, changed_by
+    )
+    SELECT s.rule_id, s.occurrence_date, $7::text, s.user_id,
+           $8::timestamptz, $9::timestamptz,
+           $10::boolean, $11::text, $12::text,
+           $13::text, $14::text, $15::text,
+           $16::text, $17::boolean,
+           $18::timestamptz, $19::timestamptz,
+           $4::text
+    FROM schedules s JOIN locked ON locked.id = s.id
+    ON CONFLICT (rule_id, occurrence_date) DO UPDATE SET
+        source_revision_id = EXCLUDED.source_revision_id,
+        start_at = EXCLUDED.start_at, end_at = EXCLUDED.end_at, all_day = EXCLUDED.all_day,
+        title = EXCLUDED.title, description = EXCLUDED.description, location = EXCLUDED.location,
+        project_id = EXCLUDED.project_id, assignee_id = EXCLUDED.assignee_id,
+        timezone = EXCLUDED.timezone, completed = EXCLUDED.completed,
+        skipped_at = EXCLUDED.skipped_at, deleted_at = EXCLUDED.deleted_at,
+        changed_by = EXCLUDED.changed_by, updated_at = now()
+    RETURNING rule_id, occurrence_date, source_revision_id, user_id, start_at, end_at, all_day, title, description, location, project_id, assignee_id, timezone, completed, skipped_at, deleted_at, changed_by, created_at, updated_at
+)
 UPDATE schedules s
-SET source_revision_id = $1::text,
-    start_at = $2::timestamptz, end_at = $3::timestamptz,
-    all_day = $4::boolean,
-    title = $5::text, description = $6::text,
-    location = $7::text, project_id = $8::text,
-    assignee_id = $9::text, timezone = $10::text,
-    completed = $11::boolean, skipped_at = $12::timestamptz,
-    deleted_at = $13::timestamptz, is_override = $14::boolean,
-    changed_by = $15::text
-WHERE s.blueprint_id = $16::text
-  AND s.occurrence_date = $17::date
-  AND s.revision = $18::integer
-  AND schedule_occurrence_has_permission(s.id, $15::text,
-      $19::text, $20::action)
-RETURNING s.id, s.blueprint_id, s.source_revision_id, s.user_id, s.occurrence_date, s.start_at, s.end_at, s.all_day, s.title, s.description, s.location, s.project_id, s.assignee_id, s.timezone, s.completed, s.skipped_at, s.deleted_at, s.is_override, s.revision, s.changed_by, s.created_at, s.updated_at
+SET source_revision_id = exception_row.source_revision_id,
+    start_at = exception_row.start_at, end_at = exception_row.end_at, all_day = exception_row.all_day,
+    title = exception_row.title, description = exception_row.description, location = exception_row.location,
+    project_id = exception_row.project_id, assignee_id = exception_row.assignee_id,
+    timezone = exception_row.timezone, completed = exception_row.completed,
+    skipped_at = exception_row.skipped_at, deleted_at = exception_row.deleted_at,
+    changed_by = exception_row.changed_by
+FROM saved_exception exception_row
+WHERE s.rule_id = exception_row.rule_id AND s.occurrence_date = exception_row.occurrence_date
+RETURNING s.id, s.rule_id, s.source_revision_id, s.user_id, s.occurrence_date, s.start_at, s.end_at, s.all_day, s.title, s.description, s.location, s.project_id, s.assignee_id, s.timezone, s.completed, s.skipped_at, s.deleted_at, s.revision, s.changed_by, s.created_at, s.updated_at
 `
 
 type UpdatePersistedScheduleOccurrenceByActorParams struct {
+	RuleID           string
+	OccurrenceDate   pgtype.Date
+	ExpectedRevision int32
+	ActorID          string
+	ResourceID       string
+	Action           Action
 	SourceRevisionID string
 	StartAt          pgtype.Timestamptz
 	EndAt            pgtype.Timestamptz
@@ -450,17 +568,16 @@ type UpdatePersistedScheduleOccurrenceByActorParams struct {
 	Completed        bool
 	SkippedAt        pgtype.Timestamptz
 	DeletedAt        pgtype.Timestamptz
-	IsOverride       bool
-	ActorID          string
-	BlueprintID      string
-	OccurrenceDate   pgtype.Date
-	ExpectedRevision int32
-	ResourceID       string
-	Action           Action
 }
 
 func (q *Queries) UpdatePersistedScheduleOccurrenceByActor(ctx context.Context, arg UpdatePersistedScheduleOccurrenceByActorParams) (Schedule, error) {
 	row := q.db.QueryRow(ctx, updatePersistedScheduleOccurrenceByActor,
+		arg.RuleID,
+		arg.OccurrenceDate,
+		arg.ExpectedRevision,
+		arg.ActorID,
+		arg.ResourceID,
+		arg.Action,
 		arg.SourceRevisionID,
 		arg.StartAt,
 		arg.EndAt,
@@ -474,18 +591,11 @@ func (q *Queries) UpdatePersistedScheduleOccurrenceByActor(ctx context.Context, 
 		arg.Completed,
 		arg.SkippedAt,
 		arg.DeletedAt,
-		arg.IsOverride,
-		arg.ActorID,
-		arg.BlueprintID,
-		arg.OccurrenceDate,
-		arg.ExpectedRevision,
-		arg.ResourceID,
-		arg.Action,
 	)
 	var i Schedule
 	err := row.Scan(
 		&i.ID,
-		&i.BlueprintID,
+		&i.RuleID,
 		&i.SourceRevisionID,
 		&i.UserID,
 		&i.OccurrenceDate,
@@ -501,111 +611,6 @@ func (q *Queries) UpdatePersistedScheduleOccurrenceByActor(ctx context.Context, 
 		&i.Completed,
 		&i.SkippedAt,
 		&i.DeletedAt,
-		&i.IsOverride,
-		&i.Revision,
-		&i.ChangedBy,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const upsertScheduleOccurrenceByActor = `-- name: UpsertScheduleOccurrenceByActor :one
-INSERT INTO schedules (
-    id, blueprint_id, source_revision_id, user_id, occurrence_date, start_at, end_at,
-    all_day, title, description, location, project_id, assignee_id, timezone, completed,
-    skipped_at, deleted_at, is_override, changed_by
-)
-SELECT $1::text, $2::text, $3::text,
-       $4::text, $5::date, $6::timestamptz,
-       $7::timestamptz, $8::boolean, $9::text, $10::text,
-       $11::text, $12::text, $13::text,
-       $14::text, $15::boolean, $16::timestamptz,
-       $17::timestamptz, $18::boolean, $19::text
-WHERE schedule_blueprint_has_permission_at($2::text, $5::date, $19::text, $20::text, $21::action)
-ON CONFLICT (blueprint_id, occurrence_date) DO UPDATE
-SET source_revision_id = EXCLUDED.source_revision_id,
-    start_at = EXCLUDED.start_at, end_at = EXCLUDED.end_at,
-    all_day = EXCLUDED.all_day,
-    title = EXCLUDED.title, description = EXCLUDED.description, location = EXCLUDED.location,
-    project_id = EXCLUDED.project_id, assignee_id = EXCLUDED.assignee_id, timezone = EXCLUDED.timezone,
-    completed = EXCLUDED.completed, skipped_at = EXCLUDED.skipped_at, deleted_at = EXCLUDED.deleted_at,
-    is_override = EXCLUDED.is_override, changed_by = EXCLUDED.changed_by
-WHERE schedules.revision = $22::integer
-  AND schedule_has_permission(schedules.id, $19::text, $20::text, $21::action)
-RETURNING id, blueprint_id, source_revision_id, user_id, occurrence_date, start_at, end_at, all_day, title, description, location, project_id, assignee_id, timezone, completed, skipped_at, deleted_at, is_override, revision, changed_by, created_at, updated_at
-`
-
-type UpsertScheduleOccurrenceByActorParams struct {
-	ID               string
-	BlueprintID      string
-	SourceRevisionID string
-	UserID           string
-	OccurrenceDate   pgtype.Date
-	StartAt          pgtype.Timestamptz
-	EndAt            pgtype.Timestamptz
-	AllDay           bool
-	Title            string
-	Description      pgtype.Text
-	Location         pgtype.Text
-	ProjectID        pgtype.Text
-	AssigneeID       string
-	Timezone         string
-	Completed        bool
-	SkippedAt        pgtype.Timestamptz
-	DeletedAt        pgtype.Timestamptz
-	IsOverride       bool
-	ActorID          string
-	ResourceID       string
-	Action           Action
-	ExpectedRevision int32
-}
-
-func (q *Queries) UpsertScheduleOccurrenceByActor(ctx context.Context, arg UpsertScheduleOccurrenceByActorParams) (Schedule, error) {
-	row := q.db.QueryRow(ctx, upsertScheduleOccurrenceByActor,
-		arg.ID,
-		arg.BlueprintID,
-		arg.SourceRevisionID,
-		arg.UserID,
-		arg.OccurrenceDate,
-		arg.StartAt,
-		arg.EndAt,
-		arg.AllDay,
-		arg.Title,
-		arg.Description,
-		arg.Location,
-		arg.ProjectID,
-		arg.AssigneeID,
-		arg.Timezone,
-		arg.Completed,
-		arg.SkippedAt,
-		arg.DeletedAt,
-		arg.IsOverride,
-		arg.ActorID,
-		arg.ResourceID,
-		arg.Action,
-		arg.ExpectedRevision,
-	)
-	var i Schedule
-	err := row.Scan(
-		&i.ID,
-		&i.BlueprintID,
-		&i.SourceRevisionID,
-		&i.UserID,
-		&i.OccurrenceDate,
-		&i.StartAt,
-		&i.EndAt,
-		&i.AllDay,
-		&i.Title,
-		&i.Description,
-		&i.Location,
-		&i.ProjectID,
-		&i.AssigneeID,
-		&i.Timezone,
-		&i.Completed,
-		&i.SkippedAt,
-		&i.DeletedAt,
-		&i.IsOverride,
 		&i.Revision,
 		&i.ChangedBy,
 		&i.CreatedAt,

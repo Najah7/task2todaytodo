@@ -11,17 +11,25 @@ approved decisions.
   before implementing them; do not assume Google's API matches its UI behavior.
 - Keep recurrence rules and all-day boundary rules in the backend.
 
-## Blueprints and schedules
+## Rules and schedules
 
-- `schedule_blueprints` stores stable source identities;
-  `schedule_blueprint_revisions` stores effective definitions. `schedules`
-  stores concrete occurrences, with audit in `schedule_revisions`.
-- Create both one-off and recurring definitions through `/schedule-blueprints`.
-  A one-off creation atomically creates one blueprint and one schedule.
+- `schedule_rules` stores stable source identities;
+  `schedule_rule_revisions` stores effective definitions. `schedule_exceptions`
+  is the authoritative full snapshot of an individually changed occurrence;
+  `schedules` is its synchronized concrete projection for stable schedule IDs,
+  history, Todo foreign keys, and progress reads. `schedule_revisions` audits
+  projection changes.
+- Create both one-off and recurring definitions through `/schedule-rules`.
+  A one-off creation atomically creates one rule and one schedule.
 - Recurring creation does not immediately persist the first occurrence. Reads
   project unsaved occurrences, including past occurrences awaiting the job.
   Editing, completing, or skipping an individual occurrence materializes it.
-- Address occurrences by `blueprint_id` and their original local
+- Every individual edit or state change writes the complete exception snapshot
+  and synchronizes its schedule projection in the same transaction. No
+  individual write may update only `schedules`. Backfill skips every existing
+  exception by its original `rule_id` and `occurrence_date`, including moved,
+  skipped, deleted, and out-of-range occurrences.
+- Address occurrences by `rule_id` and their original local
   `occurrence_date`. Moving an occurrence never changes this identity.
 - Virtual occurrences have no persisted ID and revision `0`; their first
   mutation accepts `If-Match: "0"`. Saved occurrences use positive revisions.
@@ -34,19 +42,19 @@ approved decisions.
 
 ## Time and recurrence
 
-- Blueprints retain local start/end datetimes and an explicit IANA timezone.
+- Rules retain local start/end datetimes and an explicit IANA timezone.
   Concrete schedules store and return UTC instants. Compute recurrence in the
-  blueprint's timezone so local clock times remain stable across DST changes.
-- Allow timezone changes through future-effective blueprint revisions, preserving
+  rule's timezone so local clock times remain stable across DST changes.
+- Allow timezone changes through future-effective rule revisions, preserving
   earlier occurrences and saved individual exceptions. Changing the user's
-  timezone affects display conversion, never existing blueprint definitions.
+  timezone affects display conversion, never existing rule definitions.
 - Individual moves may change the local date. Future-scoped datetime changes
   must retain the selected occurrence's local start date; moving that start date
   for an entire future recurrence is outside this iteration.
 - Skip occurrences with nonexistent local times during spring-forward. For
   ambiguous fall-back times, select the earlier instant and generate only once.
 - Use `timezone_master` for allowed IANA region names and `UTC`, shared by user
-  settings and blueprints. Expose choices through `GET /timezones`; validate
+  settings and rules. Expose choices through `GET /timezones`; validate
   membership in both the API and database. Never store a fixed UTC offset as
   the timezone's authority; resolve offsets for each datetime.
 - Support daily, weekly with selected weekdays, monthly by day of month, and
@@ -61,14 +69,14 @@ approved decisions.
 
 ## Changes and history
 
-- “This and following” creates a new effective blueprint revision. Preserve
+- “This and following” creates a new effective rule revision. Preserve
   earlier definitions and history; backfill uses the revision effective for
   each occurrence.
 - Allow this scope only when the selected occurrence's original start is still
   in the future. Started occurrences remain individually editable.
-- Blueprint changes preserve individually saved edits, completions, and skips,
+- Rule changes preserve individually saved edits, completions, and skips,
   including future ones.
-- A new "this and following" change supersedes previously planned blueprint
+- A new "this and following" change supersedes previously planned rule
   revisions in that range. Retain their audit history without applying their
   future settings; preserve saved individual exceptions as above.
 - Support one-off to recurring and recurring to one-off changes for future
@@ -81,10 +89,10 @@ approved decisions.
 
 ## Project completion
 
-- Pause associated recurring blueprints when a Project becomes done, through
+- Pause associated recurring rules when a Project becomes done, through
   either manual or automatic completion. Share the completion workflow and
   commit Project completion and pause intervals in the same transaction.
-- Automatically resume only blueprints paused by Project completion when the
+- Automatically resume only rules paused by Project completion when the
   Project reopens, through a shared transactional workflow. Preserve user-ended,
   deleted, and expired recurrence definitions.
 - Preserve the original recurrence cadence on resume. Do not generate occurrences
@@ -93,8 +101,8 @@ approved decisions.
 - Project progress and automatic completion/reopening count only persisted,
   nondeleted, nonskipped Schedules, including saved future occurrences. Virtual
   occurrences do not count before they are materialized. A Project may become
-  done while a blueprint still has ungenerated occurrences; the done transition
-  pauses its recurring blueprints.
+  done while a rule still has ungenerated occurrences; the done transition
+  pauses its recurring rules.
 - Backfill materializes eligible occurrences but never triggers Project status
   transitions or pause/resume workflows. Its single UTC cutoff is captured when
   the job starts.
@@ -103,9 +111,9 @@ approved decisions.
 
 ## All-day occurrences and calendar filters
 
-- `all_day` defaults to `false`. All-day blueprint boundaries are local midnight
+- `all_day` defaults to `false`. All-day rule boundaries are local midnight
   timestamps; `local_end` is the exclusive local date. Resolve each boundary in
-  the blueprint timezone so multi-day spans retain calendar-day length across
+  the rule timezone so multi-day spans retain calendar-day length across
   daylight-saving changes. Concrete occurrences keep UTC instants and their
   timezone, and revisions copy `all_day`.
 - Individual occurrence updates may toggle `all_day`; timezone remains
@@ -115,7 +123,7 @@ approved decisions.
   filter into cursor scope.
 - Occurrence responses expose server-computed per-occurrence edit, delete, skip,
   assignment, and following capabilities. Following capabilities use the
-  effective blueprint's original start for the occurrence date and are
+  effective rule's original start for the occurrence date and are
   available only before that start.
 
 ## Backfill job
@@ -143,8 +151,8 @@ approved decisions.
 - Capture one UTC cutoff per run. Materialize recurring occurrences whose
   original scheduled start precedes that cutoff, independent of local midnight.
 - Catch up from the last successfully processed position. Persist generation
-  and checkpoint advancement atomically per blueprint. Retries must not create
+  and checkpoint advancement atomically per rule. Retries must not create
   duplicates or overwrite saved individual occurrences.
-- If a new recurring blueprint starts in the past, backfill from its specified
+- If a new recurring rule starts in the past, backfill from its specified
   start rather than its creation time, subject to effective revisions and Project
   done intervals.

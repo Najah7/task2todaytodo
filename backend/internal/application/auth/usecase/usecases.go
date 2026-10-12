@@ -1,13 +1,14 @@
 package usecase
 
 type UserUseCases struct {
-	Get            *GetUserUseCase
-	GetByEmail     *GetUserByEmailUseCase
-	Create         *SignUpUseCase
-	UpdateName     *UpdateUserNameUseCase
-	UpdateEmail    *UpdateUserEmailUseCase
-	UpdatePassword *UpdateUserPasswordUseCase
-	UpdateTimezone *UpdateUserTimezoneUseCase
+	Get                 *GetUserUseCase
+	GetByEmail          *GetUserByEmailUseCase
+	Create              *SignUpUseCase
+	UpdateName          *UpdateUserNameUseCase
+	UpdateEmail         *UpdateUserEmailUseCase
+	UpdatePassword      *UpdateUserPasswordUseCase
+	UpdateTimezone      *UpdateUserTimezoneUseCase
+	UpdateSleepSettings *UpdateUserSleepSettingsUseCase
 }
 
 type PersonalAccessTokenUseCases struct {

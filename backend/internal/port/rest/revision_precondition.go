@@ -16,6 +16,31 @@ func expectedOccurrenceRevision(w http.ResponseWriter, r *http.Request, spec Err
 	return parseExpectedRevision(w, r, spec, true)
 }
 
+func expectedCollectionRevision(w http.ResponseWriter, r *http.Request, spec ErrSpec) (string, bool) {
+	values := r.Header.Values(ifMatchHeader)
+	if len(values) == 0 {
+		WriteError(w, http.StatusPreconditionRequired, spec, NewErrDetail("If-Match", "revision_required", "If-Match must contain the current collection revision"))
+		return "", false
+	}
+	if len(values) != 1 {
+		WriteError(w, http.StatusBadRequest, spec, NewErrDetail("If-Match", "invalid_revision", "If-Match must contain one quoted SHA-256 collection revision"))
+		return "", false
+	}
+	value := strings.TrimSpace(values[0])
+	if len(value) != 66 || value[0] != '"' || value[len(value)-1] != '"' {
+		WriteError(w, http.StatusBadRequest, spec, NewErrDetail("If-Match", "invalid_revision", "If-Match must contain one quoted SHA-256 collection revision"))
+		return "", false
+	}
+	token := value[1 : len(value)-1]
+	for _, c := range token {
+		if !(c >= '0' && c <= '9') && !(c >= 'a' && c <= 'f') {
+			WriteError(w, http.StatusBadRequest, spec, NewErrDetail("If-Match", "invalid_revision", "If-Match must contain one quoted SHA-256 collection revision"))
+			return "", false
+		}
+	}
+	return token, true
+}
+
 func parseExpectedRevision(w http.ResponseWriter, r *http.Request, spec ErrSpec, allowZero bool) (int32, bool) {
 	values := r.Header.Values(ifMatchHeader)
 	if len(values) == 0 {

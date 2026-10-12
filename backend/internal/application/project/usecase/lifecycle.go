@@ -20,18 +20,28 @@ type projectLifecycleRepository interface {
 // child operation. It runs inside the child operation's transaction, after
 // the caller has locked the parent Project row.
 type ProjectLifecycleUseCase struct {
-	repo      projectLifecycleRepository
-	progress  ProjectProgressReader
-	schedules ProjectScheduleLifecycle
+	repo        projectLifecycleRepository
+	progress    ProjectProgressReader
+	schedules   ProjectScheduleLifecycle
+	allocations ProjectAllocationLifecycle
 }
 
 type ProjectScheduleLifecycle interface {
-	PauseProjectBlueprints(context.Context, string, string, time.Time) error
-	ResumeProjectBlueprints(context.Context, string, string, time.Time) error
+	PauseProjectRules(context.Context, string, string, time.Time) error
+	ResumeProjectRules(context.Context, string, string, time.Time) error
 }
 
-func NewProjectLifecycleUseCase(repo projectLifecycleRepository, progress ProjectProgressReader, schedules ProjectScheduleLifecycle) *ProjectLifecycleUseCase {
-	return &ProjectLifecycleUseCase{repo: repo, progress: progress, schedules: schedules}
+type ProjectAllocationLifecycle interface {
+	PauseProjectAllocations(context.Context, string, string, time.Time) error
+	ResumeProjectAllocations(context.Context, string, string, time.Time) error
+}
+
+func NewProjectLifecycleUseCase(repo projectLifecycleRepository, progress ProjectProgressReader, schedules ProjectScheduleLifecycle, allocations ...ProjectAllocationLifecycle) *ProjectLifecycleUseCase {
+	uc := &ProjectLifecycleUseCase{repo: repo, progress: progress, schedules: schedules}
+	if len(allocations) > 0 {
+		uc.allocations = allocations[0]
+	}
+	return uc
 }
 
 func (uc *ProjectLifecycleUseCase) LockParent(ctx context.Context, projectID string) error {
@@ -83,7 +93,10 @@ func (uc *ProjectLifecycleUseCase) ReconcileWorkState(ctx context.Context, actor
 	if err := uc.repo.SetStatusForLifecycle(ctx, domain.UserID(actorID), domain.ProjectID(projectID), status); err != nil {
 		return err
 	}
-	return transitionProjectSchedules(ctx, uc.schedules, actorID, projectID, after.Status, status, asOf)
+	if err := transitionProjectSchedules(ctx, uc.schedules, actorID, projectID, after.Status, status, asOf); err != nil {
+		return err
+	}
+	return transitionProjectAllocations(ctx, uc.allocations, actorID, projectID, after.Status, status, asOf)
 }
 
 func transitionProjectSchedules(ctx context.Context, schedules ProjectScheduleLifecycle, actorID, projectID, from, to string, at time.Time) error {
@@ -91,10 +104,23 @@ func transitionProjectSchedules(ctx context.Context, schedules ProjectScheduleLi
 		return nil
 	}
 	if to == "done" {
-		return schedules.PauseProjectBlueprints(ctx, actorID, projectID, at)
+		return schedules.PauseProjectRules(ctx, actorID, projectID, at)
 	}
 	if from == "done" {
-		return schedules.ResumeProjectBlueprints(ctx, actorID, projectID, at)
+		return schedules.ResumeProjectRules(ctx, actorID, projectID, at)
+	}
+	return nil
+}
+
+func transitionProjectAllocations(ctx context.Context, allocations ProjectAllocationLifecycle, actorID, projectID, from, to string, at time.Time) error {
+	if allocations == nil || from == to {
+		return nil
+	}
+	if to == "done" {
+		return allocations.PauseProjectAllocations(ctx, actorID, projectID, at)
+	}
+	if from == "done" {
+		return allocations.ResumeProjectAllocations(ctx, actorID, projectID, at)
 	}
 	return nil
 }

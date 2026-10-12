@@ -14,9 +14,12 @@ internal/application/shared/              Cross-context contracts and pure polic
 internal/application/                      Composition root and transaction wiring
 ```
 
-`<context>` is `auth`, `project`, `task`, `schedule`, `inbox`, or `admin`. Keep each
-context's domain, DAO, usecase, and repository within that context. Context
-code may depend on its own layers and on `application/shared`, as shown in the
+`<context>` is `auth`, `project`, `task`, `schedule`, `allocation`, `inbox`, or `admin`. Keep each
+context's domain, DAO, usecase, and repository within that context. Admin
+contains `job/` and `operation/` subareas: job usecases may consume the
+operation DAO and operation-owned lifecycle errors through narrow job ports;
+operation code must not import job packages. Context code may depend on its own
+layers and on `application/shared`, as shown in the
 [backend layer map](../../AGENTS.md#layer-rule).
 
 Business contexts must not import one another's packages. The application root

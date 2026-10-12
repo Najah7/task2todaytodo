@@ -88,18 +88,18 @@ func TestParseListRequestRequiresAndBindsUTCOverlapRange(t *testing.T) {
 	codec := listTestCodec()
 	schema := listEnvelope[ScheduleOccurrenceResponse]{}
 	first := httptest.NewRequest("GET", "/schedules?from=2026-10-04T00:00:00Z&to=2026-10-05T00:00:00Z", nil)
-	parsed, err := parseListRequestWithRange(first, codec, "user-1", "schedule_occurrences", "", "start_at_asc_blueprint_id_asc_occurrence_date_asc", schema)
+	parsed, err := parseListRequestWithRange(first, codec, "user-1", "schedule_occurrences", "", "start_at_asc_rule_id_asc_occurrence_date_asc", schema)
 	if err != nil || parsed.From.IsZero() || parsed.To.IsZero() {
 		t.Fatalf("first page=%+v err=%v", parsed, err)
 	}
-	anchor := listAnchor{At: "2026-10-04T10:00:00Z", BlueprintID: "bp-1", OccurrenceDate: "2026-10-04"}
+	anchor := listAnchor{At: "2026-10-04T10:00:00Z", RuleID: "bp-1", OccurrenceDate: "2026-10-04"}
 	token, err := pagination.Encode(codec, parsed.Scope, anchor)
 	if err != nil {
 		t.Fatal(err)
 	}
 	continued := httptest.NewRequest("GET", "/schedules?from=2026-10-04T00:00:00Z&to=2026-10-05T00:00:00Z&page_token="+token, nil)
-	request, err := parseListRequestWithRange(continued, codec, "user-1", "schedule_occurrences", "", "start_at_asc_blueprint_id_asc_occurrence_date_asc", schema)
-	if err != nil || request.Anchor == nil || request.Anchor.BlueprintID != "bp-1" {
+	request, err := parseListRequestWithRange(continued, codec, "user-1", "schedule_occurrences", "", "start_at_asc_rule_id_asc_occurrence_date_asc", schema)
+	if err != nil || request.Anchor == nil || request.Anchor.RuleID != "bp-1" {
 		t.Fatalf("continuation=%+v err=%v", request, err)
 	}
 	for _, uri := range []string{
@@ -108,12 +108,12 @@ func TestParseListRequestRequiresAndBindsUTCOverlapRange(t *testing.T) {
 		"/schedules?from=2026-10-05T00:00:00Z&to=2026-10-04T00:00:00Z",
 		"/schedules?from=2026-10-04T00:00:00%2B09:00&to=2026-10-05T00:00:00Z",
 	} {
-		if _, err := parseListRequestWithRange(httptest.NewRequest("GET", uri, nil), codec, "user-1", "schedule_occurrences", "", "start_at_asc_blueprint_id_asc_occurrence_date_asc", schema); err == nil {
+		if _, err := parseListRequestWithRange(httptest.NewRequest("GET", uri, nil), codec, "user-1", "schedule_occurrences", "", "start_at_asc_rule_id_asc_occurrence_date_asc", schema); err == nil {
 			t.Errorf("accepted invalid range %s", uri)
 		}
 	}
 	changedRange := httptest.NewRequest("GET", "/schedules?from=2026-10-04T00:00:00Z&to=2026-10-06T00:00:00Z&page_token="+token, nil)
-	if _, err := parseListRequestWithRange(changedRange, codec, "user-1", "schedule_occurrences", "", "start_at_asc_blueprint_id_asc_occurrence_date_asc", schema); err == nil {
+	if _, err := parseListRequestWithRange(changedRange, codec, "user-1", "schedule_occurrences", "", "start_at_asc_rule_id_asc_occurrence_date_asc", schema); err == nil {
 		t.Error("token accepted a different UTC range")
 	}
 }
@@ -121,21 +121,21 @@ func TestParseListRequestRequiresAndBindsUTCOverlapRange(t *testing.T) {
 func TestScheduleRangeCursorBindsIncludeSkipped(t *testing.T) {
 	codec := listTestCodec()
 	url := "/schedules?from=2026-10-04T00:00:00Z&to=2026-10-05T00:00:00Z&include_skipped=true"
-	first, err := parseListRequestWithRange(httptest.NewRequest("GET", url, nil), codec, "user-1", "schedule_occurrences", "", "start_at_asc_blueprint_id_asc_occurrence_date_asc", listEnvelope[ScheduleOccurrenceResponse]{})
+	first, err := parseListRequestWithRange(httptest.NewRequest("GET", url, nil), codec, "user-1", "schedule_occurrences", "", "start_at_asc_rule_id_asc_occurrence_date_asc", listEnvelope[ScheduleOccurrenceResponse]{})
 	if err != nil || !first.IncludeSkipped {
 		t.Fatalf("include_skipped request=%+v err=%v", first, err)
 	}
-	token, err := pagination.Encode(codec, first.Scope, listAnchor{At: "2026-10-04T10:00:00Z", BlueprintID: "bp-1", OccurrenceDate: "2026-10-04"})
+	token, err := pagination.Encode(codec, first.Scope, listAnchor{At: "2026-10-04T10:00:00Z", RuleID: "bp-1", OccurrenceDate: "2026-10-04"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	changed := httptest.NewRequest("GET", "/schedules?from=2026-10-04T00:00:00Z&to=2026-10-05T00:00:00Z&page_token="+token, nil)
-	if _, err := parseListRequestWithRange(changed, codec, "user-1", "schedule_occurrences", "", "start_at_asc_blueprint_id_asc_occurrence_date_asc", listEnvelope[ScheduleOccurrenceResponse]{}); err == nil {
+	if _, err := parseListRequestWithRange(changed, codec, "user-1", "schedule_occurrences", "", "start_at_asc_rule_id_asc_occurrence_date_asc", listEnvelope[ScheduleOccurrenceResponse]{}); err == nil {
 		t.Fatal("cursor was accepted after changing include_skipped")
 	}
 	for _, value := range []string{"not-bool", "true&include_skipped=false"} {
 		request := httptest.NewRequest("GET", "/schedules?from=2026-10-04T00:00:00Z&to=2026-10-05T00:00:00Z&include_skipped="+value, nil)
-		if _, err := parseListRequestWithRange(request, codec, "user-1", "schedule_occurrences", "", "start_at_asc_blueprint_id_asc_occurrence_date_asc", listEnvelope[ScheduleOccurrenceResponse]{}); err == nil {
+		if _, err := parseListRequestWithRange(request, codec, "user-1", "schedule_occurrences", "", "start_at_asc_rule_id_asc_occurrence_date_asc", listEnvelope[ScheduleOccurrenceResponse]{}); err == nil {
 			t.Errorf("accepted invalid include_skipped query %q", value)
 		}
 	}

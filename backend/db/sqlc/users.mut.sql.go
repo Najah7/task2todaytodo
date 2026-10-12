@@ -7,12 +7,14 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, first_name, last_name, email, password)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, first_name, last_name, email, password, created_at, updated_at, timezone
+RETURNING id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime
 `
 
 type CreateUserParams struct {
@@ -41,6 +43,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Timezone,
+		&i.WakeUpTime,
+		&i.Bedtime,
 	)
 	return i, err
 }
@@ -49,7 +53,7 @@ const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET first_name = $2, last_name = $3, email = $4, password = $5, updated_at = now()
 WHERE id = $1
-RETURNING id, first_name, last_name, email, password, created_at, updated_at, timezone
+RETURNING id, first_name, last_name, email, password, created_at, updated_at, timezone, wake_up_time, bedtime
 `
 
 type UpdateUserParams struct {
@@ -78,8 +82,29 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Timezone,
+		&i.WakeUpTime,
+		&i.Bedtime,
 	)
 	return i, err
+}
+
+const updateUserSleepSettings = `-- name: UpdateUserSleepSettings :exec
+UPDATE users
+SET wake_up_time = $1::time,
+    bedtime = $2::time,
+    updated_at = now()
+WHERE id = $3::text
+`
+
+type UpdateUserSleepSettingsParams struct {
+	WakeUpTime pgtype.Time
+	Bedtime    pgtype.Time
+	UserID     string
+}
+
+func (q *Queries) UpdateUserSleepSettings(ctx context.Context, arg UpdateUserSleepSettingsParams) error {
+	_, err := q.db.Exec(ctx, updateUserSleepSettings, arg.WakeUpTime, arg.Bedtime, arg.UserID)
+	return err
 }
 
 const updateUserTimezone = `-- name: UpdateUserTimezone :one

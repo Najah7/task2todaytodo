@@ -46,7 +46,7 @@ type CursorAnchor struct {
 	CreatedAt       string
 	Type            dao.ItemType
 	ID              string
-	BlueprintID     string
+	RuleID          string
 	OccurrenceDate  string
 	ScheduleStartAt int64
 	Direction       string
@@ -263,7 +263,7 @@ func validateAnchor(anchor *CursorAnchor) error {
 	if anchor.ID == "" || (anchor.Type != dao.ItemTypeTask && anchor.Type != dao.ItemTypeSchedule) || (anchor.Direction != "next" && anchor.Direction != "previous") {
 		return ErrInvalidPageRequest
 	}
-	if anchor.Type == dao.ItemTypeSchedule && (anchor.BlueprintID == "" || anchor.OccurrenceDate == "") {
+	if anchor.Type == dao.ItemTypeSchedule && (anchor.RuleID == "" || anchor.OccurrenceDate == "") {
 		return ErrInvalidPageRequest
 	}
 	return nil
@@ -314,7 +314,7 @@ func itemLess(left, right dao.Item) bool {
 	if left.Type != right.Type {
 		return left.Type == dao.ItemTypeTask
 	}
-	if left.Type == dao.ItemTypeSchedule && left.Schedule != nil && right.Schedule != nil && left.Schedule.BlueprintID == right.Schedule.BlueprintID && left.Schedule.StartAt != right.Schedule.StartAt {
+	if left.Type == dao.ItemTypeSchedule && left.Schedule != nil && right.Schedule != nil && left.Schedule.RuleID == right.Schedule.RuleID && left.Schedule.StartAt != right.Schedule.StartAt {
 		return left.Schedule.StartAt < right.Schedule.StartAt
 	}
 	return left.ID < right.ID
@@ -357,7 +357,7 @@ func backwardPage(items []dao.Item, size int, anchor *CursorAnchor, counts Count
 func makeAnchor(item dao.Item, direction string) *CursorAnchor {
 	anchor := &CursorAnchor{CreatedAt: item.CreatedAt, Type: item.Type, ID: item.ID, Direction: direction}
 	if item.Schedule != nil {
-		anchor.BlueprintID = item.Schedule.BlueprintID
+		anchor.RuleID = item.Schedule.RuleID
 		anchor.OccurrenceDate = item.Schedule.OccurrenceDate
 		anchor.ScheduleStartAt = item.Schedule.StartAt
 	}
@@ -367,7 +367,7 @@ func makeAnchor(item dao.Item, direction string) *CursorAnchor {
 func compareItemAnchor(item dao.Item, anchor *CursorAnchor) int {
 	anchorItem := dao.Item{Type: anchor.Type, ID: anchor.ID, CreatedAt: anchor.CreatedAt}
 	if anchor.Type == dao.ItemTypeSchedule {
-		anchorItem.Schedule = &dao.SchedulePayload{BlueprintID: anchor.BlueprintID, OccurrenceDate: anchor.OccurrenceDate, StartAt: anchor.ScheduleStartAt}
+		anchorItem.Schedule = &dao.SchedulePayload{RuleID: anchor.RuleID, OccurrenceDate: anchor.OccurrenceDate, StartAt: anchor.ScheduleStartAt}
 	}
 	if itemLess(item, anchorItem) {
 		return -1

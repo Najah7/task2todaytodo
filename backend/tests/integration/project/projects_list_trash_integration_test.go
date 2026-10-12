@@ -269,7 +269,7 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 	taskIDs := []string{ulid.Make().String(), ulid.Make().String(), ulid.Make().String()}
 	actionItemIDs := []string{ulid.Make().String(), ulid.Make().String(), ulid.Make().String()}
 	scheduleIDs := []string{ulid.Make().String(), ulid.Make().String()}
-	blueprintIDs := []string{ulid.Make().String(), ulid.Make().String()}
+	ruleIDs := []string{ulid.Make().String(), ulid.Make().String()}
 	start := time.Date(2026, 10, 8, 9, 0, 0, 0, time.UTC)
 	for i, taskID := range taskIDs {
 		status := "open"
@@ -289,15 +289,15 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 		}
 	}
 	for i, scheduleID := range scheduleIDs {
-		if err := testdb.InsertScheduleFixture(ctx, fixture.tx, testdb.ScheduleFixture{BlueprintID: blueprintIDs[i], ScheduleID: scheduleID, UserID: fixture.ownerID, ProjectID: fixture.projectID, Title: []string{"Individually deleted Schedule", "Live Schedule"}[i], OccurrenceDate: "2026-10-08", StartAt: start.Add(time.Duration(i) * 2 * time.Hour), EndAt: start.Add(time.Duration(i)*2*time.Hour + time.Hour)}); err != nil {
+		if err := testdb.InsertScheduleFixture(ctx, fixture.tx, testdb.ScheduleFixture{RuleID: ruleIDs[i], ScheduleID: scheduleID, UserID: fixture.ownerID, ProjectID: fixture.projectID, Title: []string{"Individually deleted Schedule", "Live Schedule"}[i], OccurrenceDate: "2026-10-08", StartAt: start.Add(time.Duration(i) * 2 * time.Hour), EndAt: start.Add(time.Duration(i)*2*time.Hour + time.Hour)}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM action_items WHERE id=ANY($1::text[])`, actionItemIDs)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM task_revisions WHERE id=ANY($1::text[])`, taskIDs)
-		_ = testdb.DeleteScheduleFixture(context.Background(), pool, blueprintIDs[0])
-		_ = testdb.DeleteScheduleFixture(context.Background(), pool, blueprintIDs[1])
+		_ = testdb.DeleteScheduleFixture(context.Background(), pool, ruleIDs[0])
+		_ = testdb.DeleteScheduleFixture(context.Background(), pool, ruleIDs[1])
 		_, _ = pool.Exec(context.Background(), `DELETE FROM tasks WHERE id=ANY($1::text[])`, taskIDs)
 	})
 	fixture.commit(t)
@@ -309,7 +309,7 @@ func TestProjectTrashAndRestoreChangeOnlyParentDeletionState(t *testing.T) {
 	}
 	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
 	scheduleDelete := scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "delete", nil, (projectActionItemID{}).Generate)
-	if err := scheduleDelete.Execute(ctx, fixture.ownerID, blueprintIDs[0], "2026-10-08", 1); err != nil {
+	if err := scheduleDelete.Execute(ctx, fixture.ownerID, ruleIDs[0], "2026-10-08", 1); err != nil {
 		t.Fatalf("individually delete Schedule: %v", err)
 	}
 

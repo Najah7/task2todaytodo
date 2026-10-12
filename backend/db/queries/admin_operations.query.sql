@@ -1,5 +1,5 @@
 -- name: AcquireAdminOperationLock :exec
-SELECT pg_advisory_xact_lock(hashtext('admin/backfill-schedules'));
+SELECT pg_advisory_xact_lock(hashtext('admin/job'), hashtext(sqlc.arg(job_name)::text));
 
 -- name: FailExpiredAdminOperations :exec
 UPDATE admin_operations SET state='failed', finished_at=lease_expires_at,
@@ -31,14 +31,18 @@ WHERE id=sqlc.arg(id)::text AND lease_token=sqlc.arg(lease_token)::text
 
 -- name: ProgressAdminOperation :execrows
 UPDATE admin_operations SET heartbeat_at=now(), lease_expires_at=sqlc.arg(lease_expires_at)::timestamptz,
-    processed_blueprints=sqlc.arg(processed_blueprints)::bigint, generated_schedules=sqlc.arg(generated_schedules)::bigint
+    processed_rules=sqlc.arg(processed_rules)::bigint,
+    generated_schedules=CASE WHEN job_name='backfill-schedules' THEN sqlc.arg(generated_schedules)::bigint ELSE generated_schedules END,
+    generated_occurrences=CASE WHEN job_name='prefill-allocations' THEN sqlc.arg(generated_schedules)::bigint ELSE generated_occurrences END
 WHERE id=sqlc.arg(id)::text AND lease_token=sqlc.arg(lease_token)::text
   AND state='running' AND lease_expires_at > now();
 
 -- name: SucceedAdminOperation :execrows
 UPDATE admin_operations SET state='succeeded', finished_at=now(), response=sqlc.arg(response)::jsonb,
-    processed_blueprints=sqlc.arg(processed_blueprints)::bigint,
-    generated_schedules=sqlc.arg(generated_schedules)::bigint, heartbeat_at=now()
+    processed_rules=sqlc.arg(processed_rules)::bigint,
+    generated_schedules=CASE WHEN job_name='backfill-schedules' THEN sqlc.arg(generated_schedules)::bigint ELSE generated_schedules END,
+    generated_occurrences=CASE WHEN job_name='prefill-allocations' THEN sqlc.arg(generated_schedules)::bigint ELSE generated_occurrences END,
+    heartbeat_at=now()
 WHERE id=sqlc.arg(id)::text AND lease_token=sqlc.arg(lease_token)::text
   AND state='running' AND lease_expires_at > now();
 

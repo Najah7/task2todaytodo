@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
+	allocationusecase "github.com/Najah7/task2todaytodo/internal/application/allocation/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/auth/dao"
 	auth "github.com/Najah7/task2todaytodo/internal/application/auth/domain"
 	authusecase "github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
@@ -19,10 +21,12 @@ func NewUserHandler(user authusecase.UserUseCases) *UserHandler {
 }
 
 type UserResponse struct {
-	UserID   string `json:"user_id"`
-	UserName string `json:"user_name,omitempty"`
-	Email    string `json:"email"`
-	Timezone string `json:"timezone"`
+	UserID     string `json:"user_id"`
+	UserName   string `json:"user_name,omitempty"`
+	Email      string `json:"email"`
+	Timezone   string `json:"timezone"`
+	WakeUpTime string `json:"wake_up_time"`
+	Bedtime    string `json:"bedtime"`
 }
 
 type UserListResponse struct {
@@ -31,11 +35,55 @@ type UserListResponse struct {
 
 func newUserResponse(u dao.User) UserResponse {
 	return UserResponse{
-		UserID:   u.ID,
-		UserName: auth.NewUserName(u.FirstName, u.LastName).FullName(),
-		Email:    u.Email,
-		Timezone: u.Timezone,
+		UserID:     u.ID,
+		UserName:   auth.NewUserName(u.FirstName, u.LastName).FullName(),
+		Email:      u.Email,
+		Timezone:   u.Timezone,
+		WakeUpTime: u.WakeUpTime,
+		Bedtime:    u.Bedtime,
 	}
+}
+
+type UserSleepSettingsUpdateRequest struct {
+	WakeUpTime string `json:"wake_up_time"`
+	Bedtime    string `json:"bedtime"`
+}
+
+// UpdateSleepSettings updates the current user's basic sleep window as one pair.
+//
+//	@Summary	Update current user sleep settings
+//	@Tags		Users
+//	@Accept		json
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		request body UserSleepSettingsUpdateRequest true "Sleep settings"
+//	@Success	200 {object} UserResponse
+//	@Failure	400 {object} ErrResponse
+//	@Failure	401 {object} ErrResponse
+//	@Failure	409 {object} ErrResponse
+//	@Router		/users/me/sleep [patch]
+func (h UserHandler) UpdateSleepSettings(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(UserIDContextKey).(string)
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, ErrSpecUsersUpdateSleepSettingsFailed, ErrDetailUnauthorized)
+		return
+	}
+	var req UserSleepSettingsUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteError(w, http.StatusBadRequest, ErrSpecUsersUpdateSleepSettingsFailed, ErrDetailInvalidRequestBody)
+		return
+	}
+	u, err := h.user.UpdateSleepSettings.Execute(r.Context(), auth.UserID(userID), req.WakeUpTime, req.Bedtime)
+	if err != nil {
+		if errors.Is(err, authusecase.ErrInvalidSleepTime) {
+			WriteError(w, http.StatusBadRequest, ErrSpecUsersUpdateSleepSettingsFailed, NewErrDetail("wake_up_time", "invalid_time", "Sleep times must use HH:mm format"))
+			return
+		}
+		status, detail := errToErrResponse(err, "")
+		WriteError(w, status, ErrSpecUsersUpdateSleepSettingsFailed, detail)
+		return
+	}
+	WriteJSON(w, http.StatusOK, newUserResponse(u))
 }
 
 type UserTimezoneUpdateRequest struct {
@@ -218,6 +266,21 @@ func errToErrResponse(err error, passwordField string) (int, ErrDetail) {
 		return http.StatusBadRequest, NewErrDetail("first_name", "first_name_required", "First name is required")
 	case errors.Is(err, auth.ErrInvalidUserTimezone):
 		return http.StatusBadRequest, NewErrDetail("timezone", "invalid_timezone", "Timezone must be a valid IANA timezone")
+	case errors.Is(err, authusecase.ErrInvalidSleepTime):
+		return http.StatusBadRequest, NewErrDetail("wake_up_time", "invalid_time", "Sleep times must use HH:mm format")
+	case errors.Is(err, allocationusecase.ErrConflict):
+		var conflict allocationusecase.ConflictError
+		detail := NewErrDetail("sleep", "allocation_conflict", "Sleep settings conflict with an allocation")
+		if errors.As(err, &conflict) {
+			detail.Metadata = &AllocationConflictMetadata{
+				Kind: conflict.Kind, RuleID: conflict.RuleID,
+				OccurrenceDate: conflict.OccurrenceDate.Format("2006-01-02"),
+				ProjectID:      conflict.ProjectID,
+				StartAt:        conflict.StartAt.UTC().Format(time.RFC3339),
+				EndAt:          conflict.EndAt.UTC().Format(time.RFC3339),
+			}
+		}
+		return http.StatusConflict, detail
 	default:
 		return http.StatusInternalServerError, ErrDetailInternalServerError
 	}

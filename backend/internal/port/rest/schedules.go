@@ -36,27 +36,27 @@ type ScheduleAssigneeListResponse struct {
 	Items []ScheduleAssigneeResponse `json:"items"`
 }
 
-// ListAssignees lists the owner and current Project members eligible for a blueprint.
+// ListAssignees lists the owner and current Project members eligible for a rule.
 //
 //	@Summary	List schedule assignees
 //	@Tags		Schedules
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		id	path		string	true	"Blueprint ID"
+//	@Param		id	path		string	true	"Rule ID"
 //	@Success	200	{object}	ScheduleAssigneeListResponse
-//	@Router		/schedule-blueprints/{id}/assignees [get]
+//	@Router		/schedule-rules/{id}/assignees [get]
 func (h *ScheduleHandler) ListAssignees(w http.ResponseWriter, r *http.Request) {
 	actor, ok := scheduleActor(r.Context())
 	if !ok {
 		WriteError(w, http.StatusUnauthorized, scheduleAssigneesFailure, ErrDetailUnauthorized)
 		return
 	}
-	blueprintID := chi.URLParam(r, "id")
-	if blueprintID == "" {
-		WriteError(w, http.StatusBadRequest, scheduleAssigneesFailure, scheduleField("id", "required", "Blueprint ID is required"))
+	ruleID := chi.URLParam(r, "id")
+	if ruleID == "" {
+		WriteError(w, http.StatusBadRequest, scheduleAssigneesFailure, scheduleField("id", "required", "Rule ID is required"))
 		return
 	}
-	rows, err := h.schedules.ListAssignees.Execute(r.Context(), domain.UserID(actor), domain.ScheduleID(blueprintID))
+	rows, err := h.schedules.ListAssignees.Execute(r.Context(), domain.UserID(actor), domain.ScheduleID(ruleID))
 	if err != nil {
 		writeScheduleUseCaseError(w, scheduleAssigneesFailure, err)
 		return
@@ -102,7 +102,7 @@ func scheduleUseCaseError(err error) (int, ErrDetail) {
 		return http.StatusConflict, scheduleField("occurrence_date", "occurrence_inactive", "Occurrence is no longer active")
 	case errors.Is(err, scheduleusecase.ErrOccurrenceCompleted):
 		return http.StatusConflict, scheduleField("occurrence_date", "occurrence_completed", "Completed occurrence cannot be skipped")
-	case errors.Is(err, scheduleusecase.ErrOccurrenceDateRequired), errors.Is(err, scheduleusecase.ErrOccurrenceRuleMismatch), errors.Is(err, scheduleusecase.ErrBlueprintOccurrenceInvalid):
+	case errors.Is(err, scheduleusecase.ErrOccurrenceDateRequired), errors.Is(err, scheduleusecase.ErrOccurrenceRuleMismatch), errors.Is(err, scheduleusecase.ErrOccurrenceInvalid):
 		return http.StatusBadRequest, scheduleField("occurrence_date", "invalid_occurrence", "Occurrence date does not identify an active schedule occurrence")
 	case errors.Is(err, scheduleusecase.ErrRescheduleDateMismatch):
 		return http.StatusBadRequest, scheduleField("start_at", "date_mismatch", "A rescheduled occurrence must keep its original local date")
@@ -116,21 +116,21 @@ func scheduleUseCaseError(err error) (int, ErrDetail) {
 		return http.StatusBadRequest, scheduleField("timezone", "invalid_timezone", "Timezone is invalid")
 	case errors.Is(err, scheduleusecase.ErrTimezoneValidationUnavailable):
 		return http.StatusInternalServerError, ErrDetailInternalServerError
-	case errors.Is(err, domain.ErrBlueprintTitleEmpty), errors.Is(err, scheduleusecase.ErrOccurrenceTitleEmpty):
+	case errors.Is(err, domain.ErrRuleTitleEmpty), errors.Is(err, scheduleusecase.ErrOccurrenceTitleEmpty):
 		return http.StatusBadRequest, scheduleField("title", "required", "Title is required")
-	case errors.Is(err, domain.ErrBlueprintTimezoneEmpty):
+	case errors.Is(err, domain.ErrRuleTimezoneEmpty):
 		return http.StatusBadRequest, scheduleField("timezone", "required", "Timezone is required")
-	case errors.Is(err, domain.ErrBlueprintFrequency), errors.Is(err, domain.ErrBlueprintFrequencyInvalid):
+	case errors.Is(err, domain.ErrRuleFrequency), errors.Is(err, domain.ErrRuleFrequencyInvalid):
 		return http.StatusBadRequest, scheduleField("frequency", "invalid_frequency", "Frequency is invalid")
-	case errors.Is(err, domain.ErrBlueprintInterval):
+	case errors.Is(err, domain.ErrRuleInterval):
 		return http.StatusBadRequest, scheduleField("interval", "invalid_interval", "Interval must be positive")
-	case errors.Is(err, domain.ErrBlueprintWeekdays):
+	case errors.Is(err, domain.ErrRuleWeekdays):
 		return http.StatusBadRequest, scheduleField("weekdays", "invalid_weekdays", "Weekdays must match the selected frequency")
-	case errors.Is(err, domain.ErrBlueprintDateRange):
+	case errors.Is(err, domain.ErrRuleDateRange):
 		return http.StatusBadRequest, scheduleField("end_date", "invalid_date_range", "End date must be on or after the first occurrence")
-	case errors.Is(err, domain.ErrBlueprintAllDayTime):
+	case errors.Is(err, domain.ErrRuleAllDayTime):
 		return http.StatusBadRequest, scheduleField("all_day", "invalid_boundaries", "All-day local start and end must be midnight")
-	case errors.Is(err, domain.ErrBlueprintTimeRange), errors.Is(err, scheduleusecase.ErrOccurrenceTimeInvalid):
+	case errors.Is(err, domain.ErrRuleTimeRange), errors.Is(err, scheduleusecase.ErrOccurrenceTimeInvalid):
 		return http.StatusBadRequest, scheduleField("end_at", "invalid_time_range", "End time must be after start time")
 	case errors.Is(err, scheduleusecase.ErrInvalidSchedulePage):
 		return http.StatusBadRequest, scheduleField("page_size", "invalid_page_size", "Page size is invalid")

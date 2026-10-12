@@ -57,9 +57,9 @@ func inboxTestItems() []inboxdao.Item {
 			CreatedAt: "2026-10-11T10:00:00Z", Task: &inboxdao.TaskPayload{TaskID: "task-1", Revision: 7, CanUpdate: true, CanAssign: true},
 		},
 		{
-			Type: inboxdao.ItemTypeSchedule, ID: "blueprint-1/2026-10-12", Title: "Daily review",
+			Type: inboxdao.ItemTypeSchedule, ID: "rule-1/2026-10-12", Title: "Daily review",
 			CreatedAt: "2026-10-10T10:00:00Z", Schedule: &inboxdao.SchedulePayload{
-				BlueprintID: "blueprint-1", OccurrenceDate: "2026-10-12",
+				RuleID: "rule-1", OccurrenceDate: "2026-10-12",
 				Timezone: "Asia/Tokyo", StartAt: time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC).Unix(), EndAt: time.Date(2026, 10, 12, 1, 0, 0, 0, time.UTC).Unix(), CanUpdate: true, CanAssign: true, CanUpdateFollowing: true,
 			},
 		},

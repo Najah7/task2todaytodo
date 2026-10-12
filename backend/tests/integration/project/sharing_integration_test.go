@@ -136,10 +136,10 @@ func (noProjectChildren) ReassignTasksAfterProjectMemberRemoval(context.Context,
 func (noProjectChildren) ReassignSchedulesAfterProjectMemberRemoval(context.Context, string, string, string) error {
 	return nil
 }
-func (noProjectChildren) PauseProjectBlueprints(context.Context, string, string, time.Time) error {
+func (noProjectChildren) PauseProjectRules(context.Context, string, string, time.Time) error {
 	return nil
 }
-func (noProjectChildren) ResumeProjectBlueprints(context.Context, string, string, time.Time) error {
+func (noProjectChildren) ResumeProjectRules(context.Context, string, string, time.Time) error {
 	return nil
 }
 

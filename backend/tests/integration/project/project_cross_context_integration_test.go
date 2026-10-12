@@ -29,7 +29,7 @@ func projectCrossContextTestPool(t *testing.T) *pgxpool.Pool {
 // newProjectUseCases builds the same cross-context progress reader as production.
 func newProjectUseCases(t *testing.T, pool *pgxpool.Pool, store application.Store) *projectusecase.UseCases {
 	t.Helper()
-	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
+	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule, store.Allocation)
 	usecases, stopUseCases := application.NewUseCase(store, uow, adapter.NewIDIssuer(), nil)
 	testdb.RegisterShutdown(t, stopUseCases)
 	return usecases.Project
@@ -64,7 +64,7 @@ func TestProjectLifecycleTransitionsAcrossTaskAndScheduleMutations(t *testing.T)
 	ctx := t.Context()
 	ownerID, actorID, projectID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	firstTaskID, secondTaskID := ulid.Make().String(), ulid.Make().String()
-	firstBlueprintID, secondBlueprintID := "", ""
+	firstRuleID, secondRuleID := "", ""
 	firstScheduleID, secondScheduleID := "", ""
 	firstOccurrenceDate, secondOccurrenceDate := "", ""
 	roleID := "project_child_only_" + strings.ToLower(ulid.Make().String())
@@ -93,8 +93,8 @@ func TestProjectLifecycleTransitionsAcrossTaskAndScheduleMutations(t *testing.T)
 		cleanup := context.Background()
 		_, _ = pool.Exec(cleanup, `DELETE FROM role_permissions WHERE role_id=$1`, roleID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM project_members WHERE project_id=$1`, projectID)
-		_ = testdb.DeleteScheduleFixture(cleanup, pool, firstBlueprintID)
-		_ = testdb.DeleteScheduleFixture(cleanup, pool, secondBlueprintID)
+		_ = testdb.DeleteScheduleFixture(cleanup, pool, firstRuleID)
+		_ = testdb.DeleteScheduleFixture(cleanup, pool, secondRuleID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM task_revisions WHERE id=ANY($1::text[])`, []string{firstTaskID, secondTaskID})
 		_, _ = pool.Exec(cleanup, `DELETE FROM project_revisions WHERE id=$1`, projectID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM tasks WHERE id=ANY($1::text[])`, []string{firstTaskID, secondTaskID})
@@ -115,14 +115,14 @@ func TestProjectLifecycleTransitionsAcrossTaskAndScheduleMutations(t *testing.T)
 	}
 	firstStart := time.Now().UTC().Add(time.Hour).Truncate(time.Minute)
 	firstOccurrenceDate = firstStart.Format("2006-01-02")
-	firstBlueprint, err := scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, (projectActionItemID{}).Generate, projectCrossContextTimezoneReader{}, nil).Execute(ctx, ownerID, scheduleusecase.CreateBlueprintInput{
+	firstRule, err := scheduleusecase.NewCreateRuleUseCase(scheduleUOW, (projectActionItemID{}).Generate, projectCrossContextTimezoneReader{}, nil).Execute(ctx, ownerID, scheduleusecase.CreateRuleInput{
 		Title: "Initial Schedule", ProjectID: projectID, Timezone: "UTC", LocalStart: firstStart, LocalEnd: firstStart.Add(time.Hour), Frequency: "once",
 	})
 	if err != nil {
 		t.Fatalf("create initial Schedule: %v", err)
 	}
-	firstBlueprintID = firstBlueprint.ID
-	firstOccurrence, err := scheduleusecase.NewGetOccurrenceUseCase(scheduleUOW).Execute(ctx, ownerID, firstBlueprintID, firstOccurrenceDate)
+	firstRuleID = firstRule.ID
+	firstOccurrence, err := scheduleusecase.NewGetOccurrenceUseCase(scheduleUOW).Execute(ctx, ownerID, firstRuleID, firstOccurrenceDate)
 	if err != nil || firstOccurrence.ID == nil {
 		t.Fatalf("read initial Schedule occurrence: %+v error=%v", firstOccurrence, err)
 	}
@@ -140,7 +140,7 @@ func TestProjectLifecycleTransitionsAcrossTaskAndScheduleMutations(t *testing.T)
 	if status, _ := readProjectState(t, pool, projectID); status != "open" {
 		t.Fatalf("Project status after only Task completion = %q; want open while Schedule unfinished", status)
 	}
-	if err := scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "complete", nil, (projectActionItemID{}).Generate).Execute(ctx, actorID, firstBlueprintID, firstOccurrenceDate, firstOccurrence.Revision); err != nil {
+	if err := scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "complete", nil, (projectActionItemID{}).Generate).Execute(ctx, actorID, firstRuleID, firstOccurrenceDate, firstOccurrence.Revision); err != nil {
 		t.Fatalf("complete child Schedule without project.update: %v", err)
 	}
 	status, revision := readProjectState(t, pool, projectID)
@@ -158,12 +158,12 @@ func TestProjectLifecycleTransitionsAcrossTaskAndScheduleMutations(t *testing.T)
 	if err != nil || reopened.Status != "open" || reopened.Progress != 100 {
 		t.Fatalf("manual reopen = status %q progress %d error=%v; want open at 100%%", reopened.Status, reopened.Progress, err)
 	}
-	currentOccurrence, err := scheduleusecase.NewGetOccurrenceUseCase(scheduleUOW).Execute(ctx, ownerID, firstBlueprintID, firstOccurrenceDate)
+	currentOccurrence, err := scheduleusecase.NewGetOccurrenceUseCase(scheduleUOW).Execute(ctx, ownerID, firstRuleID, firstOccurrenceDate)
 	if err != nil || currentOccurrence.ID == nil {
 		t.Fatalf("read completed occurrence before count-neutral edit: %+v error=%v", currentOccurrence, err)
 	}
 	title := "Count-neutral Schedule edit"
-	if _, err := scheduleusecase.NewUpdateOccurrenceUseCase(scheduleUOW, nil, (projectActionItemID{}).Generate).Execute(ctx, actorID, firstBlueprintID, firstOccurrenceDate, scheduleusecase.UpdateScheduleInput{Title: &title}, currentOccurrence.Revision); err != nil {
+	if _, err := scheduleusecase.NewUpdateOccurrenceUseCase(scheduleUOW, nil, (projectActionItemID{}).Generate).Execute(ctx, actorID, firstRuleID, firstOccurrenceDate, scheduleusecase.UpdateScheduleInput{Title: &title}, currentOccurrence.Revision); err != nil {
 		t.Fatalf("count-neutral edit with child-only capability: %v", err)
 	}
 	if status, _ := readProjectState(t, pool, projectID); status != "open" {
@@ -191,14 +191,14 @@ func TestProjectLifecycleTransitionsAcrossTaskAndScheduleMutations(t *testing.T)
 	}
 	secondStart := time.Now().UTC().Add(3 * time.Hour).Truncate(time.Minute)
 	secondOccurrenceDate = secondStart.Format("2006-01-02")
-	secondBlueprint, err := scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, (projectActionItemID{}).Generate, projectCrossContextTimezoneReader{}, nil).Execute(ctx, ownerID, scheduleusecase.CreateBlueprintInput{
+	secondRule, err := scheduleusecase.NewCreateRuleUseCase(scheduleUOW, (projectActionItemID{}).Generate, projectCrossContextTimezoneReader{}, nil).Execute(ctx, ownerID, scheduleusecase.CreateRuleInput{
 		Title: "Added after completion", ProjectID: projectID, Timezone: "UTC", LocalStart: secondStart, LocalEnd: secondStart.Add(time.Hour), Frequency: "once",
 	})
 	if err != nil {
 		t.Fatalf("add unfinished Schedule to done Project: %v", err)
 	}
-	secondBlueprintID = secondBlueprint.ID
-	secondOccurrence, err := scheduleusecase.NewGetOccurrenceUseCase(scheduleUOW).Execute(ctx, ownerID, secondBlueprintID, secondOccurrenceDate)
+	secondRuleID = secondRule.ID
+	secondOccurrence, err := scheduleusecase.NewGetOccurrenceUseCase(scheduleUOW).Execute(ctx, ownerID, secondRuleID, secondOccurrenceDate)
 	if err != nil || secondOccurrence.ID == nil {
 		t.Fatalf("read second Schedule occurrence: %+v error=%v", secondOccurrence, err)
 	}
@@ -213,7 +213,7 @@ func TestProjectLifecycleTransitionsAcrossTaskAndScheduleMutations(t *testing.T)
 	if _, err := taskusecase.NewReopenTaskUseCase(taskUOW, nil).Execute(ctx, taskdomain.UserID(actorID), taskdomain.TaskID(secondTaskID), 2); !errors.Is(err, taskusecase.ErrTaskNotFound) {
 		t.Fatalf("reopen child Task after Project trash = %v; want hidden/not found", err)
 	}
-	if err := scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "complete", nil, (projectActionItemID{}).Generate).Execute(ctx, actorID, secondBlueprintID, secondOccurrenceDate, secondOccurrence.Revision); err == nil {
+	if err := scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "complete", nil, (projectActionItemID{}).Generate).Execute(ctx, actorID, secondRuleID, secondOccurrenceDate, secondOccurrence.Revision); err == nil {
 		t.Fatalf("complete child Schedule after Project trash = %v; want hidden/not found", err)
 	}
 	var taskStatus string
@@ -412,12 +412,12 @@ func TestDoneProjectScheduleVirtualSuppressionAndSkipRestoreReopen(t *testing.T)
 	weekday := strings.ToLower(today.Weekday().String())[:3]
 	store := application.NewStore(pool)
 	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
-	created, err := scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, (projectActionItemID{}).Generate, projectCrossContextTimezoneReader{}, nil).Execute(ctx, ownerID, scheduleusecase.CreateBlueprintInput{
+	created, err := scheduleusecase.NewCreateRuleUseCase(scheduleUOW, (projectActionItemID{}).Generate, projectCrossContextTimezoneReader{}, nil).Execute(ctx, ownerID, scheduleusecase.CreateRuleInput{
 		ProjectID: projectID, Title: "Weekly schedule", Timezone: "UTC", LocalStart: today.Add(9 * time.Hour), LocalEnd: today.Add(10 * time.Hour),
 		Frequency: "weekly", Interval: 1, Weekdays: []string{weekday},
 	})
 	if err != nil {
-		t.Fatalf("create recurring Project Schedule blueprint: %v", err)
+		t.Fatalf("create recurring Project Schedule rule: %v", err)
 	}
 	if err := scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "skip", nil, (projectActionItemID{}).Generate).Execute(ctx, ownerID, created.ID, today.Format("2006-01-02"), 0); err != nil {
 		t.Fatalf("skip today's unsaved occurrence: %v", err)
@@ -447,7 +447,7 @@ func TestDoneProjectScheduleVirtualSuppressionAndSkipRestoreReopen(t *testing.T)
 	}
 }
 
-func TestAutoCompletingProjectPausesRecurringBlueprintAndManualReopenResumesIt(t *testing.T) {
+func TestAutoCompletingProjectPausesRecurringRuleAndManualReopenResumesIt(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, projectID := ulid.Make().String(), ulid.Make().String()
@@ -457,11 +457,11 @@ func TestAutoCompletingProjectPausesRecurringBlueprintAndManualReopenResumesIt(t
 	if _, err := pool.Exec(ctx, `INSERT INTO projects(id,user_id,type,title,priority,changed_by) VALUES($1,$2,'other','Schedule Pause','low',$2)`, projectID, ownerID); err != nil {
 		t.Fatal(err)
 	}
-	blueprintID, latentBlueprintID := "", ulid.Make().String()
+	ruleID, latentRuleID := "", ulid.Make().String()
 	t.Cleanup(func() {
 		cleanup := context.Background()
-		_ = testdb.DeleteScheduleFixture(cleanup, pool, blueprintID)
-		_ = testdb.DeleteScheduleFixture(cleanup, pool, latentBlueprintID)
+		_ = testdb.DeleteScheduleFixture(cleanup, pool, ruleID)
+		_ = testdb.DeleteScheduleFixture(cleanup, pool, latentRuleID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM project_revisions WHERE id=$1`, projectID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM projects WHERE id=$1`, projectID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM users WHERE id=$1`, ownerID)
@@ -470,7 +470,7 @@ func TestAutoCompletingProjectPausesRecurringBlueprintAndManualReopenResumesIt(t
 	weekday := strings.ToLower(today.Weekday().String())[:3]
 	rootDate := today.AddDate(0, 0, -7)
 	if err := testdb.InsertScheduleFixture(ctx, pool, testdb.ScheduleFixture{
-		BlueprintID: latentBlueprintID, UserID: ownerID, ProjectID: projectID,
+		RuleID: latentRuleID, UserID: ownerID, ProjectID: projectID,
 		Title: "Completed saved occurrence", Frequency: "weekly", Interval: 1, Weekdays: []string{weekday},
 		AnchorDate: rootDate.Format("2006-01-02"), OccurrenceDate: rootDate.Format("2006-01-02"),
 		StartAt: rootDate.Add(9 * time.Hour), EndAt: rootDate.Add(10 * time.Hour), Completed: true,
@@ -479,28 +479,28 @@ func TestAutoCompletingProjectPausesRecurringBlueprintAndManualReopenResumesIt(t
 	}
 	store := application.NewStore(pool)
 	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
-	blueprint, err := scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, (projectActionItemID{}).Generate, projectCrossContextTimezoneReader{}, nil).Execute(ctx, ownerID, scheduleusecase.CreateBlueprintInput{
+	rule, err := scheduleusecase.NewCreateRuleUseCase(scheduleUOW, (projectActionItemID{}).Generate, projectCrossContextTimezoneReader{}, nil).Execute(ctx, ownerID, scheduleusecase.CreateRuleInput{
 		ProjectID: projectID, Title: "Recurring work", Timezone: "UTC", LocalStart: today.Add(9 * time.Hour), LocalEnd: today.Add(10 * time.Hour),
 		Frequency: "weekly", Interval: 1, Weekdays: []string{weekday},
 	})
 	if err != nil {
-		t.Fatalf("create recurring Schedule blueprint: %v", err)
+		t.Fatalf("create recurring Schedule rule: %v", err)
 	}
-	blueprintID = blueprint.ID
-	if err := scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "complete", nil, (projectActionItemID{}).Generate).Execute(ctx, ownerID, blueprintID, today.Format("2006-01-02"), 0); err != nil {
+	ruleID = rule.ID
+	if err := scheduleusecase.NewSetOccurrenceStateUseCase(scheduleUOW, "complete", nil, (projectActionItemID{}).Generate).Execute(ctx, ownerID, ruleID, today.Format("2006-01-02"), 0); err != nil {
 		t.Fatalf("complete today's recurring occurrence: %v", err)
 	}
 	status, revision := readProjectState(t, pool, projectID)
 	if status != "done" {
 		t.Fatalf("Project after completing all saved occurrences = %q; want done despite today's ungenerated recurring occurrence", status)
 	}
-	for _, id := range []string{blueprintID, latentBlueprintID} {
+	for _, id := range []string{ruleID, latentRuleID} {
 		var active int
-		if err := pool.QueryRow(ctx, `SELECT count(*) FROM schedule_project_pause_intervals WHERE project_id=$1 AND blueprint_id=$2 AND resumed_at IS NULL`, projectID, id).Scan(&active); err != nil {
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM schedule_project_pause_intervals WHERE project_id=$1 AND rule_id=$2 AND resumed_at IS NULL`, projectID, id).Scan(&active); err != nil {
 			t.Fatal(err)
 		}
 		if active != 1 {
-			t.Fatalf("active Project pause intervals for blueprint %s = %d; want 1", id, active)
+			t.Fatalf("active Project pause intervals for rule %s = %d; want 1", id, active)
 		}
 	}
 	list := scheduleusecase.NewListOccurrencesUseCase(scheduleUOW)
@@ -508,7 +508,7 @@ func TestAutoCompletingProjectPausesRecurringBlueprintAndManualReopenResumesIt(t
 	paused, err := list.ExecutePage(ctx, ownerID, request)
 	pausedOriginal, pausedOriginalCompleted := 0, false
 	for _, item := range paused.Items {
-		if item.BlueprintID == blueprintID {
+		if item.RuleID == ruleID {
 			pausedOriginal++
 			pausedOriginalCompleted = item.OccurrenceDate == today.Format("2006-01-02") && item.Completed
 		}
@@ -519,31 +519,31 @@ func TestAutoCompletingProjectPausesRecurringBlueprintAndManualReopenResumesIt(t
 	if _, err := projectusecase.NewChangeProjectStatusUseCase(application.NewProjectUOW(pool, store.Project, store.Task, store.Schedule), store.Project.Projects, nil).Execute(ctx, projectdomain.UserID(ownerID), projectdomain.ProjectID(projectID), revision, "open"); err != nil {
 		t.Fatalf("manually reopen Project: %v", err)
 	}
-	for _, id := range []string{blueprintID, latentBlueprintID} {
+	for _, id := range []string{ruleID, latentRuleID} {
 		var active int
-		if err := pool.QueryRow(ctx, `SELECT count(*) FROM schedule_project_pause_intervals WHERE project_id=$1 AND blueprint_id=$2 AND resumed_at IS NULL`, projectID, id).Scan(&active); err != nil {
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM schedule_project_pause_intervals WHERE project_id=$1 AND rule_id=$2 AND resumed_at IS NULL`, projectID, id).Scan(&active); err != nil {
 			t.Fatal(err)
 		}
 		if active != 0 {
-			t.Fatalf("active Project pause intervals for blueprint %s after reopen = %d; want 0", id, active)
+			t.Fatalf("active Project pause intervals for rule %s after reopen = %d; want 0", id, active)
 		}
 	}
 	resumed, err := list.ExecutePage(ctx, ownerID, request)
 	resumedOriginalDates := map[string]int{}
 	for _, item := range resumed.Items {
-		if item.BlueprintID == blueprintID {
+		if item.RuleID == ruleID {
 			resumedOriginalDates[item.OccurrenceDate]++
 		}
 	}
 	if err != nil || len(resumedOriginalDates) != 2 || resumedOriginalDates[today.Format("2006-01-02")] != 1 || resumedOriginalDates[today.AddDate(0, 0, 7).Format("2006-01-02")] != 1 {
-		t.Fatalf("reopened Project original blueprint dates=%v page=%+v error=%v; want saved today plus next week", resumedOriginalDates, resumed.Items, err)
+		t.Fatalf("reopened Project original rule dates=%v page=%+v error=%v; want saved today plus next week", resumedOriginalDates, resumed.Items, err)
 	}
 }
 
 func TestDeletedScheduleOccurrenceDoesNotCountInProjectWorkState(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
-	ownerID, projectID, blueprintID, deletedOverrideID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
+	ownerID, projectID, ruleID, deletedOverrideID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Schedule','Deleted',$2,'unused','UTC')`, ownerID, ownerID+"@schedule-deleted-override.test"); err != nil {
 		t.Fatal(err)
 	}
@@ -553,7 +553,7 @@ func TestDeletedScheduleOccurrenceDoesNotCountInProjectWorkState(t *testing.T) {
 	rootDate := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
 	currentDate := time.Date(2026, 10, 9, 0, 0, 0, 0, time.UTC)
 	if err := testdb.InsertScheduleFixture(ctx, pool, testdb.ScheduleFixture{
-		BlueprintID: blueprintID, ScheduleID: deletedOverrideID, UserID: ownerID, ProjectID: projectID,
+		RuleID: ruleID, ScheduleID: deletedOverrideID, UserID: ownerID, ProjectID: projectID,
 		Title: "Deleted weekly occurrence", Frequency: "weekly", Interval: 1, Weekdays: []string{"fri"},
 		AnchorDate: rootDate.Format("2006-01-02"), OccurrenceDate: currentDate.Format("2006-01-02"),
 		StartAt: currentDate.Add(9 * time.Hour), EndAt: currentDate.Add(10 * time.Hour), Deleted: true,
@@ -562,7 +562,7 @@ func TestDeletedScheduleOccurrenceDoesNotCountInProjectWorkState(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		cleanup := context.Background()
-		_ = testdb.DeleteScheduleFixture(cleanup, pool, blueprintID)
+		_ = testdb.DeleteScheduleFixture(cleanup, pool, ruleID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM project_revisions WHERE id=$1`, projectID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM projects WHERE id=$1`, projectID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM users WHERE id=$1`, ownerID)
@@ -578,7 +578,7 @@ func TestDeletedScheduleOccurrenceDoesNotCountInProjectWorkState(t *testing.T) {
 	}
 }
 
-func TestProjectMemberRemovalReassignsCurrentAndFutureBlueprintOccurrences(t *testing.T) {
+func TestProjectMemberRemovalReassignsCurrentAndFutureOccurrences(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
 	ownerID, memberID, projectID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
@@ -593,10 +593,10 @@ func TestProjectMemberRemovalReassignsCurrentAndFutureBlueprintOccurrences(t *te
 	if _, err := pool.Exec(ctx, `INSERT INTO project_members(project_id,user_id,role_id,added_by) VALUES($1,$2,'editor',$3)`, projectID, memberID, ownerID); err != nil {
 		t.Fatal(err)
 	}
-	blueprintID := ""
+	ruleID := ""
 	t.Cleanup(func() {
 		cleanup := context.Background()
-		_ = testdb.DeleteScheduleFixture(cleanup, pool, blueprintID)
+		_ = testdb.DeleteScheduleFixture(cleanup, pool, ruleID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM project_members WHERE project_id=$1`, projectID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM project_revisions WHERE id=$1`, projectID)
 		_, _ = pool.Exec(cleanup, `DELETE FROM projects WHERE id=$1`, projectID)
@@ -606,23 +606,23 @@ func TestProjectMemberRemovalReassignsCurrentAndFutureBlueprintOccurrences(t *te
 	anchorDate := today.AddDate(0, 0, -3)
 	store := application.NewStore(pool)
 	scheduleUOW := application.NewScheduleUOW(pool, store.Schedule, store.Project)
-	bl, err := scheduleusecase.NewCreateBlueprintUseCase(scheduleUOW, (projectActionItemID{}).Generate, projectCrossContextTimezoneReader{}, nil).Execute(ctx, ownerID, scheduleusecase.CreateBlueprintInput{
+	bl, err := scheduleusecase.NewCreateRuleUseCase(scheduleUOW, (projectActionItemID{}).Generate, projectCrossContextTimezoneReader{}, nil).Execute(ctx, ownerID, scheduleusecase.CreateRuleInput{
 		ProjectID: projectID, AssigneeID: memberID, Title: "Member's recurring work", Timezone: "UTC",
 		LocalStart: anchorDate.Add(9 * time.Hour), LocalEnd: anchorDate.Add(10 * time.Hour), Frequency: "daily", Interval: 2,
 	})
 	if err != nil {
-		t.Fatalf("create member-assigned blueprint: %v", err)
+		t.Fatalf("create member-assigned rule: %v", err)
 	}
-	blueprintID = bl.ID
+	ruleID = bl.ID
 	plannedDate := today.AddDate(0, 0, 30)
 	plannedRevisionID := ulid.Make().String()
 	plannedStart := plannedDate.Add(9 * time.Hour)
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO schedule_blueprint_revisions(
-			id,blueprint_id,user_id,revision,effective_from,recurrence_anchor_date,local_start,local_end,
+		INSERT INTO schedule_rule_revisions(
+			id,rule_id,user_id,revision,effective_from,recurrence_anchor_date,local_start,local_end,
 		timezone,frequency,interval_count,weekdays,title,project_id,assignee_id,changed_by
 		) VALUES($1,$2,$3,2,$4::date,$5::date,$6::timestamp,$7::timestamp,'UTC','daily',2,'{}','Planned future title',$8,$9,$3)
-	`, plannedRevisionID, blueprintID, ownerID, plannedDate.Format("2006-01-02"), anchorDate.Format("2006-01-02"),
+	`, plannedRevisionID, ruleID, ownerID, plannedDate.Format("2006-01-02"), anchorDate.Format("2006-01-02"),
 		plannedStart.Format("2006-01-02 15:04:05"), plannedStart.Add(time.Hour).Format("2006-01-02 15:04:05"), projectID, memberID); err != nil {
 		t.Fatalf("insert future planned revision: %v", err)
 	}
@@ -650,9 +650,9 @@ func TestProjectMemberRemovalReassignsCurrentAndFutureBlueprintOccurrences(t *te
 			t.Fatalf("post-removal occurrence=%+v; want virtual row reassigned to Project owner", occurrence)
 		}
 	}
-	history, err := scheduleusecase.NewListBlueprintRevisionsUseCase(scheduleUOW).Execute(ctx, ownerID, blueprintID, 10, 0)
+	history, err := scheduleusecase.NewListRuleRevisionsUseCase(scheduleUOW).Execute(ctx, ownerID, ruleID, 10, 0)
 	if err != nil || len(history) < 3 || history[0].Revision <= 2 {
-		t.Fatalf("blueprint history after member removal=%+v error=%v; want an owner revision numbered above the preexisting planned revision", history, err)
+		t.Fatalf("rule history after member removal=%+v error=%v; want an owner revision numbered above the preexisting planned revision", history, err)
 	}
 	revisionsByNumber := make(map[int32]struct {
 		AssigneeID string
@@ -670,7 +670,7 @@ func TestProjectMemberRemovalReassignsCurrentAndFutureBlueprintOccurrences(t *te
 	planned, plannedExists := revisionsByNumber[2]
 	original, originalExists := revisionsByNumber[1]
 	if !plannedExists || !planned.Superseded || planned.AssigneeID != memberID || !originalExists || original.Superseded || original.AssigneeID != memberID {
-		t.Fatalf("blueprint history after member removal=%+v; want planned revision 2 superseded, original revision 1 retained, and both historical assignments unchanged", history)
+		t.Fatalf("rule history after member removal=%+v; want planned revision 2 superseded, original revision 1 retained, and both historical assignments unchanged", history)
 	}
 	if after.Items[0].Title != "Member's recurring work" {
 		t.Fatalf("tomorrow title after member removal=%q; want planned future revision superseded", after.Items[0].Title)
@@ -680,7 +680,7 @@ func TestProjectMemberRemovalReassignsCurrentAndFutureBlueprintOccurrences(t *te
 func TestProjectDeleteLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 	pool := projectCrossContextTestPool(t)
 	ctx := t.Context()
-	actorID, projectID, taskID, scheduleID, blueprintID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
+	actorID, projectID, taskID, scheduleID, ruleID := ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String(), ulid.Make().String()
 	if _, err := pool.Exec(ctx, `INSERT INTO users(id,first_name,last_name,email,password,timezone) VALUES($1,'Project','Audit',$2,'unused','Asia/Tokyo')`, actorID, actorID+"@project-audit.test"); err != nil {
 		t.Fatalf("insert actor: %v", err)
 	}
@@ -691,7 +691,7 @@ func TestProjectDeleteLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 		t.Fatalf("insert Task child: %v", err)
 	}
 	start := time.Date(2026, 10, 7, 9, 0, 0, 0, time.FixedZone("JST", 9*60*60))
-	if err := testdb.InsertScheduleFixture(ctx, pool, testdb.ScheduleFixture{BlueprintID: blueprintID, ScheduleID: scheduleID, UserID: actorID, ProjectID: projectID, Title: "Schedule child", Timezone: "Asia/Tokyo", OccurrenceDate: "2026-10-07", StartAt: start, EndAt: start.Add(time.Hour)}); err != nil {
+	if err := testdb.InsertScheduleFixture(ctx, pool, testdb.ScheduleFixture{RuleID: ruleID, ScheduleID: scheduleID, UserID: actorID, ProjectID: projectID, Title: "Schedule child", Timezone: "Asia/Tokyo", OccurrenceDate: "2026-10-07", StartAt: start, EndAt: start.Add(time.Hour)}); err != nil {
 		t.Fatalf("insert Schedule child: %v", err)
 	}
 	triggerName := "fail_schedule_delete_" + strings.ToLower(scheduleID)
@@ -702,7 +702,7 @@ func TestProjectDeleteLeavesTaskAndScheduleChildrenUntouched(t *testing.T) {
 			_, _ = pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON schedules`, triggerName))
 			_, _ = pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
 		}
-		_ = testdb.DeleteScheduleFixture(context.Background(), pool, blueprintID)
+		_ = testdb.DeleteScheduleFixture(context.Background(), pool, ruleID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM task_revisions WHERE id = $1`, taskID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM project_revisions WHERE id = $1`, projectID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM tasks WHERE id = $1`, taskID)

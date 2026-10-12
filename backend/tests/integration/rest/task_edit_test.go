@@ -49,7 +49,7 @@ func newTaskEditAPI(t *testing.T) *taskEditAPI {
 	})
 	ids := taskEditIDs{}
 	store := application.NewStore(pool)
-	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
+	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule, store.Allocation)
 	usecases, stopUseCases := application.NewUseCase(store, uow, adapter.NewIDIssuer(), nil)
 	testdb.RegisterShutdown(t, stopUseCases)
 	pageTokens, err := pagination.NewCodec([]byte(strings.Repeat("e", 32)))

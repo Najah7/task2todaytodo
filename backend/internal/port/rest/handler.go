@@ -21,6 +21,7 @@ type Handler struct {
 	Timezone            *TimezoneHandler
 	Admin               *AdminHandler
 	Inbox               *InboxHandler
+	Allocation          *AllocationHandler
 }
 
 func NewHandler(usecases application.UseCase, issueID func() string, pageTokenKey []byte) (*Handler, error) {
@@ -41,7 +42,8 @@ func NewHandler(usecases application.UseCase, issueID func() string, pageTokenKe
 		ProjectMember:       NewProjectMemberHandler(usecases.Project),
 		Role:                NewRoleHandler(usecases.Role),
 		Timezone:            NewTimezoneHandler(usecases.Timezone),
-		Admin:               NewAdminHandler(usecases.Admin, pageTokens),
+		Admin:               NewAdminHandler(usecases.Admin.Job, usecases.Admin.Operation, pageTokens),
 		Inbox:               NewInboxHandler(usecases.Inbox, pageTokens),
+		Allocation:          NewAllocationHandler(usecases.Allocation),
 	}, nil
 }

@@ -5,15 +5,16 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
-func NewUserUseCases(authStore AuthStore, logger telemetry.Logger) authusecase.UserUseCases {
+func NewUserUseCases(authStore AuthStore, uow authusecase.UOW, logger telemetry.Logger) authusecase.UserUseCases {
 	return authusecase.UserUseCases{
-		Get:            authusecase.NewGetUserUseCase(authStore.Users, logger),
-		GetByEmail:     authusecase.NewGetUserByEmailUseCase(authStore.Users, logger),
-		Create:         authusecase.NewSignUpUseCase(authStore.Users, logger),
-		UpdateName:     authusecase.NewUpdateUserNameUseCase(authStore.Users, logger),
-		UpdateEmail:    authusecase.NewUpdateUserEmailUseCase(authStore.Users, logger),
-		UpdatePassword: authusecase.NewUpdateUserPasswordUseCase(authStore.Users, logger),
-		UpdateTimezone: authusecase.NewUpdateUserTimezoneUseCase(authStore.Users, logger),
+		Get:                 authusecase.NewGetUserUseCase(authStore.Users, logger),
+		GetByEmail:          authusecase.NewGetUserByEmailUseCase(authStore.Users, logger),
+		Create:              authusecase.NewSignUpUseCase(authStore.Users, logger),
+		UpdateName:          authusecase.NewUpdateUserNameUseCase(authStore.Users, logger),
+		UpdateEmail:         authusecase.NewUpdateUserEmailUseCase(authStore.Users, logger),
+		UpdatePassword:      authusecase.NewUpdateUserPasswordUseCase(authStore.Users, logger),
+		UpdateTimezone:      authusecase.NewUpdateUserTimezoneUseCase(authStore.Users, logger, uow),
+		UpdateSleepSettings: authusecase.NewUpdateUserSleepSettingsUseCase(uow, logger),
 	}
 }
 

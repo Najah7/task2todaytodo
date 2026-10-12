@@ -16,6 +16,7 @@ const (
 	ResourcePermissions          = "permissions"
 	ResourceAdmin                = "admin"
 	ResourceTimezones            = "timezones"
+	ResourceAllocations          = "allocations"
 
 	ActionAuthenticate              = "authenticate"
 	ActionCreate                    = "create"
@@ -28,6 +29,11 @@ const (
 	ActionDelete                    = "delete"
 	ActionUpdateBasicInfo           = "update_basic_info"
 	ActionUpdateTimezone            = "update_timezone"
+	ActionUpdateSleepSettings       = "update_sleep_settings"
+	ActionCreateAllocation          = "create_allocation"
+	ActionGetAllocation             = "get_allocation"
+	ActionUpdateAllocation          = "update_allocation"
+	ActionDeleteAllocation          = "delete_allocation"
 	ActionUpdatePassword            = "update_password"
 	ActionRun                       = "run"
 	ResultFailed                    = "failed"
@@ -72,11 +78,16 @@ var (
 	ErrSpecUsersGetFailed                     = NewFailureErrSpec(ResourceUsers, ActionGet, "Failed to get user")
 	ErrSpecUsersUpdateBasicInfoFailed         = NewFailureErrSpec(ResourceUsers, ActionUpdateBasicInfo, "Failed to update user")
 	ErrSpecUsersUpdateTimezoneFailed          = NewFailureErrSpec(ResourceUsers, ActionUpdateTimezone, "Failed to update user timezone")
+	ErrSpecUsersUpdateSleepSettingsFailed     = NewFailureErrSpec(ResourceUsers, ActionUpdateSleepSettings, "Failed to update user sleep settings")
 	ErrSpecUsersUpdatePasswordFailed          = NewFailureErrSpec(ResourceUsers, ActionUpdatePassword, "Failed to update password")
 	ErrSpecAdminRunFailed                     = NewFailureErrSpec(ResourceAdmin, ActionRun, "Failed to run administrative job")
 	ErrSpecAdminListFailed                    = NewFailureErrSpec(ResourceAdmin, ActionList, "Failed to list operations")
 	ErrSpecAdminGetFailed                     = NewFailureErrSpec(ResourceAdmin, ActionGet, "Failed to get operation")
 	ErrSpecTimezonesListFailed                = NewFailureErrSpec(ResourceTimezones, ActionList, "Failed to list timezones")
+	ErrSpecAllocationsGetFailed               = NewFailureErrSpec(ResourceAllocations, ActionGetAllocation, "Failed to get allocations")
+	ErrSpecAllocationsCreateFailed            = NewFailureErrSpec(ResourceAllocations, ActionCreateAllocation, "Failed to create allocation")
+	ErrSpecAllocationsUpdateFailed            = NewFailureErrSpec(ResourceAllocations, ActionUpdateAllocation, "Failed to update allocation")
+	ErrSpecAllocationsDeleteFailed            = NewFailureErrSpec(ResourceAllocations, ActionDeleteAllocation, "Failed to delete allocation")
 
 	ErrDetailInvalidRequestBody                  = NewErrDetail("", DetailInvalidBodyCode, DetailInvalidBodyMsg)
 	ErrDetailInvalidCredentials                  = NewErrDetail("", DetailInvalidCredCode, DetailInvalidCredMsg)
@@ -103,9 +114,19 @@ func NewFailureErrSpec(resource, action, message string) ErrSpec {
 }
 
 type ErrDetail struct {
-	Field   string `json:"field,omitempty"`
-	Code    string `json:"code,omitempty"`
-	Message string `json:"message"`
+	Field    string                      `json:"field,omitempty"`
+	Code     string                      `json:"code,omitempty"`
+	Message  string                      `json:"message"`
+	Metadata *AllocationConflictMetadata `json:"metadata,omitempty"`
+}
+
+type AllocationConflictMetadata struct {
+	Kind           string `json:"kind,omitempty"`
+	RuleID         string `json:"rule_id,omitempty"`
+	OccurrenceDate string `json:"occurrence_date,omitempty"`
+	ProjectID      string `json:"project_id,omitempty"`
+	StartAt        string `json:"start_at,omitempty"`
+	EndAt          string `json:"end_at,omitempty"`
 }
 
 func NewErrDetail(field, code, message string) ErrDetail {

@@ -9,7 +9,7 @@ import (
 type CursorAnchor struct {
 	At             string
 	ID             string
-	BlueprintID    string
+	RuleID         string
 	Revision       int32
 	Date           string
 	OccurrenceDate string

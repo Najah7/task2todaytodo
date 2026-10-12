@@ -16,8 +16,8 @@ func NewRescheduleOccurrenceUseCase(uow UOW, logger telemetry.Logger, issueID fu
 	return &RescheduleOccurrenceUseCase{update: NewUpdateOccurrenceUseCase(uow, logger, issueID)}
 }
 
-func (uc *RescheduleOccurrenceUseCase) Execute(ctx context.Context, actorID, blueprintID, occurrenceDate string, startAt, endAt time.Time, expectedRevision int32) (dao.ScheduleOccurrence, error) {
-	return uc.update.execute(ctx, actorID, blueprintID, occurrenceDate, UpdateScheduleInput{
+func (uc *RescheduleOccurrenceUseCase) Execute(ctx context.Context, actorID, ruleID, occurrenceDate string, startAt, endAt time.Time, expectedRevision int32) (dao.ScheduleOccurrence, error) {
+	return uc.update.execute(ctx, actorID, ruleID, occurrenceDate, UpdateScheduleInput{
 		StartAt: &startAt,
 		EndAt:   &endAt,
 	}, expectedRevision, "schedule.occurrence.reschedule")

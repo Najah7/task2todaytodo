@@ -12,11 +12,11 @@ import (
 )
 
 const acquireAdminOperationLock = `-- name: AcquireAdminOperationLock :exec
-SELECT pg_advisory_xact_lock(hashtext('admin/backfill-schedules'))
+SELECT pg_advisory_xact_lock(hashtext('admin/job'), hashtext($1::text))
 `
 
-func (q *Queries) AcquireAdminOperationLock(ctx context.Context) error {
-	_, err := q.db.Exec(ctx, acquireAdminOperationLock)
+func (q *Queries) AcquireAdminOperationLock(ctx context.Context, jobName string) error {
+	_, err := q.db.Exec(ctx, acquireAdminOperationLock, jobName)
 	return err
 }
 
@@ -25,7 +25,7 @@ INSERT INTO admin_operations
     (id, job_name, state, requested_by, cutoff, started_at, heartbeat_at, lease_expires_at, lease_token)
 VALUES ($1::text, $2::text, 'running', $3::text,
     $4::timestamptz, $5::timestamptz, now(), $6::timestamptz, $7::text)
-RETURNING id, job_name, state, requested_by, cutoff, started_at, finished_at, heartbeat_at, lease_expires_at, lease_token, processed_blueprints, generated_schedules, response, error_code, error_message, created_at
+RETURNING id, job_name, state, requested_by, cutoff, started_at, finished_at, heartbeat_at, lease_expires_at, lease_token, processed_rules, generated_schedules, generated_occurrences, response, error_code, error_message, created_at
 `
 
 type CreateAdminOperationParams struct {
@@ -60,8 +60,9 @@ func (q *Queries) CreateAdminOperation(ctx context.Context, arg CreateAdminOpera
 		&i.HeartbeatAt,
 		&i.LeaseExpiresAt,
 		&i.LeaseToken,
-		&i.ProcessedBlueprints,
+		&i.ProcessedRules,
 		&i.GeneratedSchedules,
+		&i.GeneratedOccurrences,
 		&i.Response,
 		&i.ErrorCode,
 		&i.ErrorMessage,
@@ -109,7 +110,7 @@ func (q *Queries) FailExpiredAdminOperations(ctx context.Context, jobName string
 }
 
 const getActiveAdminOperation = `-- name: GetActiveAdminOperation :one
-SELECT id, job_name, state, requested_by, cutoff, started_at, finished_at, heartbeat_at, lease_expires_at, lease_token, processed_blueprints, generated_schedules, response, error_code, error_message, created_at FROM admin_operations WHERE job_name=$1::text AND state='running'
+SELECT id, job_name, state, requested_by, cutoff, started_at, finished_at, heartbeat_at, lease_expires_at, lease_token, processed_rules, generated_schedules, generated_occurrences, response, error_code, error_message, created_at FROM admin_operations WHERE job_name=$1::text AND state='running'
 `
 
 func (q *Queries) GetActiveAdminOperation(ctx context.Context, jobName string) (AdminOperation, error) {
@@ -126,8 +127,9 @@ func (q *Queries) GetActiveAdminOperation(ctx context.Context, jobName string) (
 		&i.HeartbeatAt,
 		&i.LeaseExpiresAt,
 		&i.LeaseToken,
-		&i.ProcessedBlueprints,
+		&i.ProcessedRules,
 		&i.GeneratedSchedules,
+		&i.GeneratedOccurrences,
 		&i.Response,
 		&i.ErrorCode,
 		&i.ErrorMessage,
@@ -137,7 +139,7 @@ func (q *Queries) GetActiveAdminOperation(ctx context.Context, jobName string) (
 }
 
 const getAdminOperation = `-- name: GetAdminOperation :one
-SELECT id, job_name, state, requested_by, cutoff, started_at, finished_at, heartbeat_at, lease_expires_at, lease_token, processed_blueprints, generated_schedules, response, error_code, error_message, created_at FROM admin_operations WHERE id=$1::text
+SELECT id, job_name, state, requested_by, cutoff, started_at, finished_at, heartbeat_at, lease_expires_at, lease_token, processed_rules, generated_schedules, generated_occurrences, response, error_code, error_message, created_at FROM admin_operations WHERE id=$1::text
 `
 
 func (q *Queries) GetAdminOperation(ctx context.Context, id string) (AdminOperation, error) {
@@ -154,8 +156,9 @@ func (q *Queries) GetAdminOperation(ctx context.Context, id string) (AdminOperat
 		&i.HeartbeatAt,
 		&i.LeaseExpiresAt,
 		&i.LeaseToken,
-		&i.ProcessedBlueprints,
+		&i.ProcessedRules,
 		&i.GeneratedSchedules,
+		&i.GeneratedOccurrences,
 		&i.Response,
 		&i.ErrorCode,
 		&i.ErrorMessage,
@@ -185,7 +188,7 @@ func (q *Queries) HeartbeatAdminOperation(ctx context.Context, arg HeartbeatAdmi
 }
 
 const listAdminOperations = `-- name: ListAdminOperations :many
-SELECT id, job_name, state, requested_by, cutoff, started_at, finished_at, heartbeat_at, lease_expires_at, lease_token, processed_blueprints, generated_schedules, response, error_code, error_message, created_at FROM admin_operations
+SELECT id, job_name, state, requested_by, cutoff, started_at, finished_at, heartbeat_at, lease_expires_at, lease_token, processed_rules, generated_schedules, generated_occurrences, response, error_code, error_message, created_at FROM admin_operations
 WHERE $1::text IS NULL OR id < $1::text
 ORDER BY id DESC LIMIT $2::integer
 `
@@ -215,8 +218,9 @@ func (q *Queries) ListAdminOperations(ctx context.Context, arg ListAdminOperatio
 			&i.HeartbeatAt,
 			&i.LeaseExpiresAt,
 			&i.LeaseToken,
-			&i.ProcessedBlueprints,
+			&i.ProcessedRules,
 			&i.GeneratedSchedules,
+			&i.GeneratedOccurrences,
 			&i.Response,
 			&i.ErrorCode,
 			&i.ErrorMessage,
@@ -234,23 +238,25 @@ func (q *Queries) ListAdminOperations(ctx context.Context, arg ListAdminOperatio
 
 const progressAdminOperation = `-- name: ProgressAdminOperation :execrows
 UPDATE admin_operations SET heartbeat_at=now(), lease_expires_at=$1::timestamptz,
-    processed_blueprints=$2::bigint, generated_schedules=$3::bigint
+    processed_rules=$2::bigint,
+    generated_schedules=CASE WHEN job_name='backfill-schedules' THEN $3::bigint ELSE generated_schedules END,
+    generated_occurrences=CASE WHEN job_name='prefill-allocations' THEN $3::bigint ELSE generated_occurrences END
 WHERE id=$4::text AND lease_token=$5::text
   AND state='running' AND lease_expires_at > now()
 `
 
 type ProgressAdminOperationParams struct {
-	LeaseExpiresAt      pgtype.Timestamptz
-	ProcessedBlueprints int64
-	GeneratedSchedules  int64
-	ID                  string
-	LeaseToken          string
+	LeaseExpiresAt     pgtype.Timestamptz
+	ProcessedRules     int64
+	GeneratedSchedules int64
+	ID                 string
+	LeaseToken         string
 }
 
 func (q *Queries) ProgressAdminOperation(ctx context.Context, arg ProgressAdminOperationParams) (int64, error) {
 	result, err := q.db.Exec(ctx, progressAdminOperation,
 		arg.LeaseExpiresAt,
-		arg.ProcessedBlueprints,
+		arg.ProcessedRules,
 		arg.GeneratedSchedules,
 		arg.ID,
 		arg.LeaseToken,
@@ -263,24 +269,26 @@ func (q *Queries) ProgressAdminOperation(ctx context.Context, arg ProgressAdminO
 
 const succeedAdminOperation = `-- name: SucceedAdminOperation :execrows
 UPDATE admin_operations SET state='succeeded', finished_at=now(), response=$1::jsonb,
-    processed_blueprints=$2::bigint,
-    generated_schedules=$3::bigint, heartbeat_at=now()
+    processed_rules=$2::bigint,
+    generated_schedules=CASE WHEN job_name='backfill-schedules' THEN $3::bigint ELSE generated_schedules END,
+    generated_occurrences=CASE WHEN job_name='prefill-allocations' THEN $3::bigint ELSE generated_occurrences END,
+    heartbeat_at=now()
 WHERE id=$4::text AND lease_token=$5::text
   AND state='running' AND lease_expires_at > now()
 `
 
 type SucceedAdminOperationParams struct {
-	Response            []byte
-	ProcessedBlueprints int64
-	GeneratedSchedules  int64
-	ID                  string
-	LeaseToken          string
+	Response           []byte
+	ProcessedRules     int64
+	GeneratedSchedules int64
+	ID                 string
+	LeaseToken         string
 }
 
 func (q *Queries) SucceedAdminOperation(ctx context.Context, arg SucceedAdminOperationParams) (int64, error) {
 	result, err := q.db.Exec(ctx, succeedAdminOperation,
 		arg.Response,
-		arg.ProcessedBlueprints,
+		arg.ProcessedRules,
 		arg.GeneratedSchedules,
 		arg.ID,
 		arg.LeaseToken,

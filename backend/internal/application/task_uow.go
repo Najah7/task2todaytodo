@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	allocationrepository "github.com/Najah7/task2todaytodo/internal/application/allocation/repository"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/usecase"
@@ -30,10 +31,11 @@ func (u *TaskUOW) Do(
 	return RunInTx(ctx, u.pool, func(tx pgx.Tx) error {
 		projects := u.projects.WithTx(tx).Projects
 		store := u.store.WithTx(tx)
-		scheduleBlueprints := u.schedules.WithTx(tx).Schedules
+		scheduleRules := u.schedules.WithTx(tx).Schedules
+		allocationRules := allocationrepository.NewAllocationRepository(u.pool).WithTx(tx)
 		return fn(ctx, taskRepositories{
 			store:     store,
-			lifecycle: projectusecase.NewProjectLifecycleUseCase(projects, projects, scheduleBlueprints),
+			lifecycle: projectusecase.NewProjectLifecycleUseCase(projects, projects, scheduleRules, allocationProjectLifecycleAdapter{repository: allocationRules}),
 		})
 	})
 }

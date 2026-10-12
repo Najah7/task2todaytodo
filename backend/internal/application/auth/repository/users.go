@@ -2,33 +2,33 @@ package repository
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/Najah7/task2todaytodo/db/sqlc"
 	"github.com/Najah7/task2todaytodo/internal/application/auth/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/auth/domain"
 	"github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var _ usecase.UserRepository = UserRepository{}
 
 type UserRepository struct {
 	queries *sqlc.Queries
-	db      sqlc.DBTX
 }
 
 func NewUserRepository(db sqlc.DBTX) *UserRepository {
 	queries := sqlc.New(db)
 	return &UserRepository{
 		queries: queries,
-		db:      db,
 	}
 }
 
 func (r *UserRepository) WithTx(tx pgx.Tx) *UserRepository {
 	return &UserRepository{
 		queries: r.queries.WithTx(tx),
-		db:      tx,
 	}
 }
 
@@ -48,14 +48,27 @@ var _ usecase.TimezoneRepository = UserRepository{}
 
 func recordToUserDAO(record sqlc.User) dao.User {
 	return dao.User{
-		ID:        record.ID,
-		FirstName: record.FirstName,
-		LastName:  record.LastName,
-		Email:     record.Email,
-		Password:  record.Password,
-		CreatedAt: pgTimeUnix(record.CreatedAt),
-		UpdatedAt: pgTimeUnix(record.UpdatedAt),
+		ID:         record.ID,
+		FirstName:  record.FirstName,
+		LastName:   record.LastName,
+		Email:      record.Email,
+		Password:   record.Password,
+		Timezone:   record.Timezone,
+		WakeUpTime: pgTimeString(record.WakeUpTime),
+		Bedtime:    pgTimeString(record.Bedtime),
+		CreatedAt:  pgTimeUnix(record.CreatedAt),
+		UpdatedAt:  pgTimeUnix(record.UpdatedAt),
 	}
+}
+
+func pgTimeString(value pgtype.Time) string {
+	if !value.Valid {
+		return ""
+	}
+	micros := value.Microseconds
+	hour := micros / 3_600_000_000
+	minute := micros / 60_000_000 % 60
+	return fmt.Sprintf("%02d:%02d", hour, minute)
 }
 
 func (r UserRepository) Get(ctx context.Context, id domain.UserID) (dao.User, error) {
@@ -64,10 +77,6 @@ func (r UserRepository) Get(ctx context.Context, id domain.UserID) (dao.User, er
 		return dao.User{}, err
 	}
 	result := recordToUserDAO(u)
-	result.Timezone, err = r.GetTimezone(ctx, u.ID)
-	if err != nil {
-		return dao.User{}, err
-	}
 	return result, nil
 }
 
@@ -77,10 +86,6 @@ func (r UserRepository) GetByEmail(ctx context.Context, email string) (dao.User,
 		return dao.User{}, err
 	}
 	result := recordToUserDAO(u)
-	result.Timezone, err = r.GetTimezone(ctx, u.ID)
-	if err != nil {
-		return dao.User{}, err
-	}
 	return result, nil
 }
 
@@ -96,10 +101,6 @@ func (r UserRepository) Create(ctx context.Context, user domain.User) (dao.User,
 		return dao.User{}, err
 	}
 	result := recordToUserDAO(u)
-	result.Timezone, err = r.GetTimezone(ctx, u.ID)
-	if err != nil {
-		return dao.User{}, err
-	}
 	return result, nil
 }
 
@@ -115,18 +116,30 @@ func (r UserRepository) Update(ctx context.Context, user domain.User) (dao.User,
 		return dao.User{}, err
 	}
 	result := recordToUserDAO(u)
-	result.Timezone, err = r.GetTimezone(ctx, u.ID)
-	if err != nil {
-		return dao.User{}, err
-	}
 	return result, nil
 }
 
 func (r UserRepository) UpdateTimezone(ctx context.Context, id domain.UserID, timezone domain.UserTimezone) error {
-	var stored string
-	err := r.db.QueryRow(ctx,
-		"UPDATE users SET timezone = $2, updated_at = now() WHERE id = $1 RETURNING timezone",
-		string(id), timezone.String(),
-	).Scan(&stored)
+	_, err := r.queries.UpdateUserTimezone(ctx, sqlc.UpdateUserTimezoneParams{ID: string(id), Timezone: timezone.String()})
 	return err
+}
+
+func (r UserRepository) UpdateSleepSettings(ctx context.Context, id domain.UserID, wakeUpTime, bedtime string) error {
+	wake, err := parsePGTime(wakeUpTime)
+	if err != nil {
+		return err
+	}
+	bed, err := parsePGTime(bedtime)
+	if err != nil {
+		return err
+	}
+	return r.queries.UpdateUserSleepSettings(ctx, sqlc.UpdateUserSleepSettingsParams{WakeUpTime: wake, Bedtime: bed, UserID: string(id)})
+}
+
+func parsePGTime(value string) (pgtype.Time, error) {
+	parsed, err := time.Parse("15:04", value)
+	if err != nil {
+		return pgtype.Time{}, err
+	}
+	return pgtype.Time{Microseconds: int64(parsed.Hour())*3_600_000_000 + int64(parsed.Minute())*60_000_000, Valid: true}, nil
 }

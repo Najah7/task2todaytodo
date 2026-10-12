@@ -534,7 +534,9 @@ CREATE TABLE users (
     password text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
-    timezone text NOT NULL DEFAULT 'Asia/Tokyo' REFERENCES timezone_master(timezone) ON DELETE RESTRICT
+    timezone text NOT NULL DEFAULT 'Asia/Tokyo' REFERENCES timezone_master(timezone) ON DELETE RESTRICT,
+    wake_up_time time NOT NULL DEFAULT TIME '07:00',
+    bedtime time NOT NULL DEFAULT TIME '23:00'
 );
 
 CREATE TABLE roles (

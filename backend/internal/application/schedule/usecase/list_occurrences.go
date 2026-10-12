@@ -8,6 +8,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
+	"github.com/Najah7/task2todaytodo/internal/application/shared/calendar"
 	"github.com/Najah7/task2todaytodo/internal/application/shared/pagination"
 )
 
@@ -34,34 +35,34 @@ func (uc *ListOccurrencesUseCase) ExecutePage(ctx context.Context, actorID strin
 	if err := validateCursorPageRequest(request); err != nil {
 		return CursorPage[dao.ScheduleOccurrence]{}, err
 	}
-	var revisions []dao.BlueprintRevision
+	var revisions []dao.RuleRevision
 	var saved []dao.ScheduleOccurrence
 	var origins []dao.ScheduleOccurrenceOrigin
 	if err := uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		var err error
-		revisions, err = repos.Blueprints().ListBlueprintRevisionsForRange(ctx, actorID, request.From, request.To)
+		revisions, err = repos.Rules().ListRuleRevisionsForRange(ctx, actorID, request.From, request.To)
 		if err != nil {
 			return err
 		}
-		saved, err = repos.Blueprints().ListPersistedOccurrences(ctx, actorID, request.From, request.To, request.IncludeSkipped)
+		saved, err = repos.Rules().ListPersistedOccurrences(ctx, actorID, request.From, request.To, request.IncludeSkipped)
 		if err != nil {
 			return err
 		}
-		blueprintIDs := make([]string, 0, len(revisions))
-		seenBlueprints := make(map[string]struct{}, len(revisions))
+		ruleIDs := make([]string, 0, len(revisions))
+		seenRules := make(map[string]struct{}, len(revisions))
 		for _, revision := range revisions {
-			if _, seen := seenBlueprints[revision.ID]; seen {
+			if _, seen := seenRules[revision.ID]; seen {
 				continue
 			}
-			seenBlueprints[revision.ID] = struct{}{}
-			blueprintIDs = append(blueprintIDs, revision.ID)
+			seenRules[revision.ID] = struct{}{}
+			ruleIDs = append(ruleIDs, revision.ID)
 		}
-		origins, err = repos.Blueprints().ListOccurrenceOrigins(ctx, actorID, blueprintIDs, request.From, request.To)
+		origins, err = repos.Rules().ListOccurrenceOrigins(ctx, actorID, ruleIDs, request.From, request.To)
 		if err != nil {
 			return err
 		}
 		for i := range revisions {
-			revisions[i].PauseIntervals, err = repos.Blueprints().ListPauseIntervals(ctx, actorID, revisions[i].ID)
+			revisions[i].PauseIntervals, err = repos.Rules().ListPauseIntervals(ctx, actorID, revisions[i].ID)
 			if err != nil {
 				return err
 			}
@@ -90,12 +91,12 @@ func (uc *ListOccurrencesUseCase) ExecutePage(ctx context.Context, actorID strin
 		now = time.Now().UTC()
 	}
 	if err := uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		capabilitiesByOccurrence, err := repos.Blueprints().ListOccurrenceCapabilities(ctx, actorID, pageItems)
+		capabilitiesByOccurrence, err := repos.Rules().ListOccurrenceCapabilities(ctx, actorID, pageItems)
 		if err != nil {
 			return err
 		}
 		for i := range pageItems {
-			capabilities := capabilitiesByOccurrence[pageItems[i].BlueprintID+"/"+pageItems[i].OccurrenceDate]
+			capabilities := capabilitiesByOccurrence[pageItems[i].RuleID+"/"+pageItems[i].OccurrenceDate]
 			pageItems[i].CanUpdate = capabilities.CanUpdate
 			pageItems[i].CanDelete = capabilities.CanDelete
 			pageItems[i].CanSkip = capabilities.CanSkip
@@ -113,8 +114,8 @@ func (uc *ListOccurrencesUseCase) ExecutePage(ctx context.Context, actorID strin
 	if more && len(pageItems) > 0 {
 		last := pageItems[len(pageItems)-1]
 		page.Next = &CursorAnchor{
-			At:          time.Unix(last.StartAt, 0).UTC().Format(time.RFC3339Nano),
-			BlueprintID: last.BlueprintID, OccurrenceDate: last.OccurrenceDate,
+			At:     time.Unix(last.StartAt, 0).UTC().Format(time.RFC3339Nano),
+			RuleID: last.RuleID, OccurrenceDate: last.OccurrenceDate,
 		}
 	}
 	return page, nil
@@ -124,15 +125,15 @@ func followingAllowed(scheduledStart, now time.Time) bool {
 	return !scheduledStart.IsZero() && scheduledStart.After(now)
 }
 
-func activeOccurrenceStart(revisions []dao.BlueprintRevision, occurrence dao.ScheduleOccurrence) time.Time {
+func activeOccurrenceStart(revisions []dao.RuleRevision, occurrence dao.ScheduleOccurrence) time.Time {
 	date, err := time.Parse("2006-01-02", occurrence.OccurrenceDate)
 	if err != nil {
 		return time.Time{}
 	}
-	var active *dao.BlueprintRevision
+	var active *dao.RuleRevision
 	for i := range revisions {
 		revision := &revisions[i]
-		if revision.ID != occurrence.BlueprintID || revision.EffectiveFrom > occurrence.OccurrenceDate ||
+		if revision.ID != occurrence.RuleID || revision.EffectiveFrom > occurrence.OccurrenceDate ||
 			(revision.EffectiveUntil != nil && *revision.EffectiveUntil < occurrence.OccurrenceDate) {
 			continue
 		}
@@ -164,7 +165,7 @@ func activeOccurrenceStart(revisions []dao.BlueprintRevision, occurrence dao.Sch
 			recurrenceEnd = &parsed
 		}
 	}
-	occurrences, err := domain.GenerateBlueprintOccurrences(domain.BlueprintRule{
+	occurrences, err := domain.GenerateOccurrences(domain.RecurrenceRule{
 		Start: start, End: end, AnchorDate: anchor, Timezone: active.Timezone,
 		Frequency: active.Frequency, Interval: active.Interval, Weekdays: mustParseWeekdays(active.Weekdays), EndDate: recurrenceEnd,
 	}, date, date)
@@ -174,25 +175,25 @@ func activeOccurrenceStart(revisions []dao.BlueprintRevision, occurrence dao.Sch
 	return occurrences[0].StartAt
 }
 
-func projectOccurrences(revisions []dao.BlueprintRevision, saved []dao.ScheduleOccurrence, origins []dao.ScheduleOccurrenceOrigin, from, to time.Time, includeSkipped bool) ([]dao.ScheduleOccurrence, error) {
+func projectOccurrences(revisions []dao.RuleRevision, saved []dao.ScheduleOccurrence, origins []dao.ScheduleOccurrenceOrigin, from, to time.Time, includeSkipped bool) ([]dao.ScheduleOccurrence, error) {
 	savedByKey := make(map[string]dao.ScheduleOccurrence, len(saved))
 	existingByKey := make(map[string]struct{}, len(origins)+len(saved))
 	rows := make([]dao.ScheduleOccurrence, 0, len(saved))
 	for _, origin := range origins {
-		existingByKey[origin.BlueprintID+"/"+origin.OccurrenceDate] = struct{}{}
+		existingByKey[origin.RuleID+"/"+origin.OccurrenceDate] = struct{}{}
 	}
 	for _, row := range saved {
-		savedByKey[row.BlueprintID+"/"+row.OccurrenceDate] = row
-		existingByKey[row.BlueprintID+"/"+row.OccurrenceDate] = struct{}{}
+		savedByKey[row.RuleID+"/"+row.OccurrenceDate] = row
+		existingByKey[row.RuleID+"/"+row.OccurrenceDate] = struct{}{}
 		if !row.Deleted && (includeSkipped || !row.Skipped) && overlaps(row.StartAt, row.EndAt, from, to) {
 			rows = append(rows, row)
 		}
 	}
-	byBlueprint := make(map[string][]dao.BlueprintRevision)
+	byRule := make(map[string][]dao.RuleRevision)
 	for _, revision := range revisions {
-		byBlueprint[revision.ID] = append(byBlueprint[revision.ID], revision)
+		byRule[revision.ID] = append(byRule[revision.ID], revision)
 	}
-	for blueprintID, rules := range byBlueprint {
+	for ruleID, rules := range byRule {
 		sort.Slice(rules, func(i, j int) bool {
 			if rules[i].EffectiveFrom != rules[j].EffectiveFrom {
 				return rules[i].EffectiveFrom < rules[j].EffectiveFrom
@@ -208,7 +209,7 @@ func projectOccurrences(revisions []dao.BlueprintRevision, saved []dao.ScheduleO
 			localStart := parseLocalTimestamp(rule.LocalStart)
 			localEnd := parseLocalTimestamp(rule.LocalEnd)
 			if localStart.IsZero() || localEnd.IsZero() {
-				return nil, domain.ErrBlueprintRangeInvalid
+				return nil, domain.ErrRuleRangeInvalid
 			}
 			phase := localCalendarDate(localStart)
 			if rule.EffectiveFrom != "" {
@@ -272,7 +273,7 @@ func projectOccurrences(revisions []dao.BlueprintRevision, saved []dao.ScheduleO
 				value, _ := time.Parse("2006-01-02", *rule.EndDate)
 				recurrenceEnd = &value
 			}
-			occurrences, err := domain.GenerateBlueprintOccurrences(domain.BlueprintRule{
+			occurrences, err := domain.GenerateOccurrences(domain.RecurrenceRule{
 				Start: localStart, AnchorDate: anchorDate, End: localEnd, Timezone: rule.Timezone,
 				Frequency: rule.Frequency, Interval: rule.Interval, Weekdays: weekdays, EndDate: recurrenceEnd,
 			}, startDate, endDate)
@@ -285,12 +286,12 @@ func projectOccurrences(revisions []dao.BlueprintRevision, saved []dao.ScheduleO
 					continue
 				}
 				date := occurrence.Date.Format("2006-01-02")
-				key := blueprintID + "/" + date
+				key := ruleID + "/" + date
 				if _, exists := existingByKey[key]; exists {
 					continue
 				}
 				rows = append(rows, dao.ScheduleOccurrence{
-					BlueprintID: blueprintID, OccurrenceDate: date, SourceRevisionID: rule.RevisionID,
+					RuleID: ruleID, OccurrenceDate: date, SourceRevisionID: rule.RevisionID,
 					UserID: rule.UserID, ProjectID: rule.ProjectID, AssigneeID: rule.AssigneeID,
 					Title: rule.Title, Description: rule.Description, Location: rule.Location,
 					Timezone: rule.Timezone, AllDay: rule.AllDay, StartAt: occurrence.StartAt.Unix(), EndAt: occurrence.EndAt.Unix(),
@@ -302,8 +303,8 @@ func projectOccurrences(revisions []dao.BlueprintRevision, saved []dao.ScheduleO
 		if rows[i].StartAt != rows[j].StartAt {
 			return rows[i].StartAt < rows[j].StartAt
 		}
-		if rows[i].BlueprintID != rows[j].BlueprintID {
-			return rows[i].BlueprintID < rows[j].BlueprintID
+		if rows[i].RuleID != rows[j].RuleID {
+			return rows[i].RuleID < rows[j].RuleID
 		}
 		return rows[i].OccurrenceDate < rows[j].OccurrenceDate
 	})
@@ -318,12 +319,12 @@ func afterOccurrenceAnchor(item dao.ScheduleOccurrence, anchor *CursorAnchor) bo
 	if at != anchor.At {
 		return at > anchor.At
 	}
-	blueprintID := anchor.BlueprintID
-	if blueprintID == "" {
-		blueprintID = anchor.SeriesID
+	ruleID := anchor.RuleID
+	if ruleID == "" {
+		ruleID = anchor.SeriesID
 	}
-	if item.BlueprintID != blueprintID {
-		return item.BlueprintID > blueprintID
+	if item.RuleID != ruleID {
+		return item.RuleID > ruleID
 	}
 	date := anchor.OccurrenceDate
 	if date == "" {
@@ -333,21 +334,15 @@ func afterOccurrenceAnchor(item dao.ScheduleOccurrence, anchor *CursorAnchor) bo
 }
 
 func overlaps(startAt, endAt int64, from, to time.Time) bool {
-	return time.Unix(startAt, 0).Before(to) && time.Unix(endAt, 0).After(from)
+	return calendar.Overlaps(time.Unix(startAt, 0), time.Unix(endAt, 0), from, to)
 }
 
 func localCalendarDate(value time.Time) time.Time {
-	return time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, time.UTC)
+	return calendar.DateOnly(value)
 }
 
 func parseLocalTimestamp(value string) time.Time {
-	parsed, err := time.Parse("2006-01-02T15:04:05.999999999", value)
-	if err != nil {
-		parsed, err = time.Parse("2006-01-02 15:04:05.999999999", value)
-	}
-	if err != nil {
-		parsed, _ = time.Parse("2006-01-02T15:04:05", value)
-	}
+	parsed, _ := calendar.ParseLocalTimestamp(value)
 	return parsed
 }
 
@@ -374,7 +369,7 @@ func parseWeekdays(values []string) ([]time.Weekday, error) {
 		case "sat":
 			result = append(result, time.Saturday)
 		default:
-			return nil, domain.ErrBlueprintFrequencyInvalid
+			return nil, domain.ErrRuleFrequencyInvalid
 		}
 	}
 	return result, nil

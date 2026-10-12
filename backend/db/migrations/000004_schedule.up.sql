@@ -1,14 +1,14 @@
-CREATE TABLE schedule_blueprints (
+CREATE TABLE schedule_rules (
     id text PRIMARY KEY CHECK (id ~ '^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$'),
     user_id text NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     deleted_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT schedule_blueprints_id_user_id_key UNIQUE (id, user_id)
+    CONSTRAINT schedule_rules_id_user_id_key UNIQUE (id, user_id)
 );
 
-CREATE TABLE schedule_blueprint_revisions (
+CREATE TABLE schedule_rule_revisions (
     id text PRIMARY KEY CHECK (id ~ '^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$'),
-    blueprint_id text NOT NULL,
+    rule_id text NOT NULL,
     user_id text NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     revision integer NOT NULL CHECK (revision > 0),
     effective_from date NOT NULL,
@@ -30,33 +30,33 @@ CREATE TABLE schedule_blueprint_revisions (
     cutoff_after date,
     changed_by text NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT schedule_blueprint_revisions_blueprint_fk FOREIGN KEY (blueprint_id, user_id)
-        REFERENCES schedule_blueprints(id, user_id) ON DELETE RESTRICT,
-    CONSTRAINT schedule_blueprint_revisions_project_user_fk FOREIGN KEY (project_id, user_id)
+    CONSTRAINT schedule_rule_revisions_rule_fk FOREIGN KEY (rule_id, user_id)
+        REFERENCES schedule_rules(id, user_id) ON DELETE RESTRICT,
+    CONSTRAINT schedule_rule_revisions_project_user_fk FOREIGN KEY (project_id, user_id)
         REFERENCES projects(id, user_id) ON DELETE RESTRICT,
-    CONSTRAINT schedule_blueprint_revisions_key UNIQUE (blueprint_id, revision),
-    CONSTRAINT schedule_blueprint_revisions_source_key UNIQUE (id, blueprint_id, user_id),
-    CONSTRAINT schedule_blueprint_revisions_local_interval CHECK (local_end > local_start),
-    CONSTRAINT schedule_blueprint_revisions_all_day_midnight CHECK (
+    CONSTRAINT schedule_rule_revisions_key UNIQUE (rule_id, revision),
+    CONSTRAINT schedule_rule_revisions_source_key UNIQUE (id, rule_id, user_id),
+    CONSTRAINT schedule_rule_revisions_local_interval CHECK (local_end > local_start),
+    CONSTRAINT schedule_rule_revisions_all_day_midnight CHECK (
         NOT all_day OR (local_start::time = TIME '00:00' AND local_end::time = TIME '00:00')
     ),
-    CONSTRAINT schedule_blueprint_revisions_end_date CHECK (end_date IS NULL OR end_date >= effective_from),
-    CONSTRAINT schedule_blueprint_revisions_once_end CHECK (frequency <> 'once' OR end_date IS NULL),
-    CONSTRAINT schedule_blueprint_revisions_weekdays CHECK (
+    CONSTRAINT schedule_rule_revisions_end_date CHECK (end_date IS NULL OR end_date >= effective_from),
+    CONSTRAINT schedule_rule_revisions_once_end CHECK (frequency <> 'once' OR end_date IS NULL),
+    CONSTRAINT schedule_rule_revisions_weekdays CHECK (
         (frequency = 'weekly' AND cardinality(weekdays) > 0 AND weekdays <@ ARRAY['mon','tue','wed','thu','fri','sat','sun']::text[])
         OR (frequency <> 'weekly' AND cardinality(weekdays) = 0)
     )
 );
-CREATE UNIQUE INDEX idx_schedule_blueprint_revisions_active_effective
-    ON schedule_blueprint_revisions(blueprint_id, effective_from)
+CREATE INDEX idx_schedule_rule_revisions_active_effective
+    ON schedule_rule_revisions(rule_id, effective_from)
     WHERE superseded_at IS NULL;
-CREATE INDEX idx_schedule_blueprint_revisions_effective
-    ON schedule_blueprint_revisions(blueprint_id, effective_from DESC, revision DESC)
+CREATE INDEX idx_schedule_rule_revisions_effective
+    ON schedule_rule_revisions(rule_id, effective_from DESC, revision DESC)
     WHERE superseded_at IS NULL;
 
 CREATE TABLE schedules (
     id text PRIMARY KEY CHECK (id ~ '^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$'),
-    blueprint_id text NOT NULL,
+    rule_id text NOT NULL,
     source_revision_id text NOT NULL,
     user_id text NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     occurrence_date date NOT NULL,
@@ -72,18 +72,17 @@ CREATE TABLE schedules (
     completed boolean NOT NULL DEFAULT false,
     skipped_at timestamptz,
     deleted_at timestamptz,
-    is_override boolean NOT NULL DEFAULT false,
     revision integer NOT NULL DEFAULT 1 CHECK (revision > 0),
     changed_by text NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT schedules_blueprint_user_fk FOREIGN KEY (blueprint_id, user_id)
-        REFERENCES schedule_blueprints(id, user_id) ON DELETE RESTRICT,
-    CONSTRAINT schedules_source_revision_fk FOREIGN KEY (source_revision_id, blueprint_id, user_id)
-        REFERENCES schedule_blueprint_revisions(id, blueprint_id, user_id) ON DELETE RESTRICT,
+    CONSTRAINT schedules_rule_user_fk FOREIGN KEY (rule_id, user_id)
+        REFERENCES schedule_rules(id, user_id) ON DELETE RESTRICT,
+    CONSTRAINT schedules_source_rule_revision_fk FOREIGN KEY (source_revision_id, rule_id, user_id)
+        REFERENCES schedule_rule_revisions(id, rule_id, user_id) ON DELETE RESTRICT,
     CONSTRAINT schedules_project_user_fk FOREIGN KEY (project_id, user_id)
         REFERENCES projects(id, user_id) ON DELETE RESTRICT,
-    CONSTRAINT schedules_blueprint_occurrence_key UNIQUE (blueprint_id, occurrence_date),
+    CONSTRAINT schedules_rule_occurrence_key UNIQUE (rule_id, occurrence_date),
     CONSTRAINT schedules_end_after_start CHECK (end_at > start_at),
     CONSTRAINT schedules_all_day_midnight CHECK (
         NOT all_day OR (
@@ -91,19 +90,18 @@ CREATE TABLE schedules (
             AND end_at AT TIME ZONE timezone = date_trunc('day', end_at AT TIME ZONE timezone)
         )
     ),
-    CONSTRAINT schedules_id_blueprint_key UNIQUE (id, blueprint_id)
+    CONSTRAINT schedules_id_rule_key UNIQUE (id, rule_id)
 );
 CREATE INDEX idx_schedules_user_assignee_start_id_live
     ON schedules(user_id, assignee_id, start_at, id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_schedules_project_start_id_live
     ON schedules(project_id, start_at, id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_schedules_blueprint_occurrence
-    ON schedules(blueprint_id, occurrence_date, id);
+CREATE INDEX idx_schedules_rule_occurrence ON schedules(rule_id, occurrence_date, id);
 
 CREATE TABLE schedule_revisions (
     schedule_id text NOT NULL REFERENCES schedules(id) ON DELETE RESTRICT,
     revision integer NOT NULL CHECK (revision > 0),
-    source_revision_id text NOT NULL REFERENCES schedule_blueprint_revisions(id) ON DELETE RESTRICT,
+    source_revision_id text NOT NULL REFERENCES schedule_rule_revisions(id) ON DELETE RESTRICT,
     user_id text NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     occurrence_date date NOT NULL,
     start_at timestamptz NOT NULL,
@@ -118,7 +116,6 @@ CREATE TABLE schedule_revisions (
     completed boolean NOT NULL,
     skipped_at timestamptz,
     deleted_at timestamptz,
-    is_override boolean NOT NULL,
     changed_by text NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     changed_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (schedule_id, revision)
@@ -141,12 +138,12 @@ BEGIN
     INSERT INTO schedule_revisions (
         schedule_id, revision, source_revision_id, user_id, occurrence_date,
         start_at, end_at, title, description, location, project_id, assignee_id,
-        timezone, all_day, completed, skipped_at, deleted_at, is_override, changed_by, changed_at
+        timezone, all_day, completed, skipped_at, deleted_at, changed_by, changed_at
     ) VALUES (
         NEW.id, NEW.revision, NEW.source_revision_id, NEW.user_id, NEW.occurrence_date,
         NEW.start_at, NEW.end_at, NEW.title, NEW.description, NEW.location, NEW.project_id,
         NEW.assignee_id, NEW.timezone, NEW.all_day, NEW.completed, NEW.skipped_at, NEW.deleted_at,
-        NEW.is_override, NEW.changed_by, NEW.updated_at
+        NEW.changed_by, NEW.updated_at
     );
     RETURN NEW;
 END;
@@ -156,23 +153,62 @@ CREATE TRIGGER schedules_revision_before_write
 CREATE TRIGGER schedules_revision_snapshot
     AFTER INSERT OR UPDATE ON schedules FOR EACH ROW EXECUTE FUNCTION snapshot_schedule_revision();
 
+CREATE TABLE schedule_exceptions (
+    rule_id text NOT NULL,
+    occurrence_date date NOT NULL,
+    source_revision_id text NOT NULL,
+    user_id text NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    start_at timestamptz NOT NULL,
+    end_at timestamptz NOT NULL,
+    all_day boolean NOT NULL,
+    title text NOT NULL CHECK (btrim(title) <> ''),
+    description text,
+    location text,
+    project_id text,
+    assignee_id text NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    timezone text NOT NULL REFERENCES timezone_master(timezone) ON DELETE RESTRICT,
+    completed boolean NOT NULL DEFAULT false,
+    skipped_at timestamptz,
+    deleted_at timestamptz,
+    changed_by text NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (rule_id, occurrence_date),
+    CONSTRAINT schedule_exceptions_rule_user_fk FOREIGN KEY (rule_id, user_id)
+        REFERENCES schedule_rules(id, user_id) ON DELETE RESTRICT,
+    CONSTRAINT schedule_exceptions_source_revision_fk FOREIGN KEY (source_revision_id, rule_id, user_id)
+        REFERENCES schedule_rule_revisions(id, rule_id, user_id) ON DELETE RESTRICT,
+    CONSTRAINT schedule_exceptions_schedule_fk FOREIGN KEY (rule_id, occurrence_date)
+        REFERENCES schedules(rule_id, occurrence_date) ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED,
+    CONSTRAINT schedule_exceptions_project_user_fk FOREIGN KEY (project_id, user_id)
+        REFERENCES projects(id, user_id) ON DELETE RESTRICT,
+    CONSTRAINT schedule_exceptions_end_after_start CHECK (end_at > start_at),
+    CONSTRAINT schedule_exceptions_all_day_midnight CHECK (
+        NOT all_day OR (
+            start_at AT TIME ZONE timezone = date_trunc('day', start_at AT TIME ZONE timezone)
+            AND end_at AT TIME ZONE timezone = date_trunc('day', end_at AT TIME ZONE timezone)
+        )
+    )
+);
+CREATE INDEX idx_schedule_exceptions_range ON schedule_exceptions(start_at, end_at);
+
 CREATE TABLE schedule_project_pause_intervals (
     project_id text NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
-    blueprint_id text NOT NULL REFERENCES schedule_blueprints(id) ON DELETE RESTRICT,
+    rule_id text NOT NULL REFERENCES schedule_rules(id) ON DELETE RESTRICT,
     paused_at timestamptz NOT NULL,
     resumed_at timestamptz,
     paused_by text NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     resumed_by text REFERENCES users(id) ON DELETE RESTRICT,
-    PRIMARY KEY (project_id, blueprint_id, paused_at),
+    PRIMARY KEY (project_id, rule_id, paused_at),
     CHECK (resumed_at IS NULL OR resumed_at >= paused_at)
 );
 CREATE UNIQUE INDEX idx_schedule_project_pause_active
-    ON schedule_project_pause_intervals(project_id, blueprint_id) WHERE resumed_at IS NULL;
+    ON schedule_project_pause_intervals(project_id, rule_id) WHERE resumed_at IS NULL;
 CREATE INDEX idx_schedule_project_pause_interval
-    ON schedule_project_pause_intervals(blueprint_id, project_id, paused_at, resumed_at);
+    ON schedule_project_pause_intervals(rule_id, project_id, paused_at, resumed_at);
 
 CREATE TABLE schedule_backfill_checkpoints (
-    revision_id text PRIMARY KEY REFERENCES schedule_blueprint_revisions(id) ON DELETE RESTRICT,
+    revision_id text PRIMARY KEY REFERENCES schedule_rule_revisions(id) ON DELETE RESTRICT,
     through_date date NOT NULL,
     updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -203,17 +239,17 @@ RETURNS boolean LANGUAGE sql STABLE AS $$
     )
 $$;
 
-CREATE FUNCTION schedule_blueprint_has_permission(blueprint_key text, actor_key text, resource_key text, action_key action)
+CREATE FUNCTION schedule_rule_has_permission(rule_key text, actor_key text, resource_key text, action_key action)
 RETURNS boolean LANGUAGE sql STABLE AS $$
     SELECT EXISTS (
         SELECT 1
-        FROM schedule_blueprints blueprint
-        WHERE blueprint.id = blueprint_key AND blueprint.deleted_at IS NULL
+        FROM schedule_rules rule
+        WHERE rule.id = rule_key AND rule.deleted_at IS NULL
           AND EXISTS (
               SELECT 1
               FROM LATERAL (
-                  SELECT revision.* FROM schedule_blueprint_revisions revision
-                  WHERE revision.blueprint_id = blueprint.id
+                  SELECT revision.* FROM schedule_rule_revisions revision
+                  WHERE revision.rule_id = rule.id
                   ORDER BY
                     CASE WHEN revision.superseded_at IS NULL THEN 0 ELSE 1 END,
                     CASE WHEN revision.effective_from <= (now() AT TIME ZONE revision.timezone)::date THEN 0 ELSE 1 END,
@@ -222,28 +258,28 @@ RETURNS boolean LANGUAGE sql STABLE AS $$
                     revision.revision DESC LIMIT 1
               ) current_revision
               LEFT JOIN projects parent ON parent.id = current_revision.project_id
-              WHERE (current_revision.project_id IS NULL AND blueprint.user_id = actor_key)
+              WHERE (current_revision.project_id IS NULL AND rule.user_id = actor_key)
                  OR (current_revision.project_id IS NOT NULL AND parent.deleted_at IS NULL AND
-                     (blueprint.user_id = actor_key OR project_has_permission(current_revision.project_id, actor_key, resource_key, action_key)))
+                     (rule.user_id = actor_key OR project_has_permission(current_revision.project_id, actor_key, resource_key, action_key)))
           )
     )
 $$;
 
-CREATE FUNCTION schedule_blueprint_has_permission_at(blueprint_key text, occurrence_key date, actor_key text, resource_key text, action_key action)
+CREATE FUNCTION schedule_rule_has_permission_at(rule_key text, occurrence_key date, actor_key text, resource_key text, action_key action)
 RETURNS boolean LANGUAGE sql STABLE AS $$
     SELECT EXISTS (
-        SELECT 1 FROM schedule_blueprints blueprint
+        SELECT 1 FROM schedule_rules rule
         JOIN LATERAL (
-            SELECT revision.* FROM schedule_blueprint_revisions revision
-            WHERE revision.blueprint_id = blueprint.id AND revision.superseded_at IS NULL
+            SELECT revision.* FROM schedule_rule_revisions revision
+            WHERE revision.rule_id = rule.id AND revision.superseded_at IS NULL
               AND revision.effective_from <= occurrence_key
             ORDER BY revision.effective_from DESC, revision.revision DESC LIMIT 1
         ) effective ON true
         LEFT JOIN projects parent ON parent.id = effective.project_id
-        WHERE blueprint.id = blueprint_key AND blueprint.deleted_at IS NULL
-          AND ((effective.project_id IS NULL AND blueprint.user_id = actor_key)
+        WHERE rule.id = rule_key AND rule.deleted_at IS NULL
+          AND ((effective.project_id IS NULL AND rule.user_id = actor_key)
             OR (effective.project_id IS NOT NULL AND parent.deleted_at IS NULL AND
-                (blueprint.user_id = actor_key OR project_has_permission(effective.project_id, actor_key, resource_key, action_key))))
+                (rule.user_id = actor_key OR project_has_permission(effective.project_id, actor_key, resource_key, action_key))))
           AND (effective.cutoff_after IS NULL OR effective.cutoff_after >= occurrence_key)
     )
 $$;

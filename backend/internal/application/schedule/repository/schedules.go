@@ -49,33 +49,33 @@ func (r *ScheduleRepository) CheckProjectPermission(ctx context.Context, actor d
 }
 
 func (r *ScheduleRepository) DeleteProjectSchedulesByActor(ctx context.Context, actor domain.UserID, project domain.ProjectID) error {
-	_, err := r.queries.DeleteProjectBlueprintOccurrencesByActor(ctx, sqlc.DeleteProjectBlueprintOccurrencesByActorParams{ActorID: string(actor), ProjectID: string(project)})
+	_, err := r.queries.DeleteProjectRuleOccurrencesByActor(ctx, sqlc.DeleteProjectRuleOccurrencesByActorParams{ActorID: string(actor), ProjectID: string(project)})
 	return err
 }
 
 func (r *ScheduleRepository) ReassignProjectMemberSchedules(ctx context.Context, actor domain.UserID, project domain.ProjectID, member domain.UserID) error {
-	candidates, err := r.queries.ListProjectMemberBlueprintRevisionCandidates(ctx, sqlc.ListProjectMemberBlueprintRevisionCandidatesParams{
+	candidates, err := r.queries.ListProjectMemberRuleRevisionCandidates(ctx, sqlc.ListProjectMemberRuleRevisionCandidatesParams{
 		ProjectID: string(project), MemberID: string(member),
 	})
 	if err != nil {
 		return err
 	}
 	if len(candidates) != 0 {
-		blueprintSet := make(map[string]struct{}, len(candidates))
+		ruleSet := make(map[string]struct{}, len(candidates))
 		for _, candidate := range candidates {
-			blueprintSet[candidate.BlueprintID] = struct{}{}
+			ruleSet[candidate.RuleID] = struct{}{}
 		}
-		blueprintIDs := make([]string, 0, len(blueprintSet))
-		for blueprintID := range blueprintSet {
-			blueprintIDs = append(blueprintIDs, blueprintID)
+		ruleIDs := make([]string, 0, len(ruleSet))
+		for ruleID := range ruleSet {
+			ruleIDs = append(ruleIDs, ruleID)
 		}
-		sort.Strings(blueprintIDs)
-		for _, blueprintID := range blueprintIDs {
-			if _, err := r.queries.LockScheduleBlueprintForMemberReassignment(ctx, blueprintID); err != nil {
+		sort.Strings(ruleIDs)
+		for _, ruleID := range ruleIDs {
+			if _, err := r.queries.LockScheduleRuleForMemberReassignment(ctx, ruleID); err != nil {
 				return err
 			}
 		}
-		lockedCandidates, err := r.queries.ListProjectMemberBlueprintRevisionCandidates(ctx, sqlc.ListProjectMemberBlueprintRevisionCandidatesParams{
+		lockedCandidates, err := r.queries.ListProjectMemberRuleRevisionCandidates(ctx, sqlc.ListProjectMemberRuleRevisionCandidatesParams{
 			ProjectID: string(project), MemberID: string(member),
 		})
 		if err != nil {
@@ -86,7 +86,7 @@ func (r *ScheduleRepository) ReassignProjectMemberSchedules(ctx context.Context,
 		}
 		for i := range candidates {
 			if candidates[i].SourceRevisionID != lockedCandidates[i].SourceRevisionID ||
-				candidates[i].BlueprintID != lockedCandidates[i].BlueprintID ||
+				candidates[i].RuleID != lockedCandidates[i].RuleID ||
 				candidates[i].TargetEffectiveFrom != lockedCandidates[i].TargetEffectiveFrom {
 				return usecase.ErrScheduleProjectChanged
 			}
@@ -96,7 +96,7 @@ func (r *ScheduleRepository) ReassignProjectMemberSchedules(ctx context.Context,
 		for i := range ids {
 			ids[i] = ulid.Make().String()
 		}
-		updated, err := r.queries.ReassignProjectMemberBlueprintRevisions(ctx, sqlc.ReassignProjectMemberBlueprintRevisionsParams{
+		updated, err := r.queries.ReassignProjectMemberRuleRevisions(ctx, sqlc.ReassignProjectMemberRuleRevisionsParams{
 			ActorID: string(actor), ProjectID: string(project), MemberID: string(member), RevisionIds: ids,
 		})
 		if err != nil {
@@ -106,6 +106,6 @@ func (r *ScheduleRepository) ReassignProjectMemberSchedules(ctx context.Context,
 			return usecase.ErrScheduleProjectChanged
 		}
 	}
-	_, err = r.queries.ReassignProjectMemberBlueprintOccurrencesByActor(ctx, sqlc.ReassignProjectMemberBlueprintOccurrencesByActorParams{ActorID: string(actor), ProjectID: string(project), MemberID: string(member)})
+	_, err = r.queries.ReassignProjectMemberRuleOccurrencesByActor(ctx, sqlc.ReassignProjectMemberRuleOccurrencesByActorParams{ActorID: string(actor), ProjectID: string(project), MemberID: string(member)})
 	return err
 }

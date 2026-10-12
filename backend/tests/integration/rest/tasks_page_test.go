@@ -50,7 +50,7 @@ func newTasksPageREST(t *testing.T) *tasksPageREST {
 
 	ids := tasksPageIDs{}
 	store := application.NewStore(pool)
-	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule)
+	uow := application.NewUOW(pool, store.Auth, store.Project, store.Task, store.Schedule, store.Allocation)
 	usecases, stopUseCases := application.NewUseCase(store, uow, adapter.NewIDIssuer(), nil)
 	testdb.RegisterShutdown(t, stopUseCases)
 	pageTokens, err := pagination.NewCodec([]byte(strings.Repeat("t", 32)))

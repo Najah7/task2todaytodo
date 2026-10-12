@@ -43,12 +43,12 @@ type projectLifecycleScheduleFake struct {
 	at              time.Time
 }
 
-func (f *projectLifecycleScheduleFake) PauseProjectBlueprints(_ context.Context, actor, project string, at time.Time) error {
+func (f *projectLifecycleScheduleFake) PauseProjectRules(_ context.Context, actor, project string, at time.Time) error {
 	f.paused++
 	f.actor, f.project, f.at = actor, project, at
 	return nil
 }
-func (f *projectLifecycleScheduleFake) ResumeProjectBlueprints(_ context.Context, actor, project string, at time.Time) error {
+func (f *projectLifecycleScheduleFake) ResumeProjectRules(_ context.Context, actor, project string, at time.Time) error {
 	f.resumed++
 	f.actor, f.project, f.at = actor, project, at
 	return nil
@@ -56,10 +56,10 @@ func (f *projectLifecycleScheduleFake) ResumeProjectBlueprints(_ context.Context
 
 type projectLifecycleScheduleNoop struct{}
 
-func (projectLifecycleScheduleNoop) PauseProjectBlueprints(context.Context, string, string, time.Time) error {
+func (projectLifecycleScheduleNoop) PauseProjectRules(context.Context, string, string, time.Time) error {
 	return nil
 }
-func (projectLifecycleScheduleNoop) ResumeProjectBlueprints(context.Context, string, string, time.Time) error {
+func (projectLifecycleScheduleNoop) ResumeProjectRules(context.Context, string, string, time.Time) error {
 	return nil
 }
 
@@ -145,7 +145,7 @@ func TestProjectLifecycleReconcilesCountsOnlyOnEligibleTransitions(t *testing.T)
 	}
 }
 
-func TestProjectLifecyclePausesAndResumesBlueprintsWithAutomaticStatus(t *testing.T) {
+func TestProjectLifecyclePausesAndResumesRulesWithAutomaticStatus(t *testing.T) {
 	tests := []struct {
 		name       string
 		status     string

@@ -68,7 +68,7 @@ func TestAllDayInboxWindowUsesScheduleCalendarDatesAcrossDST(t *testing.T) {
 func TestListFiltersAndCountsBeforeTypeAndPagination(t *testing.T) {
 	reader := &candidateReaderFake{timezone: "UTC", items: []dao.Item{
 		{Type: dao.ItemTypeTask, ID: "t1", Title: "Call dentist", ProjectID: "p1", CreatedAt: "2026-10-12T03:00:00.000000001Z", Task: &dao.TaskPayload{}},
-		{Type: dao.ItemTypeSchedule, ID: "s1", Title: "dentist followup", ProjectID: "p1", CreatedAt: "2026-10-12T02:00:00Z", Schedule: &dao.SchedulePayload{BlueprintID: "b1", OccurrenceDate: "2026-10-13", StartAt: time.Date(2026, 10, 13, 8, 0, 0, 0, time.UTC).Unix(), EndAt: time.Date(2026, 10, 13, 9, 0, 0, 0, time.UTC).Unix(), Timezone: "UTC"}},
+		{Type: dao.ItemTypeSchedule, ID: "s1", Title: "dentist followup", ProjectID: "p1", CreatedAt: "2026-10-12T02:00:00Z", Schedule: &dao.SchedulePayload{RuleID: "b1", OccurrenceDate: "2026-10-13", StartAt: time.Date(2026, 10, 13, 8, 0, 0, 0, time.UTC).Unix(), EndAt: time.Date(2026, 10, 13, 9, 0, 0, 0, time.UTC).Unix(), Timezone: "UTC"}},
 		{Type: dao.ItemTypeTask, ID: "t2", Title: "Buy milk", ProjectID: "p2", CreatedAt: "2026-10-12T01:00:00Z", Task: &dao.TaskPayload{}},
 	}}
 	page, err := NewListUseCase(reader, nil, func() time.Time { return time.Date(2026, 10, 12, 4, 0, 0, 0, time.UTC) }).Execute(context.Background(), "user-1", ListRequest{
@@ -91,7 +91,7 @@ func TestListFiltersAndCountsBeforeTypeAndPagination(t *testing.T) {
 func TestListMaintainsSnapshotAndBidirectionalCursor(t *testing.T) {
 	reader := &candidateReaderFake{timezone: "UTC", items: []dao.Item{
 		{Type: dao.ItemTypeTask, ID: "a", CreatedAt: "2026-10-12T03:00:00.000001Z", Task: &dao.TaskPayload{}},
-		{Type: dao.ItemTypeSchedule, ID: "b/2026-10-12", CreatedAt: "2026-10-12T03:00:00.000001Z", Schedule: &dao.SchedulePayload{BlueprintID: "b", OccurrenceDate: "2026-10-12", StartAt: time.Date(2026, 10, 12, 8, 0, 0, 0, time.UTC).Unix(), EndAt: time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC).Unix(), Timezone: "UTC"}},
+		{Type: dao.ItemTypeSchedule, ID: "b/2026-10-12", CreatedAt: "2026-10-12T03:00:00.000001Z", Schedule: &dao.SchedulePayload{RuleID: "b", OccurrenceDate: "2026-10-12", StartAt: time.Date(2026, 10, 12, 8, 0, 0, 0, time.UTC).Unix(), EndAt: time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC).Unix(), Timezone: "UTC"}},
 		{Type: dao.ItemTypeTask, ID: "c", CreatedAt: "2026-10-12T03:00:00Z", Task: &dao.TaskPayload{}},
 	}}
 	now := func() time.Time { return time.Date(2026, 10, 12, 3, 0, 0, 0, time.UTC) }
@@ -123,8 +123,8 @@ func TestListOrdersPreciseCreationTimesAndStableScheduleStartsAcrossPages(t *tes
 	reader := &candidateReaderFake{timezone: "UTC", items: []dao.Item{
 		{Type: dao.ItemTypeTask, ID: "exact", CreatedAt: "2026-10-12T03:00:00Z", Task: &dao.TaskPayload{}},
 		{Type: dao.ItemTypeTask, ID: "fraction", CreatedAt: "2026-10-12T03:00:00.000000001Z", Task: &dao.TaskPayload{}},
-		{Type: dao.ItemTypeSchedule, ID: "series/late", CreatedAt: "2026-10-12T02:00:00Z", Schedule: &dao.SchedulePayload{BlueprintID: "series", OccurrenceDate: "2026-10-13", StartAt: time.Date(2026, 10, 13, 8, 0, 0, 0, time.UTC).Unix(), EndAt: time.Date(2026, 10, 13, 9, 0, 0, 0, time.UTC).Unix(), Timezone: "UTC"}},
-		{Type: dao.ItemTypeSchedule, ID: "series/early", CreatedAt: "2026-10-12T02:00:00Z", Schedule: &dao.SchedulePayload{BlueprintID: "series", OccurrenceDate: "2026-10-12", StartAt: time.Date(2026, 10, 12, 8, 0, 0, 0, time.UTC).Unix(), EndAt: time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC).Unix(), Timezone: "UTC"}},
+		{Type: dao.ItemTypeSchedule, ID: "series/late", CreatedAt: "2026-10-12T02:00:00Z", Schedule: &dao.SchedulePayload{RuleID: "series", OccurrenceDate: "2026-10-13", StartAt: time.Date(2026, 10, 13, 8, 0, 0, 0, time.UTC).Unix(), EndAt: time.Date(2026, 10, 13, 9, 0, 0, 0, time.UTC).Unix(), Timezone: "UTC"}},
+		{Type: dao.ItemTypeSchedule, ID: "series/early", CreatedAt: "2026-10-12T02:00:00Z", Schedule: &dao.SchedulePayload{RuleID: "series", OccurrenceDate: "2026-10-12", StartAt: time.Date(2026, 10, 12, 8, 0, 0, 0, time.UTC).Unix(), EndAt: time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC).Unix(), Timezone: "UTC"}},
 	}}
 	uc := NewListUseCase(reader, nil, func() time.Time { return time.Date(2026, 10, 12, 4, 0, 0, 0, time.UTC) })
 	page, err := uc.Execute(context.Background(), "user-1", ListRequest{Size: 1})

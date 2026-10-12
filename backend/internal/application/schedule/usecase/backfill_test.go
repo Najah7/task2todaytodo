@@ -9,7 +9,7 @@ import (
 
 func TestLastSafeBackfillDateRespectsSameDayInstantCutoff(t *testing.T) {
 	day := time.Date(2025, time.October, 11, 0, 0, 0, 0, time.UTC)
-	rule := domain.BlueprintRule{
+	rule := domain.RecurrenceRule{
 		Start:    time.Date(2025, time.October, 11, 9, 0, 0, 0, time.UTC),
 		End:      time.Date(2025, time.October, 11, 10, 0, 0, 0, time.UTC),
 		Timezone: "UTC", Frequency: "daily", Interval: 1,

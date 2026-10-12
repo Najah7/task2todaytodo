@@ -70,6 +70,10 @@ func (r *stubUserRepository) UpdateTimezone(_ context.Context, _ domain.UserID, 
 	return r.updateTimezoneErr
 }
 
+func (*stubUserRepository) UpdateSleepSettings(_ context.Context, _ domain.UserID, _, _ string) error {
+	return nil
+}
+
 func (*stubUserRepository) TimezoneExists(_ context.Context, timezone string) (bool, error) {
 	switch timezone {
 	case "UTC", "Asia/Tokyo", "America/Los_Angeles":

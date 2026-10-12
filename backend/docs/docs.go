@@ -57,6 +57,48 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/jobs/prefill-allocations:run": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Materialize allocation occurrences",
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/rest.OperationResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/operations": {
             "get": {
                 "security": [
@@ -158,6 +200,503 @@ const docTemplate = `{
                 }
             }
         },
+        "/allocation-plans": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Allocations"
+                ],
+                "summary": "Get weekly allocation plans",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.AllocationPlansResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Allocations"
+                ],
+                "summary": "Replace weekly allocation plans",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current allocation plans revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Weekly plans",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.AllocationPlansRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.AllocationPlansResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "Precondition Failed",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "Precondition Required",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/allocation-rules": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Allocations"
+                ],
+                "summary": "Get allocation Rules",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.AllocationRulesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Allocations"
+                ],
+                "summary": "Replace weekly allocation Rules",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current allocation rules revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Weekly Rules",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.AllocationRulesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.AllocationRulesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "Precondition Failed",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "Precondition Required",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/allocation-weeks/{week_start}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Allocations"
+                ],
+                "summary": "Get project allocation week",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Monday date (YYYY-MM-DD)",
+                        "name": "week_start",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.AllocationWeekResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/allocations": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Allocations"
+                ],
+                "summary": "Create Project allocation",
+                "parameters": [
+                    {
+                        "description": "Allocation",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.CreateAllocationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/rest.AllocationOccurrenceResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/allocations/{rule_id}/{occurrence_date}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Allocations"
+                ],
+                "summary": "Delete Project allocation occurrence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "rule_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Original local occurrence date",
+                        "name": "occurrence_date",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Occurrence revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "current or following",
+                        "name": "scope",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Rule revision when scope is following",
+                        "name": "rule_revision",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Allocations"
+                ],
+                "summary": "Update Project allocation occurrence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "rule_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Original local occurrence date",
+                        "name": "occurrence_date",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Occurrence revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Occurrence update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.UpdateAllocationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.AllocationOccurrenceResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/daily-sleep-exceptions/{local_date}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Allocations"
+                ],
+                "summary": "Set daily sleep exception",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Waking date",
+                        "name": "local_date",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exception revision, or 0 when absent",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Sleep exception",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.DailySleepExceptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.SleepExceptionResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Allocations"
+                ],
+                "summary": "Reset daily sleep exception",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Waking date",
+                        "name": "local_date",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exception revision",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/inbox": {
             "get": {
                 "security": [
@@ -165,7 +704,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns a paginated, read-only projection of all incomplete Tasks assigned to the caller and uncompleted, unskipped Schedule occurrences from the caller's local today through six days later, including virtual recurring occurrences. Results are ordered by original Task or Schedule blueprint creation time descending; occurrences from one blueprint are ordered by scheduled start time ascending.",
+                "description": "Returns a paginated, read-only projection of all incomplete Tasks assigned to the caller and uncompleted, unskipped Schedule occurrences from the caller's local today through six days later, including virtual recurring occurrences. Results are ordered by original Task or Schedule rule creation time descending; occurrences from one rule are ordered by scheduled start time ascending.",
                 "produces": [
                     "application/json"
                 ],
@@ -1185,7 +1724,7 @@ const docTemplate = `{
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "Create Project schedule blueprint",
+                "summary": "Create Project schedule rule",
                 "parameters": [
                     {
                         "type": "string",
@@ -1200,7 +1739,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleBlueprintCreateRequest"
+                            "$ref": "#/definitions/rest.ScheduleRuleCreateRequest"
                         }
                     }
                 ],
@@ -1208,7 +1747,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleBlueprintResponse"
+                            "$ref": "#/definitions/rest.ScheduleRuleResponse"
                         }
                     }
                 }
@@ -1976,7 +2515,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedule-blueprints": {
+        "/schedule-rules": {
             "post": {
                 "security": [
                     {
@@ -1992,7 +2531,7 @@ const docTemplate = `{
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "Create schedule blueprint",
+                "summary": "Create schedule rule",
                 "parameters": [
                     {
                         "description": "Schedule definition",
@@ -2000,7 +2539,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleBlueprintCreateRequest"
+                            "$ref": "#/definitions/rest.ScheduleRuleCreateRequest"
                         }
                     }
                 ],
@@ -2008,13 +2547,13 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleBlueprintResponse"
+                            "$ref": "#/definitions/rest.ScheduleRuleResponse"
                         }
                     }
                 }
             }
         },
-        "/schedule-blueprints/{id}": {
+        "/schedule-rules/{id}": {
             "get": {
                 "security": [
                     {
@@ -2027,11 +2566,11 @@ const docTemplate = `{
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "Get schedule blueprint",
+                "summary": "Get schedule rule",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
+                        "description": "Rule ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -2041,7 +2580,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleBlueprintResponse"
+                            "$ref": "#/definitions/rest.ScheduleRuleResponse"
                         }
                     }
                 }
@@ -2061,18 +2600,18 @@ const docTemplate = `{
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "Update schedule blueprint",
+                "summary": "Update schedule rule",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
+                        "description": "Rule ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "Current blueprint revision",
+                        "description": "Current rule revision",
                         "name": "If-Match",
                         "in": "header",
                         "required": true
@@ -2083,7 +2622,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleBlueprintUpdateRequest"
+                            "$ref": "#/definitions/rest.ScheduleRuleUpdateRequest"
                         }
                     }
                 ],
@@ -2091,13 +2630,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.ScheduleBlueprintResponse"
+                            "$ref": "#/definitions/rest.ScheduleRuleResponse"
                         }
                     }
                 }
             }
         },
-        "/schedule-blueprints/{id}/assignees": {
+        "/schedule-rules/{id}/assignees": {
             "get": {
                 "security": [
                     {
@@ -2114,7 +2653,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
+                        "description": "Rule ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -2130,7 +2669,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedule-blueprints/{id}/following/{occurrence_date}": {
+        "/schedule-rules/{id}/following/{occurrence_date}": {
             "delete": {
                 "security": [
                     {
@@ -2144,7 +2683,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
+                        "description": "Rule ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -2158,7 +2697,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Current blueprint revision",
+                        "description": "Current rule revision",
                         "name": "If-Match",
                         "in": "header",
                         "required": true
@@ -2171,7 +2710,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedule-blueprints/{id}/revisions": {
+        "/schedule-rules/{id}/revisions": {
             "get": {
                 "security": [
                     {
@@ -2184,11 +2723,11 @@ const docTemplate = `{
                 "tags": [
                     "Schedules"
                 ],
-                "summary": "List schedule blueprint revisions",
+                "summary": "List schedule rule revisions",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
+                        "description": "Rule ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -2210,7 +2749,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.listEnvelope-rest_ScheduleBlueprintRevisionResponse"
+                            "$ref": "#/definitions/rest.listEnvelope-rest_ScheduleRuleRevisionResponse"
                         }
                     }
                 }
@@ -2274,7 +2813,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedules/{blueprint_id}/{occurrence_date}": {
+        "/schedules/{rule_id}/{occurrence_date}": {
             "get": {
                 "security": [
                     {
@@ -2291,8 +2830,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
-                        "name": "blueprint_id",
+                        "description": "Rule ID",
+                        "name": "rule_id",
                         "in": "path",
                         "required": true
                     },
@@ -2326,8 +2865,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
-                        "name": "blueprint_id",
+                        "description": "Rule ID",
+                        "name": "rule_id",
                         "in": "path",
                         "required": true
                     },
@@ -2371,8 +2910,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
-                        "name": "blueprint_id",
+                        "description": "Rule ID",
+                        "name": "rule_id",
                         "in": "path",
                         "required": true
                     },
@@ -2410,7 +2949,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedules/{blueprint_id}/{occurrence_date}/revisions": {
+        "/schedules/{rule_id}/{occurrence_date}/revisions": {
             "get": {
                 "security": [
                     {
@@ -2427,8 +2966,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
-                        "name": "blueprint_id",
+                        "description": "Rule ID",
+                        "name": "rule_id",
                         "in": "path",
                         "required": true
                     },
@@ -2462,7 +3001,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedules/{blueprint_id}/{occurrence_date}:complete": {
+        "/schedules/{rule_id}/{occurrence_date}:complete": {
             "post": {
                 "security": [
                     {
@@ -2476,8 +3015,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
-                        "name": "blueprint_id",
+                        "description": "Rule ID",
+                        "name": "rule_id",
                         "in": "path",
                         "required": true
                     },
@@ -2503,7 +3042,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedules/{blueprint_id}/{occurrence_date}:reopen": {
+        "/schedules/{rule_id}/{occurrence_date}:reopen": {
             "post": {
                 "security": [
                     {
@@ -2517,8 +3056,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
-                        "name": "blueprint_id",
+                        "description": "Rule ID",
+                        "name": "rule_id",
                         "in": "path",
                         "required": true
                     },
@@ -2544,7 +3083,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedules/{blueprint_id}/{occurrence_date}:reschedule": {
+        "/schedules/{rule_id}/{occurrence_date}:reschedule": {
             "post": {
                 "security": [
                     {
@@ -2564,8 +3103,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
-                        "name": "blueprint_id",
+                        "description": "Rule ID",
+                        "name": "rule_id",
                         "in": "path",
                         "required": true
                     },
@@ -2603,7 +3142,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedules/{blueprint_id}/{occurrence_date}:restore": {
+        "/schedules/{rule_id}/{occurrence_date}:restore": {
             "post": {
                 "security": [
                     {
@@ -2617,8 +3156,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
-                        "name": "blueprint_id",
+                        "description": "Rule ID",
+                        "name": "rule_id",
                         "in": "path",
                         "required": true
                     },
@@ -2644,7 +3183,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedules/{blueprint_id}/{occurrence_date}:skip": {
+        "/schedules/{rule_id}/{occurrence_date}:skip": {
             "post": {
                 "security": [
                     {
@@ -2658,8 +3197,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Blueprint ID",
-                        "name": "blueprint_id",
+                        "description": "Rule ID",
+                        "name": "rule_id",
                         "in": "path",
                         "required": true
                     },
@@ -4351,6 +4890,62 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/me/sleep": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Update current user sleep settings",
+                "parameters": [
+                    {
+                        "description": "Sleep settings",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.UserSleepSettingsUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users/me/timezone": {
             "patch": {
                 "security": [
@@ -4530,6 +5125,367 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.AllocationConflictMetadata": {
+            "type": "object",
+            "properties": {
+                "end_at": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "rule_id": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.AllocationDayResponse": {
+            "type": "object",
+            "properties": {
+                "allocated_minutes": {
+                    "type": "integer"
+                },
+                "bedtime_at": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "free_minutes": {
+                    "type": "integer"
+                },
+                "has_sleep_exception": {
+                    "type": "boolean"
+                },
+                "sleep_revision": {
+                    "type": "integer"
+                },
+                "wake_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.AllocationOccurrenceResponse": {
+            "type": "object",
+            "properties": {
+                "can_delete": {
+                    "type": "boolean"
+                },
+                "can_delete_following": {
+                    "type": "boolean"
+                },
+                "can_update": {
+                    "type": "boolean"
+                },
+                "can_update_following": {
+                    "type": "boolean"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_exception": {
+                    "type": "boolean"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "project_title": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "rule_id": {
+                    "type": "string"
+                },
+                "rule_revision": {
+                    "type": "integer"
+                },
+                "source_revision_id": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.AllocationPlanItemRequest": {
+            "type": "object",
+            "properties": {
+                "project_id": {
+                    "type": "string"
+                },
+                "target_minutes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "rest.AllocationPlanItemResponse": {
+            "type": "object",
+            "properties": {
+                "project_id": {
+                    "type": "string"
+                },
+                "target_minutes": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.AllocationPlansRequest": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.AllocationPlanItemRequest"
+                    }
+                }
+            }
+        },
+        "rest.AllocationPlansResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.AllocationPlanItemResponse"
+                    }
+                },
+                "revision": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.AllocationRuleRequest": {
+            "type": "object",
+            "properties": {
+                "end_day_offset": {
+                    "type": "integer"
+                },
+                "end_time": {
+                    "type": "string",
+                    "example": "10:30"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string",
+                    "example": "09:00"
+                },
+                "timezone": {
+                    "type": "string",
+                    "example": "Asia/Tokyo"
+                },
+                "weekday": {
+                    "type": "integer",
+                    "example": 0
+                }
+            }
+        },
+        "rest.AllocationRuleResponse": {
+            "type": "object",
+            "properties": {
+                "end_day_offset": {
+                    "type": "integer"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "paused_reason": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "project_title": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "weekday": {
+                    "type": "integer"
+                }
+            }
+        },
+        "rest.AllocationRulesRequest": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.AllocationRuleRequest"
+                    }
+                }
+            }
+        },
+        "rest.AllocationRulesResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.AllocationRuleResponse"
+                    }
+                },
+                "revision": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.AllocationWeekProjectResponse": {
+            "type": "object",
+            "properties": {
+                "allocated_minutes": {
+                    "type": "integer"
+                },
+                "color_index": {
+                    "type": "integer"
+                },
+                "difference_minutes": {
+                    "type": "integer"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "target_minutes": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.AllocationWeekResponse": {
+            "type": "object",
+            "properties": {
+                "allocated_minutes": {
+                    "type": "integer"
+                },
+                "allocations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.AllocationOccurrenceResponse"
+                    }
+                },
+                "days": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.AllocationDayResponse"
+                    }
+                },
+                "difference_minutes": {
+                    "type": "integer"
+                },
+                "free_minutes": {
+                    "type": "integer"
+                },
+                "paused_rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.PausedAllocationRuleResponse"
+                    }
+                },
+                "projects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.AllocationWeekProjectResponse"
+                    }
+                },
+                "sleep_intervals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.SleepIntervalResponse"
+                    }
+                },
+                "target_minutes": {
+                    "type": "integer"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "week_start": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.CreateAllocationRequest": {
+            "type": "object",
+            "properties": {
+                "end_at": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "repeat_weekly": {
+                    "type": "boolean"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.DailySleepExceptionRequest": {
+            "type": "object",
+            "properties": {
+                "bedtime_local": {
+                    "type": "string",
+                    "example": "2026-10-13T01:00"
+                },
+                "timezone": {
+                    "type": "string",
+                    "example": "Asia/Tokyo"
+                },
+                "wake_local": {
+                    "type": "string",
+                    "example": "2026-10-12T07:00"
+                }
+            }
+        },
         "rest.Err": {
             "type": "object",
             "properties": {
@@ -4561,6 +5517,9 @@ const docTemplate = `{
                 },
                 "message": {
                     "type": "string"
+                },
+                "metadata": {
+                    "$ref": "#/definitions/rest.AllocationConflictMetadata"
                 }
             }
         },
@@ -4685,7 +5644,6 @@ const docTemplate = `{
             "required": [
                 "all_day",
                 "assignee_id",
-                "blueprint_id",
                 "can_assign",
                 "can_update",
                 "can_update_following",
@@ -4696,6 +5654,7 @@ const docTemplate = `{
                 "occurrence_date",
                 "occurrence_id",
                 "revision",
+                "rule_id",
                 "skipped",
                 "source_revision_id",
                 "start_at",
@@ -4706,9 +5665,6 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "assignee_id": {
-                    "type": "string"
-                },
-                "blueprint_id": {
                     "type": "string"
                 },
                 "can_assign": {
@@ -4741,6 +5697,9 @@ const docTemplate = `{
                 },
                 "revision": {
                     "type": "integer"
+                },
+                "rule_id": {
+                    "type": "string"
                 },
                 "skipped": {
                     "type": "boolean"
@@ -4873,10 +5832,13 @@ const docTemplate = `{
                 "finished_at": {
                     "type": "string"
                 },
+                "generated_occurrences": {
+                    "type": "integer"
+                },
                 "generated_schedules": {
                     "type": "integer"
                 },
-                "processed_blueprints": {
+                "processed_rules": {
                     "type": "integer"
                 },
                 "started_at": {
@@ -4905,8 +5867,23 @@ const docTemplate = `{
                 "response": {
                     "type": "object",
                     "additionalProperties": {
-                        "type": "integer"
+                        "type": "integer",
+                        "format": "int64"
                     }
+                }
+            }
+        },
+        "rest.PausedAllocationRuleResponse": {
+            "type": "object",
+            "properties": {
+                "project_id": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "rule_id": {
+                    "type": "string"
                 }
             }
         },
@@ -5580,7 +6557,207 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.ScheduleBlueprintCreateRequest": {
+        "rest.ScheduleOccurrenceListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ScheduleOccurrenceResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleOccurrenceRescheduleRequest": {
+            "type": "object",
+            "properties": {
+                "end_at": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleOccurrenceResponse": {
+            "type": "object",
+            "properties": {
+                "all_day": {
+                    "type": "boolean"
+                },
+                "assignee_id": {
+                    "type": "string"
+                },
+                "can_assign": {
+                    "type": "boolean"
+                },
+                "can_delete": {
+                    "type": "boolean"
+                },
+                "can_delete_following": {
+                    "type": "boolean"
+                },
+                "can_skip": {
+                    "type": "boolean"
+                },
+                "can_update": {
+                    "type": "boolean"
+                },
+                "can_update_following": {
+                    "type": "boolean"
+                },
+                "completed": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "deleted": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "persisted": {
+                    "type": "boolean"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "rule_id": {
+                    "type": "string"
+                },
+                "skipped": {
+                    "type": "boolean"
+                },
+                "source_revision_id": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleOccurrenceRevisionResponse": {
+            "type": "object",
+            "properties": {
+                "all_day": {
+                    "type": "boolean"
+                },
+                "assignee_id": {
+                    "type": "string"
+                },
+                "changed_at": {
+                    "type": "integer"
+                },
+                "changed_by": {
+                    "type": "string"
+                },
+                "completed": {
+                    "type": "boolean"
+                },
+                "deleted_at": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "occurrence_date": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "skipped_at": {
+                    "type": "integer"
+                },
+                "source_revision_id": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleOccurrenceUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "all_day": {
+                    "type": "boolean"
+                },
+                "assignee_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ScheduleRuleCreateRequest": {
             "type": "object",
             "properties": {
                 "all_day": {
@@ -5627,7 +6804,7 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.ScheduleBlueprintResponse": {
+        "rest.ScheduleRuleResponse": {
             "type": "object",
             "properties": {
                 "all_day": {
@@ -5698,7 +6875,7 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.ScheduleBlueprintRevisionResponse": {
+        "rest.ScheduleRuleRevisionResponse": {
             "type": "object",
             "properties": {
                 "all_day": {
@@ -5784,7 +6961,7 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.ScheduleBlueprintUpdateRequest": {
+        "rest.ScheduleRuleUpdateRequest": {
             "type": "object",
             "properties": {
                 "all_day": {
@@ -5839,212 +7016,6 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.ScheduleOccurrenceListResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/rest.ScheduleOccurrenceResponse"
-                    }
-                },
-                "next_page_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.ScheduleOccurrenceRescheduleRequest": {
-            "type": "object",
-            "properties": {
-                "end_at": {
-                    "type": "string"
-                },
-                "start_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.ScheduleOccurrenceResponse": {
-            "type": "object",
-            "properties": {
-                "all_day": {
-                    "type": "boolean"
-                },
-                "assignee_id": {
-                    "type": "string"
-                },
-                "blueprint_id": {
-                    "type": "string"
-                },
-                "can_assign": {
-                    "type": "boolean"
-                },
-                "can_delete": {
-                    "type": "boolean"
-                },
-                "can_delete_following": {
-                    "type": "boolean"
-                },
-                "can_skip": {
-                    "type": "boolean"
-                },
-                "can_update": {
-                    "type": "boolean"
-                },
-                "can_update_following": {
-                    "type": "boolean"
-                },
-                "completed": {
-                    "type": "boolean"
-                },
-                "created_at": {
-                    "type": "integer"
-                },
-                "deleted": {
-                    "type": "boolean"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_override": {
-                    "type": "boolean"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "occurrence_date": {
-                    "type": "string"
-                },
-                "persisted": {
-                    "type": "boolean"
-                },
-                "project_id": {
-                    "type": "string"
-                },
-                "revision": {
-                    "type": "integer"
-                },
-                "skipped": {
-                    "type": "boolean"
-                },
-                "source_revision_id": {
-                    "type": "string"
-                },
-                "start_at": {
-                    "type": "string"
-                },
-                "timezone": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "integer"
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.ScheduleOccurrenceRevisionResponse": {
-            "type": "object",
-            "properties": {
-                "all_day": {
-                    "type": "boolean"
-                },
-                "assignee_id": {
-                    "type": "string"
-                },
-                "changed_at": {
-                    "type": "integer"
-                },
-                "changed_by": {
-                    "type": "string"
-                },
-                "completed": {
-                    "type": "boolean"
-                },
-                "deleted_at": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
-                "is_override": {
-                    "type": "boolean"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "occurrence_date": {
-                    "type": "string"
-                },
-                "project_id": {
-                    "type": "string"
-                },
-                "revision": {
-                    "type": "integer"
-                },
-                "skipped_at": {
-                    "type": "integer"
-                },
-                "source_revision_id": {
-                    "type": "string"
-                },
-                "start_at": {
-                    "type": "string"
-                },
-                "timezone": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.ScheduleOccurrenceUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "all_day": {
-                    "type": "boolean"
-                },
-                "assignee_id": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "project_id": {
-                    "type": "string",
-                    "x-nullable": true
-                },
-                "start_at": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
         "rest.SignupRequest": {
             "type": "object",
             "properties": {
@@ -6052,6 +7023,43 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.SleepExceptionResponse": {
+            "type": "object",
+            "properties": {
+                "bedtime_local": {
+                    "type": "string"
+                },
+                "has_exception": {
+                    "type": "boolean"
+                },
+                "local_date": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "wake_local": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.SleepIntervalResponse": {
+            "type": "object",
+            "properties": {
+                "end_at": {
+                    "type": "string"
+                },
+                "local_date": {
+                    "type": "string"
+                },
+                "start_at": {
                     "type": "string"
                 }
             }
@@ -6384,6 +7392,27 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.UpdateAllocationRequest": {
+            "type": "object",
+            "properties": {
+                "end_at": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "rule_revision": {
+                    "type": "integer"
+                },
+                "scope": {
+                    "type": "string",
+                    "example": "current"
+                },
+                "start_at": {
+                    "type": "string"
+                }
+            }
+        },
         "rest.UserInfoUpdateRequest": {
             "type": "object",
             "properties": {
@@ -6406,6 +7435,9 @@ const docTemplate = `{
         "rest.UserResponse": {
             "type": "object",
             "properties": {
+                "bedtime": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
@@ -6416,6 +7448,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_name": {
+                    "type": "string"
+                },
+                "wake_up_time": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.UserSleepSettingsUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "bedtime": {
+                    "type": "string"
+                },
+                "wake_up_time": {
                     "type": "string"
                 }
             }
@@ -6428,20 +7474,6 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.listEnvelope-rest_ScheduleBlueprintRevisionResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/rest.ScheduleBlueprintRevisionResponse"
-                    }
-                },
-                "next_page_token": {
-                    "type": "string"
-                }
-            }
-        },
         "rest.listEnvelope-rest_ScheduleOccurrenceRevisionResponse": {
             "type": "object",
             "properties": {
@@ -6449,6 +7481,20 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/rest.ScheduleOccurrenceRevisionResponse"
+                    }
+                },
+                "next_page_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.listEnvelope-rest_ScheduleRuleRevisionResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ScheduleRuleRevisionResponse"
                     }
                 },
                 "next_page_token": {

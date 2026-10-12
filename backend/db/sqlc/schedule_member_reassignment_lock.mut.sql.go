@@ -9,15 +9,15 @@ import (
 	"context"
 )
 
-const lockScheduleBlueprintForMemberReassignment = `-- name: LockScheduleBlueprintForMemberReassignment :one
-SELECT blueprint.id
-FROM schedule_blueprints blueprint
-WHERE blueprint.id = $1::text AND blueprint.deleted_at IS NULL
+const lockScheduleRuleForMemberReassignment = `-- name: LockScheduleRuleForMemberReassignment :one
+SELECT rule.id
+FROM schedule_rules rule
+WHERE rule.id = $1::text AND rule.deleted_at IS NULL
 FOR UPDATE
 `
 
-func (q *Queries) LockScheduleBlueprintForMemberReassignment(ctx context.Context, blueprintID string) (string, error) {
-	row := q.db.QueryRow(ctx, lockScheduleBlueprintForMemberReassignment, blueprintID)
+func (q *Queries) LockScheduleRuleForMemberReassignment(ctx context.Context, ruleID string) (string, error) {
+	row := q.db.QueryRow(ctx, lockScheduleRuleForMemberReassignment, ruleID)
 	var id string
 	err := row.Scan(&id)
 	return id, err

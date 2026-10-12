@@ -16,28 +16,28 @@ type resolvedOccurrence struct {
 }
 
 // occurrenceForDate resolves a readable concrete row first, then projects the
-// effective recurrence rule. A moved occurrence is found by its blueprint/date
+// effective recurrence rule. A moved occurrence is found by its rule/date
 // key instead of by the occurrence's current interval.
-func occurrenceForDate(ctx context.Context, repo BlueprintRepository, actorID, blueprintID, occurrenceDate string) (dao.ScheduleOccurrence, error) {
+func occurrenceForDate(ctx context.Context, repo RuleRepository, actorID, ruleID, occurrenceDate string) (dao.ScheduleOccurrence, error) {
 	if _, err := time.Parse("2006-01-02", occurrenceDate); err != nil {
 		return dao.ScheduleOccurrence{}, err
 	}
-	concrete, err := repo.GetPersistedOccurrence(ctx, actorID, blueprintID, occurrenceDate)
+	concrete, err := repo.GetPersistedOccurrence(ctx, actorID, ruleID, occurrenceDate)
 	if err == nil {
 		return concrete, nil
 	}
 	if !errors.Is(err, ErrOccurrenceNotFound) {
 		return dao.ScheduleOccurrence{}, err
 	}
-	resolved, err := virtualOccurrenceForDate(ctx, repo, actorID, blueprintID, occurrenceDate, shared.ScheduleRead())
+	resolved, err := virtualOccurrenceForDate(ctx, repo, actorID, ruleID, occurrenceDate, shared.ScheduleRead())
 	return resolved, err
 }
 
-func resolveOccurrenceForMutation(ctx context.Context, repo BlueprintRepository, actorID, blueprintID, occurrenceDate string, capability shared.Capability, includeInactive bool) (resolvedOccurrence, error) {
+func resolveOccurrenceForMutation(ctx context.Context, repo RuleRepository, actorID, ruleID, occurrenceDate string, capability shared.Capability, includeInactive bool) (resolvedOccurrence, error) {
 	if _, err := time.Parse("2006-01-02", occurrenceDate); err != nil {
 		return resolvedOccurrence{}, err
 	}
-	concrete, err := repo.GetPersistedOccurrenceForMutation(ctx, actorID, blueprintID, occurrenceDate, capability)
+	concrete, err := repo.GetPersistedOccurrenceForMutation(ctx, actorID, ruleID, occurrenceDate, capability)
 	if err == nil {
 		if !includeInactive && (concrete.Deleted || concrete.Skipped) {
 			return resolvedOccurrence{}, ErrOccurrenceInactive
@@ -47,14 +47,14 @@ func resolveOccurrenceForMutation(ctx context.Context, repo BlueprintRepository,
 	if !errors.Is(err, ErrOccurrenceNotFound) {
 		return resolvedOccurrence{}, err
 	}
-	virtual, err := virtualOccurrenceForDate(ctx, repo, actorID, blueprintID, occurrenceDate, capability)
+	virtual, err := virtualOccurrenceForDate(ctx, repo, actorID, ruleID, occurrenceDate, capability)
 	if err != nil {
 		return resolvedOccurrence{}, err
 	}
 	return resolvedOccurrence{value: virtual}, nil
 }
 
-func lockAndReloadOccurrence(ctx context.Context, repos Repositories, actorID, blueprintID, occurrenceDate string, initial resolvedOccurrence, expectedRevision int32, capability shared.Capability, projectIDs []string, asOf time.Time, includeInactive bool) (resolvedOccurrence, scheduleProjectMutationSnapshots, error) {
+func lockAndReloadOccurrence(ctx context.Context, repos Repositories, actorID, ruleID, occurrenceDate string, initial resolvedOccurrence, expectedRevision int32, capability shared.Capability, projectIDs []string, asOf time.Time, includeInactive bool) (resolvedOccurrence, scheduleProjectMutationSnapshots, error) {
 	if initial.value.Revision != expectedRevision {
 		return resolvedOccurrence{}, nil, ErrOccurrenceRevisionMismatch
 	}
@@ -62,10 +62,10 @@ func lockAndReloadOccurrence(ctx context.Context, repos Repositories, actorID, b
 	if err != nil {
 		return resolvedOccurrence{}, nil, err
 	}
-	if err := repos.Blueprints().LockOccurrenceForMutation(ctx, actorID, blueprintID, occurrenceDate, capability); err != nil {
+	if err := repos.Rules().LockOccurrenceForMutation(ctx, actorID, ruleID, occurrenceDate, capability); err != nil {
 		return resolvedOccurrence{}, nil, err
 	}
-	current, err := resolveOccurrenceForMutation(ctx, repos.Blueprints(), actorID, blueprintID, occurrenceDate, capability, includeInactive)
+	current, err := resolveOccurrenceForMutation(ctx, repos.Rules(), actorID, ruleID, occurrenceDate, capability, includeInactive)
 	if err != nil {
 		return resolvedOccurrence{}, nil, err
 	}
@@ -88,16 +88,16 @@ func virtualOccurrenceID(issueID func() string) (string, error) {
 	return id, nil
 }
 
-func virtualOccurrenceForDate(ctx context.Context, repo BlueprintRepository, actorID, blueprintID, occurrenceDate string, capability shared.Capability) (dao.ScheduleOccurrence, error) {
+func virtualOccurrenceForDate(ctx context.Context, repo RuleRepository, actorID, ruleID, occurrenceDate string, capability shared.Capability) (dao.ScheduleOccurrence, error) {
 	date, err := time.Parse("2006-01-02", occurrenceDate)
 	if err != nil {
 		return dao.ScheduleOccurrence{}, err
 	}
-	revision, err := repo.GetEffectiveRevisionForDate(ctx, actorID, blueprintID, occurrenceDate, capability)
+	revision, err := repo.GetEffectiveRevisionForDate(ctx, actorID, ruleID, occurrenceDate, capability)
 	if err != nil {
 		return dao.ScheduleOccurrence{}, err
 	}
-	pauses, err := repo.ListPauseIntervals(ctx, actorID, blueprintID)
+	pauses, err := repo.ListPauseIntervals(ctx, actorID, ruleID)
 	if err != nil {
 		return dao.ScheduleOccurrence{}, err
 	}
@@ -106,16 +106,16 @@ func virtualOccurrenceForDate(ctx context.Context, repo BlueprintRepository, act
 	// still project the requested local occurrence date.
 	from := date.AddDate(0, 0, -2).UTC()
 	to := date.AddDate(0, 0, 3).UTC()
-	origins, err := repo.ListOccurrenceOrigins(ctx, actorID, []string{blueprintID}, from, to)
+	origins, err := repo.ListOccurrenceOrigins(ctx, actorID, []string{ruleID}, from, to)
 	if err != nil {
 		return dao.ScheduleOccurrence{}, err
 	}
-	items, err := projectOccurrences([]dao.BlueprintRevision{revision}, nil, origins, from, to, false)
+	items, err := projectOccurrences([]dao.RuleRevision{revision}, nil, origins, from, to, false)
 	if err != nil {
 		return dao.ScheduleOccurrence{}, err
 	}
 	for _, item := range items {
-		if item.BlueprintID == blueprintID && item.OccurrenceDate == occurrenceDate {
+		if item.RuleID == ruleID && item.OccurrenceDate == occurrenceDate {
 			return item, nil
 		}
 	}

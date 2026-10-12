@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 
+	allocationrepository "github.com/Najah7/task2todaytodo/internal/application/allocation/repository"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
@@ -24,9 +25,10 @@ func (u *ScheduleUOW) Do(ctx context.Context, fn func(context.Context, scheduleu
 	return RunInTx(ctx, u.pool, func(tx pgx.Tx) error {
 		projectRepository := u.projects.WithTx(tx).Projects
 		scheduleStore := u.store.WithTx(tx)
+		allocationRules := allocationrepository.NewAllocationRepository(u.pool).WithTx(tx)
 		return fn(ctx, scheduleRepositories{
 			store:     scheduleStore,
-			lifecycle: projectusecase.NewProjectLifecycleUseCase(projectRepository, projectRepository, scheduleStore.Schedules),
+			lifecycle: projectusecase.NewProjectLifecycleUseCase(projectRepository, projectRepository, scheduleStore.Schedules, allocationProjectLifecycleAdapter{repository: allocationRules}),
 		})
 	})
 }
@@ -40,7 +42,7 @@ func (r scheduleRepositories) Schedules() scheduleusecase.ScheduleRepository {
 	return r.store.Schedules
 }
 
-func (r scheduleRepositories) Blueprints() scheduleusecase.BlueprintRepository {
+func (r scheduleRepositories) Rules() scheduleusecase.RuleRepository {
 	return r.store.Schedules
 }
 

@@ -84,20 +84,20 @@ func (r inboxCandidateReader) ReadCandidates(ctx context.Context, actorID string
 		}
 		anchor = page.Next
 	}
-	blueprintIDs := make(map[string]struct{})
+	ruleIDs := make(map[string]struct{})
 	for _, schedule := range scheduleRows {
-		blueprintIDs[schedule.BlueprintID] = struct{}{}
+		ruleIDs[schedule.RuleID] = struct{}{}
 		if schedule.ProjectID != "" {
 			projectIDs[schedule.ProjectID] = struct{}{}
 		}
 	}
-	blueprintMetadata, err := r.inbox.Metadata.ListScheduleBlueprintMetadata(ctx, sortedKeys(blueprintIDs))
+	ruleMetadata, err := r.inbox.Metadata.ListScheduleRuleMetadata(ctx, sortedKeys(ruleIDs))
 	if err != nil {
 		return nil, err
 	}
-	createdAtByBlueprint := make(map[string]string, len(blueprintMetadata))
-	for _, metadata := range blueprintMetadata {
-		createdAtByBlueprint[metadata.BlueprintID] = metadata.CreatedAt
+	createdAtByRule := make(map[string]string, len(ruleMetadata))
+	for _, metadata := range ruleMetadata {
+		createdAtByRule[metadata.RuleID] = metadata.CreatedAt
 	}
 	projectMetadata, err := r.inbox.Metadata.ListProjectMetadata(ctx, actorID, sortedKeys(projectIDs))
 	if err != nil {
@@ -114,11 +114,11 @@ func (r inboxCandidateReader) ReadCandidates(ctx context.Context, actorID string
 		if schedule.AssigneeID != actorID || schedule.Deleted {
 			continue
 		}
-		createdAt := createdAtByBlueprint[schedule.BlueprintID]
+		createdAt := createdAtByRule[schedule.RuleID]
 		if createdAt == "" {
 			continue
 		}
-		id := schedule.BlueprintID + "/" + schedule.OccurrenceDate
+		id := schedule.RuleID + "/" + schedule.OccurrenceDate
 		projectID := schedule.ProjectID
 		var occurrenceID *string
 		if schedule.ID != nil {
@@ -129,7 +129,7 @@ func (r inboxCandidateReader) ReadCandidates(ctx context.Context, actorID string
 			Type: inboxdao.ItemTypeSchedule, ID: id, Title: schedule.Title, ProjectID: projectID,
 			ProjectName: projectNames[projectID], CreatedAt: createdAt,
 			Schedule: &inboxdao.SchedulePayload{
-				OccurrenceID: occurrenceID, BlueprintID: schedule.BlueprintID, OccurrenceDate: schedule.OccurrenceDate,
+				OccurrenceID: occurrenceID, RuleID: schedule.RuleID, OccurrenceDate: schedule.OccurrenceDate,
 				SourceRevisionID: schedule.SourceRevisionID, AssigneeID: schedule.AssigneeID, Description: schedule.Description,
 				Location: schedule.Location, Timezone: schedule.Timezone, AllDay: schedule.AllDay, Completed: schedule.Completed,
 				Skipped: schedule.Skipped, StartAt: schedule.StartAt, EndAt: schedule.EndAt, Revision: schedule.Revision,

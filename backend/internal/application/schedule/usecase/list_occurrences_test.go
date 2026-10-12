@@ -10,15 +10,15 @@ import (
 
 func TestProjectionKeepsRecurrencePhaseAndLocalEndOffsetAfterEffectiveDate(t *testing.T) {
 	until := "2026-10-31"
-	revision := dao.BlueprintRevision{Blueprint: dao.Blueprint{
-		ID: "blueprint", UserID: "owner", Revision: 2, EffectiveFrom: "2026-10-10",
+	revision := dao.RuleRevision{Rule: dao.Rule{
+		ID: "rule", UserID: "owner", Revision: 2, EffectiveFrom: "2026-10-10",
 		RecurrenceAnchorDate: "2026-10-01", LocalStart: "2026-10-01 23:00:00",
 		LocalEnd: "2026-10-02 01:00:00", Timezone: "UTC", Frequency: "daily", Interval: 2,
 		Title: "overnight", AssigneeID: "owner",
 	}, RevisionID: "revision-2", EffectiveUntil: &until}
 	from := time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC)
-	rows, err := projectOccurrences([]dao.BlueprintRevision{revision}, nil, nil, from, to, false)
+	rows, err := projectOccurrences([]dao.RuleRevision{revision}, nil, nil, from, to, false)
 	if err != nil {
 		t.Fatalf("projectOccurrences() error = %v", err)
 	}
@@ -39,15 +39,15 @@ func TestProjectionKeepsRecurrencePhaseAndLocalEndOffsetAfterEffectiveDate(t *te
 }
 
 func TestAllDayProjectionUsesLocalCalendarDaysAcrossDST(t *testing.T) {
-	revision := dao.BlueprintRevision{Blueprint: dao.Blueprint{
-		ID: "blueprint", UserID: "owner", Revision: 1, EffectiveFrom: "2026-03-08",
+	revision := dao.RuleRevision{Rule: dao.Rule{
+		ID: "rule", UserID: "owner", Revision: 1, EffectiveFrom: "2026-03-08",
 		RecurrenceAnchorDate: "2026-03-08", LocalStart: "2026-03-08 00:00:00",
 		LocalEnd: "2026-03-10 00:00:00", Timezone: "America/New_York", Frequency: "once",
 		AllDay: true, Title: "two days", AssigneeID: "owner",
 	}, RevisionID: "revision-1"}
 	from := time.Date(2026, 3, 8, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2026, 3, 11, 0, 0, 0, 0, time.UTC)
-	rows, err := projectOccurrences([]dao.BlueprintRevision{revision}, nil, nil, from, to, false)
+	rows, err := projectOccurrences([]dao.RuleRevision{revision}, nil, nil, from, to, false)
 	if err != nil {
 		t.Fatalf("projectOccurrences() error = %v", err)
 	}
@@ -64,14 +64,14 @@ func TestAllDayProjectionUsesLocalCalendarDaysAcrossDST(t *testing.T) {
 }
 
 func TestOneDayAllDayProjectionSpansDSTBoundary(t *testing.T) {
-	revision := dao.BlueprintRevision{Blueprint: dao.Blueprint{
-		ID: "blueprint", UserID: "owner", Revision: 1, EffectiveFrom: "2026-03-08",
+	revision := dao.RuleRevision{Rule: dao.Rule{
+		ID: "rule", UserID: "owner", Revision: 1, EffectiveFrom: "2026-03-08",
 		RecurrenceAnchorDate: "2026-03-08", LocalStart: "2026-03-08 00:00:00",
 		LocalEnd: "2026-03-09 00:00:00", Timezone: "America/New_York", Frequency: "once",
 		AllDay: true, Title: "one day", AssigneeID: "owner",
 	}, RevisionID: "revision-1"}
 	from := time.Date(2026, 3, 8, 0, 0, 0, 0, time.UTC)
-	rows, err := projectOccurrences([]dao.BlueprintRevision{revision}, nil, nil, from, from.Add(48*time.Hour), false)
+	rows, err := projectOccurrences([]dao.RuleRevision{revision}, nil, nil, from, from.Add(48*time.Hour), false)
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("projected rows=%+v err=%v", rows, err)
 	}
@@ -84,15 +84,15 @@ func TestIncludeSkippedProjectsSavedOccurrenceButKeepsDeletedHidden(t *testing.T
 	from := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(24 * time.Hour)
 	saved := []dao.ScheduleOccurrence{
-		{BlueprintID: "skipped", OccurrenceDate: "2026-03-01", StartAt: from.Unix(), EndAt: from.Add(time.Hour).Unix(), Skipped: true},
-		{BlueprintID: "deleted", OccurrenceDate: "2026-03-01", StartAt: from.Unix(), EndAt: from.Add(time.Hour).Unix(), Deleted: true},
+		{RuleID: "skipped", OccurrenceDate: "2026-03-01", StartAt: from.Unix(), EndAt: from.Add(time.Hour).Unix(), Skipped: true},
+		{RuleID: "deleted", OccurrenceDate: "2026-03-01", StartAt: from.Unix(), EndAt: from.Add(time.Hour).Unix(), Deleted: true},
 	}
 	without, err := projectOccurrences(nil, saved, nil, from, to, false)
 	if err != nil || len(without) != 0 {
 		t.Fatalf("default projection = %+v, err %v; want no rows", without, err)
 	}
 	with, err := projectOccurrences(nil, saved, nil, from, to, true)
-	if err != nil || len(with) != 1 || with[0].BlueprintID != "skipped" {
+	if err != nil || len(with) != 1 || with[0].RuleID != "skipped" {
 		t.Fatalf("include-skipped projection = %+v, err %v; want skipped only", with, err)
 	}
 }
@@ -111,7 +111,7 @@ func TestAllDayOccurrenceToggleNormalizesOnlyOmittedBounds(t *testing.T) {
 	}
 	start := time.Date(2026, 3, 8, 9, 0, 0, 0, mustLocation(t, "America/New_York"))
 	occurrence.StartAt = start.Unix()
-	if err := normalizeOccurrenceAllDayBounds(&occurrence, UpdateScheduleInput{StartAt: &start}); err != domain.ErrBlueprintAllDayTime {
+	if err := normalizeOccurrenceAllDayBounds(&occurrence, UpdateScheduleInput{StartAt: &start}); err != domain.ErrRuleAllDayTime {
 		t.Errorf("explicit non-midnight start error = %v, want all-day boundary error", err)
 	}
 	midnight := time.Date(2026, 3, 8, 0, 0, 0, 0, mustLocation(t, "America/New_York"))
@@ -121,22 +121,22 @@ func TestAllDayOccurrenceToggleNormalizesOnlyOmittedBounds(t *testing.T) {
 	}
 }
 
-func TestFollowingPermissionUsesActiveBlueprintStartInsteadOfMovedOccurrenceTime(t *testing.T) {
+func TestFollowingPermissionUsesActiveRuleStartInsteadOfMovedOccurrenceTime(t *testing.T) {
 	now := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
-	revision := func() dao.BlueprintRevision {
-		return dao.BlueprintRevision{Blueprint: dao.Blueprint{
-			ID: "blueprint", EffectiveFrom: "2026-10-01", RecurrenceAnchorDate: "2026-10-01",
+	revision := func() dao.RuleRevision {
+		return dao.RuleRevision{Rule: dao.Rule{
+			ID: "rule", EffectiveFrom: "2026-10-01", RecurrenceAnchorDate: "2026-10-01",
 			LocalStart: "2026-10-01 09:00:00", LocalEnd: "2026-10-01 10:00:00",
 			Timezone: "UTC", Frequency: "daily", Interval: 1,
 		}, RevisionID: "revision"}
 	}
-	pastOccurrence := dao.ScheduleOccurrence{BlueprintID: "blueprint", OccurrenceDate: "2026-10-11", StartAt: now.Add(24 * time.Hour).Unix()}
-	pastScheduledStart := activeOccurrenceStart([]dao.BlueprintRevision{revision()}, pastOccurrence)
+	pastOccurrence := dao.ScheduleOccurrence{RuleID: "rule", OccurrenceDate: "2026-10-11", StartAt: now.Add(24 * time.Hour).Unix()}
+	pastScheduledStart := activeOccurrenceStart([]dao.RuleRevision{revision()}, pastOccurrence)
 	if followingAllowed(pastScheduledStart, now) {
 		t.Error("moved-to-future occurrence should not grant following access when the rule start is past")
 	}
-	futureOccurrence := dao.ScheduleOccurrence{BlueprintID: "blueprint", OccurrenceDate: "2026-10-12", StartAt: now.Add(-24 * time.Hour).Unix()}
-	futureScheduledStart := activeOccurrenceStart([]dao.BlueprintRevision{revision()}, futureOccurrence)
+	futureOccurrence := dao.ScheduleOccurrence{RuleID: "rule", OccurrenceDate: "2026-10-12", StartAt: now.Add(-24 * time.Hour).Unix()}
+	futureScheduledStart := activeOccurrenceStart([]dao.RuleRevision{revision()}, futureOccurrence)
 	if !followingAllowed(futureScheduledStart, now) {
 		t.Error("moved-to-past occurrence should retain following access when the rule start is future")
 	}
