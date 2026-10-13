@@ -24,7 +24,7 @@ func (f *todoCompletionReaderFake) ReadTodoCompletion(_ context.Context, actor s
 
 func TestTodoCompletionUseCaseValidatesDaysAndActor(t *testing.T) {
 	reader := &todoCompletionReaderFake{}
-	uc := NewTodoCompletionUseCase(reader)
+	uc := NewTodoCompletionUseCase(reader, paidPlanAccess{})
 	for _, days := range []int{0, 6, 8, 14, 31} {
 		if _, err := uc.Execute(context.Background(), "actor", days); !errors.Is(err, ErrInvalidDays) {
 			t.Errorf("days=%d error=%v, want ErrInvalidDays", days, err)
@@ -48,7 +48,7 @@ func TestTodoCompletionUseCasePassesSupportedPeriodAndResult(t *testing.T) {
 		},
 	}
 	reader := &todoCompletionReaderFake{result: want}
-	got, err := NewTodoCompletionUseCase(reader).Execute(context.Background(), "user-1", 7)
+	got, err := NewTodoCompletionUseCase(reader, paidPlanAccess{}).Execute(context.Background(), "user-1", 7)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestTodoCompletionUseCasePassesSupportedPeriodAndResult(t *testing.T) {
 	if got.Days[0].CompletionRatio == nil || *got.Days[0].CompletionRatio != (2.0/3.0) || got.Days[1].CompletionRatio == nil || *got.Days[1].CompletionRatio != 0 || got.Days[2].CompletionRatio != nil {
 		t.Fatalf("daily ratios=%+v, want computed and null zero-day ratios", got.Days)
 	}
-	if _, err := NewTodoCompletionUseCase(reader).Execute(context.Background(), "user-1", 30); err != nil {
+	if _, err := NewTodoCompletionUseCase(reader, paidPlanAccess{}).Execute(context.Background(), "user-1", 30); err != nil {
 		t.Fatalf("30-day period error=%v", err)
 	}
 }

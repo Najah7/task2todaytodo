@@ -6,6 +6,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/domain"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/shared/calendar"
 )
 
@@ -14,13 +15,21 @@ type DeleteOccurrenceUseCase struct {
 	uow     UnitOfWork
 	issueID func() string
 	now     func() time.Time
+	access  shared.PlanAccessReader
 }
 
-func NewDeleteOccurrenceUseCase(repo Repository, uow UnitOfWork, issueID func() string, now func() time.Time) *DeleteOccurrenceUseCase {
-	return &DeleteOccurrenceUseCase{repo: repo, uow: uow, issueID: issueID, now: now}
+func NewDeleteOccurrenceUseCase(repo Repository, uow UnitOfWork, issueID func() string, now func() time.Time, access ...shared.PlanAccessReader) *DeleteOccurrenceUseCase {
+	uc := &DeleteOccurrenceUseCase{repo: repo, uow: uow, issueID: issueID, now: now}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
 }
 
 func (uc *DeleteOccurrenceUseCase) Execute(ctx context.Context, userID, ruleID string, occurrenceDate time.Time, expected int32, scope string, ruleRevision int32) error {
+	if err := requirePaid(ctx, uc.access, userID); err != nil {
+		return err
+	}
 	if userID == "" || ruleID == "" || expected < 0 || (scope != "current" && scope != "following") {
 		return ErrInvalidRequest
 	}

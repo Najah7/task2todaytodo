@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/todo/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/todo/domain"
 )
@@ -19,6 +20,14 @@ type Repositories interface {
 	ActionItems() ActionItemCommands
 	Tasks() TaskCommands
 	Schedules() ScheduleCommands
+}
+
+// ProjectWriteAccessRepository reads sharing and effective Team entitlements
+// from the operation's transaction. It is intentionally discovered as an
+// optional extension so personal-only test repositories remain small; shared
+// project writes fail closed when the extension is unavailable.
+type ProjectWriteAccessRepository interface {
+	ProjectWriteAccess() shared.ProjectWriteAccessReader
 }
 
 // TodoRepository persists todos and their ordered daily rows. All methods are

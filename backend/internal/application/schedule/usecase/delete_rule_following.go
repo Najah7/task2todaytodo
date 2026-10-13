@@ -75,6 +75,9 @@ func (uc *DeleteRuleFollowingUseCase) Execute(ctx context.Context, actorID, rule
 			}
 			beforeStates[projectID] = state
 		}
+		if err := requireScheduleProjectWrite(ctx, repos, actorID, projectIDs...); err != nil {
+			return err
+		}
 		if err := repo.LockRuleForRevisionMutation(ctx, actorID, ruleID, occurrenceDate, shared.ScheduleDelete()); err != nil {
 			return err
 		}

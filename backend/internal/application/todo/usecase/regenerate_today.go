@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/todo/domain"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
@@ -14,6 +15,7 @@ type RegenerateTodayUseCase struct {
 	uow       UOW
 	generator *GenerateTodayUseCase
 	logger    telemetry.Logger
+	access    shared.PlanAccessReader
 }
 
 func NewRegenerateTodayUseCase(uow UOW, newID func() string, loggers ...telemetry.Logger) *RegenerateTodayUseCase {
@@ -26,9 +28,15 @@ func NewRegenerateTodayUseCase(uow UOW, newID func() string, loggers ...telemetr
 	}
 }
 
-func (u *RegenerateTodayUseCase) Execute(ctx context.Context, userID string, expectedRevision int32) (result TodaySnapshot, err error) {
+func (u *RegenerateTodayUseCase) Execute(ctx context.Context, userID string, expectedRevision int32, ignoreAllocations ...bool) (result TodaySnapshot, err error) {
 	defer func() { logUnexpectedTodoFailure(u.logger, ctx, "RegenerateTodayUseCase.Execute", err) }()
+	ignoreRequested := len(ignoreAllocations) > 0 && ignoreAllocations[0]
 	err = u.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
+		plan, accessErr := todoPlanAccess(ctx, repos, userID, u.access)
+		if accessErr != nil {
+			return accessErr
+		}
+		freePlan := !plan.IsPaid()
 		day, err := repos.Sources().CurrentDay(ctx, userID)
 		if err != nil {
 			return err
@@ -74,7 +82,7 @@ func (u *RegenerateTodayUseCase) Execute(ctx context.Context, userID string, exp
 		if err != nil {
 			return err
 		}
-		if err := u.generator.generateFromSourcesInTx(ctx, day.Date, todo, sources, repos); err != nil {
+		if err := u.generator.generateFromSourcesInTx(ctx, day.Date, todo, sources, repos, freePlan || ignoreRequested || len(sources.Allocations) == 0); err != nil {
 			return err
 		}
 
@@ -84,6 +92,9 @@ func (u *RegenerateTodayUseCase) Execute(ctx context.Context, userID string, exp
 		}
 		workSources, err := repos.Sources().ReadWorkSources(ctx, userID, todo.Date, todo.Timezone, workSourceRefs(saved, sources.History))
 		if err != nil {
+			return err
+		}
+		if err := restrictSharedWriteCapabilities(ctx, repos, userID, workSources, sources.Schedules); err != nil {
 			return err
 		}
 		result, err = buildTodaySnapshot(todo, saved, sources, workSources, time.Now())

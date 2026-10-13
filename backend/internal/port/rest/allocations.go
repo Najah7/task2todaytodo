@@ -9,13 +9,21 @@ import (
 
 	allocationdao "github.com/Najah7/task2todaytodo/internal/application/allocation/dao"
 	allocationusecase "github.com/Najah7/task2todaytodo/internal/application/allocation/usecase"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/go-chi/chi/v5"
 )
 
-type AllocationHandler struct{ usecases allocationusecase.UseCases }
+type AllocationHandler struct {
+	usecases allocationusecase.UseCases
+	access   shared.PlanAccessReader
+}
 
-func NewAllocationHandler(usecases allocationusecase.UseCases) *AllocationHandler {
-	return &AllocationHandler{usecases: usecases}
+func NewAllocationHandler(usecases allocationusecase.UseCases, access ...shared.PlanAccessReader) *AllocationHandler {
+	h := &AllocationHandler{usecases: usecases}
+	if len(access) > 0 {
+		h.access = access[0]
+	}
+	return h
 }
 
 type AllocationWeekResponse struct {
@@ -167,6 +175,10 @@ func (h *AllocationHandler) GetWeek(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	paid := h.paidAccess(w, r, actor)
+	if h.access != nil && !paid {
+		return
+	}
 	weekStart, err := time.Parse("2006-01-02", chi.URLParam(r, "week_start"))
 	if err != nil || weekStart.Weekday() != time.Monday {
 		WriteError(w, http.StatusBadRequest, ErrSpecAllocationsGetFailed, NewErrDetail("week_start", "invalid_week_start", "Week start must be a Monday date"))
@@ -176,6 +188,13 @@ func (h *AllocationHandler) GetWeek(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeAllocationError(w, ErrSpecAllocationsGetFailed, err)
 		return
+	}
+	if h.access != nil && !paid {
+		result.Projects, result.Allocations, result.PausedRules = nil, nil, nil
+		result.AllocatedMinutes, result.TargetMinutes, result.DifferenceMinutes, result.FreeMinutes = 0, 0, 0, 0
+		for i := range result.Days {
+			result.Days[i].AllocatedMinutes, result.Days[i].FreeMinutes = 0, 0
+		}
 	}
 	WriteJSON(w, http.StatusOK, allocationWeekResponse(result))
 }
@@ -503,8 +522,26 @@ func allocationActor(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return actor, true
 }
 
+func (h *AllocationHandler) paidAccess(w http.ResponseWriter, r *http.Request, actor string) bool {
+	if h.access == nil {
+		return true
+	}
+	plan, err := h.access.GetPlanAccess(r.Context(), actor)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, ErrSpecAllocationsGetFailed, ErrDetailInternalServerError)
+		return false
+	}
+	if !plan.IsPaid() {
+		WriteError(w, http.StatusForbidden, ErrSpecAllocationsGetFailed, NewErrDetail("plan", "upgrade_required", "A Pro or Team plan is required"))
+		return false
+	}
+	return true
+}
+
 func writeAllocationError(w http.ResponseWriter, spec ErrSpec, err error) {
 	switch {
+	case errors.Is(err, allocationusecase.ErrPaidPlanRequired):
+		WriteError(w, http.StatusForbidden, spec, NewErrDetail("plan", "upgrade_required", "A Pro or Team plan is required"))
 	case errors.Is(err, allocationusecase.ErrConflict):
 		var conflict allocationusecase.ConflictError
 		reason, message := "allocation_conflict", "Allocation conflicts with an existing allocation or active-time interval"

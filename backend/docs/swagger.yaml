@@ -362,6 +362,8 @@ definitions:
     type: object
   rest.BillingStateResponse:
     properties:
+      access_plan:
+        $ref: '#/definitions/shared.PlanAccess'
       cancel_at_period_end:
         type: boolean
       checkout_pending:
@@ -775,6 +777,8 @@ definitions:
         type: string
       personal_access_token:
         type: string
+      requires_team_subscription:
+        type: boolean
     type: object
   rest.ProjectCreateRequest:
     properties:
@@ -2213,6 +2217,16 @@ definitions:
       next_page_token:
         type: string
     type: object
+  shared.PlanAccess:
+    enum:
+    - free
+    - pro
+    - team
+    type: string
+    x-enum-varnames:
+    - PlanAccessFree
+    - PlanAccessPro
+    - PlanAccessTeam
 info:
   contact: {}
   description: Task scheduling API server.
@@ -3011,6 +3025,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/rest.ErrResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -3045,6 +3063,10 @@ paths:
             $ref: '#/definitions/rest.ErrResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "403":
+          description: Forbidden
           schema:
             $ref: '#/definitions/rest.ErrResponse'
         "500":
@@ -6072,6 +6094,10 @@ paths:
         name: If-Match
         required: true
         type: string
+      - description: Ignore Project allocations for this regeneration
+        in: query
+        name: ignore_allocations
+        type: boolean
       produces:
       - application/json
       responses:

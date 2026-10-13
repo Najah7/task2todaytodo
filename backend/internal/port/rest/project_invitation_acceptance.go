@@ -63,6 +63,10 @@ func (h *ProjectInvitationAcceptanceHandler) Accept(w http.ResponseWriter, r *ht
 			WriteError(w, http.StatusBadRequest, ErrSpecProjectsUpdateFailed, NewErrDetail("token", "invalid_or_expired_invitation", "Invitation is invalid, expired, or no longer available"))
 		case errors.Is(err, projectusecase.ErrInvitationRecipientAuthenticationRequired):
 			WriteError(w, http.StatusForbidden, ErrSpecProjectsUpdateFailed, NewErrDetail("email", "account_mismatch", "Sign in with the account invited by this project"))
+		case errors.Is(err, projectusecase.ErrProjectOwnerTeamSubscriptionRequired):
+			WriteError(w, http.StatusForbidden, ErrSpecProjectsUpdateFailed, NewErrDetail("plan", "owner_team_required", "The project owner must restore an active Team subscription before this invitation can be accepted"))
+		case errors.Is(err, projectusecase.ErrInvitationTeamSubscriptionRequired):
+			WriteError(w, http.StatusForbidden, ErrSpecProjectsUpdateFailed, NewErrDetail("plan", "team_required", "Subscribe to Team before accepting this invitation"))
 		case errors.Is(err, projectusecase.ErrProjectInvitationMemberExists):
 			WriteError(w, http.StatusConflict, ErrSpecProjectsUpdateFailed, NewErrDetail("project_id", "already_member", "This account is already a project member"))
 		case errors.Is(err, authusecase.ErrUserEmailAlreadyExists):
@@ -80,8 +84,9 @@ func (h *ProjectInvitationAcceptanceHandler) Accept(w http.ResponseWriter, r *ht
 		return
 	}
 	WriteJSON(w, http.StatusOK, PersonalAccessTokenResponse{
-		PersonalAccessToken: result.PersonalAccessToken,
-		ExpiresAt:           time.Unix(result.ExpiresAt, 0).In(time.FixedZone("JST", 9*60*60)).Format("2006-01-02 15:04:05"),
+		PersonalAccessToken:      result.PersonalAccessToken,
+		ExpiresAt:                time.Unix(result.ExpiresAt, 0).In(time.FixedZone("JST", 9*60*60)).Format("2006-01-02 15:04:05"),
+		RequiresTeamSubscription: result.RequiresTeamSubscription,
 	})
 }
 

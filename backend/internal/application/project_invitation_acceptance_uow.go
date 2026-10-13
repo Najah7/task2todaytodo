@@ -4,15 +4,18 @@ import (
 	"context"
 
 	authusecase "github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
+	billingrepository "github.com/Najah7/task2todaytodo/internal/application/billing/repository"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ProjectInvitationAcceptanceUOW struct {
-	pool     *pgxpool.Pool
-	projects ProjectStore
-	auth     AuthStore
+	pool           *pgxpool.Pool
+	projects       ProjectStore
+	auth           AuthStore
+	billing        *billingrepository.Repository
+	billingEnabled bool
 }
 
 func NewProjectInvitationAcceptanceUOW(pool *pgxpool.Pool, projects ProjectStore, auth AuthStore) projectusecase.InvitationAcceptanceUnitOfWork {
@@ -21,13 +24,20 @@ func NewProjectInvitationAcceptanceUOW(pool *pgxpool.Pool, projects ProjectStore
 
 func (uow *ProjectInvitationAcceptanceUOW) Do(ctx context.Context, fn func(context.Context, projectusecase.InvitationAcceptanceRepositories) error) error {
 	return RunInTx(ctx, uow.pool, func(tx pgx.Tx) error {
+		projectRows := uow.projects.WithTx(tx).Projects
+		access := newProjectWriteAccessReader(projectRows, billingWithTx(uow.billing, tx), uow.billingEnabled)
 		return fn(ctx, projectInvitationAcceptanceRepositories{
-			invitations: uow.projects.WithTx(tx).Projects,
+			invitations: projectInvitationRepositoryWithWriteAccess{ProjectRepository: projectRows, ProjectWriteAccessReader: access},
 			recipient: projectInvitationRecipientAdapter{
 				repositories: authRepositories{store: uow.auth.WithTx(tx)},
 			},
 		})
 	})
+}
+
+func (uow *ProjectInvitationAcceptanceUOW) ConfigureProjectWriteAccess(billing *billingrepository.Repository, enabled bool) {
+	uow.billing = billing
+	uow.billingEnabled = enabled
 }
 
 type projectInvitationAcceptanceRepositories struct {

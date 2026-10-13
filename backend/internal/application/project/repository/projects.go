@@ -45,6 +45,21 @@ func (r *ProjectRepository) LockProjectForLifecycle(ctx context.Context, id doma
 	_, err := r.queries.LockProjectForLifecycle(ctx, string(id))
 	return repoError(err)
 }
+
+func (r *ProjectRepository) LockUserForPlanLimit(ctx context.Context, userID domain.UserID) error {
+	_, err := r.queries.LockUserForPlanLimit(ctx, string(userID))
+	return repoError(err)
+}
+
+func (r *ProjectRepository) LockProjectOwnerForPlanLimit(ctx context.Context, id domain.ProjectID) (domain.UserID, error) {
+	userID, err := r.queries.LockProjectOwnerForPlanLimit(ctx, string(id))
+	return domain.UserID(userID), repoError(err)
+}
+
+func (r *ProjectRepository) CountActiveOwnedProjects(ctx context.Context, userID domain.UserID) (int, error) {
+	count, err := r.queries.CountActiveOwnedProjects(ctx, string(userID))
+	return int(count), err
+}
 func (r *ProjectRepository) GetByUserIDWithPermission(ctx context.Context, actor domain.UserID, id domain.ProjectID, capability shared.Capability) (dao.Project, error) {
 	x, err := r.queries.GetProjectByUserIDForPermission(ctx, sqlc.GetProjectByUserIDForPermissionParams{ID: string(id), ActorID: string(actor), ResourceID: string(capability.Resource), Action: sqlc.Action(capability.Action)})
 	if err != nil {

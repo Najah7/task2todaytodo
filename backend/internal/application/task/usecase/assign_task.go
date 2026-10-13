@@ -68,6 +68,9 @@ func (uc *AssignTaskUseCase) Execute(
 		if err != nil {
 			return err
 		}
+		if err := requireProjectWriteAccess(ctx, repos, string(actorID), current.ProjectID); err != nil {
+			return err
+		}
 		task, err := taskFromDAO(current)
 		if err != nil {
 			logTaskRestoreFailure(uc.logger, ctx, "task.assign.restore", err)

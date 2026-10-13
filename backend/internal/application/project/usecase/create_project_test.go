@@ -12,10 +12,12 @@ import (
 )
 
 type createProjectRepositoryFake struct {
+	Repository
 	project domain.Project
 	result  dao.Project
 	err     error
 	calls   int
+	count   int
 }
 
 func (repo *createProjectRepositoryFake) Create(_ context.Context, project domain.Project) (dao.Project, error) {
@@ -26,6 +28,24 @@ func (repo *createProjectRepositoryFake) Create(_ context.Context, project domai
 
 func (*createProjectRepositoryFake) HasPermission(context.Context, domain.UserID, domain.ProjectID, shared.Capability) (bool, error) {
 	return true, nil
+}
+
+func (*createProjectRepositoryFake) LockUserForPlanLimit(context.Context, domain.UserID) error {
+	return nil
+}
+
+func (repo *createProjectRepositoryFake) CountActiveOwnedProjects(context.Context, domain.UserID) (int, error) {
+	return repo.count, nil
+}
+
+type createProjectUOWFake struct{ repo *createProjectRepositoryFake }
+
+func (uow createProjectUOWFake) Do(ctx context.Context, fn func(context.Context, Repository, ProjectChildrenDeleter) error) error {
+	return fn(ctx, uow.repo, nil)
+}
+
+func newCreateProjectUseCaseForTest(repo *createProjectRepositoryFake) *CreateProjectUseCase {
+	return NewCreateProjectUseCase(createProjectUOWFake{repo: repo}, nil, nil)
 }
 
 func validCreateProjectInput() CreateProjectInput {
@@ -42,7 +62,7 @@ func TestCreateProjectUseCaseExecuteCreatesProjectWithDefaultsAndOwner(t *testin
 	want := dao.Project{ID: "project-1", UserID: "user-1", Title: "Project title", CanUpdate: true, CanDelete: true}
 	repo := &createProjectRepositoryFake{result: want}
 
-	got, err := NewCreateProjectUseCase(repo, nil).Execute(context.Background(), validCreateProjectInput())
+	got, err := newCreateProjectUseCaseForTest(repo).Execute(context.Background(), validCreateProjectInput())
 	if err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
 	}
@@ -60,13 +80,25 @@ func TestCreateProjectUseCaseExecuteCreatesProjectWithDefaultsAndOwner(t *testin
 	}
 }
 
+func TestCreateProjectUseCaseRejectsFreeProjectWhenAtCapacity(t *testing.T) {
+	repo := &createProjectRepositoryFake{count: maxFreeActiveProjects}
+
+	_, err := newCreateProjectUseCaseForTest(repo).Execute(context.Background(), validCreateProjectInput())
+	if !errors.Is(err, ErrFreeProjectLimitReached) {
+		t.Fatalf("Execute() error = %v, want Free Project limit", err)
+	}
+	if repo.calls != 0 {
+		t.Fatalf("Create() calls = %d, want no write at capacity", repo.calls)
+	}
+}
+
 func TestCreateProjectUseCaseExecuteAcceptsOneSidedDatesAndNormalizesToUTCDate(t *testing.T) {
 	start := time.Date(2026, time.April, 5, 19, 20, 0, 0, time.FixedZone("UTC+9", 9*60*60))
 	input := validCreateProjectInput()
 	input.StartDate = &start
 	repo := &createProjectRepositoryFake{}
 
-	_, err := NewCreateProjectUseCase(repo, nil).Execute(context.Background(), input)
+	_, err := newCreateProjectUseCaseForTest(repo).Execute(context.Background(), input)
 	if err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
 	}
@@ -89,7 +121,7 @@ func TestCreateProjectUseCaseExecuteAcceptsSameStartAndEndDate(t *testing.T) {
 	input.EndDate = &day
 	repo := &createProjectRepositoryFake{}
 
-	_, err := NewCreateProjectUseCase(repo, nil).Execute(context.Background(), input)
+	_, err := newCreateProjectUseCaseForTest(repo).Execute(context.Background(), input)
 	if err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
 	}
@@ -106,7 +138,7 @@ func TestCreateProjectUseCaseExecuteRejectsEndDateBeforeStartDate(t *testing.T) 
 	input.EndDate = &end
 	repo := &createProjectRepositoryFake{}
 
-	_, err := NewCreateProjectUseCase(repo, nil).Execute(context.Background(), input)
+	_, err := newCreateProjectUseCaseForTest(repo).Execute(context.Background(), input)
 	if !errors.Is(err, domain.ErrProjectEndDateBeforeStartDate) {
 		t.Errorf("Execute() error = %v, want %v", err, domain.ErrProjectEndDateBeforeStartDate)
 	}
@@ -120,7 +152,7 @@ func TestCreateProjectUseCaseExecuteRejectsEmptyTitle(t *testing.T) {
 	input.Title = " \t "
 	repo := &createProjectRepositoryFake{}
 
-	_, err := NewCreateProjectUseCase(repo, nil).Execute(context.Background(), input)
+	_, err := newCreateProjectUseCaseForTest(repo).Execute(context.Background(), input)
 	if !errors.Is(err, domain.ErrProjectTitleEmpty) {
 		t.Errorf("Execute() error = %v, want %v", err, domain.ErrProjectTitleEmpty)
 	}
@@ -133,7 +165,7 @@ func TestCreateProjectUseCaseExecutePropagatesRepositoryError(t *testing.T) {
 	wantErr := errors.New("database unavailable")
 	repo := &createProjectRepositoryFake{err: wantErr}
 
-	_, err := NewCreateProjectUseCase(repo, nil).Execute(context.Background(), validCreateProjectInput())
+	_, err := newCreateProjectUseCaseForTest(repo).Execute(context.Background(), validCreateProjectInput())
 	if !errors.Is(err, wantErr) {
 		t.Errorf("Execute() error = %v, want %v", err, wantErr)
 	}

@@ -8,6 +8,7 @@ approved decisions.
 
 - Create one-off or recurring Schedule rules, project virtual occurrences, and persist individual occurrence changes. Support individual or future-scoped edits, revisions, completion, skipping, restoration, and backfill.
 - Preserve fixed Schedule times for Todo planning. Project completion pauses recurring rules; reopening resumes future cadence.
+- Writes to a Project with actual members require effective Team access for both the actor and Project owner. If either loses Team, shared Schedule mutations are denied while existing rows and memberships remain intact.
 
 ## Endpoints
 

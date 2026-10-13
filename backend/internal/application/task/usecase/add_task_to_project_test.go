@@ -96,6 +96,7 @@ type addTaskToProjectTaskRepositoryFake struct {
 	assignProjectID domain.ProjectID
 	assignExpected  int32
 	getCalls        int
+	lockCalls       int
 	assignCalls     int
 	accesses        *[]string
 }
@@ -112,6 +113,16 @@ func (repo *addTaskToProjectTaskRepositoryFake) GetByUserID(_ context.Context, u
 
 func (repo *addTaskToProjectTaskRepositoryFake) GetByUserIDWithPermission(ctx context.Context, userID domain.UserID, taskID domain.TaskID, _ shared.Capability) (dao.Task, error) {
 	return repo.GetByUserID(ctx, userID, taskID)
+}
+
+func (repo *addTaskToProjectTaskRepositoryFake) LockByUserIDWithPermission(_ context.Context, userID domain.UserID, taskID domain.TaskID, _ shared.Capability) (dao.Task, error) {
+	repo.lockCalls++
+	repo.userID, repo.taskID = userID, taskID
+	*repo.accesses = append(*repo.accesses, "lock-task")
+	if repo.getErr != nil {
+		return dao.Task{}, repo.getErr
+	}
+	return repo.task, nil
 }
 
 func (repo *addTaskToProjectTaskRepositoryFake) AssignToProjectByUserID(_ context.Context, userID domain.UserID, taskID domain.TaskID, projectID domain.ProjectID, expectedRevision int32) (dao.Task, error) {
@@ -153,8 +164,8 @@ func TestAddTaskToProjectUseCaseExecuteAddsStandaloneTask(t *testing.T) {
 	if got != want {
 		t.Errorf("Execute() = %#v, want %#v", got, want)
 	}
-	if uow.calls != 1 || projectRepo.calls != 1 || taskRepo.getCalls != 2 || taskRepo.assignCalls != 1 {
-		t.Errorf("calls = UOW:%d project:%d task get:%d assign:%d, want one project lock, initial+post-lock task reads, and one assignment", uow.calls, projectRepo.calls, taskRepo.getCalls, taskRepo.assignCalls)
+	if uow.calls != 1 || projectRepo.calls != 1 || taskRepo.getCalls != 1 || taskRepo.lockCalls != 1 || taskRepo.assignCalls != 1 {
+		t.Errorf("calls = UOW:%d project:%d task get:%d lock:%d assign:%d, want one project lock, task read+lock, and one assignment", uow.calls, projectRepo.calls, taskRepo.getCalls, taskRepo.lockCalls, taskRepo.assignCalls)
 	}
 	if projectRepo.userID != userID || projectRepo.projectID != projectID || taskRepo.userID != userID || taskRepo.taskID != taskID || taskRepo.assignUserID != userID || taskRepo.assignTaskID != taskID || taskRepo.assignProjectID != projectID {
 		t.Errorf("repository arguments do not match requested owner, project, and task")
@@ -162,8 +173,8 @@ func TestAddTaskToProjectUseCaseExecuteAddsStandaloneTask(t *testing.T) {
 	if taskRepo.assignExpected != 1 {
 		t.Errorf("assignment expected revision = %d, want 1", taskRepo.assignExpected)
 	}
-	if !reflect.DeepEqual(*accesses, []string{"tasks", "get-task", "projects", "lock-project", "get-task", "assign-task"}) {
-		t.Errorf("repository access order = %v, want task read, project lock, task re-read, then assignment", *accesses)
+	if !reflect.DeepEqual(*accesses, []string{"tasks", "get-task", "projects", "lock-project", "lock-task", "assign-task"}) {
+		t.Errorf("repository access order = %v, want task read, project lock, task lock, then assignment", *accesses)
 	}
 }
 
@@ -201,8 +212,8 @@ func TestAddTaskToProjectUseCaseExecuteDoesNotSaveWhenAlreadyInProject(t *testin
 	if taskRepo.assignCalls != 0 {
 		t.Errorf("AssignToProjectByUserID() calls = %d, want 0", taskRepo.assignCalls)
 	}
-	if !reflect.DeepEqual(*accesses, []string{"tasks", "get-task", "projects", "lock-project", "get-task"}) {
-		t.Errorf("repository access order = %v, want task check, project lock, and fresh task check", *accesses)
+	if !reflect.DeepEqual(*accesses, []string{"tasks", "get-task", "projects", "lock-project", "lock-task"}) {
+		t.Errorf("repository access order = %v, want task check, project lock, and task lock", *accesses)
 	}
 }
 

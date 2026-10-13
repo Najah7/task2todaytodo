@@ -218,6 +218,9 @@ func (uc *UpdateRuleUseCase) Execute(ctx context.Context, actorID, ruleID, occur
 			}
 			beforeStates[projectID] = state
 		}
+		if err := requireScheduleProjectWrite(ctx, repos, actorID, projectIDs...); err != nil {
+			return err
+		}
 		if err := repo.LockRuleForRevisionMutation(ctx, actorID, ruleID, occurrenceDate, writeCapability); err != nil {
 			return err
 		}

@@ -8,7 +8,7 @@ Follow the [application guide](../AGENTS.md). Routes are registered in [cmd/api/
 - `usecase/` has one operation type per file: status, Checkout, Customer Portal, plan change, and webhook processing.
 - `dao/` owns persisted read models; `repository/` maps generated sqlc methods to usecase ports. Query source is in [db/queries/billing.query.sql](../../../db/queries/billing.query.sql), generated output is in [db/sqlc/billing.query.sql.go](../../../db/sqlc/billing.query.sql.go), and the application root owns transactions in [billing_uow.go](../../billing_uow.go).
 - Stripe calls use only configured Price IDs. Checkout quantity is one. Pro-to-Team uses an invoice with pending updates; Team-to-Pro uses a renewal schedule.
-- Keep product access and feature gating outside billing.
+- Billing exposes the effective access plan from the persisted Stripe snapshot. Feature use cases enforce entitlements at their boundaries; Checkout reservations alone do not grant access, and active access ends at `current_period_end` even if cancellation is scheduled for that boundary.
 
 ## Endpoints
 

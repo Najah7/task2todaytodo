@@ -52,7 +52,16 @@ func EnrichTasksInRepositories(ctx context.Context, repos Repositories, userID d
 		}
 		tasks[i].ProjectStatus = status
 	}
-	return EnrichTaskList(ctx, repos.ActionItems(), userID, tasks, asOf)
+	rows, err := EnrichTaskList(ctx, repos.ActionItems(), userID, tasks, asOf)
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		if err := restrictTaskWriteCapabilities(ctx, repos, string(userID), &rows[i]); err != nil {
+			return nil, err
+		}
+	}
+	return rows, nil
 }
 
 // ApplyTaskListProjection is the Task-owned SSOT for list counts, progress, and effective estimates.

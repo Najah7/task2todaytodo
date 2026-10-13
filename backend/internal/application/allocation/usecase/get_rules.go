@@ -4,13 +4,26 @@ import (
 	"context"
 
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/dao"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 )
 
-type GetRulesUseCase struct{ uow UnitOfWork }
+type GetRulesUseCase struct {
+	uow    UnitOfWork
+	access shared.PlanAccessReader
+}
 
-func NewGetRulesUseCase(uow UnitOfWork) *GetRulesUseCase { return &GetRulesUseCase{uow: uow} }
+func NewGetRulesUseCase(uow UnitOfWork, access ...shared.PlanAccessReader) *GetRulesUseCase {
+	uc := &GetRulesUseCase{uow: uow}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
+}
 
 func (uc *GetRulesUseCase) Execute(ctx context.Context, userID string) (dao.RuleCollection, error) {
+	if err := requirePaid(ctx, uc.access, userID); err != nil {
+		return dao.RuleCollection{}, err
+	}
 	var result dao.RuleCollection
 	err := uc.uow.Do(ctx, func(ctx context.Context, repo Repository) error {
 		if err := repo.LockUser(ctx, userID); err != nil {

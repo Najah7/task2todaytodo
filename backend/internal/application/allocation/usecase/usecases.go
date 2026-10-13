@@ -4,12 +4,27 @@ import (
 	"context"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
+
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/domain"
 )
 
 type UnitOfWork interface {
 	Do(context.Context, func(context.Context, Repository) error) error
+}
+
+func NewUseCasesWithAccess(repo Repository, uow UnitOfWork, issueID func() string, now func() time.Time, readUOW UnitOfWork, access shared.PlanAccessReader) UseCases {
+	usecases := NewUseCases(repo, uow, issueID, now, readUOW)
+	usecases.GetWeek.access = access
+	usecases.GetRules.access = access
+	usecases.PutRules.access = access
+	usecases.GetPlans.access = access
+	usecases.PutPlans.access = access
+	usecases.Create.access = access
+	usecases.Update.access = access
+	usecases.Delete.access = access
+	return usecases
 }
 
 // Repository exposes transaction-bound persistence primitives. The

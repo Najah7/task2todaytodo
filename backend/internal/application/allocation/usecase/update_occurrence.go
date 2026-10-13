@@ -6,6 +6,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/domain"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/shared/calendar"
 )
 
@@ -14,13 +15,21 @@ type UpdateOccurrenceUseCase struct {
 	uow     UnitOfWork
 	issueID func() string
 	now     func() time.Time
+	access  shared.PlanAccessReader
 }
 
-func NewUpdateOccurrenceUseCase(repo Repository, uow UnitOfWork, issueID func() string, now func() time.Time) *UpdateOccurrenceUseCase {
-	return &UpdateOccurrenceUseCase{repo: repo, uow: uow, issueID: issueID, now: now}
+func NewUpdateOccurrenceUseCase(repo Repository, uow UnitOfWork, issueID func() string, now func() time.Time, access ...shared.PlanAccessReader) *UpdateOccurrenceUseCase {
+	uc := &UpdateOccurrenceUseCase{repo: repo, uow: uow, issueID: issueID, now: now}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
 }
 
 func (uc *UpdateOccurrenceUseCase) Execute(ctx context.Context, userID, ruleID string, occurrenceDate time.Time, expected int32, projectID string, startAt, endAt time.Time, scope string, ruleRevision int32) (dao.Occurrence, error) {
+	if err := requirePaid(ctx, uc.access, userID); err != nil {
+		return dao.Occurrence{}, err
+	}
 	if userID == "" || ruleID == "" || expected < 0 || projectID == "" || !endAt.After(startAt) || (scope != "current" && scope != "following") || uc.issueID == nil {
 		return dao.Occurrence{}, ErrInvalidRequest
 	}

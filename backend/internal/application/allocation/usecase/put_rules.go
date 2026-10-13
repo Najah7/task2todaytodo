@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/dao"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 )
 
 type PutRulesUseCase struct {
@@ -12,16 +13,24 @@ type PutRulesUseCase struct {
 	uow     UnitOfWork
 	issueID func() string
 	now     func() time.Time
+	access  shared.PlanAccessReader
 }
 
-func NewPutRulesUseCase(repo Repository, uow UnitOfWork, issueID func() string, now func() time.Time) *PutRulesUseCase {
+func NewPutRulesUseCase(repo Repository, uow UnitOfWork, issueID func() string, now func() time.Time, access ...shared.PlanAccessReader) *PutRulesUseCase {
 	if now == nil {
 		now = time.Now
 	}
-	return &PutRulesUseCase{repo: repo, uow: uow, issueID: issueID, now: now}
+	uc := &PutRulesUseCase{repo: repo, uow: uow, issueID: issueID, now: now}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
 }
 
 func (uc *PutRulesUseCase) Execute(ctx context.Context, userID, expectedRevision string, items []dao.Rule) (dao.RuleCollection, error) {
+	if err := requirePaid(ctx, uc.access, userID); err != nil {
+		return dao.RuleCollection{}, err
+	}
 	if userID == "" || uc.issueID == nil || expectedRevision == "" {
 		return dao.RuleCollection{}, ErrInvalidRequest
 	}

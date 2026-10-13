@@ -41,6 +41,7 @@ type ScheduleRepository interface {
 
 type Repositories interface {
 	ProjectLifecycle() shared.ProjectWorkLifecycle
+	ProjectWriteAccess() shared.ProjectWriteAccessReader
 	Schedules() ScheduleRepository
 	Rules() RuleRepository
 }

@@ -1,6 +1,7 @@
 package usecase
 
 import "github.com/Najah7/task2todaytodo/internal/telemetry"
+import "github.com/Najah7/task2todaytodo/internal/application/shared"
 
 type ProjectMemberUseCases struct {
 	ListMembers  *ListProjectMembersUseCase
@@ -31,15 +32,23 @@ type UseCases struct {
 }
 
 func NewUseCases(repo Repository, tx UnitOfWork, logger telemetry.Logger, invitationSender ProjectInvitationSender, frontendURL string, readTxs ...UnitOfWork) *UseCases {
+	return newUseCases(repo, tx, logger, invitationSender, frontendURL, nil, readTxs...)
+}
+
+func NewUseCasesWithAccess(repo Repository, tx UnitOfWork, logger telemetry.Logger, invitationSender ProjectInvitationSender, frontendURL string, access shared.PlanAccessReader, readTxs ...UnitOfWork) *UseCases {
+	return newUseCases(repo, tx, logger, invitationSender, frontendURL, access, readTxs...)
+}
+
+func newUseCases(repo Repository, tx UnitOfWork, logger telemetry.Logger, invitationSender ProjectInvitationSender, frontendURL string, access shared.PlanAccessReader, readTxs ...UnitOfWork) *UseCases {
 	readTx := tx
 	if len(readTxs) > 0 && readTxs[0] != nil {
 		readTx = readTxs[0]
 	}
 	return &UseCases{
-		Create:  NewCreateProjectUseCase(repo, logger),
-		List:    NewListProjectsUseCase(repo, repo, logger),
-		Get:     NewGetProjectUseCase(repo, repo, logger),
-		Update:  NewUpdateProjectUseCase(repo, repo, logger),
+		Create:  NewCreateProjectUseCase(tx, access, logger),
+		List:    NewListProjectsUseCase(repo, repo, logger, readTx),
+		Get:     NewGetProjectUseCase(repo, repo, logger, readTx),
+		Update:  NewUpdateProjectUseCase(repo, repo, logger, tx),
 		Delete:  NewDeleteProjectUseCase(tx, logger),
 		Members: &ProjectMemberUseCases{ListMembers: NewListProjectMembersUseCase(readTx, logger), UpsertMember: NewUpsertProjectMemberUseCase(tx, logger), DeleteMember: NewDeleteProjectMemberUseCase(tx, logger)},
 		Invitations: &ProjectInvitationUseCases{
@@ -51,7 +60,7 @@ func NewUseCases(repo Repository, tx UnitOfWork, logger telemetry.Logger, invita
 		Revisions:    NewListProjectRevisionsUseCase(repo, logger),
 		Types:        NewListProjectTypesUseCase(repo, logger),
 		Options:      NewListProjectOptionsUseCase(repo, logger),
-		ChangeStatus: NewChangeProjectStatusUseCase(tx, repo, logger),
-		Restore:      NewRestoreProjectUseCase(tx, repo, logger),
+		ChangeStatus: NewChangeProjectStatusUseCase(tx, repo, logger, access),
+		Restore:      NewRestoreProjectUseCase(tx, repo, logger, access),
 	}
 }

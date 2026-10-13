@@ -5,8 +5,10 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	tododomain "github.com/Najah7/task2todaytodo/internal/application/todo/domain"
 	todousecase "github.com/Najah7/task2todaytodo/internal/application/todo/usecase"
 	"github.com/go-chi/chi/v5"
@@ -36,6 +38,7 @@ type TodosUseCases struct {
 //	@Produce	json
 //	@Security	BearerAuth
 //	@Param		If-Match	header		string	true	"Current Todo revision"
+//	@Param		ignore_allocations	query	boolean	false	"Ignore Project allocations for this regeneration"
 //	@Success	200			{object}	TodoTodayResponse
 //	@Failure	400			{object}	ErrResponse
 //	@Failure	401			{object}	ErrResponse
@@ -53,7 +56,20 @@ func (h *TodosHandler) RegenerateToday(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	snapshot, err := h.usecases.RegenerateToday.Execute(r.Context(), userID, expected)
+	ignoreAllocations := false
+	if values, exists := r.URL.Query()["ignore_allocations"]; exists {
+		if len(values) != 1 {
+			WriteError(w, http.StatusBadRequest, todoFailure, NewErrDetail("ignore_allocations", "invalid_value", "Value must be true or false"))
+			return
+		}
+		parsed, parseErr := strconv.ParseBool(values[0])
+		if parseErr != nil {
+			WriteError(w, http.StatusBadRequest, todoFailure, NewErrDetail("ignore_allocations", "invalid_value", "Value must be true or false"))
+			return
+		}
+		ignoreAllocations = parsed
+	}
+	snapshot, err := h.usecases.RegenerateToday.Execute(r.Context(), userID, expected, ignoreAllocations)
 	if err != nil {
 		writeTodoError(w, todoFailure, err)
 		return
@@ -485,6 +501,8 @@ func writeTodoError(w http.ResponseWriter, spec ErrSpec, err error) {
 	switch {
 	case errors.Is(err, todousecase.ErrRevisionConflict):
 		WriteError(w, http.StatusPreconditionFailed, spec, NewErrDetail("If-Match", "revision_mismatch", "The Todo changed; fetch the latest version and retry"))
+	case errors.Is(err, shared.ErrTeamSubscriptionRequired):
+		WriteError(w, http.StatusForbidden, spec, NewErrDetail("plan", "team_required", "A Team subscription is required to write shared Project work"))
 	case errors.Is(err, todousecase.ErrPermissionDenied):
 		WriteError(w, http.StatusForbidden, spec, NewErrDetail("", "permission_denied", "The caller cannot perform this Todo operation"))
 	case errors.Is(err, todousecase.ErrTaskNotFound):

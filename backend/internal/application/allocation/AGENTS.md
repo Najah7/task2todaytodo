@@ -5,6 +5,7 @@ Follow the [application guide](../AGENTS.md). Routes are registered in [cmd/api/
 ## Features
 
 - Define weekly and one-off Project allocation windows, materialize their occurrences, and serve weekly plans. Project the user's available Active time from profile settings and per-day exceptions.
+- Project allocation rules, plans, occurrence operations, prefill, and allocation-bearing weekly projections require effective Pro or Team access. Free weekly reads expose only Active-time profile and daily exceptions; those Active-time settings remain available on every plan.
 - Weekly Rules and target-minute Plans are independent resources with separate revisions; Project completion pauses Rules and reopening resumes their cadence.
 
 ## Endpoints

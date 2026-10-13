@@ -130,6 +130,21 @@ func TestGenerateSkipsNonFittingProjectWorkAndUsesProjectlessComplement(t *testi
 	}
 }
 
+func TestGenerateCanIgnoreProjectAllocationsForOnePlan(t *testing.T) {
+	in := baseInput()
+	in.Allocations = []ProjectAllocation{{ProjectID: "other", Interval: Interval{at(9, 0), at(10, 0)}}}
+	in.Candidates = []Candidate{candidate("project-work", "p", 30, 10)}
+	in.IgnoreAllocations = true
+	plan, err := Generate(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	frame := firstFrame(plan.Frames, "project-work")
+	if frame.Start == nil || !frame.Start.Equal(at(9, 0)) || !frame.End.Equal(at(9, 30)) {
+		t.Fatalf("frame=%+v, want allocation-free placement at 09:00", frame)
+	}
+}
+
 func TestTaskAndActionItemShareIDWithoutSourceCollision(t *testing.T) {
 	in := baseInput()
 	in.Allocations = []ProjectAllocation{{ProjectID: "p", Interval: Interval{at(9, 0), at(11, 0)}}}

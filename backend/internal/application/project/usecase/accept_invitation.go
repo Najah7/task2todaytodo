@@ -9,6 +9,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/project/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/project/domain"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
@@ -16,9 +17,11 @@ var (
 	ErrInvalidProjectInvitation                  = errors.New("project invitation is invalid or expired")
 	ErrProjectInvitationMemberExists             = errors.New("invited user is already a project member")
 	ErrInvitationRecipientAuthenticationRequired = errors.New("invitation recipient must authenticate with the invited account")
+	ErrInvitationTeamSubscriptionRequired        = shared.ErrTeamSubscriptionRequired
 )
 
 type InvitationAcceptanceRepository interface {
+	shared.ProjectWriteAccessReader
 	GetProjectInvitationByTokenHash(context.Context, []byte) (dao.ProjectInvitation, error)
 	GetProjectInvitationByTokenHashForUpdate(context.Context, []byte) (dao.ProjectInvitation, error)
 	LockProjectForInvitationAcceptance(context.Context, domain.ProjectID) error
@@ -27,10 +30,11 @@ type InvitationAcceptanceRepository interface {
 }
 
 type InvitationRecipientResult struct {
-	UserID              string
-	PersonalAccessToken string
-	ExpiresAt           int64
-	NeedsAutoLogin      bool
+	UserID                   string
+	PersonalAccessToken      string
+	ExpiresAt                int64
+	NeedsAutoLogin           bool
+	RequiresTeamSubscription bool
 }
 
 type InvitationRecipientAcceptor interface {
@@ -102,12 +106,29 @@ func (uc *AcceptProjectInvitationUseCase) Execute(ctx context.Context, rawToken,
 		if invitation.ProjectOwnerID == authenticatedUserID && authenticatedUserID != "" {
 			return ErrInvalidProjectInvitation
 		}
+		if err := requireTeamProjectOwner(ctx, repositories.Invitations(), domain.UserID(invitation.ProjectOwnerID), domain.ProjectID(invitation.ProjectID)); err != nil {
+			return err
+		}
 		recipient, err := repositories.Recipient().AcceptInvitationRecipient(ctx, invitation.Email, password, authenticatedUserID, newUserID)
 		if errors.Is(err, ErrInvitationRecipientAuthenticationRequired) {
 			return ErrInvitationRecipientAuthenticationRequired
 		}
 		if err != nil {
 			return err
+		}
+		if invitation.RoleID == "admin" || invitation.RoleID == "editor" {
+			access, err := repositories.Invitations().GetProjectWriteAccess(ctx, recipient.UserID, invitation.ProjectID)
+			if err != nil {
+				return err
+			}
+			if !access.ActorPlanAccess.IsTeam() {
+				if recipient.NeedsAutoLogin {
+					result = recipient
+					result.RequiresTeamSubscription = true
+					return nil
+				}
+				return ErrInvitationTeamSubscriptionRequired
+			}
 		}
 		added, err := repositories.Invitations().AcceptProjectInvitationMember(ctx, domain.ProjectID(invitation.ProjectID), domain.UserID(recipient.UserID), invitation.RoleID, invitation.InvitedBy)
 		if err != nil {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/domain"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/shared/calendar"
 )
 
@@ -14,13 +15,21 @@ type CreateAllocationUseCase struct {
 	uow     UnitOfWork
 	issueID func() string
 	now     func() time.Time
+	access  shared.PlanAccessReader
 }
 
-func NewCreateAllocationUseCase(repo Repository, uow UnitOfWork, issueID func() string, now func() time.Time) *CreateAllocationUseCase {
-	return &CreateAllocationUseCase{repo: repo, uow: uow, issueID: issueID, now: now}
+func NewCreateAllocationUseCase(repo Repository, uow UnitOfWork, issueID func() string, now func() time.Time, access ...shared.PlanAccessReader) *CreateAllocationUseCase {
+	uc := &CreateAllocationUseCase{repo: repo, uow: uow, issueID: issueID, now: now}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
 }
 
 func (uc *CreateAllocationUseCase) Execute(ctx context.Context, userID, projectID, timezone string, startAt, endAt time.Time, repeatWeekly bool) (dao.Occurrence, error) {
+	if err := requirePaid(ctx, uc.access, userID); err != nil {
+		return dao.Occurrence{}, err
+	}
 	if userID == "" || projectID == "" || !endAt.After(startAt) || uc.issueID == nil {
 		return dao.Occurrence{}, ErrInvalidRequest
 	}

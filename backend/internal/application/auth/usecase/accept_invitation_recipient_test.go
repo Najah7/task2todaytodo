@@ -120,8 +120,12 @@ func (r *invitationTestEmailAuth) MarkUserEmailVerified(context.Context, string)
 
 func (r *invitationTestEmailAuth) UpdateUserPasswordForReset(_ context.Context, userID, passwordHash string) error {
 	r.updatedPassword = passwordHash
+	// The production reset query verifies an unverified email in the same
+	// update, so keep this fake aligned with the persisted database result.
+	r.verified = true
 	r.user.ID = userID
 	r.user.PasswordHash = passwordHash
+	r.user.EmailVerifiedAt = 1
 	return nil
 }
 

@@ -88,6 +88,31 @@ WHERE ai.task_id = sqlc.arg(task_id)::text
   AND t.deleted_at IS NULL
   AND task_has_permission(t.id, sqlc.arg(actor_id)::text, sqlc.arg(resource_id)::text, sqlc.arg(action)::action);
 
+-- name: CountActionItemsForProjectPlanLimit :one
+SELECT count(*)::integer AS item_count
+FROM action_items ai
+JOIN tasks t ON t.id = ai.task_id
+WHERE t.project_id = sqlc.arg(project_id)::text
+  AND t.deleted_at IS NULL
+  AND ai.deleted_at IS NULL;
+
+-- name: CountProjectlessActionItemsForUserPlanLimit :one
+SELECT count(*)::integer AS item_count
+FROM action_items ai
+JOIN tasks t ON t.id = ai.task_id
+WHERE t.user_id = sqlc.arg(user_id)::text
+  AND t.project_id IS NULL
+  AND t.deleted_at IS NULL
+  AND ai.deleted_at IS NULL;
+
+-- name: CountActionItemsForTaskPlanLimit :one
+SELECT count(*)::integer AS item_count
+FROM action_items ai
+JOIN tasks t ON t.id = ai.task_id
+WHERE t.id = sqlc.arg(task_id)::text
+  AND t.deleted_at IS NULL
+  AND ai.deleted_at IS NULL;
+
 -- name: ListActionItemsByTaskAndUserIDCursorPage :many
 SELECT ai.id, ai.task_id, ai.title, ai.description, ai.due_date, ai.estimated_minutes, ai.actual_minutes,
        EXISTS (SELECT 1 FROM todo_items ti WHERE ti.action_item_id = ai.id AND ti.kind = 'action_item' AND ti.completed) AS started,

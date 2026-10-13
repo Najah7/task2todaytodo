@@ -525,6 +525,8 @@ func writeProjectInvitationUseCaseError(w http.ResponseWriter, spec ErrSpec, err
 	switch {
 	case errors.Is(err, projectdomain.ErrProjectNotFound), errors.Is(err, projectusecase.ErrProjectInvitationNotFound):
 		WriteError(w, http.StatusNotFound, spec, NewErrDetail("invitation_id", "not_found", "Project or invitation was not found"))
+	case errors.Is(err, projectusecase.ErrTeamSubscriptionRequired):
+		WriteError(w, http.StatusForbidden, spec, NewErrDetail("plan", "team_required", "A Team subscription is required for shared Project collaboration"))
 	case errors.Is(err, projectusecase.ErrPermissionDenied), errors.Is(err, projectusecase.ErrProjectInvitationRejected):
 		WriteError(w, http.StatusForbidden, spec, NewErrDetail("", "permission_denied", "The caller cannot manage this invitation"))
 	case errors.Is(err, projectusecase.ErrProjectInvitationRateLimited):
@@ -556,6 +558,8 @@ func writeProjectMemberUseCaseError(w http.ResponseWriter, spec ErrSpec, err err
 		WriteError(w, http.StatusNotFound, spec, NewErrDetail("user_id", "not_found", "User was not found"))
 	case errors.Is(err, projectusecase.ErrProjectMemberInvalidInput):
 		WriteError(w, http.StatusBadRequest, spec, NewErrDetail("", "invalid_input", "Project, member, and role IDs are required"))
+	case errors.Is(err, projectusecase.ErrTeamSubscriptionRequired):
+		WriteError(w, http.StatusForbidden, spec, NewErrDetail("plan", "team_required", "A Team subscription is required for shared Project collaboration"))
 	case errors.Is(err, projectusecase.ErrPermissionDenied):
 		WriteError(w, http.StatusForbidden, spec, NewErrDetail("", "permission_denied", "The caller lacks required project member permission"))
 	default:

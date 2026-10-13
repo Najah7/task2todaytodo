@@ -63,6 +63,9 @@ type Repository interface {
 	RestoreByUserID(context.Context, domain.UserID, domain.ProjectID, int32) (dao.Project, error)
 	DeleteByUserID(context.Context, domain.UserID, domain.ProjectID, int32) error
 	LockProjectForMemberChange(context.Context, domain.ProjectID) error
+	LockUserForPlanLimit(context.Context, domain.UserID) error
+	LockProjectOwnerForPlanLimit(context.Context, domain.ProjectID) (domain.UserID, error)
+	CountActiveOwnedProjects(context.Context, domain.UserID) (int, error)
 	CheckProjectMemberUpsertPermission(context.Context, domain.UserID, domain.ProjectID, domain.UserID, string) (bool, error)
 	UpsertProjectMember(context.Context, domain.ProjectMember) error
 	DeleteProjectMember(context.Context, domain.UserID, domain.ProjectID, domain.UserID) error

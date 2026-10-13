@@ -11,6 +11,7 @@ Follow the [application guide](../AGENTS.md). This directory holds contracts or 
 - [capability.go](capability.go): typed resource/action pairs so authorization callers use one permission vocabulary instead of ad hoc strings.
 - [capability_test.go](capability_test.go): checks the shared capability constructors.
 - [project_lifecycle.go](project_lifecycle.go): narrow Project status/count reconciliation port used by child-work flows without importing Project packages.
+- [project_write_access.go](project_write_access.go): transaction-bound Project owner, actual-member-count, and effective plan projection used to authorize shared writes.
 - [calendar/recurrence.go](calendar/recurrence.go): pure recurrence, local-time/DST resolution, and interval overlap helpers shared by Schedule and Allocation.
 - [calendar/recurrence_test.go](calendar/recurrence_test.go): checks recurrence and timezone edge cases.
 - [status/status.go](status/status.go): common Task/Project status catalog and labels; each context still owns its transitions.

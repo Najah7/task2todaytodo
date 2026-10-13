@@ -40,10 +40,15 @@ type ListProjectsUseCase struct {
 	repo     projectListRepository
 	progress ProjectProgressReader
 	logger   telemetry.Logger
+	readUOW  projectReadUnitOfWork
 }
 
-func NewListProjectsUseCase(repo projectListRepository, progress ProjectProgressReader, logger telemetry.Logger) *ListProjectsUseCase {
-	return &ListProjectsUseCase{logger: telemetry.OrNop(logger), repo: repo, progress: progress}
+func NewListProjectsUseCase(repo projectListRepository, progress ProjectProgressReader, logger telemetry.Logger, readUOWs ...projectReadUnitOfWork) *ListProjectsUseCase {
+	var readUOW projectReadUnitOfWork
+	if len(readUOWs) > 0 {
+		readUOW = readUOWs[0]
+	}
+	return &ListProjectsUseCase{logger: telemetry.OrNop(logger), repo: repo, progress: progress, readUOW: readUOW}
 }
 
 func (uc *ListProjectsUseCase) Execute(ctx context.Context, userID domain.UserID) (output []dao.Project, err error) {
@@ -53,7 +58,16 @@ func (uc *ListProjectsUseCase) Execute(ctx context.Context, userID domain.UserID
 	if err != nil {
 		return nil, err
 	}
-	return applyProjectProgress(ctx, uc.progress, projects, time.Now())
+	projects, err = applyProjectProgress(ctx, uc.progress, projects, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	if uc.readUOW != nil {
+		if err := restrictProjectWriteCapabilities(ctx, uc.readUOW, userID, projects); err != nil {
+			return nil, err
+		}
+	}
+	return projects, nil
 
 }
 
@@ -74,6 +88,11 @@ func (uc *ListProjectsUseCase) ExecutePage(ctx context.Context, userID domain.Us
 	rows, err = applyProjectProgress(ctx, uc.progress, rows, time.Now())
 	if err != nil {
 		return CursorPage[dao.Project]{}, err
+	}
+	if uc.readUOW != nil {
+		if err := restrictProjectWriteCapabilities(ctx, uc.readUOW, userID, rows); err != nil {
+			return CursorPage[dao.Project]{}, err
+		}
 	}
 	return projectPage(rows, request.Size), nil
 
@@ -185,6 +204,11 @@ func (uc *ListProjectsUseCase) ExecuteFilteredPage(ctx context.Context, userID d
 			}
 			days := int(endDate.Sub(today).Hours() / 24)
 			pageRows[i].RemainingDays = &days
+		}
+	}
+	if uc.readUOW != nil {
+		if err := restrictProjectWriteCapabilities(ctx, uc.readUOW, userID, pageRows); err != nil {
+			return ProjectListPage{}, err
 		}
 	}
 	page := ProjectListPage{Items: pageRows, Summary: summary}

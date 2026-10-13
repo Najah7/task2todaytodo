@@ -8,6 +8,7 @@ import (
 
 type Repositories interface {
 	ProjectLifecycle() shared.ProjectWorkLifecycle
+	ProjectWriteAccess() shared.ProjectWriteAccessReader
 	TaskProjects() TaskProjectRepository
 	Tasks() TaskRepository
 	ActionItems() ActionItemRepository

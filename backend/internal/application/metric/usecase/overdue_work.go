@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/Najah7/task2todaytodo/internal/application/metric/dao"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 )
 
 const OverdueProjectLimit = 5
@@ -18,10 +19,15 @@ type OverdueWorkReader interface {
 
 type OverdueWorkUseCase struct {
 	reader OverdueWorkReader
+	access shared.PlanAccessReader
 }
 
-func NewOverdueWorkUseCase(reader OverdueWorkReader) *OverdueWorkUseCase {
-	return &OverdueWorkUseCase{reader: reader}
+func NewOverdueWorkUseCase(reader OverdueWorkReader, access ...shared.PlanAccessReader) *OverdueWorkUseCase {
+	uc := &OverdueWorkUseCase{reader: reader}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
 }
 
 func (uc *OverdueWorkUseCase) Execute(ctx context.Context, actorID string) (dao.OverdueWork, error) {
@@ -30,6 +36,16 @@ func (uc *OverdueWorkUseCase) Execute(ctx context.Context, actorID string) (dao.
 	}
 	if uc.reader == nil {
 		return dao.OverdueWork{}, ErrReaderUnavailable
+	}
+	if uc.access == nil {
+		return dao.OverdueWork{}, ErrPaidPlanRequired
+	}
+	plan, err := uc.access.GetPlanAccess(ctx, actorID)
+	if err != nil {
+		return dao.OverdueWork{}, err
+	}
+	if !plan.IsPaid() {
+		return dao.OverdueWork{}, ErrPaidPlanRequired
 	}
 	result, err := uc.reader.ReadOverdueWork(ctx, actorID)
 	if err != nil {

@@ -1259,6 +1259,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1311,6 +1317,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -6016,6 +6028,12 @@ const docTemplate = `{
                         "name": "If-Match",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Ignore Project allocations for this regeneration",
+                        "name": "ignore_allocations",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -6966,6 +6984,9 @@ const docTemplate = `{
         "rest.BillingStateResponse": {
             "type": "object",
             "properties": {
+                "access_plan": {
+                    "$ref": "#/definitions/shared.PlanAccess"
+                },
                 "cancel_at_period_end": {
                     "type": "boolean"
                 },
@@ -7572,6 +7593,9 @@ const docTemplate = `{
                 },
                 "personal_access_token": {
                     "type": "string"
+                },
+                "requires_team_subscription": {
+                    "type": "boolean"
                 }
             }
         },
@@ -9683,6 +9707,19 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "shared.PlanAccess": {
+            "type": "string",
+            "enum": [
+                "free",
+                "pro",
+                "team"
+            ],
+            "x-enum-varnames": [
+                "PlanAccessFree",
+                "PlanAccessPro",
+                "PlanAccessTeam"
+            ]
         }
     },
     "securityDefinitions": {

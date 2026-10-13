@@ -4,10 +4,11 @@ Follow the [application guide](../AGENTS.md). Routes are registered in [cmd/api/
 
 ## Features
 
-- Generate a user's execution plan once when the day's Todo is first created. Use Task/ActionItem work, fixed Schedules, positive Active time windows, Project allocations, and the existing gap policy.
-- Allow an explicit destructive regenerate from current sources. It replaces every Todo row, including completed, hidden, and manually added rows; preserves the Todo identity and advances its revision once. It does not alter source completion or actual-minute state.
+- Generate a user's execution plan once when the day's Todo is first created. Free plans use eligible Task/ActionItem work, fixed Schedules, positive Active time windows, priority/urgency, and the existing gap policy while ignoring Project allocations. Pro/Team plans use Project allocations when any occur that day; when none occur, use allocation-free placement.
+- Allow an explicit destructive regenerate from current sources. It replaces every Todo row, including completed, hidden, and manually added rows; preserves the Todo identity and advances its revision once. It does not alter source completion or actual-minute state. Free and days with no Project allocation occurrences use allocation-free placement. Pro/Team may request one allocation-free regeneration; this choice applies only to that invocation.
 - Keep the selected work and its relative display order stable for the day. Source edits do not reselect, reflow, split, or shorten saved work. Schedule source changes synchronize Schedule rows transactionally while preserving work rows, work timestamps, and relative order.
 - Support position-only reorder, manual add/remove, whole-source complete/reopen, and hide/restore for Schedule rows.
+- Completed-Task retention and cleanup are deferred; do not infer or implement an automatic deletion policy from this Todo plan work.
 
 ## Endpoints
 

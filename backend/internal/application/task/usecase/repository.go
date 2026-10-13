@@ -24,6 +24,7 @@ var (
 	ErrTaskStarted                         = errors.New("task estimate is locked after work starts")
 	ErrTaskActualMinutesRequiresCompletion = errors.New("actual minutes can only be edited after Task completion")
 	ErrCannotAddActionItemToStartedTask    = errors.New("cannot add an action item to a started or completed childless task")
+	ErrFreeActionItemLimitReached          = errors.New("free plan allows up to 100 action items in each Project or across projectless Tasks")
 )
 
 // TaskProject is the small, primitive project view needed by Task commands.
@@ -91,6 +92,9 @@ type TaskStatusRepository interface {
 type ActionItemRepository interface {
 	TaskListProjectionReader
 	CountForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, capability shared.Capability) (int, error)
+	CountForProjectPlanLimit(ctx context.Context, projectID string) (int, error)
+	CountProjectlessForUserPlanLimit(ctx context.Context, userID domain.UserID) (int, error)
+	CountForTaskPlanLimit(ctx context.Context, taskID domain.TaskID) (int, error)
 	GetForOwnedTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID) (dao.ActionItem, error)
 	GetForCommand(ctx context.Context, userID domain.UserID, taskID domain.TaskID, id domain.ActionItemID, capability shared.Capability) (dao.ActionItem, error)
 	ListByTask(ctx context.Context, userID domain.UserID, taskID domain.TaskID) ([]dao.ActionItem, error)

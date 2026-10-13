@@ -55,7 +55,7 @@ func NewHandler(usecases application.UseCase, issueID func() string, pageTokenKe
 		Timezone:                    NewTimezoneHandler(usecases.Timezone),
 		Admin:                       NewAdminHandler(usecases.Admin.Job, usecases.Admin.Operation, pageTokens),
 		Inbox:                       NewInboxHandler(usecases.Inbox, pageTokens),
-		Allocation:                  NewAllocationHandler(usecases.Allocation),
+		Allocation:                  NewAllocationHandler(usecases.Allocation, usecases.Billing.GetStatus),
 		Todos:                       NewTodosHandler(TodosUseCases{GetToday: usecases.Todo.GetToday, RegenerateToday: usecases.Todo.RegenerateToday, AddActionItem: usecases.Todo.AddActionItem, AddTask: usecases.Todo.AddTask, Reflow: usecases.Todo.Reflow, CompleteFrame: usecases.Todo.CompleteFrame, ReopenFrame: usecases.Todo.ReopenFrame, RemoveActionItem: usecases.Todo.RemoveActionItem, HideSchedule: usecases.Todo.HideSchedule, RestoreSchedule: usecases.Todo.RestoreSchedule}),
 		Metrics:                     NewMetricsHandler(usecases.Metric.TodoCompletion, usecases.Metric.OverdueWork),
 		Billing:                     NewBillingHandler(usecases.Billing, webhookSecret),

@@ -93,7 +93,7 @@ func (weekRepo) ListPauseIntervals(context.Context, string) ([]dao.PauseInterval
 func TestGetWeekCountsSpringDSTDayAndWakingActiveTimeAcrossMonday(t *testing.T) {
 	location := mustWeekLocation(t, "America/New_York")
 	weekStart := time.Date(2026, time.March, 2, 0, 0, 0, 0, time.UTC)
-	week, err := NewGetWeekUseCase(weekRepo{profile: dao.Profile{
+	week, err := newPaidGetWeekUseCase(weekRepo{profile: dao.Profile{
 		Timezone: location.String(), ActiveStartTime: "07:00", ActiveEndTime: "23:00",
 	}}).Execute(context.Background(), "user", weekStart)
 	if err != nil {
@@ -126,7 +126,7 @@ func TestGetWeekCountsSpringDSTDayAndWakingActiveTimeAcrossMonday(t *testing.T) 
 func TestGetWeekCountsFallDSTDayAtTwentyFiveHours(t *testing.T) {
 	location := mustWeekLocation(t, "America/New_York")
 	weekStart := time.Date(2026, time.October, 26, 0, 0, 0, 0, time.UTC)
-	week, err := NewGetWeekUseCase(weekRepo{profile: dao.Profile{
+	week, err := newPaidGetWeekUseCase(weekRepo{profile: dao.Profile{
 		Timezone: location.String(), ActiveStartTime: "07:00", ActiveEndTime: "23:00",
 	}}).Execute(context.Background(), "user", weekStart)
 	if err != nil {
@@ -154,7 +154,7 @@ func TestGetWeekCountsFallDSTDayAtTwentyFiveHours(t *testing.T) {
 func TestGetWeekIncludesOvernightActiveCarryInAtWeekBoundary(t *testing.T) {
 	location := mustWeekLocation(t, "UTC")
 	weekStart := time.Date(2026, time.October, 12, 0, 0, 0, 0, time.UTC)
-	week, err := NewGetWeekUseCase(weekRepo{profile: dao.Profile{
+	week, err := newPaidGetWeekUseCase(weekRepo{profile: dao.Profile{
 		Timezone: location.String(), ActiveStartTime: "22:00", ActiveEndTime: "02:00",
 	}}).Execute(context.Background(), "user", weekStart)
 	if err != nil {
@@ -187,7 +187,7 @@ func TestGetWeekUsesRecalculatedWakeWindowAndUnionsPastAllocationOverlap(t *test
 		projects:    []dao.Project{{ID: "project", Title: "Plan", TargetMinutes: 300}},
 		allocations: allocations,
 	}
-	week, err := NewGetWeekUseCase(repo).Execute(context.Background(), "user", weekStart)
+	week, err := newPaidGetWeekUseCase(repo).Execute(context.Background(), "user", weekStart)
 	if err != nil {
 		t.Fatalf("GetWeek() error = %v", err)
 	}
@@ -228,7 +228,7 @@ func TestGetWeekProjectsEffectiveRuleRevisionsOnceAndPauseExceptions(t *testing.
 		origins: map[string]bool{"weekly|2026-10-14": true},
 		pauses:  map[string][]dao.PauseInterval{"weekly": {{PausedAt: pausedAt, ResumedAt: &resumedAt}}},
 	}
-	week, err := NewGetWeekUseCase(repo).Execute(context.Background(), "user", weekStart)
+	week, err := newPaidGetWeekUseCase(repo).Execute(context.Background(), "user", weekStart)
 	if err != nil {
 		t.Fatalf("GetWeek() error = %v", err)
 	}
@@ -272,7 +272,7 @@ func TestGetWeekKeepsStartedSlotAtSameDayRevisionCutover(t *testing.T) {
 			{ID: "rule", ProjectID: "project", Revision: 2, SourceRevisionID: "r2", Weekday: int(time.Wednesday), StartTime: "18:00", EndTime: "19:00", Timezone: "UTC", Frequency: "weekly", EffectiveFrom: cutover, EffectiveAt: cutover},
 		},
 	}
-	week, err := NewGetWeekUseCase(repo).Execute(context.Background(), "user", weekStart)
+	week, err := newPaidGetWeekUseCase(repo).Execute(context.Background(), "user", weekStart)
 	if err != nil {
 		t.Fatalf("GetWeek() error = %v", err)
 	}
@@ -300,7 +300,7 @@ func TestGetWeekShowsConfiguredAndReferencedProjectsOnly(t *testing.T) {
 		plans: []dao.PlanItem{{ProjectID: "configured"}}, configuredSet: true,
 		allocations: []dao.Allocation{{ProjectID: "historical", StartAt: start, EndAt: start.Add(time.Hour)}},
 	}
-	week, err := NewGetWeekUseCase(repo).Execute(context.Background(), "user", weekStart)
+	week, err := newPaidGetWeekUseCase(repo).Execute(context.Background(), "user", weekStart)
 	if err != nil {
 		t.Fatalf("GetWeek() error = %v", err)
 	}
@@ -330,7 +330,7 @@ func TestGetWeekShowsProjectForPreservedVirtualFrameAfterplanRemoval(t *testing.
 			EffectiveAt: weekStart.AddDate(0, 0, -14), DeletedAt: &deletedAt,
 		}},
 	}
-	week, err := NewGetWeekUseCase(repo).Execute(context.Background(), "user", weekStart)
+	week, err := newPaidGetWeekUseCase(repo).Execute(context.Background(), "user", weekStart)
 	if err != nil {
 		t.Fatalf("GetWeek() error = %v", err)
 	}
@@ -359,7 +359,7 @@ func TestGetWeekPreservesStartedVirtualOriginsAfterFollowingStop(t *testing.T) {
 			EffectiveAt: weekStart.AddDate(0, 0, -14), StoppedAfter: &lastOrigin, DeletedAt: &stopAt,
 		}},
 	}
-	week, err := NewGetWeekUseCase(repo).Execute(context.Background(), "user", weekStart)
+	week, err := newPaidGetWeekUseCase(repo).Execute(context.Background(), "user", weekStart)
 	if err != nil {
 		t.Fatalf("GetWeek() error = %v", err)
 	}
@@ -383,7 +383,7 @@ func TestGetWeekKeepsPreCutoffFramesForStoppedRule(t *testing.T) {
 		weekRepo: weekRepo{profile: dao.Profile{Timezone: "UTC", ActiveStartTime: "07:00", ActiveEndTime: "23:00"}, projects: []dao.Project{{ID: "project", Title: "Plan"}}},
 		rules:    []dao.Rule{rule},
 	}
-	first, err := NewGetWeekUseCase(firstRepo).Execute(context.Background(), "user", weekStart)
+	first, err := newPaidGetWeekUseCase(firstRepo).Execute(context.Background(), "user", weekStart)
 	if err != nil {
 		t.Fatalf("GetWeek() before stop cutoff error = %v", err)
 	}
@@ -391,7 +391,7 @@ func TestGetWeekKeepsPreCutoffFramesForStoppedRule(t *testing.T) {
 		t.Fatalf("pre-cutoff frame = %+v; want Wednesday 08:00", first.Allocations)
 	}
 	secondWeek := weekStart.AddDate(0, 0, 7)
-	second, err := NewGetWeekUseCase(firstRepo).Execute(context.Background(), "user", secondWeek)
+	second, err := newPaidGetWeekUseCase(firstRepo).Execute(context.Background(), "user", secondWeek)
 	if err != nil {
 		t.Fatalf("GetWeek() after stop cutoff error = %v", err)
 	}

@@ -24,6 +24,9 @@ func (uc *RevokeProjectInvitationUseCase) Execute(ctx context.Context, actor dom
 		if err := repo.LockProjectForMemberChange(ctx, project); err != nil {
 			return err
 		}
+		if err := requireTeamInvitation(ctx, repo, actor, project); err != nil {
+			return err
+		}
 		return repo.RevokeProjectInvitation(ctx, actor, project, invitationID)
 	})
 }

@@ -67,6 +67,9 @@ func (uc *UpdateOccurrenceUseCase) execute(ctx context.Context, actorID, ruleID,
 		if err != nil {
 			return err
 		}
+		if err := requireScheduleProjectWrite(ctx, repos, actorID, current.value.ProjectID, targetProject); err != nil {
+			return err
+		}
 		if err := authorizeOccurrencePatch(ctx, repos, actorID, current.value, input); err != nil {
 			return err
 		}

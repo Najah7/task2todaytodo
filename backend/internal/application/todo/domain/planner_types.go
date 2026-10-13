@@ -79,15 +79,16 @@ type Frame struct {
 }
 
 type Input struct {
-	Day             Interval
-	ActiveTime      []Interval
-	Allocations     []ProjectAllocation
-	Schedules       []Schedule
-	CompletedFrames []Frame
-	Candidates      []Candidate
-	GapMinutes      int
-	Today           time.Time // Date in caller's timezone; used for due urgency.
-	Location        *time.Location
+	Day               Interval
+	ActiveTime        []Interval
+	Allocations       []ProjectAllocation
+	IgnoreAllocations bool
+	Schedules         []Schedule
+	CompletedFrames   []Frame
+	Candidates        []Candidate
+	GapMinutes        int
+	Today             time.Time // Date in caller's timezone; used for due urgency.
+	Location          *time.Location
 }
 
 type Plan struct {

@@ -31,7 +31,7 @@ func TestOverdueWorkUseCaseSortsProjectsAndAggregatesRemainder(t *testing.T) {
 		{ProjectTitle: strPtr("Foxtrot"), Count: 1},
 	}
 	reader := &overdueWorkReaderFake{result: dao.OverdueWork{Timezone: "UTC", Projects: projects}}
-	got, err := NewOverdueWorkUseCase(reader).Execute(context.Background(), "actor")
+	got, err := NewOverdueWorkUseCase(reader, paidPlanAccess{}).Execute(context.Background(), "actor")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestOverdueWorkUseCaseSortsProjectsAndAggregatesRemainder(t *testing.T) {
 
 func TestOverdueWorkUseCaseKeepsPersonalGroupAndEmptyBreakdown(t *testing.T) {
 	reader := &overdueWorkReaderFake{result: dao.OverdueWork{Projects: []dao.OverdueProject{{Count: 2}}}}
-	got, err := NewOverdueWorkUseCase(reader).Execute(context.Background(), "actor")
+	got, err := NewOverdueWorkUseCase(reader, paidPlanAccess{}).Execute(context.Background(), "actor")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestOverdueWorkUseCaseKeepsPersonalGroupAndEmptyBreakdown(t *testing.T) {
 	}
 
 	reader.result.Projects = nil
-	got, err = NewOverdueWorkUseCase(reader).Execute(context.Background(), "actor")
+	got, err = NewOverdueWorkUseCase(reader, paidPlanAccess{}).Execute(context.Background(), "actor")
 	if err != nil || got.Projects == nil || len(got.Projects) != 0 {
 		t.Fatalf("empty breakdown=%+v err=%v, want non-nil empty projects", got.Projects, err)
 	}

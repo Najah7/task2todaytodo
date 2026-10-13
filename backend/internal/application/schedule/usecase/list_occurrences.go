@@ -74,6 +74,9 @@ func (uc *ListOccurrencesUseCase) ExecutePage(ctx context.Context, actorID strin
 				pageItems[i].CanUpdateFollowing = capabilities.CanUpdateFollowing
 				pageItems[i].CanDeleteFollowing = capabilities.CanDeleteFollowing
 			}
+			if err := restrictScheduleWriteCapabilities(ctx, repos, actorID, &pageItems[i]); err != nil {
+				return err
+			}
 		}
 		return nil
 	}); err != nil {

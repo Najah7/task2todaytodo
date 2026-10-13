@@ -6,6 +6,7 @@ import (
 
 	allocationusecase "github.com/Najah7/task2todaytodo/internal/application/allocation/usecase"
 	authusecase "github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
+	billingrepository "github.com/Najah7/task2todaytodo/internal/application/billing/repository"
 	billingusecase "github.com/Najah7/task2todaytodo/internal/application/billing/usecase"
 	inboxusecase "github.com/Najah7/task2todaytodo/internal/application/inbox/usecase"
 	metricusecase "github.com/Najah7/task2todaytodo/internal/application/metric/usecase"
@@ -56,24 +57,32 @@ func NewUseCaseWithBilling(store Store, uow UOW, id IDIssuer, logger telemetry.L
 	prefill := allocationusecase.NewPrefillAllocationsExecutor(store.Allocation, uow.Allocation, id.NewULID)
 	admin, closeAdmin := NewAdminUseCases(store.Admin, schedules.Backfill, id, logger, prefill)
 	stripeClient := stripeadapter.NewClient(billingSettings.StripeAPIKey, billingSettings.ProPriceID, billingSettings.TeamPriceID)
+	planAccess := billingusecase.NewGetStatusUseCase(store.Billing, billingSettings.Enabled)
+	for _, candidate := range []any{uow.Project, uow.ProjectRead, uow.ProjectInvitationAcceptance, uow.Task, uow.TaskRead, uow.Schedule, uow.ScheduleRead, uow.Todo} {
+		if access, ok := candidate.(interface {
+			ConfigureProjectWriteAccess(*billingrepository.Repository, bool)
+		}); ok {
+			access.ConfigureProjectWriteAccess(store.Billing, billingSettings.Enabled)
+		}
+	}
 	return UseCase{
 		User:                    NewUserUseCases(store.Auth, uow.Auth, uow.AuthAccount, logger),
 		EmailAuth:               authusecase.NewEmailAuthUseCases(uow.AuthAccount, email.Sender, email.FrontendURL, logger),
 		PersonalAccessToken:     NewPersonalAccessTokenUseCases(store.Auth, uow.AuthAccount, logger),
 		Role:                    NewRoleUseCases(store.Auth, logger),
 		Timezone:                NewTimezoneUseCases(store.Auth, logger),
-		Project:                 NewProjectUseCases(store.Project, uow.Project, logger, email.InvitationSender, email.FrontendURL, uow.ProjectRead),
+		Project:                 NewProjectUseCasesWithAccess(store.Project, uow.Project, logger, email.InvitationSender, email.FrontendURL, planAccess, uow.ProjectRead),
 		AcceptProjectInvitation: projectusecase.NewAcceptProjectInvitationUseCase(uow.ProjectInvitationAcceptance, logger),
-		Task:                    NewTaskUseCases(store.Task, uow.Task, store.Auth, id, logger, uow.TaskRead),
-		ActionItem:              NewActionItemUseCases(uow.Task, logger, uow.TaskRead),
+		Task:                    NewTaskUseCasesWithAccess(store.Task, uow.Task, store.Auth, id, logger, planAccess, uow.TaskRead),
+		ActionItem:              NewActionItemUseCasesWithAccess(uow.Task, logger, planAccess, uow.TaskRead),
 		Schedule:                schedules,
 		Admin:                   admin,
 		Inbox:                   NewInboxUseCases(store.Auth, store.Task, schedules, store.Inbox, logger),
-		Allocation:              allocationusecase.NewUseCases(store.Allocation, uow.Allocation, id.NewULID, time.Now, uow.AllocationRead),
-		Todo:                    todousecase.NewUseCases(uow.Todo, id.NewULID, logger),
+		Allocation:              allocationusecase.NewUseCasesWithAccess(store.Allocation, uow.Allocation, id.NewULID, time.Now, uow.AllocationRead, planAccess),
+		Todo:                    todousecase.NewUseCasesWithAccess(uow.Todo, id.NewULID, logger, planAccess),
 		Metric: metricusecase.UseCases{
-			TodoCompletion: metricusecase.NewTodoCompletionUseCase(store.Metric),
-			OverdueWork:    metricusecase.NewOverdueWorkUseCase(store.Metric),
+			TodoCompletion: metricusecase.NewTodoCompletionUseCase(store.Metric, planAccess),
+			OverdueWork:    metricusecase.NewOverdueWorkUseCase(store.Metric, planAccess),
 		},
 		Billing: billingusecase.NewUseCases(store.Billing, uow.Billing, stripeClient, billingSettings.Enabled, billingSettings.ProPriceID, billingSettings.TeamPriceID, email.FrontendURL),
 	}, closeAdmin

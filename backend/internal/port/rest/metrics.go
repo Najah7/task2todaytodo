@@ -11,6 +11,7 @@ import (
 var (
 	metricsTodoCompletionFailure = NewFailureErrSpec("metrics", "get_todo_completion", "Failed to get Todo completion metrics")
 	metricsOverdueWorkFailure    = NewFailureErrSpec("metrics", "get_overdue_work", "Failed to get overdue work metrics")
+	metricsPlanRequired          = NewFailureErrSpec("metrics", "plan_required", "A Pro or Team plan is required")
 )
 
 type MetricsHandler struct {
@@ -64,6 +65,7 @@ type OverdueWorkMetricsResponse struct {
 //	@Success	200		{object}	TodoCompletionMetricsResponse
 //	@Failure	400		{object}	ErrResponse
 //	@Failure	401		{object}	ErrResponse
+//	@Failure	403		{object}	ErrResponse
 //	@Failure	500		{object}	ErrResponse
 //	@Router		/metrics/todo-completion [get]
 func (h *MetricsHandler) TodoCompletion(w http.ResponseWriter, r *http.Request) {
@@ -86,6 +88,10 @@ func (h *MetricsHandler) TodoCompletion(w http.ResponseWriter, r *http.Request) 
 	}
 	metrics, err := h.todoCompletion.Execute(r.Context(), actorID, days)
 	if err != nil {
+		if err == metricusecase.ErrPaidPlanRequired {
+			WriteError(w, http.StatusForbidden, metricsPlanRequired, NewErrDetail("plan", "upgrade_required", "A Pro or Team plan is required"))
+			return
+		}
 		if metricusecase.ErrInvalidDays == err {
 			writeInvalidMetricsDays(w, metricsTodoCompletionFailure)
 			return
@@ -105,6 +111,7 @@ func (h *MetricsHandler) TodoCompletion(w http.ResponseWriter, r *http.Request) 
 //	@Security	BearerAuth
 //	@Success	200	{object}	OverdueWorkMetricsResponse
 //	@Failure	401	{object}	ErrResponse
+//	@Failure	403	{object}	ErrResponse
 //	@Failure	500	{object}	ErrResponse
 //	@Router		/metrics/overdue-work [get]
 func (h *MetricsHandler) OverdueWork(w http.ResponseWriter, r *http.Request) {
@@ -114,6 +121,10 @@ func (h *MetricsHandler) OverdueWork(w http.ResponseWriter, r *http.Request) {
 	}
 	metrics, err := h.overdueWork.Execute(r.Context(), actorID)
 	if err != nil {
+		if err == metricusecase.ErrPaidPlanRequired {
+			WriteError(w, http.StatusForbidden, metricsPlanRequired, NewErrDetail("plan", "upgrade_required", "A Pro or Team plan is required"))
+			return
+		}
 		WriteError(w, http.StatusInternalServerError, metricsOverdueWorkFailure, ErrDetailInternalServerError)
 		return
 	}

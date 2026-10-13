@@ -4,6 +4,7 @@ import (
 	"context"
 
 	allocationrepository "github.com/Najah7/task2todaytodo/internal/application/allocation/repository"
+	billingrepository "github.com/Najah7/task2todaytodo/internal/application/billing/repository"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
@@ -13,13 +14,15 @@ import (
 )
 
 type ScheduleUOW struct {
-	pool        *pgxpool.Pool
-	store       ScheduleStore
-	projects    ProjectStore
-	sourceStore Store
-	taskStore   TaskStore
-	newID       func() string
-	runTx       transactionRunner
+	pool           *pgxpool.Pool
+	store          ScheduleStore
+	projects       ProjectStore
+	sourceStore    Store
+	taskStore      TaskStore
+	newID          func() string
+	runTx          transactionRunner
+	billing        *billingrepository.Repository
+	billingEnabled bool
 }
 
 func NewScheduleUOW(pool *pgxpool.Pool, store ScheduleStore, projects ProjectStore, sourceStore Store, taskStore TaskStore, newID func() string) scheduleusecase.UOW {
@@ -45,18 +48,26 @@ func (u *ScheduleUOW) Do(ctx context.Context, fn func(context.Context, scheduleu
 
 func (u *ScheduleUOW) repositories(tx pgx.Tx) scheduleusecase.Repositories {
 	projectRepository := u.projects.WithTx(tx).Projects
+	access := newProjectWriteAccessReader(projectRepository, billingWithTx(u.billing, tx), u.billingEnabled)
 	scheduleStore := u.store.WithTx(tx)
 	allocationRules := allocationrepository.NewAllocationRepository(u.pool).WithTx(tx)
 	return scheduleRepositories{
 		store: scheduleStore,
-		lifecycle: projectusecase.NewProjectLifecycleUseCase(projectRepository, projectRepository, scheduleStore.Schedules,
-			allocationProjectLifecycleAdapter{repository: allocationRules}),
+		lifecycle: projectusecase.NewProjectLifecycleUseCaseWithAccess(projectRepository, projectRepository, scheduleStore.Schedules,
+			allocationProjectLifecycleAdapter{repository: allocationRules}, access),
+		projectWriteAccess: access,
 	}
 }
 
+func (u *ScheduleUOW) ConfigureProjectWriteAccess(billing *billingrepository.Repository, enabled bool) {
+	u.billing = billing
+	u.billingEnabled = enabled
+}
+
 type scheduleRepositories struct {
-	store     ScheduleStore
-	lifecycle shared.ProjectWorkLifecycle
+	store              ScheduleStore
+	lifecycle          shared.ProjectWorkLifecycle
+	projectWriteAccess shared.ProjectWriteAccessReader
 }
 
 func (r scheduleRepositories) Schedules() scheduleusecase.ScheduleRepository {
@@ -69,4 +80,8 @@ func (r scheduleRepositories) Rules() scheduleusecase.RuleRepository {
 
 func (r scheduleRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle {
 	return r.lifecycle
+}
+
+func (r scheduleRepositories) ProjectWriteAccess() shared.ProjectWriteAccessReader {
+	return r.projectWriteAccess
 }

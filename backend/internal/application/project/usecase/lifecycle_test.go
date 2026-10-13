@@ -12,11 +12,13 @@ import (
 )
 
 type projectLifecycleRepositoryFake struct {
-	status    string
-	statusErr error
-	lockErr   error
-	setTo     string
-	setCalls  int
+	status       string
+	statusErr    error
+	lockErr      error
+	setTo        string
+	setCalls     int
+	ownerID      domain.UserID
+	projectCount int
 }
 
 func (f *projectLifecycleRepositoryFake) LockProjectForLifecycle(context.Context, domain.ProjectID) error {
@@ -29,6 +31,18 @@ func (f *projectLifecycleRepositoryFake) SetStatusForLifecycle(_ context.Context
 	f.setCalls++
 	f.setTo = status
 	return nil
+}
+func (*projectLifecycleRepositoryFake) LockUserForPlanLimit(context.Context, domain.UserID) error {
+	return nil
+}
+func (f *projectLifecycleRepositoryFake) LockProjectOwnerForPlanLimit(context.Context, domain.ProjectID) (domain.UserID, error) {
+	if f.ownerID == "" {
+		return "owner-1", nil
+	}
+	return f.ownerID, nil
+}
+func (f *projectLifecycleRepositoryFake) CountActiveOwnedProjects(context.Context, domain.UserID) (int, error) {
+	return f.projectCount, nil
 }
 
 type projectLifecycleProgressFake struct{ sources dao.ProjectProgressSources }
@@ -175,6 +189,25 @@ func TestProjectLifecyclePausesAndResumesRulesWithAutomaticStatus(t *testing.T) 
 			}
 		})
 	}
+}
+
+func TestProjectLifecycleBlocksFreePlanAutomaticReopenAtProjectLimit(t *testing.T) {
+	repo := &projectLifecycleRepositoryFake{status: "done", projectCount: maxFreeActiveProjects}
+	sources := dao.ProjectProgressSources{Tasks: []dao.ProjectTaskProgress{{TaskDone: false, TotalActionItems: 1}}}
+	uc := NewProjectLifecycleUseCaseWithAccess(repo, projectLifecycleProgressFake{sources: sources}, projectLifecycleScheduleNoop{}, nil, freeProjectPlanAccess{})
+	err := uc.ReconcileWorkState(context.Background(), "actor-1", "project-1", shared.ProjectWorkState{Status: "done", Eligible: 1, Completed: 1}, time.Now())
+	if !errors.Is(err, ErrFreeProjectLimitReached) {
+		t.Fatalf("ReconcileWorkState error = %v, want Free Project limit", err)
+	}
+	if repo.setCalls != 0 {
+		t.Fatalf("Project status writes = %d, want none", repo.setCalls)
+	}
+}
+
+type freeProjectPlanAccess struct{}
+
+func (freeProjectPlanAccess) GetPlanAccess(context.Context, string) (shared.PlanAccess, error) {
+	return shared.PlanAccessFree, nil
 }
 
 func boolInt(value bool) int {

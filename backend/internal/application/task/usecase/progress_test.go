@@ -26,6 +26,19 @@ func (taskProgressTestRepositories) ActionItemTodos() ActionItemTodoLifecycle {
 
 func (taskProgressTestRepositories) TaskTodos() TaskTodoLifecycle { return taskProgressTestTaskTodos{} }
 
+func (taskProgressTestRepositories) ProjectWriteAccess() shared.ProjectWriteAccessReader {
+	return taskProgressTestProjectWriteAccess{}
+}
+
+type taskProgressTestProjectWriteAccess struct{}
+
+func (taskProgressTestProjectWriteAccess) GetProjectWriteAccess(context.Context, string, string) (shared.ProjectWriteAccess, error) {
+	return shared.ProjectWriteAccess{
+		OwnerUserID: "user-1", MemberCount: 1,
+		ActorPlanAccess: shared.PlanAccessTeam, OwnerPlanAccess: shared.PlanAccessTeam,
+	}, nil
+}
+
 type taskProgressTestActionItemTodos struct{}
 
 func (taskProgressTestActionItemTodos) HasCompletedFrame(context.Context, domain.ActionItemID) (bool, error) {
@@ -66,6 +79,15 @@ type taskProgressTestActionItems struct{ ActionItemRepository }
 func (taskProgressTestActionItems) CountForOwnedTask(context.Context, domain.UserID, domain.TaskID, shared.Capability) (int, error) {
 	return 0, nil
 }
+func (taskProgressTestActionItems) CountForProjectPlanLimit(context.Context, string) (int, error) {
+	return 0, nil
+}
+func (taskProgressTestActionItems) CountProjectlessForUserPlanLimit(context.Context, domain.UserID) (int, error) {
+	return 0, nil
+}
+func (taskProgressTestActionItems) CountForTaskPlanLimit(context.Context, domain.TaskID) (int, error) {
+	return 0, nil
+}
 
 func (taskProgressTestActionItems) ReadTaskListProjection(_ context.Context, _ domain.UserID, taskIDs []string) (dao.TaskListProjectionSources, error) {
 	items := make(map[string][]dao.ActionItem, len(taskIDs))
@@ -90,6 +112,8 @@ func (inertProjectWorkLifecycle) CaptureWorkState(context.Context, string, time.
 func (inertProjectWorkLifecycle) ReconcileWorkState(context.Context, string, string, shared.ProjectWorkState, time.Time) error {
 	return nil
 }
+func (inertProjectWorkLifecycle) LockOwnerPlanLimit(context.Context, string) error { return nil }
+func (inertProjectWorkLifecycle) LockUserPlanLimit(context.Context, string) error  { return nil }
 
 func (taskProgressTestRepository) ReadTaskProgressSources(_ context.Context, taskIDs []string, _ time.Time) (dao.TaskProgressSources, error) {
 	sources := dao.TaskProgressSources{Counts: map[string]dao.TaskProgressCounts{}, Statuses: map[string]dao.TaskStatus{}}

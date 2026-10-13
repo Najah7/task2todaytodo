@@ -63,6 +63,9 @@ func (u *ReopenFrameUseCase) Execute(ctx context.Context, userID, frameID string
 			if !ok || !occurrence.CanReopen {
 				return ErrPermissionDenied
 			}
+			if err := requireSharedProjectWrite(ctx, repos, userID, occurrence.ProjectID); err != nil {
+				return err
+			}
 			if _, err := repos.Items().Save(ctx, model.SetCompleted(false)); err != nil {
 				return err
 			}
@@ -79,6 +82,9 @@ func (u *ReopenFrameUseCase) Execute(ctx context.Context, userID, frameID string
 		source, ok := sourceByRef(workSources, ref)
 		if !ok || !source.CanReopen {
 			return ErrPermissionDenied
+		}
+		if err := requireSharedProjectWrite(ctx, repos, userID, source.ProjectID); err != nil {
+			return err
 		}
 		if _, err := repos.Items().Save(ctx, model.SetCompleted(false)); err != nil {
 			return err

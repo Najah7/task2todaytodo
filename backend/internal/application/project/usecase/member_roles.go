@@ -62,7 +62,12 @@ func ProjectMemberRoleCapabilities(catalog []authdao.Role) ([]ProjectMemberRoleO
 	}
 	for i := range capabilities {
 		switch capabilities[i].ID {
-		case "project.delete", "project_member.manage_admin":
+		case "project.delete":
+			capabilities[i].Owner = true
+			capabilities[i].Admin = false
+			capabilities[i].Editor = false
+			capabilities[i].Viewer = false
+		case "project_member.manage_admin":
 			capabilities[i].Owner = true
 		case "project_member.invite":
 			capabilities[i].Owner = true

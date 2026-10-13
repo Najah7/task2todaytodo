@@ -22,18 +22,14 @@ type CreateProjectInput struct {
 	EndDate     *time.Time
 }
 
-type createProjectRepository interface {
-	Create(ctx context.Context, project domain.Project) (dao.Project, error)
-	HasPermission(context.Context, domain.UserID, domain.ProjectID, shared.Capability) (bool, error)
-}
-
 type CreateProjectUseCase struct {
-	repo   createProjectRepository
+	uow    UnitOfWork
+	access shared.PlanAccessReader
 	logger telemetry.Logger
 }
 
-func NewCreateProjectUseCase(repo createProjectRepository, logger telemetry.Logger) *CreateProjectUseCase {
-	return &CreateProjectUseCase{logger: telemetry.OrNop(logger), repo: repo}
+func NewCreateProjectUseCase(uow UnitOfWork, access shared.PlanAccessReader, logger telemetry.Logger) *CreateProjectUseCase {
+	return &CreateProjectUseCase{logger: telemetry.OrNop(logger), uow: uow, access: access}
 }
 
 func (uc *CreateProjectUseCase) Execute(ctx context.Context, input CreateProjectInput) (output dao.Project, err error) {
@@ -73,18 +69,28 @@ func (uc *CreateProjectUseCase) Execute(ctx context.Context, input CreateProject
 		return dao.Project{}, err
 	}
 
-	created, err := uc.repo.Create(ctx, project)
+	plan, err := planAccessFor(uc.access, ctx, input.UserID)
 	if err != nil {
 		return dao.Project{}, err
 	}
-	created.CanUpdate, err = uc.repo.HasPermission(ctx, input.UserID, domain.ProjectID(created.ID), shared.ProjectUpdate())
-	if err != nil {
-		return dao.Project{}, err
-	}
-	created.CanDelete, err = uc.repo.HasPermission(ctx, input.UserID, domain.ProjectID(created.ID), shared.ProjectDelete())
-	if err != nil {
-		return dao.Project{}, err
-	}
-	return created, nil
+	var created dao.Project
+	err = uc.uow.Do(ctx, func(ctx context.Context, repo Repository, _ ProjectChildrenDeleter) error {
+		if !plan.IsPaid() {
+			if err := enforceProjectCapacity(ctx, repo, input.UserID); err != nil {
+				return err
+			}
+		}
+		created, err = repo.Create(ctx, project)
+		if err != nil {
+			return err
+		}
+		created.CanUpdate, err = repo.HasPermission(ctx, input.UserID, domain.ProjectID(created.ID), shared.ProjectUpdate())
+		if err != nil {
+			return err
+		}
+		created.CanDelete, err = repo.HasPermission(ctx, input.UserID, domain.ProjectID(created.ID), shared.ProjectDelete())
+		return err
+	})
+	return created, err
 
 }

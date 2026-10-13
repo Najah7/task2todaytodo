@@ -23,6 +23,14 @@ func (uc *DeleteProjectUseCase) Execute(ctx context.Context, actor domain.UserID
 		if err != nil {
 			return err
 		}
+		if err := requireProjectWriter(ctx, repo, actor, projectID); err != nil {
+			return err
+		}
+		if project.DeletedAt == nil {
+			if err := repo.LockUserForPlanLimit(ctx, domain.UserID(project.UserID)); err != nil {
+				return err
+			}
+		}
 		if project.Revision != expectedRevision {
 			return ErrRevisionConflict
 		}

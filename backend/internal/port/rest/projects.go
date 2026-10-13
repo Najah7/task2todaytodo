@@ -1059,6 +1059,12 @@ func projectUseCaseError(err error) (int, ErrDetail) {
 	switch {
 	case errors.Is(err, projectusecase.ErrRevisionConflict), errors.Is(err, taskusecase.ErrRevisionConflict):
 		return http.StatusConflict, NewErrDetail("If-Match", "revision_conflict", "The resource changed since the supplied revision")
+	case errors.Is(err, projectusecase.ErrFreeProjectLimitReached):
+		return http.StatusConflict, NewErrDetail("plan", "free_project_limit_reached", "The Free plan allows up to 3 active Projects")
+	case errors.Is(err, taskusecase.ErrFreeActionItemLimitReached):
+		return http.StatusConflict, NewErrDetail("plan", "free_action_item_limit_reached", "The Free plan allows up to 100 ActionItems in each Project or across projectless Tasks")
+	case errors.Is(err, projectusecase.ErrTeamSubscriptionRequired), errors.Is(err, taskusecase.ErrTeamSubscriptionRequired):
+		return http.StatusForbidden, NewErrDetail("plan", "team_required", "A Team subscription is required to write shared Project work")
 	case errors.Is(err, projectusecase.ErrPermissionDenied), errors.Is(err, taskusecase.ErrPermissionDenied):
 		return http.StatusForbidden, NewErrDetail("", "permission_denied", "The required project permission is not granted")
 	case errors.Is(err, projectdomain.ErrProjectNotFound), errors.Is(err, taskusecase.ErrTaskNotFound), errors.Is(err, taskusecase.ErrTaskProjectNotFound):

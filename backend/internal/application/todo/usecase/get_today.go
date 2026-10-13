@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/todo/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/todo/domain"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
@@ -65,6 +66,7 @@ type GetTodayUseCase struct {
 	generator *GenerateTodayUseCase
 	newID     func() string
 	logger    telemetry.Logger
+	access    shared.PlanAccessReader
 }
 
 func NewGetTodayUseCase(uow UOW, newID func() string, loggers ...telemetry.Logger) *GetTodayUseCase {
@@ -80,6 +82,11 @@ func (u *GetTodayUseCase) Execute(ctx context.Context, userID string) (result To
 	defer func() { logUnexpectedTodoFailure(u.logger, ctx, "GetTodayUseCase.Execute", err) }()
 	created := false
 	err = u.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
+		plan, accessErr := todoPlanAccess(ctx, repos, userID, u.access)
+		if accessErr != nil {
+			return accessErr
+		}
+		freePlan := !plan.IsPaid()
 		day, err := repos.Sources().CurrentDay(ctx, userID)
 		if err != nil {
 			return err
@@ -100,7 +107,7 @@ func (u *GetTodayUseCase) Execute(ctx context.Context, userID string) (result To
 			return err
 		}
 		if created {
-			todo, err = u.generator.generateInitialInTx(ctx, userID, day.Date, day.Timezone, todo, repos)
+			todo, err = u.generator.generateInitialInTx(ctx, userID, day.Date, day.Timezone, todo, repos, freePlan)
 			if err != nil {
 				return err
 			}
@@ -115,6 +122,9 @@ func (u *GetTodayUseCase) Execute(ctx context.Context, userID string) (result To
 		}
 		workSources, err := repos.Sources().ReadWorkSources(ctx, userID, todo.Date, todo.Timezone, workSourceRefs(saved, sources.History))
 		if err != nil {
+			return err
+		}
+		if err := restrictSharedWriteCapabilities(ctx, repos, userID, workSources, sources.Schedules); err != nil {
 			return err
 		}
 		result, err = buildTodaySnapshot(todo, saved, sources, workSources, time.Now())

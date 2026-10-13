@@ -145,6 +145,9 @@ func lockTaskForMutationUsing(
 	if task.ProjectID != candidate.ProjectID {
 		return dao.Task{}, ErrRevisionConflict
 	}
+	if err := requireProjectWriteAccess(ctx, repos, string(userID), task.ProjectID); err != nil {
+		return dao.Task{}, err
+	}
 	return task, nil
 }
 

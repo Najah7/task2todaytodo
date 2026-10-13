@@ -44,8 +44,16 @@ func (repo *updateProjectRepositoryFake) GetByUserIDWithPermission(ctx context.C
 	return repo.GetByUserID(ctx, userID, projectID)
 }
 
+func (repo *updateProjectRepositoryFake) LockByUserIDWithPermission(ctx context.Context, userID domain.UserID, projectID domain.ProjectID, _ shared.Capability) (dao.Project, error) {
+	return repo.GetByUserID(ctx, userID, projectID)
+}
+
 func (*updateProjectRepositoryFake) HasPermission(context.Context, domain.UserID, domain.ProjectID, shared.Capability) (bool, error) {
 	return true, nil
+}
+
+func (*updateProjectRepositoryFake) GetProjectWriteAccess(context.Context, string, string) (shared.ProjectWriteAccess, error) {
+	return shared.ProjectWriteAccess{}, nil
 }
 
 func (repo *updateProjectRepositoryFake) UpdateByUserID(_ context.Context, userID domain.UserID, project domain.Project, expectedRevision int32) (dao.Project, error) {

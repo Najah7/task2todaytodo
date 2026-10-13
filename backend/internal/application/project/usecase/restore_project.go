@@ -13,11 +13,16 @@ import (
 type RestoreProjectUseCase struct {
 	uow      UnitOfWork
 	progress ProjectProgressReader
+	access   shared.PlanAccessReader
 	logger   telemetry.Logger
 }
 
-func NewRestoreProjectUseCase(uow UnitOfWork, progress ProjectProgressReader, logger telemetry.Logger) *RestoreProjectUseCase {
-	return &RestoreProjectUseCase{uow: uow, progress: progress, logger: telemetry.OrNop(logger)}
+func NewRestoreProjectUseCase(uow UnitOfWork, progress ProjectProgressReader, logger telemetry.Logger, access ...shared.PlanAccessReader) *RestoreProjectUseCase {
+	uc := &RestoreProjectUseCase{uow: uow, progress: progress, logger: telemetry.OrNop(logger)}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
 }
 
 func (uc *RestoreProjectUseCase) Execute(ctx context.Context, actor domain.UserID, id domain.ProjectID, expected int32) (output dao.Project, err error) {
@@ -28,8 +33,22 @@ func (uc *RestoreProjectUseCase) Execute(ctx context.Context, actor domain.UserI
 		if err != nil {
 			return err
 		}
+		if err := requireProjectWriter(ctx, repo, actor, id); err != nil {
+			return err
+		}
 		if current.Revision != expected {
 			return ErrRevisionConflict
+		}
+		if current.Status != "done" {
+			plan, err := planAccessFor(uc.access, ctx, domain.UserID(current.UserID))
+			if err != nil {
+				return err
+			}
+			if !plan.IsPaid() {
+				if err := enforceProjectCapacity(ctx, repo, domain.UserID(current.UserID)); err != nil {
+					return err
+				}
+			}
 		}
 		project, err = repo.RestoreByUserID(ctx, actor, id, expected)
 		if err != nil {

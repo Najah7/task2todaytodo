@@ -14,6 +14,9 @@ type projectLifecycleRepository interface {
 	LockProjectForLifecycle(context.Context, domain.ProjectID) error
 	ReadProjectStatusForLifecycle(context.Context, domain.ProjectID) (string, error)
 	SetStatusForLifecycle(context.Context, domain.UserID, domain.ProjectID, string) error
+	LockUserForPlanLimit(context.Context, domain.UserID) error
+	LockProjectOwnerForPlanLimit(context.Context, domain.ProjectID) (domain.UserID, error)
+	CountActiveOwnedProjects(context.Context, domain.UserID) (int, error)
 }
 
 // ProjectLifecycleUseCase owns automatic Project status transitions after a
@@ -24,6 +27,7 @@ type ProjectLifecycleUseCase struct {
 	progress    ProjectProgressReader
 	schedules   ProjectScheduleLifecycle
 	allocations ProjectAllocationLifecycle
+	access      shared.PlanAccessReader
 }
 
 type ProjectScheduleLifecycle interface {
@@ -42,6 +46,21 @@ func NewProjectLifecycleUseCase(repo projectLifecycleRepository, progress Projec
 		uc.allocations = allocations[0]
 	}
 	return uc
+}
+
+func NewProjectLifecycleUseCaseWithAccess(repo projectLifecycleRepository, progress ProjectProgressReader, schedules ProjectScheduleLifecycle, allocations ProjectAllocationLifecycle, access shared.PlanAccessReader) *ProjectLifecycleUseCase {
+	return &ProjectLifecycleUseCase{repo: repo, progress: progress, schedules: schedules, allocations: allocations, access: access}
+}
+
+// LockOwnerPlanLimit serializes count-increasing work for the Project owner.
+// Callers hold the parent Project lock before using it.
+func (uc *ProjectLifecycleUseCase) LockOwnerPlanLimit(ctx context.Context, projectID string) error {
+	_, err := uc.repo.LockProjectOwnerForPlanLimit(ctx, domain.ProjectID(projectID))
+	return err
+}
+
+func (uc *ProjectLifecycleUseCase) LockUserPlanLimit(ctx context.Context, userID string) error {
+	return uc.repo.LockUserForPlanLimit(ctx, domain.UserID(userID))
 }
 
 func (uc *ProjectLifecycleUseCase) LockParent(ctx context.Context, projectID string) error {
@@ -89,6 +108,25 @@ func (uc *ProjectLifecycleUseCase) ReconcileWorkState(ctx context.Context, actor
 	}
 	if status == after.Status {
 		return nil
+	}
+	ownerID, err := uc.repo.LockProjectOwnerForPlanLimit(ctx, domain.ProjectID(projectID))
+	if err != nil {
+		return err
+	}
+	if after.Status == "done" && status != "done" {
+		plan, err := planAccessFor(uc.access, ctx, ownerID)
+		if err != nil {
+			return err
+		}
+		if !plan.IsPaid() {
+			count, err := uc.repo.CountActiveOwnedProjects(ctx, ownerID)
+			if err != nil {
+				return err
+			}
+			if count >= maxFreeActiveProjects {
+				return ErrFreeProjectLimitReached
+			}
+		}
 	}
 	if err := uc.repo.SetStatusForLifecycle(ctx, domain.UserID(actorID), domain.ProjectID(projectID), status); err != nil {
 		return err

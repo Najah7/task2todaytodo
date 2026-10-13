@@ -13,11 +13,16 @@ import (
 type ChangeProjectStatusUseCase struct {
 	uow      UnitOfWork
 	progress ProjectProgressReader
+	access   shared.PlanAccessReader
 	logger   telemetry.Logger
 }
 
-func NewChangeProjectStatusUseCase(uow UnitOfWork, progress ProjectProgressReader, logger telemetry.Logger) *ChangeProjectStatusUseCase {
-	return &ChangeProjectStatusUseCase{uow: uow, progress: progress, logger: telemetry.OrNop(logger)}
+func NewChangeProjectStatusUseCase(uow UnitOfWork, progress ProjectProgressReader, logger telemetry.Logger, access ...shared.PlanAccessReader) *ChangeProjectStatusUseCase {
+	uc := &ChangeProjectStatusUseCase{uow: uow, progress: progress, logger: telemetry.OrNop(logger)}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
 }
 
 func (uc *ChangeProjectStatusUseCase) Execute(ctx context.Context, actor domain.UserID, id domain.ProjectID, expected int32, value string) (output dao.Project, err error) {
@@ -32,8 +37,15 @@ func (uc *ChangeProjectStatusUseCase) Execute(ctx context.Context, actor domain.
 		if err != nil {
 			return err
 		}
+		if err := requireProjectWriter(ctx, repo, actor, id); err != nil {
+			return err
+		}
 		if current.Revision != expected {
 			return ErrRevisionConflict
+		}
+		plan, err := planAccessFor(uc.access, ctx, domain.UserID(current.UserID))
+		if err != nil {
+			return err
 		}
 		currentStatus, err := domain.NewProjectStatus(current.Status)
 		if err != nil {
@@ -52,6 +64,18 @@ func (uc *ChangeProjectStatusUseCase) Execute(ctx context.Context, actor domain.
 			project.CanUpdate = true
 			project.CanDelete, err = repo.HasPermission(ctx, actor, id, shared.ProjectDelete())
 			return err
+		}
+		if err := repo.LockUserForPlanLimit(ctx, domain.UserID(current.UserID)); err != nil {
+			return err
+		}
+		if !plan.IsPaid() && currentStatus.Value == "done" && statusValue.Value != "done" {
+			count, err := repo.CountActiveOwnedProjects(ctx, domain.UserID(current.UserID))
+			if err != nil {
+				return err
+			}
+			if count >= maxFreeActiveProjects {
+				return ErrFreeProjectLimitReached
+			}
 		}
 		project, err = repo.SetStatusByUserID(ctx, actor, id, entity.Status.String(), expected)
 		if err != nil {

@@ -47,6 +47,9 @@ func (uc *CreateTaskInProjectUseCase) Execute(ctx context.Context, input CreateT
 		if err != nil {
 			return err
 		}
+		if err := requireProjectWriteAccess(ctx, repos, string(input.UserID), project.ID); err != nil {
+			return err
+		}
 		lifecycle := repos.ProjectLifecycle()
 		if lifecycle == nil {
 			return ErrProjectLifecycleUnavailable

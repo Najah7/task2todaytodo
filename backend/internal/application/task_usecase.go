@@ -4,11 +4,20 @@ import (
 	"time"
 
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/usecase"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
 func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthStore, _ IDIssuer, logger telemetry.Logger, readUOWs ...usecase.UOW) usecase.TaskUseCases {
+	return newTaskUseCases(taskStore, taskUOW, authStore, logger, nil, readUOWs...)
+}
+
+func NewTaskUseCasesWithAccess(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthStore, _ IDIssuer, logger telemetry.Logger, access shared.PlanAccessReader, readUOWs ...usecase.UOW) usecase.TaskUseCases {
+	return newTaskUseCases(taskStore, taskUOW, authStore, logger, access, readUOWs...)
+}
+
+func newTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthStore, logger telemetry.Logger, access shared.PlanAccessReader, readUOWs ...usecase.UOW) usecase.TaskUseCases {
 	readUOW := taskUOW
 	if len(readUOWs) > 0 && readUOWs[0] != nil {
 		readUOW = readUOWs[0]
@@ -17,7 +26,7 @@ func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthSto
 		Create:            usecase.NewCreateTaskUseCase(taskUOW, logger),
 		List:              usecase.NewListTasksUseCase(taskStore.Tasks, logger, taskStore.ActionItems),
 		Get:               usecase.NewGetTaskUseCase(readUOW, logger),
-		Update:            usecase.NewUpdateTaskUseCase(taskUOW, logger),
+		Update:            usecase.NewUpdateTaskUseCase(taskUOW, logger, access),
 		Delete:            usecase.NewDeleteTaskUseCase(taskUOW, logger),
 		Start:             usecase.NewStartTaskUseCase(taskUOW, logger),
 		Hold:              usecase.NewHoldTaskUseCase(taskUOW, logger),
@@ -28,8 +37,8 @@ func NewTaskUseCases(taskStore TaskStore, taskUOW usecase.UOW, authStore AuthSto
 		ListAssignees:     usecase.NewListTaskAssigneesUseCase(taskStore.Tasks, logger),
 		CreateInProject:   usecase.NewCreateTaskInProjectUseCase(taskUOW, logger),
 		ListByProject:     usecase.NewListProjectTasksUseCase(taskStore.Tasks, taskStore.Tasks, logger, taskStore.ActionItems),
-		AddToProject:      usecase.NewAddTaskToProjectUseCase(taskUOW, taskStore.Tasks, logger),
-		RemoveFromProject: usecase.NewRemoveTaskFromProjectUseCase(taskUOW, taskStore.Tasks, logger),
+		AddToProject:      usecase.NewAddTaskToProjectUseCase(taskUOW, taskStore.Tasks, logger, access),
+		RemoveFromProject: usecase.NewRemoveTaskFromProjectUseCase(taskUOW, taskStore.Tasks, logger, access),
 		Revisions:         usecase.NewListTaskRevisionsUseCase(taskStore.Tasks, logger),
 	}
 }
@@ -61,12 +70,20 @@ func NewScheduleUseCases(scheduleUOW scheduleusecase.UOW, authStore AuthStore, i
 }
 
 func NewActionItemUseCases(taskUOW usecase.UOW, logger telemetry.Logger, readUOWs ...usecase.UOW) usecase.ActionItemUseCases {
+	return newActionItemUseCases(taskUOW, logger, nil, readUOWs...)
+}
+
+func NewActionItemUseCasesWithAccess(taskUOW usecase.UOW, logger telemetry.Logger, access shared.PlanAccessReader, readUOWs ...usecase.UOW) usecase.ActionItemUseCases {
+	return newActionItemUseCases(taskUOW, logger, access, readUOWs...)
+}
+
+func newActionItemUseCases(taskUOW usecase.UOW, logger telemetry.Logger, access shared.PlanAccessReader, readUOWs ...usecase.UOW) usecase.ActionItemUseCases {
 	readUOW := taskUOW
 	if len(readUOWs) > 0 && readUOWs[0] != nil {
 		readUOW = readUOWs[0]
 	}
 	return usecase.ActionItemUseCases{
-		Create:   usecase.NewCreateActionItemUseCase(taskUOW, logger),
+		Create:   usecase.NewCreateActionItemUseCase(taskUOW, logger, access),
 		List:     usecase.NewListActionItemsUseCase(readUOW, logger),
 		Update:   usecase.NewUpdateActionItemUseCase(taskUOW, logger),
 		Delete:   usecase.NewDeleteActionItemUseCase(taskUOW, logger),

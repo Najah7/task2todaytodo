@@ -78,6 +78,20 @@ func (uc *ListProjectMembersUseCase) Execute(ctx context.Context, actor domain.U
 		page.ActorRole = actorRole
 		page.CanInvite = CanInviteProjectMembers(actorRole)
 		page.AssignableRoles = AssignableProjectMemberRoles(actorRole)
+		if accessReader, ok := repo.(shared.ProjectWriteAccessReader); ok {
+			access, err := accessReader.GetProjectWriteAccess(ctx, string(actor), string(project))
+			if err != nil {
+				return err
+			}
+			if !access.AllowsWrite() {
+				page.CanInvite = false
+				page.AssignableRoles = []ProjectMemberRoleOption{}
+				for i := range page.Items {
+					page.Items[i].CanEditRole = false
+					page.Items[i].CanRemove = actorRole == "owner" && page.Items[i].UserID != "" && page.Items[i].UserID != access.OwnerUserID
+				}
+			}
+		}
 		if len(items) > 0 {
 			first, last := items[0], items[len(items)-1]
 			if (direction == "forward" && hasMore) || direction == "backward" {

@@ -5,7 +5,9 @@ Follow the [application guide](../AGENTS.md). Routes are registered in [cmd/api/
 ## Features
 
 - Manage Tasks and their ActionItems, status, priority, estimates, assignees, revisions, and progress. Tasks may belong to a Project or stand alone.
+- Free users can have at most 100 nondeleted ActionItems per Project, or 100 across all their projectless Tasks. Completed ActionItems count. Creates and Task moves that increase a destination count enforce the cap transactionally; existing over-cap work remains editable and completable.
 - Project Task routes list, create, add, and remove Tasks in a Project; ActionItem operations are separate from Task writes.
+- Writes to a Project with actual members require effective Team access for both the actor and Project owner. If either loses Team, shared Task and ActionItem mutations are denied while existing rows and memberships remain intact.
 
 ## Endpoints
 

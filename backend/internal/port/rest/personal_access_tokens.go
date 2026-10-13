@@ -24,8 +24,9 @@ func NewPersonalAccessTokenHandler(personalAccessToken authusecase.PersonalAcces
 }
 
 type PersonalAccessTokenResponse struct {
-	PersonalAccessToken string `json:"personal_access_token"`
-	ExpiresAt           string `json:"expires_at"`
+	PersonalAccessToken      string `json:"personal_access_token"`
+	ExpiresAt                string `json:"expires_at"`
+	RequiresTeamSubscription bool   `json:"requires_team_subscription,omitempty"`
 }
 
 func personalAccessTokenResponse(token dao.PersonalAccessToken) PersonalAccessTokenResponse {

@@ -39,12 +39,17 @@ func (e TaskUpdateFieldError) Unwrap() error { return e.Err }
 
 type UpdateTaskUseCase struct {
 	uow    UOW
+	access shared.PlanAccessReader
 	logger telemetry.Logger
 	now    func() time.Time
 }
 
-func NewUpdateTaskUseCase(uow UOW, logger telemetry.Logger) *UpdateTaskUseCase {
-	return &UpdateTaskUseCase{uow: uow, logger: telemetry.OrNop(logger), now: time.Now}
+func NewUpdateTaskUseCase(uow UOW, logger telemetry.Logger, access ...shared.PlanAccessReader) *UpdateTaskUseCase {
+	uc := &UpdateTaskUseCase{uow: uow, logger: telemetry.OrNop(logger), now: time.Now}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
 }
 
 func (uc *UpdateTaskUseCase) Execute(ctx context.Context, in UpdateTaskInput) (result dao.Task, err error) {
@@ -102,6 +107,14 @@ func (uc *UpdateTaskUseCase) Execute(ctx context.Context, in UpdateTaskInput) (r
 			}
 			if current.Revision != in.ExpectedRevision || current.ProjectID != candidate.ProjectID {
 				return ErrRevisionConflict
+			}
+			if err := requireProjectWriteAccess(ctx, repos, string(in.UserID), current.ProjectID); err != nil {
+				return err
+			}
+			if targetProjectID != current.ProjectID {
+				if err := requireProjectWriteAccess(ctx, repos, string(in.UserID), targetProjectID); err != nil {
+					return err
+				}
 			}
 		} else {
 			current, err = lockTaskForMutation(ctx, repos, in.UserID, in.TaskID, shared.TaskUpdate())
@@ -221,6 +234,9 @@ func (uc *UpdateTaskUseCase) Execute(ctx context.Context, in UpdateTaskInput) (r
 			projectChanged = string(task.ProjectID) != current.ProjectID
 			if projectChanged {
 				task.AssigneeID = domain.UserID(current.UserID)
+				if err := checkActionItemDestinationLimit(ctx, repos, uc.access, domain.UserID(current.UserID), in.TaskID, string(task.ProjectID)); err != nil {
+					return err
+				}
 			}
 		}
 		validated, err := domain.NewExistingTask(task.ID, task.UserID, task.ProjectID, task.Title, task.Description, task.DueDate, task.ManualEstimatedMinutes, task.ActualMinutes, task.Progress, task.Priority, task.Status, task.AssigneeID, task.CreatedAt, task.UpdatedAt)

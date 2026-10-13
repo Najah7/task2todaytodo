@@ -18,11 +18,16 @@ type addTaskToProjectUOW interface {
 type AddTaskToProjectUseCase struct {
 	uow      addTaskToProjectUOW
 	progress taskProgressSource
+	access   shared.PlanAccessReader
 	logger   telemetry.Logger
 }
 
-func NewAddTaskToProjectUseCase(uow addTaskToProjectUOW, progress taskProgressSource, logger telemetry.Logger) *AddTaskToProjectUseCase {
-	return &AddTaskToProjectUseCase{logger: telemetry.OrNop(logger), uow: uow, progress: progress}
+func NewAddTaskToProjectUseCase(uow addTaskToProjectUOW, progress taskProgressSource, logger telemetry.Logger, access ...shared.PlanAccessReader) *AddTaskToProjectUseCase {
+	uc := &AddTaskToProjectUseCase{logger: telemetry.OrNop(logger), uow: uow, progress: progress}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
 }
 
 func (uc *AddTaskToProjectUseCase) Execute(ctx context.Context, userID domain.UserID, projectID domain.ProjectID, taskID domain.TaskID, expectedRevision int32) (output dao.Task, err error) {
@@ -64,9 +69,9 @@ func (uc *AddTaskToProjectUseCase) Execute(ctx context.Context, userID domain.Us
 		if task.UserID != targetProject.OwnerID {
 			return ErrTaskNotFound
 		}
-		// Re-read after the ordered project locks so a concurrent move cannot
-		// leave this command acting on a stale project relationship.
-		task, err = tasks.GetByUserIDWithPermission(ctx, userID, taskID, shared.TaskUpdate())
+		// Lock the Task after the ordered Project locks. This also serializes
+		// with ActionItem creation before counting a move into a Project.
+		task, err = tasks.LockByUserIDWithPermission(ctx, userID, taskID, shared.TaskUpdate())
 		if err != nil {
 			return err
 		}
@@ -75,6 +80,12 @@ func (uc *AddTaskToProjectUseCase) Execute(ctx context.Context, userID domain.Us
 		}
 		if task.ProjectID != initialProjectID {
 			return ErrRevisionConflict
+		}
+		if err := requireProjectWriteAccess(ctx, repos, string(userID), initialProjectID); err != nil {
+			return err
+		}
+		if err := requireProjectWriteAccess(ctx, repos, string(userID), string(projectID)); err != nil {
+			return err
 		}
 
 		lifecycle := repos.ProjectLifecycle()
@@ -97,6 +108,11 @@ func (uc *AddTaskToProjectUseCase) Execute(ctx context.Context, userID domain.Us
 		}
 
 		changedAssociation := task.ProjectID != string(projectID)
+		if changedAssociation {
+			if err := checkActionItemDestinationLimit(ctx, repos, uc.access, domain.UserID(targetProject.OwnerID), taskID, string(projectID)); err != nil {
+				return err
+			}
+		}
 		if task.ProjectID == string(projectID) {
 			result = task
 		} else {

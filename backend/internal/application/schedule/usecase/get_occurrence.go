@@ -45,6 +45,9 @@ func (uc *GetOccurrenceUseCase) Execute(ctx context.Context, actorID, ruleID, oc
 		} else if followingAllowed(activeOccurrenceStart([]dao.RuleRevision{revision}, value), time.Now().UTC()) {
 			value.CanUpdateFollowing, value.CanDeleteFollowing = permissions.CanUpdateFollowing, permissions.CanDeleteFollowing
 		}
+		if err := restrictScheduleWriteCapabilities(ctx, repos, actorID, &value); err != nil {
+			return err
+		}
 		output = value
 		return nil
 	})

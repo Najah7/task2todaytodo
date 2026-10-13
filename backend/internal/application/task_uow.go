@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	allocationrepository "github.com/Najah7/task2todaytodo/internal/application/allocation/repository"
+	billingrepository "github.com/Najah7/task2todaytodo/internal/application/billing/repository"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/usecase"
@@ -15,12 +16,14 @@ import (
 )
 
 type TaskUOW struct {
-	pool      *pgxpool.Pool
-	store     TaskStore
-	projects  ProjectStore
-	schedules ScheduleStore
-	newID     func() string
-	runTx     transactionRunner
+	pool           *pgxpool.Pool
+	store          TaskStore
+	projects       ProjectStore
+	schedules      ScheduleStore
+	newID          func() string
+	runTx          transactionRunner
+	billing        *billingrepository.Repository
+	billingEnabled bool
 }
 
 func NewTaskUOW(pool *pgxpool.Pool, store TaskStore, projects ProjectStore, schedules ScheduleStore, ids ...func() string) usecase.UOW {
@@ -48,26 +51,37 @@ func (u *TaskUOW) Do(
 ) error {
 	return u.runTx(ctx, u.pool, func(tx pgx.Tx) error {
 		projects := u.projects.WithTx(tx).Projects
+		access := newProjectWriteAccessReader(projects, billingWithTx(u.billing, tx), u.billingEnabled)
 		store := u.store.WithTx(tx)
 		scheduleRules := u.schedules.WithTx(tx).Schedules
 		allocationRules := allocationrepository.NewAllocationRepository(u.pool).WithTx(tx)
-		todoRepos := newTodoRepositoriesFromTx(store, u.projects, u.schedules, tx, u.newID, nil)
+		todoRepos := newTodoRepositoriesWithSource(NewTodoSourceReaderFromTx(tx), store, u.projects, u.schedules, tx, u.newID, nil, access)
 		lifecycle := taskTodoLifecycle{items: todoRepos.Items()}
 		return fn(ctx, taskRepositories{
-			store:     store,
-			lifecycle: projectusecase.NewProjectLifecycleUseCase(projects, projects, scheduleRules, allocationProjectLifecycleAdapter{repository: allocationRules}),
-			todos:     lifecycle,
+			store:              store,
+			lifecycle:          projectusecase.NewProjectLifecycleUseCaseWithAccess(projects, projects, scheduleRules, allocationProjectLifecycleAdapter{repository: allocationRules}, access),
+			todos:              lifecycle,
+			projectWriteAccess: access,
 		})
 	})
 }
 
+func (u *TaskUOW) ConfigureProjectWriteAccess(billing *billingrepository.Repository, enabled bool) {
+	u.billing = billing
+	u.billingEnabled = enabled
+}
+
 type taskRepositories struct {
-	store     TaskStore
-	lifecycle shared.ProjectWorkLifecycle
-	todos     taskTodoLifecycle
+	store              TaskStore
+	lifecycle          shared.ProjectWorkLifecycle
+	todos              taskTodoLifecycle
+	projectWriteAccess shared.ProjectWriteAccessReader
 }
 
 func (r taskRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle { return r.lifecycle }
+func (r taskRepositories) ProjectWriteAccess() shared.ProjectWriteAccessReader {
+	return r.projectWriteAccess
+}
 
 func (r taskRepositories) TaskProjects() usecase.TaskProjectRepository {
 	return r.store.Tasks

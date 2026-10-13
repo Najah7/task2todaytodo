@@ -92,6 +92,8 @@ func writeScheduleUseCaseError(w http.ResponseWriter, spec ErrSpec, err error) {
 
 func scheduleUseCaseError(err error) (int, ErrDetail) {
 	switch {
+	case errors.Is(err, scheduleusecase.ErrTeamSubscriptionRequired):
+		return http.StatusForbidden, NewErrDetail("plan", "team_required", "A Team subscription is required to write shared Project work")
 	case errors.Is(err, scheduleusecase.ErrPermissionDenied):
 		return http.StatusForbidden, NewErrDetail("", "permission_denied", "The caller lacks permission for this schedule operation")
 	case errors.Is(err, domain.ErrScheduleNotFound), errors.Is(err, scheduleusecase.ErrScheduleProjectNotFound), errors.Is(err, scheduleusecase.ErrOccurrenceNotFound):

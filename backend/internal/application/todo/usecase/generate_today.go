@@ -17,22 +17,28 @@ func NewGenerateTodayUseCase(newID func() string) *GenerateTodayUseCase {
 	return &GenerateTodayUseCase{newID: newID}
 }
 
-func (u *GenerateTodayUseCase) generateInitialInTx(ctx context.Context, userID string, todoDate time.Time, timezone string, todo dao.Todo, repos Repositories) (dao.Todo, error) {
+func (u *GenerateTodayUseCase) generateInitialInTx(ctx context.Context, userID string, todoDate time.Time, timezone string, todo dao.Todo, repos Repositories, ignoreAllocations bool) (dao.Todo, error) {
 	sources, err := repos.Sources().ReadPlanningSources(ctx, userID, todoDate, timezone)
 	if err != nil {
 		return dao.Todo{}, err
 	}
-	if err := u.generateFromSourcesInTx(ctx, todoDate, todo, sources, repos); err != nil {
+	if err := u.generateFromSourcesInTx(ctx, todoDate, todo, sources, repos, ignoreAllocations || len(sources.Allocations) == 0); err != nil {
 		return dao.Todo{}, err
 	}
 	return todo, nil
 }
 
-func (u *GenerateTodayUseCase) generateFromSourcesInTx(ctx context.Context, todoDate time.Time, todo dao.Todo, sources dao.PlanningSources, repos Repositories) error {
+func (u *GenerateTodayUseCase) generateFromSourcesInTx(ctx context.Context, todoDate time.Time, todo dao.Todo, sources dao.PlanningSources, repos Repositories, ignoreAllocations bool) error {
+	var err error
+	sources.Candidates, err = filterSharedPlanningCandidates(ctx, repos, todo.UserID, sources.Candidates)
+	if err != nil {
+		return err
+	}
 	in, err := plannerInput(todoDate, sources, nil)
 	if err != nil {
 		return err
 	}
+	in.IgnoreAllocations = ignoreAllocations
 	plan, err := domain.Generate(in)
 	if err != nil {
 		return err

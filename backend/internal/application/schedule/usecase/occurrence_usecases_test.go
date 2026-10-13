@@ -120,8 +120,11 @@ type occurrenceReloadRepositories struct {
 }
 
 func (r occurrenceReloadRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle { return nil }
-func (occurrenceReloadRepositories) Schedules() ScheduleRepository                   { return nil }
-func (r occurrenceReloadRepositories) Rules() RuleRepository                         { return r.rules }
+func (r occurrenceReloadRepositories) ProjectWriteAccess() shared.ProjectWriteAccessReader {
+	return nil
+}
+func (occurrenceReloadRepositories) Schedules() ScheduleRepository { return nil }
+func (r occurrenceReloadRepositories) Rules() RuleRepository       { return r.rules }
 
 func TestLockedReloadRejectsAChangedVirtualSourceRevision(t *testing.T) {
 	date := time.Now().UTC().AddDate(0, 0, 1).Format("2006-01-02")

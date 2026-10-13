@@ -19,20 +19,37 @@ type GetProjectUseCase struct {
 	repo     getProjectRepository
 	progress ProjectProgressReader
 	logger   telemetry.Logger
+	readUOW  projectReadUnitOfWork
 }
 
-func NewGetProjectUseCase(repo getProjectRepository, progress ProjectProgressReader, logger telemetry.Logger) *GetProjectUseCase {
-	return &GetProjectUseCase{logger: telemetry.OrNop(logger), repo: repo, progress: progress}
+func NewGetProjectUseCase(repo getProjectRepository, progress ProjectProgressReader, logger telemetry.Logger, readUOWs ...projectReadUnitOfWork) *GetProjectUseCase {
+	var readUOW projectReadUnitOfWork
+	if len(readUOWs) > 0 {
+		readUOW = readUOWs[0]
+	}
+	return &GetProjectUseCase{logger: telemetry.OrNop(logger), repo: repo, progress: progress, readUOW: readUOW}
 }
 
 func (uc *GetProjectUseCase) Execute(ctx context.Context, userID domain.UserID, projectID domain.ProjectID) (output dao.Project, err error) {
 	defer func() { logUnexpectedProjectFailure(uc.logger, ctx, "GetProjectUseCase.Execute", err) }()
 
-	project, err := uc.repo.GetByUserID(ctx, userID, projectID)
-	if err != nil {
-		return dao.Project{}, err
+	var project dao.Project
+	if uc.readUOW != nil {
+		err = uc.readUOW.Do(ctx, func(ctx context.Context, repo Repository, _ ProjectChildrenDeleter) error {
+			var err error
+			project, err = repo.GetByUserID(ctx, userID, projectID)
+			if err != nil {
+				return err
+			}
+			return readProjectCapabilities(ctx, repo, userID, &project)
+		})
+	} else {
+		project, err = uc.repo.GetByUserID(ctx, userID, projectID)
+		if err == nil {
+			err = readProjectCapabilities(ctx, uc.repo, userID, &project)
+		}
 	}
-	if err := readProjectCapabilities(ctx, uc.repo, userID, &project); err != nil {
+	if err != nil {
 		return dao.Project{}, err
 	}
 	projects, err := applyProjectProgress(ctx, uc.progress, []dao.Project{project}, time.Now())

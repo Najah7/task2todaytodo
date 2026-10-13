@@ -23,11 +23,16 @@ type CreateActionItemInput struct {
 
 type CreateActionItemUseCase struct {
 	uow    UOW
+	access shared.PlanAccessReader
 	logger telemetry.Logger
 }
 
-func NewCreateActionItemUseCase(uow UOW, logger telemetry.Logger) *CreateActionItemUseCase {
-	return &CreateActionItemUseCase{logger: telemetry.OrNop(logger), uow: uow}
+func NewCreateActionItemUseCase(uow UOW, logger telemetry.Logger, access ...shared.PlanAccessReader) *CreateActionItemUseCase {
+	uc := &CreateActionItemUseCase{logger: telemetry.OrNop(logger), uow: uow}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
 }
 
 func (uc *CreateActionItemUseCase) Execute(ctx context.Context, input CreateActionItemInput) (output dao.ActionItem, err error) {
@@ -37,6 +42,9 @@ func (uc *CreateActionItemUseCase) Execute(ctx context.Context, input CreateActi
 	asOf := time.Now()
 	err = uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		return withTaskProgressMutationForPermissionAndState(ctx, repos, input.UserID, input.TaskID, asOf, shared.ActionItemCreate(), func(task dao.Task, _ taskProjectMutationSnapshot) error {
+			if err := checkNewActionItemLimit(ctx, repos, uc.access, task); err != nil {
+				return err
+			}
 			childCount, err := repos.ActionItems().CountForOwnedTask(ctx, input.UserID, input.TaskID, shared.ActionItemCreate())
 			if err != nil {
 				return err

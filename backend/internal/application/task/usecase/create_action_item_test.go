@@ -55,6 +55,15 @@ func (*createActionItemRepositoryFake) ListByTask(context.Context, domain.UserID
 func (*createActionItemRepositoryFake) CountForOwnedTask(context.Context, domain.UserID, domain.TaskID, shared.Capability) (int, error) {
 	return 0, nil
 }
+func (*createActionItemRepositoryFake) CountForProjectPlanLimit(context.Context, string) (int, error) {
+	return 0, nil
+}
+func (*createActionItemRepositoryFake) CountProjectlessForUserPlanLimit(context.Context, domain.UserID) (int, error) {
+	return 0, nil
+}
+func (*createActionItemRepositoryFake) CountForTaskPlanLimit(context.Context, domain.TaskID) (int, error) {
+	return 0, nil
+}
 
 func (repo *createActionItemRepositoryFake) CreateForOwnedTask(_ context.Context, _ domain.UserID, item domain.ActionItem, appendTail bool) (dao.ActionItem, error) {
 	repo.created, repo.appendTail = item, appendTail

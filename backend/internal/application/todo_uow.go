@@ -6,8 +6,10 @@ import (
 	"time"
 
 	allocationrepository "github.com/Najah7/task2todaytodo/internal/application/allocation/repository"
+	billingrepository "github.com/Najah7/task2todaytodo/internal/application/billing/repository"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	taskdomain "github.com/Najah7/task2todaytodo/internal/application/task/domain"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
 	tododao "github.com/Najah7/task2todaytodo/internal/application/todo/dao"
@@ -20,13 +22,15 @@ import (
 )
 
 type TodoUOW struct {
-	pool      *pgxpool.Pool
-	store     Store
-	tasks     TaskStore
-	projects  ProjectStore
-	schedules ScheduleStore
-	newID     func() string
-	logger    telemetry.Logger
+	pool           *pgxpool.Pool
+	store          Store
+	tasks          TaskStore
+	projects       ProjectStore
+	schedules      ScheduleStore
+	newID          func() string
+	logger         telemetry.Logger
+	billing        *billingrepository.Repository
+	billingEnabled bool
 }
 
 func NewTodoUOW(pool *pgxpool.Pool, store Store, tasks TaskStore, projects ProjectStore, schedules ScheduleStore, newID func() string, logger telemetry.Logger) todousecase.UOW {
@@ -42,19 +46,26 @@ func (u *TodoUOW) Do(ctx context.Context, fn func(context.Context, todousecase.R
 	})
 }
 
-func (u *TodoUOW) repositories(tx pgx.Tx) todousecase.Repositories {
-	return newTodoRepositories(u.store, u.tasks, u.projects, u.schedules, tx, u.newID, u.logger)
+func (u *TodoUOW) ConfigureProjectWriteAccess(billing *billingrepository.Repository, enabled bool) {
+	u.billing = billing
+	u.billingEnabled = enabled
 }
 
-func newTodoRepositories(store Store, taskStore TaskStore, projectStore ProjectStore, scheduleStore ScheduleStore, tx pgx.Tx, newID func() string, logger telemetry.Logger) todousecase.Repositories {
-	return newTodoRepositoriesWithSource(NewTodoSourceReader(store, tx), taskStore, projectStore, scheduleStore, tx, newID, logger)
+func (u *TodoUOW) repositories(tx pgx.Tx) todousecase.Repositories {
+	projectRows := u.projects.WithTx(tx).Projects
+	access := newProjectWriteAccessReader(projectRows, billingWithTx(u.billing, tx), u.billingEnabled)
+	return newTodoRepositories(u.store, u.tasks, u.projects, u.schedules, tx, u.newID, u.logger, access)
+}
+
+func newTodoRepositories(store Store, taskStore TaskStore, projectStore ProjectStore, scheduleStore ScheduleStore, tx pgx.Tx, newID func() string, logger telemetry.Logger, access ...shared.ProjectWriteAccessReader) todousecase.Repositories {
+	return newTodoRepositoriesWithSource(NewTodoSourceReader(store, tx), taskStore, projectStore, scheduleStore, tx, newID, logger, access...)
 }
 
 func newTodoRepositoriesFromTx(taskStore TaskStore, projectStore ProjectStore, scheduleStore ScheduleStore, tx pgx.Tx, newID func() string, logger telemetry.Logger) todousecase.Repositories {
 	return newTodoRepositoriesWithSource(NewTodoSourceReaderFromTx(tx), taskStore, projectStore, scheduleStore, tx, newID, logger)
 }
 
-func newTodoRepositoriesWithSource(sourceReader todousecase.SourceReader, taskStore TaskStore, projectStore ProjectStore, scheduleStore ScheduleStore, tx pgx.Tx, newID func() string, logger telemetry.Logger) todousecase.Repositories {
+func newTodoRepositoriesWithSource(sourceReader todousecase.SourceReader, taskStore TaskStore, projectStore ProjectStore, scheduleStore ScheduleStore, tx pgx.Tx, newID func() string, logger telemetry.Logger, access ...shared.ProjectWriteAccessReader) todousecase.Repositories {
 	items := todorepository.NewItemRepository(tx)
 	todos := todorepository.NewTodoRepository(tx)
 
@@ -62,10 +73,22 @@ func newTodoRepositoriesWithSource(sourceReader todousecase.SourceReader, taskSt
 	tasks := taskStore.WithTx(tx)
 	scheduleRows := scheduleStore.WithTx(tx).Schedules
 	allocationRows := allocationrepository.NewAllocationRepositoryFromTx(tx)
+	var lifecycle *projectusecase.ProjectLifecycleUseCase
+	if len(access) > 0 && access[0] != nil {
+		if planReader, ok := access[0].(shared.PlanAccessReader); ok {
+			lifecycle = projectusecase.NewProjectLifecycleUseCaseWithAccess(projects, projects, scheduleRows,
+				allocationProjectLifecycleAdapter{repository: allocationRows}, planReader)
+		} else {
+			lifecycle = projectusecase.NewProjectLifecycleUseCase(projects, projects, scheduleRows,
+				allocationProjectLifecycleAdapter{repository: allocationRows})
+		}
+	} else {
+		lifecycle = projectusecase.NewProjectLifecycleUseCase(projects, projects, scheduleRows,
+			allocationProjectLifecycleAdapter{repository: allocationRows})
+	}
 	taskRepos := taskRepositories{
-		store: tasks,
-		lifecycle: projectusecase.NewProjectLifecycleUseCase(projects, projects, scheduleRows,
-			allocationProjectLifecycleAdapter{repository: allocationRows}),
+		store:     tasks,
+		lifecycle: lifecycle,
 	}
 	// The Todo owner command deliberately does not invoke Task's reverse Todo
 	// bridge. The selected Todo frame is already mutated in this transaction.
@@ -80,21 +103,25 @@ func newTodoRepositoriesWithSource(sourceReader todousecase.SourceReader, taskSt
 		repos:    taskRepos,
 	}
 	scheduleRepos := scheduleRepositories{
-		store: scheduleStore.WithTx(tx),
-		lifecycle: projectusecase.NewProjectLifecycleUseCase(projects, projects, scheduleRows,
-			allocationProjectLifecycleAdapter{repository: allocationRows}),
+		store:     scheduleStore.WithTx(tx),
+		lifecycle: lifecycle,
 	}
 	scheduleCommands := todoScheduleCommands{repos: scheduleRepos, newID: newID}
-	return todoRepositories{todos: todos, items: items, sources: sourceReader, actionItems: taskCommands, tasks: wholeTaskCommands, schedules: scheduleCommands}
+	var writeAccess shared.ProjectWriteAccessReader
+	if len(access) > 0 {
+		writeAccess = access[0]
+	}
+	return todoRepositories{todos: todos, items: items, sources: sourceReader, actionItems: taskCommands, tasks: wholeTaskCommands, schedules: scheduleCommands, projectWriteAccess: writeAccess}
 }
 
 type todoRepositories struct {
-	todos       todousecase.TodoRepository
-	items       todousecase.ItemRepository
-	sources     todousecase.SourceReader
-	actionItems todousecase.ActionItemCommands
-	tasks       todousecase.TaskCommands
-	schedules   todousecase.ScheduleCommands
+	todos              todousecase.TodoRepository
+	items              todousecase.ItemRepository
+	sources            todousecase.SourceReader
+	actionItems        todousecase.ActionItemCommands
+	tasks              todousecase.TaskCommands
+	schedules          todousecase.ScheduleCommands
+	projectWriteAccess shared.ProjectWriteAccessReader
 }
 
 func (r todoRepositories) Todos() todousecase.TodoRepository           { return r.todos }
@@ -103,6 +130,9 @@ func (r todoRepositories) Items() todousecase.ItemRepository           { return 
 func (r todoRepositories) ActionItems() todousecase.ActionItemCommands { return r.actionItems }
 func (r todoRepositories) Tasks() todousecase.TaskCommands             { return r.tasks }
 func (r todoRepositories) Schedules() todousecase.ScheduleCommands     { return r.schedules }
+func (r todoRepositories) ProjectWriteAccess() shared.ProjectWriteAccessReader {
+	return r.projectWriteAccess
+}
 
 // todoActionItemCommands delegates selected-frame completion to the Task
 // owner without running the reverse all-today-frame synchronization.

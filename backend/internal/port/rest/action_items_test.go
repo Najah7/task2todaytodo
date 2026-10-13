@@ -278,6 +278,15 @@ func (repos actionItemsHandlerRepositories) ActionItems() taskusecase.ActionItem
 func (repos actionItemsHandlerRepositories) ActionItemTodos() taskusecase.ActionItemTodoLifecycle {
 	return actionItemsHandlerTodoLifecycle{}
 }
+func (actionItemsHandlerRepositories) ProjectWriteAccess() shared.ProjectWriteAccessReader {
+	return actionItemsHandlerProjectWriteAccess{}
+}
+
+type actionItemsHandlerProjectWriteAccess struct{}
+
+func (actionItemsHandlerProjectWriteAccess) GetProjectWriteAccess(context.Context, string, string) (shared.ProjectWriteAccess, error) {
+	return shared.ProjectWriteAccess{MemberCount: 1, ActorPlanAccess: shared.PlanAccessTeam, OwnerPlanAccess: shared.PlanAccessTeam}, nil
+}
 
 type actionItemsHandlerTodoLifecycle struct{}
 
@@ -303,6 +312,12 @@ func (uow actionItemsHandlerUOW) Do(ctx context.Context, fn func(context.Context
 	return fn(ctx, uow.repositories)
 }
 
+type actionItemsHandlerPlanAccess struct{}
+
+func (actionItemsHandlerPlanAccess) GetPlanAccess(context.Context, string) (shared.PlanAccess, error) {
+	return shared.PlanAccessPro, nil
+}
+
 type actionItemsHandlerFixture struct {
 	handler  *ActionItemHandler
 	taskRepo *actionItemsHandlerTaskRepository
@@ -319,7 +334,7 @@ func newActionItemsHandlerFixture() actionItemsHandlerFixture {
 	uow := actionItemsHandlerUOW{repositories: actionItemsHandlerRepositories{tasks: taskRepo, items: itemRepo}}
 	ids := actionItemsHandlerID{id: "item-new"}
 	usecases := taskusecase.ActionItemUseCases{
-		Create: taskusecase.NewCreateActionItemUseCase(uow, nil), List: taskusecase.NewListActionItemsUseCase(uow, nil),
+		Create: taskusecase.NewCreateActionItemUseCase(uow, nil, actionItemsHandlerPlanAccess{}), List: taskusecase.NewListActionItemsUseCase(uow, nil),
 		Update: taskusecase.NewUpdateActionItemUseCase(uow, nil), Delete: taskusecase.NewDeleteActionItemUseCase(uow, nil),
 		Complete: taskusecase.NewCompleteActionItemUseCase(uow, nil), Reopen: taskusecase.NewReopenActionItemUseCase(uow, nil),
 		Reorder: taskusecase.NewReorderActionItemUseCase(uow, nil),

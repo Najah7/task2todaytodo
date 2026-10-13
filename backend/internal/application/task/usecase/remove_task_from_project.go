@@ -17,11 +17,16 @@ type removeTaskFromProjectUOW interface {
 type RemoveTaskFromProjectUseCase struct {
 	uow      removeTaskFromProjectUOW
 	progress taskProgressSource
+	access   shared.PlanAccessReader
 	logger   telemetry.Logger
 }
 
-func NewRemoveTaskFromProjectUseCase(uow removeTaskFromProjectUOW, progress taskProgressSource, logger telemetry.Logger) *RemoveTaskFromProjectUseCase {
-	return &RemoveTaskFromProjectUseCase{logger: telemetry.OrNop(logger), uow: uow, progress: progress}
+func NewRemoveTaskFromProjectUseCase(uow removeTaskFromProjectUOW, progress taskProgressSource, logger telemetry.Logger, access ...shared.PlanAccessReader) *RemoveTaskFromProjectUseCase {
+	uc := &RemoveTaskFromProjectUseCase{logger: telemetry.OrNop(logger), uow: uow, progress: progress}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
 }
 
 func (uc *RemoveTaskFromProjectUseCase) Execute(ctx context.Context, userID domain.UserID, projectID domain.ProjectID, taskID domain.TaskID, expectedRevision int32) (output dao.Task, err error) {
@@ -50,12 +55,20 @@ func (uc *RemoveTaskFromProjectUseCase) Execute(ctx context.Context, userID doma
 		if task.Revision != expectedRevision {
 			return ErrRevisionConflict
 		}
+		if task.ProjectID == string(projectID) {
+			if err := requireProjectWriteAccess(ctx, repos, string(userID), string(projectID)); err != nil {
+				return err
+			}
+		}
 
 		// Removing a task that is already detached or belongs to another project
 		// is an idempotent no-op. Keep its current priority and child records.
 		if task.ProjectID != string(projectID) {
 			result = task
 		} else {
+			if err := checkActionItemDestinationLimit(ctx, repos, uc.access, domain.UserID(task.UserID), taskID, ""); err != nil {
+				return err
+			}
 			before, err := lifecycle.CaptureWorkState(ctx, string(projectID), asOf)
 			if err != nil {
 				return err

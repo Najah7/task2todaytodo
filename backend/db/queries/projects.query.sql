@@ -219,3 +219,23 @@ FROM projects
 WHERE id = $1
   AND deleted_at IS NULL
 FOR UPDATE;
+
+-- name: LockProjectOwnerForPlanLimit :one
+SELECT u.id
+FROM users u
+JOIN projects p ON p.user_id = u.id
+WHERE p.id = sqlc.arg(project_id)::text
+FOR UPDATE OF u;
+
+-- name: LockUserForPlanLimit :one
+SELECT id
+FROM users
+WHERE id = sqlc.arg(user_id)::text
+FOR UPDATE;
+
+-- name: CountActiveOwnedProjects :one
+SELECT count(*)::integer AS project_count
+FROM projects
+WHERE user_id = sqlc.arg(user_id)::text
+  AND deleted_at IS NULL
+  AND status <> 'done';

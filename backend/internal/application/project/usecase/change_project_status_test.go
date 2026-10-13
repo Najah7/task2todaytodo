@@ -26,6 +26,15 @@ func (f *projectStatusRepositoryFake) SetStatusByUserID(_ context.Context, _ dom
 func (f *projectStatusRepositoryFake) HasPermission(context.Context, domain.UserID, domain.ProjectID, shared.Capability) (bool, error) {
 	return true, nil
 }
+func (*projectStatusRepositoryFake) LockUserForPlanLimit(context.Context, domain.UserID) error {
+	return nil
+}
+func (*projectStatusRepositoryFake) CountActiveOwnedProjects(context.Context, domain.UserID) (int, error) {
+	return 0, nil
+}
+func (*projectStatusRepositoryFake) GetProjectWriteAccess(context.Context, string, string) (shared.ProjectWriteAccess, error) {
+	return shared.ProjectWriteAccess{}, nil
+}
 
 type projectStatusChildrenFake struct {
 	ProjectChildrenDeleter

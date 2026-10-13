@@ -33,6 +33,18 @@ func (uc *UpsertProjectMemberUseCase) Execute(ctx context.Context, actor domain.
 		if !allowed {
 			return ErrPermissionDenied
 		}
+		if err := requireTeamInvitation(ctx, repo, actor, project); err != nil {
+			return err
+		}
+		if role == "admin" || role == "editor" {
+			reader, err := projectWriteAccessReader(repo)
+			if err != nil {
+				return err
+			}
+			if err := requireTeamInviteeAccess(ctx, reader, member, project); err != nil {
+				return err
+			}
+		}
 		grant, err := domain.NewProjectMember(project, member, role, actor)
 		if err != nil {
 			return ErrProjectMemberInvalidInput

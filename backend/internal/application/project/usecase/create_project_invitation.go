@@ -51,6 +51,9 @@ func (uc *CreateProjectInvitationUseCase) Execute(ctx context.Context, actor dom
 		if !CanManageProjectMemberRole(actorRole, roleID) {
 			return ErrPermissionDenied
 		}
+		if err := requireTeamInvitation(ctx, repo, actor, project); err != nil {
+			return err
+		}
 		if err := reserveProjectInvitationEmail(ctx, repo, email, now); err != nil {
 			return err
 		}

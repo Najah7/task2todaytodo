@@ -37,6 +37,7 @@ func isExpectedTaskError(err error) bool {
 		ErrTaskNotFound, ErrTaskProjectNotFound, ErrActionItemTaskNotFound, ErrActionItemNotFound,
 		ErrActionItemCompleted,
 		ErrActionItemStarted,
+		ErrFreeActionItemLimitReached,
 		ErrTaskPatchRequiredFieldNull,
 		ErrInvalidTaskPage, ErrActionItemPatchRequiredFieldNull, ErrActionItemPositionOutOfRange,
 		domain.ErrTaskIDEmpty,

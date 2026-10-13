@@ -27,6 +27,9 @@ func (uc *DeleteProjectMemberUseCase) Execute(ctx context.Context, actor domain.
 		if _, err := repo.LockByUserIDWithPermission(ctx, actor, project, shared.ProjectMemberDelete()); err != nil {
 			return err
 		}
+		if err := requireMemberRemoval(ctx, repo, actor, project); err != nil {
+			return err
+		}
 		if err := children.ReassignTasksAfterProjectMemberRemoval(ctx, string(actor), string(project), string(member)); err != nil {
 			return err
 		}

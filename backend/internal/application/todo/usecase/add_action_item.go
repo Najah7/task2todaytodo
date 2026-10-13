@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/todo/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/todo/domain"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
@@ -13,6 +14,7 @@ type AddActionItemUseCase struct {
 	newID            func() string
 	initialGenerator *GenerateTodayUseCase
 	logger           telemetry.Logger
+	access           shared.PlanAccessReader
 }
 
 func NewAddActionItemUseCase(uow UOW, newID func() string, loggers ...telemetry.Logger) *AddActionItemUseCase {
@@ -25,15 +27,20 @@ func NewAddActionItemUseCase(uow UOW, newID func() string, loggers ...telemetry.
 
 func (u *AddActionItemUseCase) Execute(ctx context.Context, userID, actionItemID string, expectedRevision int32) (result dao.Todo, err error) {
 	defer func() { logUnexpectedTodoFailure(u.logger, ctx, "AddActionItemUseCase.Execute", err) }()
-	result, err = addWork(ctx, u.uow, u.initialGenerator, u.newID, userID, dao.WorkSourceRef{Kind: string(domain.FrameActionItem), ID: actionItemID}, expectedRevision)
+	result, err = addWork(ctx, u.uow, u.initialGenerator, u.newID, u.access, userID, dao.WorkSourceRef{Kind: string(domain.FrameActionItem), ID: actionItemID}, expectedRevision)
 	if err == nil && result.ID != "" {
 		logTodoStateChange(u.logger, ctx, "todo.action_item.add", userID, result.ID, actionItemID)
 	}
 	return result, err
 }
 
-func addWork(ctx context.Context, uow UOW, initialGenerator *GenerateTodayUseCase, newID func() string, userID string, ref dao.WorkSourceRef, expectedRevision int32) (result dao.Todo, err error) {
+func addWork(ctx context.Context, uow UOW, initialGenerator *GenerateTodayUseCase, newID func() string, access shared.PlanAccessReader, userID string, ref dao.WorkSourceRef, expectedRevision int32) (result dao.Todo, err error) {
 	err = uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
+		plan, accessErr := todoPlanAccess(ctx, repos, userID, access)
+		if accessErr != nil {
+			return accessErr
+		}
+		freePlan := !plan.IsPaid()
 		day, err := repos.Sources().CurrentDay(ctx, userID)
 		if err != nil {
 			return err
@@ -41,7 +48,7 @@ func addWork(ctx context.Context, uow UOW, initialGenerator *GenerateTodayUseCas
 		if err := repos.Todos().LockUser(ctx, userID); err != nil {
 			return err
 		}
-		todo, err := ensureTodayTodoInTx(ctx, userID, day, repos, initialGenerator, newID)
+		todo, err := ensureTodayTodoInTx(ctx, userID, day, repos, initialGenerator, newID, freePlan)
 		if err != nil {
 			return err
 		}
@@ -62,6 +69,9 @@ func addWork(ctx context.Context, uow UOW, initialGenerator *GenerateTodayUseCas
 				return ErrTaskNotFound
 			}
 			return ErrActionItemNotFound
+		}
+		if err := requireSharedProjectWrite(ctx, repos, userID, source.ProjectID); err != nil {
+			return err
 		}
 		if source.Completed {
 			if ref.Kind == string(domain.FrameTask) {

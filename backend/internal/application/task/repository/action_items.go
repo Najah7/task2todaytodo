@@ -118,6 +118,21 @@ func (r ActionItemRepository) CountForOwnedTask(ctx context.Context, userID doma
 	return int(count), err
 }
 
+func (r ActionItemRepository) CountForProjectPlanLimit(ctx context.Context, projectID string) (int, error) {
+	count, err := r.queries.CountActionItemsForProjectPlanLimit(ctx, projectID)
+	return int(count), err
+}
+
+func (r ActionItemRepository) CountProjectlessForUserPlanLimit(ctx context.Context, userID domain.UserID) (int, error) {
+	count, err := r.queries.CountProjectlessActionItemsForUserPlanLimit(ctx, string(userID))
+	return int(count), err
+}
+
+func (r ActionItemRepository) CountForTaskPlanLimit(ctx context.Context, taskID domain.TaskID) (int, error) {
+	count, err := r.queries.CountActionItemsForTaskPlanLimit(ctx, string(taskID))
+	return int(count), err
+}
+
 func (r ActionItemRepository) ListByTaskCursor(ctx context.Context, userID domain.UserID, taskID domain.TaskID, limit int, anchor *usecase.CursorAnchor) ([]dao.ActionItem, error) {
 	arg := sqlc.ListActionItemsByTaskAndUserIDCursorPageParams{TaskID: string(taskID), UserID: string(userID), PageLimit: int32(limit)}
 	if anchor != nil {

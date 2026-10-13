@@ -7,17 +7,91 @@ import (
 
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/domain"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/shared/calendar"
 )
 
-type GetWeekUseCase struct{ repo Repository }
+type GetWeekUseCase struct {
+	repo   Repository
+	access shared.PlanAccessReader
+}
 
-func NewGetWeekUseCase(repo Repository) *GetWeekUseCase { return &GetWeekUseCase{repo: repo} }
+func NewGetWeekUseCase(repo Repository, access ...shared.PlanAccessReader) *GetWeekUseCase {
+	uc := &GetWeekUseCase{repo: repo}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
+}
 func (uc *GetWeekUseCase) Execute(ctx context.Context, userID string, weekStart time.Time) (dao.Week, error) {
 	if weekStart.Weekday() != time.Monday {
 		return dao.Week{}, ErrInvalidRequest
 	}
+	if uc.access == nil {
+		return projectActiveTimeWeek(ctx, uc.repo, userID, weekStart)
+	}
+	{
+		plan, err := uc.access.GetPlanAccess(ctx, userID)
+		if err != nil {
+			return dao.Week{}, err
+		}
+		if !plan.IsPaid() {
+			return projectActiveTimeWeek(ctx, uc.repo, userID, weekStart)
+		}
+	}
 	return projectWeek(ctx, uc.repo, userID, weekStart)
+}
+
+func projectActiveTimeWeek(ctx context.Context, repo Repository, userID string, weekStart time.Time) (dao.Week, error) {
+	profile, err := repo.GetProfile(ctx, userID)
+	if err != nil {
+		return dao.Week{}, err
+	}
+	location, err := time.LoadLocation(profile.Timezone)
+	if err != nil {
+		return dao.Week{}, ErrInvalidRequest
+	}
+	date, endDate := calendar.DateOnly(weekStart), calendar.DateOnly(weekStart).AddDate(0, 0, 7)
+	from, ok := calendar.ResolveForward(date, time.Time{}, 0, location)
+	if !ok {
+		return dao.Week{}, ErrInvalidRequest
+	}
+	through, ok := calendar.ResolveForward(endDate, time.Time{}, 0, location)
+	if !ok || !through.After(from) {
+		return dao.Week{}, ErrInvalidRequest
+	}
+	exceptions, err := repo.ListActiveTimeExceptions(ctx, userID, date.AddDate(0, 0, -1), endDate.AddDate(0, 0, 1))
+	if err != nil {
+		return dao.Week{}, err
+	}
+	exceptionByDate := make(map[string]dao.ActiveTimeException, len(exceptions))
+	for _, exception := range exceptions {
+		exceptionByDate[exception.LocalDate.Format("2006-01-02")] = exception
+	}
+	startDefault, _ := time.Parse("15:04", profile.ActiveStartTime)
+	endDefault, _ := time.Parse("15:04", profile.ActiveEndTime)
+	week := dao.Week{WeekStart: date, Timezone: profile.Timezone, Projects: []dao.Project{}, Allocations: []dao.Allocation{}, Days: make([]dao.Day, 0, 7), ActiveIntervals: make([]dao.Interval, 0, 8), PausedRules: []dao.PausedRule{}}
+	for offset := -1; offset < 7; offset++ {
+		day := date.AddDate(0, 0, offset)
+		window, hasException := domain.Interval{}, false
+		exception := exceptionByDate[day.Format("2006-01-02")]
+		if exception, hasException = exceptionByDate[day.Format("2006-01-02")]; hasException {
+			window, err = domain.ActiveWindowFromLocalPair(day, exception.ActiveStartLocal, exception.ActiveEndLocal, exception.Timezone)
+		} else {
+			window, err = domain.ActiveWindow(day, startDefault, endDefault, profile.Timezone)
+		}
+		if err != nil {
+			return dao.Week{}, err
+		}
+		start, end := maxTime(window.Start, from), minTime(window.End, through)
+		if end.After(start) {
+			week.ActiveIntervals = append(week.ActiveIntervals, dao.Interval{StartAt: start, EndAt: end, LocalDate: day})
+		}
+		if offset >= 0 {
+			week.Days = append(week.Days, dao.Day{Date: day, ActiveStartAt: window.Start, ActiveEndAt: window.End, ActiveRevision: exception.Revision, HasActiveException: hasException})
+		}
+	}
+	return week, nil
 }
 
 func projectWeek(ctx context.Context, repo Repository, userID string, weekStart time.Time) (dao.Week, error) {

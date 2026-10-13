@@ -5,12 +5,14 @@ import (
 	"errors"
 
 	"github.com/Najah7/task2todaytodo/internal/application/metric/dao"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 )
 
 var (
 	ErrInvalidDays       = errors.New("invalid metrics days")
 	ErrInvalidActor      = errors.New("invalid metrics actor")
 	ErrReaderUnavailable = errors.New("metrics reader unavailable")
+	ErrPaidPlanRequired  = errors.New("paid plan required")
 )
 
 type TodoCompletionReader interface {
@@ -19,10 +21,15 @@ type TodoCompletionReader interface {
 
 type TodoCompletionUseCase struct {
 	reader TodoCompletionReader
+	access shared.PlanAccessReader
 }
 
-func NewTodoCompletionUseCase(reader TodoCompletionReader) *TodoCompletionUseCase {
-	return &TodoCompletionUseCase{reader: reader}
+func NewTodoCompletionUseCase(reader TodoCompletionReader, access ...shared.PlanAccessReader) *TodoCompletionUseCase {
+	uc := &TodoCompletionUseCase{reader: reader}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
 }
 
 func (uc *TodoCompletionUseCase) Execute(ctx context.Context, actorID string, days int) (dao.TodoCompletion, error) {
@@ -34,6 +41,16 @@ func (uc *TodoCompletionUseCase) Execute(ctx context.Context, actorID string, da
 	}
 	if days != 7 && days != 30 {
 		return dao.TodoCompletion{}, ErrInvalidDays
+	}
+	if uc.access == nil {
+		return dao.TodoCompletion{}, ErrPaidPlanRequired
+	}
+	plan, err := uc.access.GetPlanAccess(ctx, actorID)
+	if err != nil {
+		return dao.TodoCompletion{}, err
+	}
+	if !plan.IsPaid() {
+		return dao.TodoCompletion{}, ErrPaidPlanRequired
 	}
 	result, err := uc.reader.ReadTodoCompletion(ctx, actorID, days)
 	if err != nil {

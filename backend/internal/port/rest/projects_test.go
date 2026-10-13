@@ -52,6 +52,22 @@ func (repo *projectHandlerProjectRepository) ReadProjectProgressSources(context.
 	return projectdao.ProjectProgressSources{}, nil
 }
 
+func (repo *projectHandlerProjectRepository) GetProjectWriteAccess(_ context.Context, actorID, projectID string) (shared.ProjectWriteAccess, error) {
+	row, ok := repo.projects[projectID]
+	if !ok || row.UserID != actorID {
+		return shared.ProjectWriteAccess{}, projectdomain.ErrProjectNotFound
+	}
+	return shared.ProjectWriteAccess{OwnerUserID: row.UserID, MemberCount: int64(row.MemberCount), ActorPlanAccess: shared.PlanAccessFree, OwnerPlanAccess: shared.PlanAccessFree}, nil
+}
+
+func (*projectHandlerProjectRepository) LockUserForPlanLimit(context.Context, projectdomain.UserID) error {
+	return nil
+}
+
+func (*projectHandlerProjectRepository) CountActiveOwnedProjects(context.Context, projectdomain.UserID) (int, error) {
+	return 0, nil
+}
+
 func (repo *projectHandlerProjectRepository) ListByUserID(_ context.Context, userID projectdomain.UserID) ([]projectdao.Project, error) {
 	repo.listCalls++
 	if repo.listErr != nil {
@@ -292,6 +308,10 @@ func (repo *projectHandlerTaskRepository) GetByUserIDWithPermission(ctx context.
 	return repo.GetByUserID(ctx, userID, id)
 }
 
+func (repo *projectHandlerTaskRepository) LockByUserIDWithPermission(ctx context.Context, userID taskdomain.UserID, id taskdomain.TaskID, _ shared.Capability) (taskdao.Task, error) {
+	return repo.GetByUserID(ctx, userID, id)
+}
+
 func (*projectHandlerTaskRepository) HasPermission(context.Context, taskdomain.UserID, taskdomain.TaskID, shared.Capability) (bool, error) {
 	return true, nil
 }
@@ -347,6 +367,15 @@ func (repos projectHandlerRepositories) Tasks() taskusecase.TaskRepository { ret
 func (projectHandlerRepositories) ActionItems() taskusecase.ActionItemRepository {
 	return projectHandlerActionItems{}
 }
+func (projectHandlerRepositories) ProjectWriteAccess() shared.ProjectWriteAccessReader {
+	return projectHandlerProjectWriteAccess{}
+}
+
+type projectHandlerProjectWriteAccess struct{}
+
+func (projectHandlerProjectWriteAccess) GetProjectWriteAccess(context.Context, string, string) (shared.ProjectWriteAccess, error) {
+	return shared.ProjectWriteAccess{OwnerUserID: projectHandlerUserID, MemberCount: 0, ActorPlanAccess: shared.PlanAccessFree, OwnerPlanAccess: shared.PlanAccessFree}, nil
+}
 
 type projectHandlerActionItems struct {
 	taskusecase.ActionItemRepository
@@ -358,6 +387,15 @@ func (projectHandlerActionItems) ReadTaskListProjection(_ context.Context, _ tas
 		items[id] = nil
 	}
 	return taskdao.TaskListProjectionSources{ActionItemsByTask: items}, nil
+}
+func (projectHandlerActionItems) CountForProjectPlanLimit(context.Context, string) (int, error) {
+	return 0, nil
+}
+func (projectHandlerActionItems) CountProjectlessForUserPlanLimit(context.Context, taskdomain.UserID) (int, error) {
+	return 0, nil
+}
+func (projectHandlerActionItems) CountForTaskPlanLimit(context.Context, taskdomain.TaskID) (int, error) {
+	return 0, nil
 }
 func (projectHandlerRepositories) ProjectLifecycle() shared.ProjectWorkLifecycle {
 	return projectHandlerLifecycle{}
@@ -375,6 +413,8 @@ func (projectHandlerLifecycle) CaptureWorkState(context.Context, string, time.Ti
 func (projectHandlerLifecycle) ReconcileWorkState(context.Context, string, string, shared.ProjectWorkState, time.Time) error {
 	return nil
 }
+func (projectHandlerLifecycle) LockOwnerPlanLimit(context.Context, string) error { return nil }
+func (projectHandlerLifecycle) LockUserPlanLimit(context.Context, string) error  { return nil }
 
 type projectHandlerTaskProjectRepository struct {
 	projects *projectHandlerProjectRepository

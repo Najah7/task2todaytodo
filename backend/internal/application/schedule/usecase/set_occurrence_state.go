@@ -74,6 +74,9 @@ func (uc *SetOccurrenceStateUseCase) ExecuteInTx(ctx context.Context, actorID, r
 	if err != nil {
 		return err
 	}
+	if err := requireScheduleProjectWrite(ctx, repos, actorID, current.value.ProjectID); err != nil {
+		return err
+	}
 	if err := validateOccurrenceState(current.value, uc.state); err != nil {
 		return err
 	}

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	allocationrepository "github.com/Najah7/task2todaytodo/internal/application/allocation/repository"
+	billingrepository "github.com/Najah7/task2todaytodo/internal/application/billing/repository"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	scheduleDomain "github.com/Najah7/task2todaytodo/internal/application/schedule/domain"
 	scheduleRepository "github.com/Najah7/task2todaytodo/internal/application/schedule/repository"
@@ -15,11 +16,13 @@ import (
 )
 
 type ProjectUOW struct {
-	pool      *pgxpool.Pool
-	projects  ProjectStore
-	tasks     TaskStore
-	schedules ScheduleStore
-	runTx     transactionRunner
+	pool           *pgxpool.Pool
+	projects       ProjectStore
+	tasks          TaskStore
+	schedules      ScheduleStore
+	runTx          transactionRunner
+	billing        *billingrepository.Repository
+	billingEnabled bool
 }
 
 func NewProjectUOW(pool *pgxpool.Pool, projects ProjectStore, tasks TaskStore, schedules ScheduleStore) projectusecase.UnitOfWork {
@@ -37,12 +40,19 @@ func newProjectUOW(pool *pgxpool.Pool, projects ProjectStore, tasks TaskStore, s
 func (uow *ProjectUOW) Do(ctx context.Context, fn func(context.Context, projectusecase.Repository, projectusecase.ProjectChildrenDeleter) error) error {
 	return uow.runTx(ctx, uow.pool, func(tx pgx.Tx) error {
 		allocationRepository := allocationrepository.NewAllocationRepository(uow.pool).WithTx(tx)
-		return fn(ctx, uow.projects.WithTx(tx).Projects, projectChildrenAdapter{
+		projectRows := uow.projects.WithTx(tx).Projects
+		reader := newProjectWriteAccessReader(projectRows, billingWithTx(uow.billing, tx), uow.billingEnabled)
+		return fn(ctx, projectRepositoryWithWriteAccess{Repository: projectRows, ProjectWriteAccessReader: reader}, projectChildrenAdapter{
 			tasks:       uow.tasks.WithTx(tx).Tasks,
 			schedules:   uow.schedules.WithTx(tx).Schedules,
 			allocations: allocationProjectLifecycleAdapter{repository: allocationRepository},
 		})
 	})
+}
+
+func (uow *ProjectUOW) ConfigureProjectWriteAccess(billing *billingrepository.Repository, enabled bool) {
+	uow.billing = billing
+	uow.billingEnabled = enabled
 }
 
 type projectChildrenAdapter struct {

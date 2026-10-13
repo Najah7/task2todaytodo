@@ -14,10 +14,12 @@ func Generate(in Input) (Plan, error) {
 			continue
 		}
 		windows := activeWindows(in)
-		if candidate.ProjectID != "" {
-			windows = allocationWindows(in.Allocations, candidate.ProjectID, in.Day, windows)
-		} else {
-			windows = projectlessWindows(in.Allocations, in.Day, windows)
+		if !in.IgnoreAllocations {
+			if candidate.ProjectID != "" {
+				windows = allocationWindows(in.Allocations, candidate.ProjectID, in.Day, windows)
+			} else {
+				windows = projectlessWindows(in.Allocations, in.Day, windows)
+			}
 		}
 		start, end, reservation, ok := findWholeFit(windows, occupied, candidate.EstimatedMinutes, in.GapMinutes)
 		if !ok {

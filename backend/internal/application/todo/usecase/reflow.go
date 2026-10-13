@@ -211,7 +211,7 @@ func loadPlanningState(ctx context.Context, userID string, todoDate time.Time, r
 	return todo, saved, sources, in, nil
 }
 
-func ensureTodayTodoInTx(ctx context.Context, userID string, day dao.CurrentDay, repos Repositories, initialGenerator *GenerateTodayUseCase, newID func() string) (dao.Todo, error) {
+func ensureTodayTodoInTx(ctx context.Context, userID string, day dao.CurrentDay, repos Repositories, initialGenerator *GenerateTodayUseCase, newID func() string, ignoreAllocations bool) (dao.Todo, error) {
 	todo, err := repos.Todos().GetByUserDate(ctx, userID, day.Date)
 	if err == nil {
 		return todo, nil
@@ -227,7 +227,7 @@ func ensureTodayTodoInTx(ctx context.Context, userID string, day dao.CurrentDay,
 	if err != nil {
 		return dao.Todo{}, err
 	}
-	return initialGenerator.generateInitialInTx(ctx, userID, day.Date, day.Timezone, todo, repos)
+	return initialGenerator.generateInitialInTx(ctx, userID, day.Date, day.Timezone, todo, repos, ignoreAllocations)
 }
 
 func planTodoItems(todoID string, saved []dao.Item, plan domain.Plan, newID func() string) ([]domain.TodoItem, error) {

@@ -114,6 +114,9 @@ func (uc *CreateRuleUseCase) Execute(ctx context.Context, actorID string, input 
 			if err := repos.Schedules().LockProjectForScheduleMutation(ctx, domain.ProjectID(definition.ProjectID)); err != nil {
 				return err
 			}
+			if err := requireScheduleProjectWrite(ctx, repos, actorID, definition.ProjectID); err != nil {
+				return err
+			}
 			state, err := repos.ProjectLifecycle().CaptureWorkState(ctx, definition.ProjectID, asOf)
 			if err != nil {
 				return err

@@ -5,18 +5,27 @@ import (
 	"math"
 
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/dao"
+	"github.com/Najah7/task2todaytodo/internal/application/shared"
 )
 
 type PutPlansUseCase struct {
-	repo Repository
-	uow  UnitOfWork
+	repo   Repository
+	uow    UnitOfWork
+	access shared.PlanAccessReader
 }
 
-func NewPutPlansUseCase(repo Repository, uow UnitOfWork) *PutPlansUseCase {
-	return &PutPlansUseCase{repo: repo, uow: uow}
+func NewPutPlansUseCase(repo Repository, uow UnitOfWork, access ...shared.PlanAccessReader) *PutPlansUseCase {
+	uc := &PutPlansUseCase{repo: repo, uow: uow}
+	if len(access) > 0 {
+		uc.access = access[0]
+	}
+	return uc
 }
 
 func (uc *PutPlansUseCase) Execute(ctx context.Context, userID, expectedRevision string, items []dao.PlanItem) (dao.PlanCollection, error) {
+	if err := requirePaid(ctx, uc.access, userID); err != nil {
+		return dao.PlanCollection{}, err
+	}
 	if userID == "" || expectedRevision == "" || !validPlans(items) {
 		return dao.PlanCollection{}, ErrInvalidRequest
 	}

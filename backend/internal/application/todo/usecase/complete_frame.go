@@ -71,6 +71,9 @@ func (u *CompleteFrameUseCase) Execute(ctx context.Context, userID, frameID stri
 			if !ok || !occurrence.CanComplete {
 				return ErrPermissionDenied
 			}
+			if err := requireSharedProjectWrite(ctx, repos, userID, occurrence.ProjectID); err != nil {
+				return err
+			}
 			if err := repos.Schedules().Complete(ctx, userID, target.ScheduleRuleID, target.OccurrenceDate, occurrence.Revision); err != nil {
 				return err
 			}
@@ -87,6 +90,9 @@ func (u *CompleteFrameUseCase) Execute(ctx context.Context, userID, frameID stri
 		source, ok := sourceByRef(workSources, ref)
 		if !ok || !source.CanComplete {
 			return ErrPermissionDenied
+		}
+		if err := requireSharedProjectWrite(ctx, repos, userID, source.ProjectID); err != nil {
+			return err
 		}
 		if actualMinutes != nil && *actualMinutes < 0 {
 			return domain.ErrInvalidInput
