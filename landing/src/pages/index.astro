@@ -2,6 +2,7 @@
 import FaqItem from '../components/FaqItem.astro';
 import Brand from '../components/Brand.astro';
 import EditorialItem from '../components/EditorialItem.astro';
+import FeatureCard from '../components/FeatureCard.astro';
 import PlanCard from '../components/PlanCard.astro';
 import StepItem from '../components/StepItem.astro';
 import Layout from '../layouts/Layout.astro';
@@ -33,6 +34,15 @@ const plans = [
 	},
 ];
 
+const featureCards = [
+	{ title: '今日のTodo', description: '予定と使える時間に合わせて、今日取り組める仕事を自動で選びます。順番や内容はあとから調整できます。', plan: 'Free', icon: 'todo' },
+	{ title: 'Weekly Plan', description: '週ごとの作業時間をプロジェクトに配分。日々の計画に、取り組みたい仕事の時間を反映します。', plan: 'Pro', icon: 'weekly' },
+	{ title: 'プロジェクトとタスク', description: 'プロジェクトやタスク、作業項目をまとめて管理。締切や優先度、見積もり時間も記録できます。', plan: 'Free', icon: 'projects' },
+	{ title: '予定と作業時間', description: '固定の予定や繰り返し予定、働ける時間を登録。今日のTodoを組み立てる土台になります。', plan: 'Free', icon: 'schedule' },
+	{ title: '実績の振り返り', description: 'Todoの完了状況や期限を過ぎた作業を確認。日々の進み方を振り返れます。', plan: 'Pro', icon: 'metrics' },
+	{ title: 'チームでプロジェクト共有', description: 'メンバーを招待してプロジェクトを共有。共同編集する人にはTeamプランが必要です。', plan: 'Team', icon: 'team' },
+] as const;
+
 const faqs = [
 	{ question: 'どんな人に向いていますか？', answer: '会議や締切のある仕事をいくつも抱え、「今日は何から始めよう」と迷う人に。タスクの整理だけでなく、今日取り組む仕事を決める負担を減らしたい方に向いています。' },
 	{ question: '普通のTodoリストと何が違いますか？', answer: 'タスクの管理に加えて、予定を踏まえた「今日の仕事」まで自動で選べます。長いリストを眺めて悩む時間を減らし、目の前の仕事に集中できます。' },
@@ -49,14 +59,14 @@ const faqs = [
 		<nav class="island" aria-label="メインメニュー">
 			<Brand />
 			<ul class="nav-links">
-				<li><a href="#features">できること</a></li><li><a href="#how">使い方</a></li><li><a href="#pricing">料金</a></li><li><a href="#faq">FAQ</a></li>
+				<li><a href="#feature-list">機能一覧</a></li><li><a href="#how">使い方</a></li><li><a href="#pricing">料金</a></li><li><a href="#faq">FAQ</a></li>
 			</ul>
 			<a class="button button-small" href="#start">無料で始める</a>
 			<button class="menu-toggle" id="menuToggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="menuOverlay"><span></span><span></span></button>
 		</nav>
 	</div>
 	<nav class="menu-overlay" id="menuOverlay" aria-label="メニュー" aria-hidden="true" inert>
-		<a href="#features">できること</a><a href="#how">使い方</a><a href="#pricing">料金</a><a href="#faq">FAQ</a>
+		<a href="#feature-list">機能一覧</a><a href="#how">使い方</a><a href="#pricing">料金</a><a href="#faq">FAQ</a>
 		<a class="button" href="#start">無料で始める</a>
 	</nav>
 
@@ -108,6 +118,16 @@ const faqs = [
 				<ol class="steps">
 					{steps.map((step) => <StepItem {...step} />)}
 				</ol>
+			</div>
+		</section>
+
+		<section class="section feature-section" id="feature-list" aria-labelledby="feature-list-title" aria-describedby="feature-detail-note">
+			<div class="wrap">
+				<header class="section-head reveal"><span class="eyebrow">機能一覧</span><h2 id="feature-list-title">毎日の段取りを、ひとつの場所で。</h2><p>仕事を整理し、予定に合わせて今日の計画をつくる。必要な機能を、プランごとにご紹介します。</p></header>
+				<p class="feature-detail-note" id="feature-detail-note">各機能の詳しい紹介ページは準備中です。</p>
+				<div class="feature-grid">
+					{featureCards.map((feature) => <FeatureCard {...feature} />)}
+				</div>
 			</div>
 		</section>
 

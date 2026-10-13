@@ -127,6 +127,20 @@
     .steps h3 { margin-top: 24px; font-size: 20px; line-height: 28px; }
     .steps p { margin-top: 8px; color: var(--muted); }
     .step-note { display: block; margin-top: 16px; color: var(--orange); font-size: 14px; line-height: 20px; }
+    .feature-section { background: #f3f1ec; }
+    .feature-detail-note { margin-top: 24px; color: var(--muted); font-size: 14px; line-height: 20px; }
+    .feature-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin-top: 24px; }
+    .feature-card { min-width: 0; min-height: 248px; display: flex; flex-direction: column; align-items: flex-start; padding: 24px; border: 1px solid #dfe1e4; border-radius: 16px; background: var(--white); }
+    .feature-card-top { width: 100%; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .feature-icon { width: 40px; height: 40px; display: grid; place-items: center; flex: none; border-radius: 10px; background: var(--orange-light); color: var(--orange); }
+    .feature-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .feature-plan { padding: 4px 10px; border: 1px solid #dfe1e4; border-radius: 9999px; background: var(--white); color: #55534e; font-size: 12px; line-height: 16px; font-weight: 600; }
+    .feature-plan-pro { border-color: #242424; background: #242424; color: #fff; }
+    .feature-plan-team { border-color: #d6e5dc; background: #edf5f0; color: #245c47; }
+    .feature-card h3 { margin-top: 20px; font-size: 20px; line-height: 28px; }
+    .feature-card p { margin-top: 8px; color: var(--muted); font-size: 14px; line-height: 21px; }
+    .feature-more { display: inline-flex; align-items: center; gap: 4px; margin-top: auto; padding-top: 20px; color: var(--orange); font-size: 14px; line-height: 20px; font-weight: 600; }
+    .feature-more svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .pricing-intro { display: flex; justify-content: space-between; align-items: end; gap: 32px; }
     .pricing-intro > p { max-width: 320px; color: var(--muted); }
     .plans { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin-top: 48px; align-items: stretch; }
@@ -185,6 +199,7 @@
       .pricing-intro { display: block; }
       .pricing-intro > p { margin-top: 16px; }
       .plans { grid-template-columns: 1fr; gap: 12px; }
+      .feature-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
       .plan { min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.2fr); gap: 16px 24px; padding: 24px; }
       .plan.featured { padding: 23px; }
       .plan-header,.plan-price-wrap,.plan-desc { grid-column: 1; }
@@ -207,6 +222,9 @@
       .todo-list { padding: 12px; }
       .demo-bottom { padding: 12px 16px 16px; }
       .section { padding-block: 64px; }
+      .feature-grid { grid-template-columns: 1fr; gap: 12px; margin-top: 20px; }
+      .feature-card { min-height: 0; padding: 20px; }
+      .feature-card h3 { margin-top: 16px; }
       .editorial { grid-template-columns: 1fr; gap: 40px; }
       .section-head h2 { font-size: 30px; line-height: 36px; }
       .section-head p { font-size: 16px; line-height: 24px; }

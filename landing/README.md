@@ -17,6 +17,6 @@ Manage the background dev server with `npx astro dev status`, `npx astro dev log
 ## Structure
 
 - `src/pages/index.astro` composes page sections and content.
-- `src/components/` contains reusable repeated page items and cards.
+- `src/components/` contains reusable repeated page items and cards, including the feature catalog card.
 - `src/layouts/Layout.astro` owns document metadata and client-side interactions.
 - `src/styles/global.css` holds the landing page styles.

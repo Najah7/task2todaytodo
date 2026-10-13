@@ -4,8 +4,8 @@ This directory owns the independent Astro mock of the Task2TodayToDo landing pag
 
 ## Architecture
 
-- `src/pages/index.astro` composes page sections and holds data for repeated feature items, steps, pricing plans, and FAQs.
-- `src/components/` contains reusable `Brand`, `EditorialItem`, `StepItem`, `PlanCard`, and `FaqItem` components. Keep repeated content in page data and avoid abstractions for one-off sections. `Brand` imports wordmark art from `frontend/src/assets/service_name.webp` and recolors it for the dark footer.
+- `src/pages/index.astro` composes page sections and holds data for repeated editorial items, feature cards, steps, pricing plans, and FAQs.
+- `src/components/` contains reusable `Brand`, `EditorialItem`, `FeatureCard`, `StepItem`, `PlanCard`, and `FaqItem` components. Keep repeated content in page data and avoid abstractions for one-off sections. `Brand` imports wordmark art from `frontend/src/assets/service_name.webp` and recolors it for the dark footer.
 - `src/layouts/Layout.astro` owns Japanese document metadata, font links, the favicon imported from `frontend/src/assets/logo.webp`, and client-side demo, mobile navigation, reveal, and active-section behavior.
 - `src/styles/global.css` contains the landing page design and responsive styles.
 - Signup is a static mock: the final CTA is disabled and no account flow is connected.
