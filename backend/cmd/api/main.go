@@ -63,7 +63,7 @@ func main() {
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
 	idIssuer := adapter.NewIDIssuer()
-	app, closeApp, err := application.New(settings.Database, idIssuer, logger, application.AuthEmailSettings{
+	app, closeApp, err := application.NewWithBilling(settings.Database, idIssuer, logger, settings.Billing, application.AuthEmailSettings{
 		Sender: emailadapter.AuthLinkSender{Provider: mailSender}, InvitationSender: emailadapter.ProjectInvitationSender{Provider: mailSender}, FrontendURL: settings.Email.FrontendBaseURL,
 	})
 	if err != nil {
@@ -76,7 +76,7 @@ func main() {
 	r.Use(middleware.StripTrailingSlash)
 	r.Use(middleware.NewRequestLogging(logger, idIssuer.NewUUID))
 
-	handler, err := rest.NewHandler(app.UseCase, idIssuer.NewULID, settings.Secrets.PageTokenKey)
+	handler, err := rest.NewHandler(app.UseCase, idIssuer.NewULID, settings.Secrets.PageTokenKey, settings.Billing.WebhookSecret)
 	if err != nil {
 		logger.Error(context.Background(), "API initialization failed", append([]any{"operation", "initialize_http_handler"}, telemetry.ErrorFields(err)...)...)
 		var closeErr error
@@ -130,6 +130,10 @@ func main() {
 		auth.Patch("/users/me/active-time", handler.User.UpdateActiveTimeSettings)
 		auth.Patch("/users/me/minimum-gap", handler.User.UpdateMinimumGap)
 		auth.Patch("/users/me/password", handler.User.UpdatePassword)
+		auth.Get("/billing", handler.Billing.Status)
+		auth.Post("/billing/checkout", handler.Billing.Checkout)
+		auth.Post("/billing/plan", handler.Billing.ChangePlan)
+		auth.Post("/billing/portal", handler.Billing.Portal)
 
 		// Role & Permissions
 		auth.Get("/roles", handler.Role.List)
@@ -247,6 +251,7 @@ func main() {
 		auth.Get("/metrics/todo-completion", handler.Metrics.TodoCompletion)
 		auth.Get("/metrics/overdue-work", handler.Metrics.OverdueWork)
 	})
+	r.Post("/api/webhooks/stripe", handler.Billing.Webhook)
 
 	srv := &http.Server{
 		Addr:              settings.Server.Addr,

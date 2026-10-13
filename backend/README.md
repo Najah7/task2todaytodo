@@ -5,7 +5,7 @@ REST boundary lives in `internal/port/rest`. PostgreSQL migrations and query
 sources live under `db/`. Runtime configuration belongs to `internal/config`;
 logging and trace setup belong to `internal/telemetry`.
 
-Start the backend with the [repository quick start](../README.md#backend-quick-start).
+Start the backend with the [repository quick start](../README.md#run-locally).
 Run `make help` in this directory for available commands. Common developer
 commands:
 
@@ -33,3 +33,13 @@ rules.
 
 Email signup, verification, password recovery, local Mailpit, and production
 SES setup are documented in the [email authentication guide](docs/email-auth.md).
+
+## Stripe billing
+
+Billing is disabled unless all Stripe variables in [`.env.example`](.env.example)
+are configured. Use distinct recurring monthly JPY Prices for Pro and Team;
+the application sends quantity one for either Price. The Stripe webhook endpoint
+is `POST /api/webhooks/stripe`; subscribe it to Checkout completion/expiry,
+subscription create/update/delete/pause/resume, and invoice paid/payment-failed
+events. Store the signing secret only in the runtime environment. Billing state
+is reconciled from verified webhook events and displayed at `/billing`.

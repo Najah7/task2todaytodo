@@ -20,6 +20,10 @@ type IDIssuer interface {
 }
 
 func New(database settings.DatabaseSettings, id IDIssuer, logger telemetry.Logger, emailSettings ...AuthEmailSettings) (*Application, func(context.Context) error, error) {
+	return NewWithBilling(database, id, logger, settings.BillingSettings{}, emailSettings...)
+}
+
+func NewWithBilling(database settings.DatabaseSettings, id IDIssuer, logger telemetry.Logger, billingSettings settings.BillingSettings, emailSettings ...AuthEmailSettings) (*Application, func(context.Context) error, error) {
 	ctx := context.Background()
 	pool, err := newPool(ctx, database)
 	if err != nil {
@@ -28,7 +32,8 @@ func New(database settings.DatabaseSettings, id IDIssuer, logger telemetry.Logge
 
 	store := NewStore(pool)
 	uow := NewUOWWithID(pool, store.Auth, store.Project, store.Task, store.Schedule, store.Allocation, id.NewULID)
-	uc, stopUseCases := NewUseCase(store, uow, id, logger, emailSettings...)
+	uow.Billing = NewBillingUOW(pool, store.Billing)
+	uc, stopUseCases := NewUseCaseWithBilling(store, uow, id, logger, billingSettings, emailSettings...)
 	closeApp := func(ctx context.Context) error {
 		if err := stopUseCases(ctx); err != nil {
 			return fmt.Errorf("shutdown admin operations: %w", err)

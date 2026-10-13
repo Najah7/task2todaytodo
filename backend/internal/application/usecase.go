@@ -6,12 +6,15 @@ import (
 
 	allocationusecase "github.com/Najah7/task2todaytodo/internal/application/allocation/usecase"
 	authusecase "github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
+	billingusecase "github.com/Najah7/task2todaytodo/internal/application/billing/usecase"
 	inboxusecase "github.com/Najah7/task2todaytodo/internal/application/inbox/usecase"
 	metricusecase "github.com/Najah7/task2todaytodo/internal/application/metric/usecase"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
 	todousecase "github.com/Najah7/task2todaytodo/internal/application/todo/usecase"
+	stripeadapter "github.com/Najah7/task2todaytodo/internal/port/adapter/stripe"
+	"github.com/Najah7/task2todaytodo/internal/settings"
 	"github.com/Najah7/task2todaytodo/internal/telemetry"
 )
 
@@ -31,6 +34,7 @@ type UseCase struct {
 	Allocation              allocationusecase.UseCases
 	Todo                    todousecase.UseCases
 	Metric                  metricusecase.UseCases
+	Billing                 billingusecase.UseCases
 }
 
 type AuthEmailSettings struct {
@@ -40,6 +44,10 @@ type AuthEmailSettings struct {
 }
 
 func NewUseCase(store Store, uow UOW, id IDIssuer, logger telemetry.Logger, emailSettings ...AuthEmailSettings) (UseCase, func(context.Context) error) {
+	return NewUseCaseWithBilling(store, uow, id, logger, settings.BillingSettings{}, emailSettings...)
+}
+
+func NewUseCaseWithBilling(store Store, uow UOW, id IDIssuer, logger telemetry.Logger, billingSettings settings.BillingSettings, emailSettings ...AuthEmailSettings) (UseCase, func(context.Context) error) {
 	var email AuthEmailSettings
 	if len(emailSettings) > 0 {
 		email = emailSettings[0]
@@ -47,6 +55,7 @@ func NewUseCase(store Store, uow UOW, id IDIssuer, logger telemetry.Logger, emai
 	schedules := NewScheduleUseCases(uow.Schedule, store.Auth, id, logger, uow.ScheduleRead)
 	prefill := allocationusecase.NewPrefillAllocationsExecutor(store.Allocation, uow.Allocation, id.NewULID)
 	admin, closeAdmin := NewAdminUseCases(store.Admin, schedules.Backfill, id, logger, prefill)
+	stripeClient := stripeadapter.NewClient(billingSettings.StripeAPIKey, billingSettings.ProPriceID, billingSettings.TeamPriceID)
 	return UseCase{
 		User:                    NewUserUseCases(store.Auth, uow.Auth, uow.AuthAccount, logger),
 		EmailAuth:               authusecase.NewEmailAuthUseCases(uow.AuthAccount, email.Sender, email.FrontendURL, logger),
@@ -66,5 +75,6 @@ func NewUseCase(store Store, uow UOW, id IDIssuer, logger telemetry.Logger, emai
 			TodoCompletion: metricusecase.NewTodoCompletionUseCase(store.Metric),
 			OverdueWork:    metricusecase.NewOverdueWorkUseCase(store.Metric),
 		},
+		Billing: billingusecase.NewUseCases(store.Billing, uow.Billing, stripeClient, billingSettings.Enabled, billingSettings.ProPriceID, billingSettings.TeamPriceID, email.FrontendURL),
 	}, closeAdmin
 }

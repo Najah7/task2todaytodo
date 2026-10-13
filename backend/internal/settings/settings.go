@@ -22,6 +22,7 @@ type Settings struct {
 	Database    DatabaseSettings
 	Secrets     Secrets
 	Email       EmailSettings
+	Billing     BillingSettings
 	Application ApplicationSettings
 	Logger      LoggerSettings
 }
@@ -68,6 +69,10 @@ func Load() (Settings, error) {
 	if err != nil {
 		return Settings{}, err
 	}
+	billing, err := loadBillingSettings(value)
+	if err != nil {
+		return Settings{}, err
+	}
 
 	return Settings{
 		Server: ServerSettings{
@@ -84,7 +89,8 @@ func Load() (Settings, error) {
 		Secrets: Secrets{
 			PageTokenKey: key,
 		},
-		Email: email,
+		Email:   email,
+		Billing: billing,
 		Application: ApplicationSettings{
 			Service:     service,
 			Environment: environment,

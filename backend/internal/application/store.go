@@ -2,6 +2,7 @@ package application
 
 import (
 	allocationrepository "github.com/Najah7/task2todaytodo/internal/application/allocation/repository"
+	billingrepository "github.com/Najah7/task2todaytodo/internal/application/billing/repository"
 	metricrepository "github.com/Najah7/task2todaytodo/internal/application/metric/repository"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -15,6 +16,7 @@ type Store struct {
 	Inbox      InboxStore
 	Allocation *allocationrepository.AllocationRepository
 	Metric     *metricrepository.MetricRepository
+	Billing    *billingrepository.Repository
 }
 
 func NewStore(pool *pgxpool.Pool) Store {
@@ -27,5 +29,6 @@ func NewStore(pool *pgxpool.Pool) Store {
 		Inbox:      newInboxStore(pool),
 		Allocation: allocationrepository.NewAllocationRepository(pool),
 		Metric:     metricrepository.NewMetricRepository(pool),
+		Billing:    billingrepository.New(pool),
 	}
 }

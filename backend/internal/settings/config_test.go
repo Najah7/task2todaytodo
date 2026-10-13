@@ -7,6 +7,7 @@ import (
 )
 
 func TestLoadUsesDefaultsAndEnvironment(t *testing.T) {
+	clearBillingEnvironment(t)
 	key := base64.StdEncoding.EncodeToString([]byte("01234567890123456789012345678901"))
 	env := map[string]string{
 		"PAGE_TOKEN_KEY": key,
@@ -34,6 +35,45 @@ func TestLoadUsesDefaultsAndEnvironment(t *testing.T) {
 	}
 	if cfg.Email.Provider != "mailpit" || cfg.Email.SMTPHost != "localhost" || cfg.Email.SMTPPort != 1025 || cfg.Email.FrontendBaseURL != "http://localhost:5173" {
 		t.Errorf("Email = %+v, want local Mailpit defaults", cfg.Email)
+	}
+}
+
+func TestLoadBillingConfiguration(t *testing.T) {
+	clearBillingEnvironment(t)
+	t.Setenv("STRIPE_SECRET_KEY", "sk_test_example")
+	t.Setenv("STRIPE_WEBHOOK_SECRET", "whsec_example")
+	t.Setenv("STRIPE_PRO_PRICE_ID", "price_pro")
+	t.Setenv("STRIPE_TEAM_PRICE_ID", "price_team")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !cfg.Billing.Enabled || cfg.Billing.ProPriceID != "price_pro" || cfg.Billing.TeamPriceID != "price_team" {
+		t.Errorf("Billing configuration = %+v, want configured Pro and Team prices", cfg.Billing)
+	}
+
+	t.Setenv("STRIPE_TEAM_PRICE_ID", "")
+	if _, err := Load(); err == nil {
+		t.Fatal("Load() accepted partial Stripe configuration")
+	}
+}
+
+func TestLoadRejectsInvalidBillingIdentifiers(t *testing.T) {
+	clearBillingEnvironment(t)
+	t.Setenv("STRIPE_SECRET_KEY", "sk_test_example")
+	t.Setenv("STRIPE_WEBHOOK_SECRET", "whsec_example")
+	t.Setenv("STRIPE_PRO_PRICE_ID", "prod_not_a_price")
+	t.Setenv("STRIPE_TEAM_PRICE_ID", "price_team")
+	if _, err := Load(); err == nil {
+		t.Fatal("Load() accepted a Product ID where Price ID is required")
+	}
+}
+
+func clearBillingEnvironment(t *testing.T) {
+	t.Helper()
+	t.Setenv("PAGE_TOKEN_KEY", base64.StdEncoding.EncodeToString(make([]byte, 32)))
+	for _, name := range []string{"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRO_PRICE_ID", "STRIPE_TEAM_PRICE_ID"} {
+		t.Setenv(name, "")
 	}
 }
 

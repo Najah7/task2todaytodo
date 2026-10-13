@@ -25,7 +25,7 @@ internal/port/rest/fieldmask/            Read response field masks
 internal/port/adapter/                   External adapters, including ULID and UUID
 ```
 
-`<context>` means `auth`, `project`, `task`, `schedule`, `allocation`, `todo`, `inbox`, `admin`, or `metric`.
+`<context>` means `auth`, `project`, `task`, `schedule`, `allocation`, `todo`, `inbox`, `admin`, `metric`, or `billing`.
 Their HTTP handlers all live in `internal/port/rest`.
 
 ## Commands
@@ -81,6 +81,7 @@ Before changing an application context, also read its guide:
 - [Auth](internal/application/auth/AGENTS.md), [Project](internal/application/project/AGENTS.md), [Task](internal/application/task/AGENTS.md)
 - [Schedule](internal/application/schedule/AGENTS.md), [Allocation](internal/application/allocation/AGENTS.md), [Todo](internal/application/todo/AGENTS.md)
 - [Inbox](internal/application/inbox/AGENTS.md), [Admin](internal/application/admin/AGENTS.md), [Metric](internal/application/metric/AGENTS.md)
+- [Billing](internal/application/billing/AGENTS.md)
 - [Shared application contracts](internal/application/shared/AGENTS.md)
 
 Keep each context guide's endpoint list in sync with `cmd/api/main.go` when routes change.

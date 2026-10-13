@@ -15,7 +15,7 @@ internal/application/shared/              Cross-context contracts and pure polic
 internal/application/                      Composition root and transaction wiring
 ```
 
-`<context>` is `auth`, `project`, `task`, `schedule`, `allocation`, `todo`, `inbox`, `admin`, or `metric`. Keep each
+`<context>` is `auth`, `project`, `task`, `schedule`, `allocation`, `todo`, `inbox`, `admin`, `metric`, or `billing`. Keep each
 context's packages within that context. Context code may depend on its own
 layers and on `application/shared`, as shown in the
 [backend layer map](../../AGENTS.md#layer-rule).

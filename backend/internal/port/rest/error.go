@@ -17,6 +17,7 @@ const (
 	ResourceAdmin                = "admin"
 	ResourceTimezones            = "timezones"
 	ResourceAllocations          = "allocations"
+	ResourceBilling              = "billing"
 
 	ActionAuthenticate              = "authenticate"
 	ActionCreate                    = "create"
@@ -27,6 +28,9 @@ const (
 	ActionRevoke                    = "revoke"
 	ActionUpdate                    = "update"
 	ActionDelete                    = "delete"
+	ActionCheckout                  = "checkout"
+	ActionPortal                    = "portal"
+	ActionPlanChange                = "plan_change"
 	ActionUpdateBasicInfo           = "update_basic_info"
 	ActionUpdateTimezone            = "update_timezone"
 	ActionUpdateActiveTimeSettings  = "update_active_time_settings"
@@ -90,6 +94,10 @@ var (
 	ErrSpecAllocationsCreateFailed             = NewFailureErrSpec(ResourceAllocations, ActionCreateAllocation, "Failed to create allocation")
 	ErrSpecAllocationsUpdateFailed             = NewFailureErrSpec(ResourceAllocations, ActionUpdateAllocation, "Failed to update allocation")
 	ErrSpecAllocationsDeleteFailed             = NewFailureErrSpec(ResourceAllocations, ActionDeleteAllocation, "Failed to delete allocation")
+	ErrSpecBillingReadFailed                   = NewFailureErrSpec(ResourceBilling, ActionGet, "Failed to get billing state")
+	ErrSpecBillingCheckoutFailed               = NewFailureErrSpec(ResourceBilling, ActionCheckout, "Failed to start Checkout")
+	ErrSpecBillingPortalFailed                 = NewFailureErrSpec(ResourceBilling, ActionPortal, "Failed to start billing portal")
+	ErrSpecBillingPlanChangeFailed             = NewFailureErrSpec(ResourceBilling, ActionPlanChange, "Failed to change subscription plan")
 
 	ErrDetailInvalidRequestBody                  = NewErrDetail("", DetailInvalidBodyCode, DetailInvalidBodyMsg)
 	ErrDetailInvalidCredentials                  = NewErrDetail("", DetailInvalidCredCode, DetailInvalidCredMsg)

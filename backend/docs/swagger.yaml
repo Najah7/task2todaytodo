@@ -355,6 +355,33 @@ definitions:
       message:
         type: string
     type: object
+  rest.BillingCheckoutRequest:
+    properties:
+      plan:
+        type: string
+    type: object
+  rest.BillingStateResponse:
+    properties:
+      cancel_at_period_end:
+        type: boolean
+      checkout_pending:
+        type: boolean
+      current_period_end:
+        type: string
+      pending_plan:
+        type: string
+      pending_plan_at:
+        type: string
+      plan:
+        type: string
+      status:
+        type: string
+    type: object
+  rest.BillingURLResponse:
+    properties:
+      url:
+        type: string
+    type: object
   rest.CreateAllocationRequest:
     properties:
       end_at:
@@ -673,7 +700,6 @@ definitions:
         type: string
       response:
         additionalProperties:
-          format: int64
           type: integer
         type: object
     type: object
@@ -2566,6 +2592,136 @@ paths:
       summary: Update Project allocation occurrence
       tags:
       - Allocations
+  /billing:
+    get:
+      operationId: GetBillingStatus
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.BillingStateResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current billing state
+      tags:
+      - Billing
+  /billing/checkout:
+    post:
+      consumes:
+      - application/json
+      operationId: StartBillingCheckout
+      parameters:
+      - description: Plan
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.BillingCheckoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.BillingURLResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Start subscription Checkout
+      tags:
+      - Billing
+  /billing/plan:
+    post:
+      consumes:
+      - application/json
+      operationId: ChangeBillingPlan
+      parameters:
+      - description: Target plan
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.BillingCheckoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.BillingStateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Change subscription plan
+      tags:
+      - Billing
+  /billing/portal:
+    post:
+      operationId: CreateBillingPortalSession
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.BillingURLResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Open billing portal
+      tags:
+      - Billing
   /daily-active-time-exceptions/{local_date}:
     delete:
       parameters:

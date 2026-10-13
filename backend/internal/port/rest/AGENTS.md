@@ -31,3 +31,12 @@ trace policies.
   usecases own page requests and cursor boundaries; repositories own
   resource-specific keyset ordering, ownership conditions, and SQL. See the
   [application guide](../../application/AGENTS.md) for those rules.
+
+## Billing
+
+- Authenticated billing endpoints are `GET /api/billing` and `POST
+  /api/billing/{checkout,plan,portal}`. The public Stripe webhook is `POST
+  /api/webhooks/stripe` and must verify the signature against the unmodified
+  request body before passing the event to its usecase.
+- See the [Billing guide](../../application/billing/AGENTS.md) for event
+  reconciliation, prices, and subscription behavior.

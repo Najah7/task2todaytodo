@@ -6,6 +6,7 @@ import (
 	allocationrepository "github.com/Najah7/task2todaytodo/internal/application/allocation/repository"
 	allocationusecase "github.com/Najah7/task2todaytodo/internal/application/allocation/usecase"
 	authusecase "github.com/Najah7/task2todaytodo/internal/application/auth/usecase"
+	billingusecase "github.com/Najah7/task2todaytodo/internal/application/billing/usecase"
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	scheduleusecase "github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
 	taskusecase "github.com/Najah7/task2todaytodo/internal/application/task/usecase"
@@ -28,6 +29,7 @@ type UOW struct {
 	Allocation                  allocationusecase.UnitOfWork
 	AllocationRead              allocationusecase.UnitOfWork
 	Todo                        todousecase.UOW
+	Billing                     billingusecase.UnitOfWork
 }
 
 func NewUOW(pool *pgxpool.Pool, authStore AuthStore, projectStore ProjectStore, taskStore TaskStore, scheduleStore ScheduleStore, allocationStore *allocationrepository.AllocationRepository, availability ...func(pgx.Tx) authusecase.UserAvailabilityValidator) UOW {

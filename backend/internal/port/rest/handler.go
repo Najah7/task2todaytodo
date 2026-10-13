@@ -26,14 +26,19 @@ type Handler struct {
 	Allocation                  *AllocationHandler
 	Todos                       *TodosHandler
 	Metrics                     *MetricsHandler
+	Billing                     *BillingHandler
 }
 
-func NewHandler(usecases application.UseCase, issueID func() string, pageTokenKey []byte) (*Handler, error) {
+func NewHandler(usecases application.UseCase, issueID func() string, pageTokenKey []byte, webhookSecrets ...string) (*Handler, error) {
 	pageTokens, err := pagination.NewCodec(pageTokenKey)
 	if err != nil {
 		return nil, fmt.Errorf("initialize page token codec: %w", err)
 	}
 
+	webhookSecret := ""
+	if len(webhookSecrets) > 0 {
+		webhookSecret = webhookSecrets[0]
+	}
 	return &Handler{
 		User:                        NewUserHandler(usecases.User),
 		Signup:                      NewSignupHandler(usecases.EmailAuth.RegisterUser, issueID),
@@ -53,5 +58,6 @@ func NewHandler(usecases application.UseCase, issueID func() string, pageTokenKe
 		Allocation:                  NewAllocationHandler(usecases.Allocation),
 		Todos:                       NewTodosHandler(TodosUseCases{GetToday: usecases.Todo.GetToday, RegenerateToday: usecases.Todo.RegenerateToday, AddActionItem: usecases.Todo.AddActionItem, AddTask: usecases.Todo.AddTask, Reflow: usecases.Todo.Reflow, CompleteFrame: usecases.Todo.CompleteFrame, ReopenFrame: usecases.Todo.ReopenFrame, RemoveActionItem: usecases.Todo.RemoveActionItem, HideSchedule: usecases.Todo.HideSchedule, RestoreSchedule: usecases.Todo.RestoreSchedule}),
 		Metrics:                     NewMetricsHandler(usecases.Metric.TodoCompletion, usecases.Metric.OverdueWork),
+		Billing:                     NewBillingHandler(usecases.Billing, webhookSecret),
 	}, nil
 }
