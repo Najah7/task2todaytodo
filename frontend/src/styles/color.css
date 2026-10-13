@@ -49,7 +49,6 @@
   --color-project-4-soft: #fcf0e8;
   --color-project-5-soft: #eaf3f9;
   --color-project-6-soft: #eff5eb;
-  --color-active-time: #e5f4ec;
 
   --color-action-background: var(--color-primary);
   --color-action-text: var(--color-on-primary);
@@ -111,5 +110,4 @@
   --color-project-4-soft: #38291f;
   --color-project-5-soft: #20313d;
   --color-project-6-soft: #293522;
-  --color-active-time: #203b2c;
 }

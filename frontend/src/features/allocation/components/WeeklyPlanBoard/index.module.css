@@ -337,12 +337,14 @@
   cursor: pointer;
 }
 
-.activeTimeBlock {
+.unavailableTimeBlock {
   position: absolute;
   z-index: 0;
   right: 0;
   left: 0;
-  background: var(--color-active-time);
+  border-top: var(--border-width) solid var(--color-border);
+  border-bottom: var(--border-width) solid var(--color-border);
+  background: repeating-linear-gradient(135deg, transparent 0, transparent 0.35rem, var(--color-border) 0.35rem, var(--color-border) 0.4rem);
   pointer-events: none;
 }
 
@@ -429,7 +431,7 @@
 }
 
 .legendAllocation::before,
-.legendActiveTime::before {
+.legendUnavailableTime::before {
   width: 0.8rem;
   height: 0.8rem;
   border-radius: var(--radius-xs);
@@ -440,8 +442,9 @@
   background: var(--color-project-1);
 }
 
-.legendActiveTime::before {
-  background: var(--color-active-time);
+.legendUnavailableTime::before {
+  border: var(--border-width) solid var(--color-border);
+  background: repeating-linear-gradient(135deg, transparent 0, transparent 0.2rem, var(--color-border) 0.2rem, var(--color-border) 0.25rem);
 }
 
 @media (max-width: 58em) {

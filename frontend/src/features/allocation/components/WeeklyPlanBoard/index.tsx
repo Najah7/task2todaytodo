@@ -26,6 +26,9 @@ export default function WeeklyPlanBoard(props: WeeklyPlanBoardProps) {
   const dragStart = useRef<{ date: string; minute: number } | undefined>(undefined)
   const suppressClick = useRef(false)
   const activeProjectId = selectedProjectId ?? projects[0]?.id
+  function isWithinActiveTime(date: string, startMinute: number, endMinute: number) {
+    return props.activeIntervals.some((active) => active.date === date && startMinute >= active.startMinute && endMinute <= active.endMinute)
+  }
   useEffect(() => {
     const scrollport = calendarScroll.current
     if (!scrollport) return
@@ -42,8 +45,9 @@ export default function WeeklyPlanBoard(props: WeeklyPlanBoardProps) {
   }
   function startDrag(event: PointerEvent<HTMLDivElement>, date: string) {
     if (!canEdit || busy || !activeProjectId || event.button !== 0 || (event.target as HTMLElement).closest("." + styles.allocationBlock)) return
-    event.preventDefault()
     const minute = Math.min(1425, minuteFromPointer(event))
+    if (!props.activeIntervals.some((active) => active.date === date && minute >= active.startMinute && minute < active.endMinute)) return
+    event.preventDefault()
     dragStart.current = { date, minute }
     suppressClick.current = true
     setDrag({ date, start: minute, end: minute })
@@ -63,7 +67,8 @@ export default function WeeklyPlanBoard(props: WeeklyPlanBoardProps) {
     const last = Math.max(start, end)
     dragStart.current = undefined
     setDrag(undefined)
-    onCreateAllocation(activeProjectId, date, first, last > first ? last : Math.min(first + 60, 1440))
+    const allocationEnd = last > first ? last : Math.min(first + 60, 1440)
+    if (isWithinActiveTime(date, first, allocationEnd)) onCreateAllocation(activeProjectId, date, first, allocationEnd)
   }
 
   return <section className={styles.layout}>
@@ -111,12 +116,24 @@ export default function WeeklyPlanBoard(props: WeeklyPlanBoardProps) {
           const day = days.find((item) => item.date === date)
           const dayAllocations = allocations.filter((item) => item.date === date)
           const dayActiveTime = props.activeIntervals.filter((item) => item.date === date)
+          const unavailable: { startMinute: number; endMinute: number }[] = []
+          let availableCursor = 0
+          for (const active of [...dayActiveTime].sort((a, b) => a.startMinute - b.startMinute)) {
+            if (availableCursor < active.startMinute) unavailable.push({ startMinute: availableCursor, endMinute: active.startMinute })
+            availableCursor = Math.max(availableCursor, active.endMinute)
+          }
+          if (availableCursor < 1440) unavailable.push({ startMinute: availableCursor, endMinute: 1440 })
           return <section key={date} data-date={date} className={styles.dayColumn} aria-label={new Intl.DateTimeFormat(locale, { dateStyle: "full", timeZone: "UTC" }).format(dateValue)}>
             <header className={styles.dayHeader}><span>{label}</span><strong>{dateValue.getUTCDate()}</strong><span>{durationLabel(day?.allocatedMinutes ?? 0)}</span><button type="button" disabled={!canEdit || busy} className={styles.activeTimeSettings} aria-label={i18n("weeklyPlan.activeTime.editDay", { start: day?.activeStartAt || "07:00", end: day?.activeEndAt || "23:00" })} onClick={() => onEditActiveTime(date)}><span>{i18n("weeklyPlan.activeTime.range", { start: day?.activeStartAt || "07:00", end: day?.activeEndAt || "23:00" })}</span><span>{i18n("weeklyPlan.activeTime.available")}{day?.hasActiveException ? " · " + i18n("weeklyPlan.activeTime.overrideMark") : ""}</span></button></header>
             <div className={styles.dayTimeline} onPointerDown={(event) => startDrag(event, date)} onPointerMove={(event) => moveDrag(event, date)} onPointerUp={(event) => finishDrag(event, date)}>
               {drag?.date === date && drag.end > drag.start && <div aria-hidden="true" className={styles.dragSelection} style={{ top: drag.start / 60 * 3 + "rem", height: (drag.end - drag.start) / 60 * 3 + "rem" }} />}
-              {dayActiveTime.map((active, index) => <div key={index} aria-hidden="true" className={styles.activeTimeBlock} style={{ top: (active.startMinute / 60 * 3) + "rem", height: ((active.endMinute - active.startMinute) / 60 * 3) + "rem" }} />)}
-              {Array.from({ length: 24 }, (_, hour) => <button key={hour} type="button" disabled={!canEdit || busy || !activeProjectId} className={styles.hourSlot} aria-label={date + " " + String(hour).padStart(2, "0") + ":00 " + i18n("weeklyPlan.createAllocation")} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return } if (activeProjectId) onCreateAllocation(activeProjectId, date, hour * 60, (hour + 1) * 60) }} />)}
+              {unavailable.map((interval, index) => <div key={index} aria-hidden="true" className={styles.unavailableTimeBlock} style={{ top: interval.startMinute / 60 * 3 + "rem", height: (interval.endMinute - interval.startMinute) / 60 * 3 + "rem" }} />)}
+              {Array.from({ length: 24 }, (_, hour) => {
+                const startMinute = hour * 60
+                const endMinute = (hour + 1) * 60
+                const isSlotAvailable = isWithinActiveTime(date, startMinute, endMinute)
+                return <button key={hour} type="button" disabled={!canEdit || busy || !activeProjectId || !isSlotAvailable} className={styles.hourSlot} aria-label={date + " " + String(hour).padStart(2, "0") + ":00 " + i18n(isSlotAvailable ? "weeklyPlan.createAllocation" : "weeklyPlan.outsideActiveTime")} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return } if (activeProjectId) onCreateAllocation(activeProjectId, date, startMinute, endMinute) }} />
+              })}
               {dayAllocations.map((allocation) => <button key={allocation.id} type="button" disabled={!allocation.canUpdate || busy} className={styles.allocationBlock} style={{ ...color(allocation.colorIndex), top: (allocation.startMinute / 60 * 3) + "rem", height: "max(1.5rem, " + ((allocation.endMinute - allocation.startMinute) / 60 * 3) + "rem)" }} onClick={() => onEditAllocation(allocation)} aria-label={allocation.projectTitle + ", " + allocation.startLabel + "–" + allocation.endLabel}>
                 <strong>{allocation.projectTitle}</strong><span>{allocation.startLabel}–{allocation.endLabel}</span>
               </button>)}
@@ -125,7 +142,7 @@ export default function WeeklyPlanBoard(props: WeeklyPlanBoardProps) {
         })}
         <div className={styles.timeGutter} aria-hidden="true">{Array.from({ length: 24 }, (_, hour) => <span key={hour} style={{ top: hour * 3 + "rem" }}>{String(hour).padStart(2, "0")}:00</span>)}</div>
       </div></div>
-      <footer className={styles.calendarLegend}><span className={styles.legendAllocation}>{i18n("weeklyPlan.legendAllocation")}</span><span className={styles.legendActiveTime}>{i18n("weeklyPlan.legendActiveTime")}</span></footer>
+      <footer className={styles.calendarLegend}><span className={styles.legendAllocation}>{i18n("weeklyPlan.legendAllocation")}</span><span className={styles.legendUnavailableTime}>{i18n("weeklyPlan.legendUnavailableTime")}</span></footer>
     </section>
   </section>
 }
