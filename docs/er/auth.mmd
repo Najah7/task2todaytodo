@@ -17,8 +17,8 @@ erDiagram
         timestamptz created_at "NOT NULL"
         timestamptz updated_at "NOT NULL"
         text timezone FK "NOT NULL"
-        time wake_up_time "NOT NULL"
-        time bedtime "NOT NULL"
+        time active_start_time "NOT NULL"
+        time active_end_time "NOT NULL"
         integer minimum_gap_minutes "NOT NULL, 0..1440"
     }
 

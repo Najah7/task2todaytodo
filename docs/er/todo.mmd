@@ -2,6 +2,7 @@ erDiagram
     %% Tables created by 000005_todo.up.sql.
     %% External references: users (auth.mmd), tasks/action_items (task.mmd), schedule_rules (schedule.mmd).
     %% Schedule items identify virtual or persisted occurrences by (schedule_rule_id, occurrence_date).
+    %% Eligible ActionItems and direct childless Tasks appear at most once per Todo; partial unique indexes idx_todo_items_action_item_once_per_todo and idx_todo_items_task_once_per_todo enforce per-source uniqueness. Work is stored whole; scheduled_start/scheduled_end are internal planning timestamps and position is the persisted display order.
 
     users {
         text id PK "NOT NULL"
@@ -38,8 +39,8 @@ erDiagram
         text schedule_rule_id FK "NULL"
         date occurrence_date "NULL"
         integer planned_minutes "NULL for Schedule; positive for Task/ActionItem"
-        timestamptz scheduled_start "NULL for unscheduled ActionItem"
-        timestamptz scheduled_end "NULL for unscheduled ActionItem"
+        timestamptz scheduled_start "Internal work time; actual fixed Schedule start"
+        timestamptz scheduled_end "Internal work time; actual fixed Schedule end"
         boolean completed "NOT NULL"
         boolean hidden "NOT NULL"
         integer position "NOT NULL"

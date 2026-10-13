@@ -1,7 +1,7 @@
 erDiagram
     %% Tables created by 000007_allocation.up.sql.
     %% External references: users (auth.mmd), projects (project.mmd), timezone_master (auth.mmd).
-    %% Composite keys: project_time_allocation_rules(id, user_id); project_time_allocation_rule_revisions(id, rule_id, user_id); project_time_allocations(rule_id, occurrence_date); project_time_allocation_exceptions(rule_id, occurrence_date); project_time_allocation_pause_intervals(project_id, rule_id, paused_at); daily_sleep_exceptions(user_id, local_date).
+    %% Composite keys: project_time_allocation_rules(id, user_id); project_time_allocation_rule_revisions(id, rule_id, user_id); project_time_allocations(rule_id, occurrence_date); project_time_allocation_exceptions(rule_id, occurrence_date); project_time_allocation_pause_intervals(project_id, rule_id, paused_at); daily_active_time_exceptions(user_id, local_date).
     %% Composite FKs bind rule, source revision, and user. project_time_allocation_rule_revisions also has unique keys (rule_id, revision) and (id, rule_id, user_id).
 
     users {
@@ -93,11 +93,11 @@ erDiagram
         timestamptz resumed_at "NULL"
     }
 
-    daily_sleep_exceptions {
+    daily_active_time_exceptions {
         text user_id PK, FK "NOT NULL"
         date local_date PK "NOT NULL"
-        timestamp wake_local "NOT NULL"
-        timestamp bedtime_local "NOT NULL"
+        timestamp active_start_local "NOT NULL"
+        timestamp active_end_local "NOT NULL"
         text timezone FK "NOT NULL"
         integer revision "NOT NULL"
         timestamptz changed_at "NOT NULL"
@@ -126,5 +126,5 @@ erDiagram
     users ||..o{ project_time_allocation_exceptions : changed_by
     projects ||--o{ project_time_allocation_pause_intervals : paused_project
     project_time_allocation_rules ||--o{ project_time_allocation_pause_intervals : paused_rule
-    users ||--o{ daily_sleep_exceptions : sleep_owner
-    timezone_master ||..o{ daily_sleep_exceptions : local_timezone
+    users ||--o{ daily_active_time_exceptions : active_time_owner
+    timezone_master ||..o{ daily_active_time_exceptions : local_timezone
