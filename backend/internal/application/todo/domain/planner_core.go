@@ -9,7 +9,7 @@ func validate(in Input) error {
 	if in.GapMinutes < 0 || in.GapMinutes > 1440 {
 		return ErrInvalidGap
 	}
-	for _, interval := range in.Sleep {
+	for _, interval := range in.ActiveTime {
 		if !interval.End.After(interval.Start) {
 			return ErrInvalidInterval
 		}
@@ -97,24 +97,12 @@ func scheduleFrame(schedule Schedule) Frame {
 func eligibleCandidates(in Input) []Candidate {
 	items := make([]Candidate, 0, len(in.Candidates))
 	for _, candidate := range in.Candidates {
-		startedNonActionable := (candidate.TaskStatus == "pending" || candidate.TaskStatus == "waiting_on_others") && isStarted(candidate, in.CompletedFrames)
-		if candidate.TaskStatus != "open" && candidate.TaskStatus != "in_progress" && !startedNonActionable {
+		if candidate.TaskStatus != "open" && candidate.TaskStatus != "in_progress" {
 			continue
 		}
 		items = append(items, candidate)
 	}
 	return sortCandidates(items, in)
-}
-
-func reflowCandidates(in Input) []Candidate {
-	items := append([]Candidate(nil), in.Candidates...)
-	valid := items[:0]
-	for _, candidate := range items {
-		if candidate.ID != "" && candidate.EstimatedMinutes > 0 && candidate.CompletedBeforeDayMinutes >= 0 && candidate.TaskStatus != "done" {
-			valid = append(valid, candidate)
-		}
-	}
-	return sortCandidates(valid, in)
 }
 
 func sortCandidates(items []Candidate, in Input) []Candidate {
@@ -139,16 +127,4 @@ func sortCandidates(items []Candidate, in Input) []Candidate {
 		return a.ID < b.ID
 	})
 	return items
-}
-
-func isStarted(candidate Candidate, completed []Frame) bool {
-	if candidate.HasCompletedFrame || candidate.CompletedBeforeDayMinutes > 0 {
-		return true
-	}
-	for _, frame := range completed {
-		if frame.Kind == candidate.Kind && frame.SourceID == candidate.ID && frame.Completed {
-			return true
-		}
-	}
-	return false
 }

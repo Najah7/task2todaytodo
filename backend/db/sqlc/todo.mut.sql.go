@@ -64,6 +64,16 @@ func (q *Queries) CreateTodo(ctx context.Context, arg CreateTodoParams) (Todo, e
 	return i, err
 }
 
+const deleteAllTodoItemsForTodo = `-- name: DeleteAllTodoItemsForTodo :exec
+DELETE FROM todo_items
+WHERE todo_id = $1::text
+`
+
+func (q *Queries) DeleteAllTodoItemsForTodo(ctx context.Context, todoID string) error {
+	_, err := q.db.Exec(ctx, deleteAllTodoItemsForTodo, todoID)
+	return err
+}
+
 const deleteTodoItemByID = `-- name: DeleteTodoItemByID :execrows
 DELETE FROM todo_items
 WHERE id = $1::text AND todo_id = $2::text
@@ -80,17 +90,6 @@ func (q *Queries) DeleteTodoItemByID(ctx context.Context, arg DeleteTodoItemByID
 		return 0, err
 	}
 	return result.RowsAffected(), nil
-}
-
-const deleteTodoItemsExceptCompletedWork = `-- name: DeleteTodoItemsExceptCompletedWork :exec
-DELETE FROM todo_items
-WHERE todo_id = $1::text
-  AND NOT (kind IN ('action_item','task') AND completed = true)
-`
-
-func (q *Queries) DeleteTodoItemsExceptCompletedWork(ctx context.Context, todoID string) error {
-	_, err := q.db.Exec(ctx, deleteTodoItemsExceptCompletedWork, todoID)
-	return err
 }
 
 const insertTodoItem = `-- name: InsertTodoItem :one
@@ -204,7 +203,7 @@ func (q *Queries) UpdateTodoItemCompleted(ctx context.Context, arg UpdateTodoIte
 const updateTodoItemPosition = `-- name: UpdateTodoItemPosition :execrows
 UPDATE todo_items
 SET position = $1::integer, updated_at = now()
-WHERE id = $2::text AND todo_id = $3::text AND completed = true
+WHERE id = $2::text AND todo_id = $3::text
 `
 
 type UpdateTodoItemPositionParams struct {
@@ -224,16 +223,21 @@ func (q *Queries) UpdateTodoItemPosition(ctx context.Context, arg UpdateTodoItem
 const updateTodoItemState = `-- name: UpdateTodoItemState :execrows
 UPDATE todo_items
 SET completed = $1::boolean, hidden = $2::boolean,
-    position = $3::integer, updated_at = now()
-WHERE id = $4::text AND todo_id = $5::text
+    position = $3::integer,
+    scheduled_start = $4::timestamptz,
+    scheduled_end = $5::timestamptz,
+    updated_at = now()
+WHERE id = $6::text AND todo_id = $7::text
 `
 
 type UpdateTodoItemStateParams struct {
-	Completed bool
-	Hidden    bool
-	Position  int32
-	ID        string
-	TodoID    string
+	Completed      bool
+	Hidden         bool
+	Position       int32
+	ScheduledStart pgtype.Timestamptz
+	ScheduledEnd   pgtype.Timestamptz
+	ID             string
+	TodoID         string
 }
 
 func (q *Queries) UpdateTodoItemState(ctx context.Context, arg UpdateTodoItemStateParams) (int64, error) {
@@ -241,6 +245,8 @@ func (q *Queries) UpdateTodoItemState(ctx context.Context, arg UpdateTodoItemSta
 		arg.Completed,
 		arg.Hidden,
 		arg.Position,
+		arg.ScheduledStart,
+		arg.ScheduledEnd,
 		arg.ID,
 		arg.TodoID,
 	)

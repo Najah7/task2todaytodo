@@ -96,14 +96,13 @@ type TaskCreateRequest struct {
 }
 
 type TaskUpdateRequest struct {
-	Title                   optionalJSON[string] `json:"title" swaggertype:"string"`
-	Description             optionalJSON[string] `json:"description" swaggertype:"string" extensions:"x-nullable"`
-	DueDate                 optionalJSON[string] `json:"due_date" swaggertype:"string" extensions:"x-nullable"`
-	ManualEstimatedMinutes  optionalJSON[int]    `json:"manual_estimated_minutes" swaggertype:"integer" extensions:"x-nullable"`
-	ActualMinutes           optionalJSON[int]    `json:"actual_minutes" swaggertype:"integer" extensions:"x-nullable"`
-	Priority                optionalJSON[string] `json:"priority" swaggertype:"string"`
-	ProjectID               optionalJSON[string] `json:"project_id" swaggertype:"string" extensions:"x-nullable"`
-	ConfirmTodoRegeneration bool                 `json:"confirm_todo_regeneration"`
+	Title                  optionalJSON[string] `json:"title" swaggertype:"string"`
+	Description            optionalJSON[string] `json:"description" swaggertype:"string" extensions:"x-nullable"`
+	DueDate                optionalJSON[string] `json:"due_date" swaggertype:"string" extensions:"x-nullable"`
+	ManualEstimatedMinutes optionalJSON[int]    `json:"manual_estimated_minutes" swaggertype:"integer" extensions:"x-nullable"`
+	ActualMinutes          optionalJSON[int]    `json:"actual_minutes" swaggertype:"integer" extensions:"x-nullable"`
+	Priority               optionalJSON[string] `json:"priority" swaggertype:"string"`
+	ProjectID              optionalJSON[string] `json:"project_id" swaggertype:"string" extensions:"x-nullable"`
 }
 
 type TaskCompleteRequest struct {
@@ -258,8 +257,6 @@ func taskErrorResponse(err error) (int, ErrDetail) {
 		return http.StatusConflict, NewErrDetail("actual_minutes", "task_not_completed", "Actual minutes can only be edited after Task completion")
 	case errors.Is(err, taskusecase.ErrCannotAddActionItemToStartedTask):
 		return http.StatusConflict, NewErrDetail("task_id", "task_started", "ActionItems cannot be added to a started or completed childless Task")
-	case errors.Is(err, taskusecase.ErrTodoRegenerationRequired):
-		return http.StatusConflict, NewErrDetail("", "todo_regeneration_required", "This change resets unfinished work and manual edits in today's Todo. Started work remains.")
 	case errors.Is(err, domain.ErrTaskActualMinutesInvalid):
 		return http.StatusBadRequest, NewErrDetail("actual_minutes", "invalid_minutes", "Actual minutes must be zero or greater")
 	case IsUniqueConstraint(err, "tasks_pkey"):
@@ -412,7 +409,6 @@ func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Title: request.Title.patchField(), Description: request.Description.patchField(), DueDate: dueDate,
 		ManualEstimatedMinutes: request.ManualEstimatedMinutes.patchField(), ActualMinutes: request.ActualMinutes.patchField(),
 		Priority: request.Priority.patchField(), ProjectID: request.ProjectID.patchField(),
-		ConfirmTodoRegeneration: request.ConfirmTodoRegeneration,
 	})
 	if err != nil {
 		var field taskusecase.TaskUpdateFieldError

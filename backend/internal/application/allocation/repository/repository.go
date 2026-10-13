@@ -107,11 +107,11 @@ func (r *AllocationRepository) ListPlans(ctx context.Context, userID string) ([]
 }
 
 func (r *AllocationRepository) GetProfile(ctx context.Context, userID string) (dao.Profile, error) {
-	row, err := r.queries.GetAllocationSleepProfile(ctx, userID)
+	row, err := r.queries.GetAllocationActiveTimeProfile(ctx, userID)
 	if err != nil {
 		return dao.Profile{}, err
 	}
-	return dao.Profile{Timezone: row.Timezone, WakeUpTime: wallString(row.WakeUpTime), Bedtime: wallString(row.Bedtime)}, nil
+	return dao.Profile{Timezone: row.Timezone, ActiveStartTime: wallString(row.ActiveStartTime), ActiveEndTime: wallString(row.ActiveEndTime)}, nil
 }
 
 func (r *AllocationRepository) GetProjectStatus(ctx context.Context, userID, projectID string) (string, error) {
@@ -236,14 +236,14 @@ func (r *AllocationRepository) ListAllocations(ctx context.Context, userID strin
 	return allocations, nil
 }
 
-func (r *AllocationRepository) ListSleepExceptions(ctx context.Context, userID string, fromDate, throughDate time.Time) ([]dao.SleepException, error) {
-	rows, err := r.queries.ListDailySleepExceptions(ctx, sqlc.ListDailySleepExceptionsParams{UserID: userID, FromDate: pgDate(fromDate), ThroughDate: pgDate(throughDate)})
+func (r *AllocationRepository) ListActiveTimeExceptions(ctx context.Context, userID string, fromDate, throughDate time.Time) ([]dao.ActiveTimeException, error) {
+	rows, err := r.queries.ListDailyActiveTimeExceptions(ctx, sqlc.ListDailyActiveTimeExceptionsParams{UserID: userID, FromDate: pgDate(fromDate), ThroughDate: pgDate(throughDate)})
 	if err != nil {
 		return nil, err
 	}
-	exceptions := make([]dao.SleepException, 0, len(rows))
+	exceptions := make([]dao.ActiveTimeException, 0, len(rows))
 	for _, row := range rows {
-		exceptions = append(exceptions, dao.SleepException{LocalDate: dateValue(row.LocalDate), WakeLocal: row.WakeLocal.Time, BedtimeLocal: row.BedtimeLocal.Time, Timezone: row.Timezone, Revision: row.Revision, HasException: true})
+		exceptions = append(exceptions, dao.ActiveTimeException{LocalDate: dateValue(row.LocalDate), ActiveStartLocal: row.ActiveStartLocal.Time, ActiveEndLocal: row.ActiveEndLocal.Time, Timezone: row.Timezone, Revision: row.Revision, HasException: true})
 	}
 	return exceptions, nil
 }
@@ -399,26 +399,26 @@ func (r *AllocationRepository) SaveOccurrenceException(ctx context.Context, user
 	return nil
 }
 
-func (r *AllocationRepository) SaveSleepException(ctx context.Context, userID string, expected int32, value domain.SleepException) (dao.SleepException, error) {
-	current, err := r.queries.GetDailySleepException(ctx, sqlc.GetDailySleepExceptionParams{UserID: userID, LocalDate: pgDate(value.LocalDate)})
+func (r *AllocationRepository) SaveActiveTimeException(ctx context.Context, userID string, expected int32, value domain.ActiveTimeException) (dao.ActiveTimeException, error) {
+	current, err := r.queries.GetDailyActiveTimeException(ctx, sqlc.GetDailyActiveTimeExceptionParams{UserID: userID, LocalDate: pgDate(value.LocalDate)})
 	if err == pgx.ErrNoRows {
 		if expected != 0 {
-			return dao.SleepException{}, allocationusecase.ErrPreconditionFailed
+			return dao.ActiveTimeException{}, allocationusecase.ErrPreconditionFailed
 		}
 	} else if err != nil {
-		return dao.SleepException{}, err
+		return dao.ActiveTimeException{}, err
 	} else if current.Revision != expected {
-		return dao.SleepException{}, allocationusecase.ErrPreconditionFailed
+		return dao.ActiveTimeException{}, allocationusecase.ErrPreconditionFailed
 	}
-	row, err := r.queries.CreateDailySleepException(ctx, sqlc.CreateDailySleepExceptionParams{UserID: userID, LocalDate: pgDate(value.LocalDate), WakeLocal: pgtype.Timestamp{Time: value.WakeLocal, Valid: true}, BedtimeLocal: pgtype.Timestamp{Time: value.BedtimeLocal, Valid: true}, Timezone: value.Timezone})
+	row, err := r.queries.CreateDailyActiveTimeException(ctx, sqlc.CreateDailyActiveTimeExceptionParams{UserID: userID, LocalDate: pgDate(value.LocalDate), ActiveStartLocal: pgtype.Timestamp{Time: value.ActiveStartLocal, Valid: true}, ActiveEndLocal: pgtype.Timestamp{Time: value.ActiveEndLocal, Valid: true}, Timezone: value.Timezone})
 	if err != nil {
-		return dao.SleepException{}, err
+		return dao.ActiveTimeException{}, err
 	}
-	return dao.SleepException{LocalDate: dateValue(row.LocalDate), WakeLocal: row.WakeLocal.Time, BedtimeLocal: row.BedtimeLocal.Time, Timezone: row.Timezone, Revision: row.Revision, HasException: true}, nil
+	return dao.ActiveTimeException{LocalDate: dateValue(row.LocalDate), ActiveStartLocal: row.ActiveStartLocal.Time, ActiveEndLocal: row.ActiveEndLocal.Time, Timezone: row.Timezone, Revision: row.Revision, HasException: true}, nil
 }
 
-func (r *AllocationRepository) DeleteSleepException(ctx context.Context, userID string, date time.Time, revision int32) error {
-	rows, err := r.queries.DeleteDailySleepException(ctx, sqlc.DeleteDailySleepExceptionParams{UserID: userID, LocalDate: pgDate(date), Revision: revision})
+func (r *AllocationRepository) DeleteActiveTimeException(ctx context.Context, userID string, date time.Time, revision int32) error {
+	rows, err := r.queries.DeleteDailyActiveTimeException(ctx, sqlc.DeleteDailyActiveTimeExceptionParams{UserID: userID, LocalDate: pgDate(date), Revision: revision})
 	if err != nil {
 		return err
 	}

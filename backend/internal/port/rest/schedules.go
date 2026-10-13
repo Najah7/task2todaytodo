@@ -92,8 +92,6 @@ func writeScheduleUseCaseError(w http.ResponseWriter, spec ErrSpec, err error) {
 
 func scheduleUseCaseError(err error) (int, ErrDetail) {
 	switch {
-	case errors.Is(err, scheduleusecase.ErrTodoRegenerationRequired):
-		return http.StatusConflict, NewErrDetail("confirm_todo_regeneration", "todo_regeneration_required", "Changing this schedule resets unfinished work and manual edits in affected Today lists")
 	case errors.Is(err, scheduleusecase.ErrPermissionDenied):
 		return http.StatusForbidden, NewErrDetail("", "permission_denied", "The caller lacks permission for this schedule operation")
 	case errors.Is(err, domain.ErrScheduleNotFound), errors.Is(err, scheduleusecase.ErrScheduleProjectNotFound), errors.Is(err, scheduleusecase.ErrOccurrenceNotFound):

@@ -54,7 +54,7 @@ type todoSourceReader struct {
 }
 
 // todoAllocationCalendar keeps the allocation owner's projection logic while
-// resolving profile-based week and sleep boundaries in the Todo calendar.
+// resolving profile-based week and active_time boundaries in the Todo calendar.
 type todoAllocationCalendar struct {
 	allocationusecase.Repository
 	timezone string
@@ -143,7 +143,7 @@ func (r *todoSourceReader) ReadPlanningSources(ctx context.Context, userID strin
 	if err != nil {
 		return tododao.PlanningSources{}, err
 	}
-	for _, interval := range week.SleepIntervals {
+	for _, interval := range week.ActiveIntervals {
 		start, end := interval.StartAt, interval.EndAt
 		if start.Before(dayStart) {
 			start = dayStart
@@ -152,7 +152,7 @@ func (r *todoSourceReader) ReadPlanningSources(ctx context.Context, userID strin
 			end = dayEnd
 		}
 		if end.After(start) {
-			result.Sleep = append(result.Sleep, tododao.Interval{Start: start, End: end})
+			result.ActiveTime = append(result.ActiveTime, tododao.Interval{Start: start, End: end})
 		}
 	}
 	for _, allocation := range week.Allocations {

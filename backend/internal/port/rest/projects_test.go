@@ -474,7 +474,7 @@ func newProjectHandlerHarness() projectHandlerHarness {
 	repos := projectHandlerRepositories{projects: &projectHandlerTaskProjectRepository{projects: projects}, tasks: tasks}
 	uow := &projectHandlerUOW{repos: repos}
 	projectUOW := &projectHandlerProjectUOW{repo: projects}
-	projectUseCases := projectusecase.NewUseCases(projects, projectUOW, nil)
+	projectUseCases := projectusecase.NewUseCases(projects, projectUOW, nil, nil, "")
 	taskUseCases := taskusecase.TaskUseCases{
 		ListByProject:     taskusecase.NewListProjectTasksUseCase(repos.projects, tasks, nil, projectHandlerActionItems{}),
 		CreateInProject:   taskusecase.NewCreateTaskInProjectUseCase(uow, nil),

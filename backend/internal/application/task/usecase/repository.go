@@ -20,7 +20,6 @@ var (
 	ErrRevisionConflict                    = errors.New("resource revision does not match")
 	ErrPermissionDenied                    = errors.New("permission denied")
 	ErrActionItemStarted                   = errors.New("action item estimate is locked after work starts")
-	ErrTodoRegenerationRequired            = errors.New("todo regeneration confirmation required")
 	ErrTaskManualEstimateRequired          = errors.New("a positive manual estimate is required for a childless task")
 	ErrTaskStarted                         = errors.New("task estimate is locked after work starts")
 	ErrTaskActualMinutesRequiresCompletion = errors.New("actual minutes can only be edited after Task completion")
@@ -112,7 +111,6 @@ type ActionItemTodoLifecycle interface {
 	HasTodayActionItem(ctx context.Context, userID domain.UserID, actionItemID domain.ActionItemID) (bool, error)
 	CompleteTodayFrames(ctx context.Context, userID domain.UserID, actionItemID domain.ActionItemID) error
 	ReopenFrames(ctx context.Context, actionItemID domain.ActionItemID) error
-	RegenerateToday(ctx context.Context, userID domain.UserID) error
 }
 
 // TaskTodoLifecycle synchronizes a direct, childless Task execution source
@@ -123,5 +121,4 @@ type TaskTodoLifecycle interface {
 	HasTodayTaskWork(ctx context.Context, userID domain.UserID, taskID domain.TaskID) (bool, error)
 	CompleteTodayTaskFrames(ctx context.Context, userID domain.UserID, taskID domain.TaskID) error
 	ReopenTaskFrames(ctx context.Context, taskID domain.TaskID) error
-	RegenerateToday(ctx context.Context, userID domain.UserID) error
 }

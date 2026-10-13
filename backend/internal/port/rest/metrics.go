@@ -56,15 +56,15 @@ type OverdueWorkMetricsResponse struct {
 // TodoCompletion returns completion counts for each local calendar day in selected period.
 //
 //	@Summary	Get Todo completion metrics
-//	@ID		GetTodoCompletionMetrics
+//	@ID			GetTodoCompletionMetrics
 //	@Tags		Metrics
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		days	query	int	false	"Calendar days ending today (7 or 30; default 7)" Enums(7, 30) default(7)
-//	@Success	200	{object}	TodoCompletionMetricsResponse
-//	@Failure	400	{object}	ErrResponse
-//	@Failure	401	{object}	ErrResponse
-//	@Failure	500	{object}	ErrResponse
+//	@Param		days	query		int	false	"Calendar days ending today (7 or 30; default 7)"	Enums(7, 30)	default(7)
+//	@Success	200		{object}	TodoCompletionMetricsResponse
+//	@Failure	400		{object}	ErrResponse
+//	@Failure	401		{object}	ErrResponse
+//	@Failure	500		{object}	ErrResponse
 //	@Router		/metrics/todo-completion [get]
 func (h *MetricsHandler) TodoCompletion(w http.ResponseWriter, r *http.Request) {
 	actorID, ok := metricsActorID(w, r, metricsTodoCompletionFailure)
@@ -99,7 +99,7 @@ func (h *MetricsHandler) TodoCompletion(w http.ResponseWriter, r *http.Request) 
 // OverdueWork returns current overdue, non-done work grouped by project.
 //
 //	@Summary	Get overdue work metrics
-//	@ID		GetOverdueWorkMetrics
+//	@ID			GetOverdueWorkMetrics
 //	@Tags		Metrics
 //	@Produce	json
 //	@Security	BearerAuth

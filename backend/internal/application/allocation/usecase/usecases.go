@@ -24,7 +24,7 @@ type Repository interface {
 	ListRules(context.Context, string) ([]dao.Rule, error)
 	ListRuleRevisionsForProjection(context.Context, string) ([]dao.Rule, error)
 	ListAllocations(context.Context, string, time.Time, time.Time) ([]dao.Allocation, error)
-	ListSleepExceptions(context.Context, string, time.Time, time.Time) ([]dao.SleepException, error)
+	ListActiveTimeExceptions(context.Context, string, time.Time, time.Time) ([]dao.ActiveTimeException, error)
 	ListExceptionOrigins(context.Context, string, time.Time, time.Time) (map[string]bool, error)
 	ListPauseIntervals(context.Context, string) ([]dao.PauseInterval, error)
 	ListPlans(context.Context, string) ([]dao.PlanItem, error)
@@ -47,23 +47,23 @@ type Repository interface {
 	GetOccurrence(context.Context, string, string, time.Time) (dao.Allocation, error)
 	ReadOccurrence(context.Context, string, string, time.Time) (dao.Allocation, error)
 	SaveOccurrenceException(context.Context, string, domain.Occurrence, int32, bool) error
-	SaveSleepException(context.Context, string, int32, domain.SleepException) (dao.SleepException, error)
-	DeleteSleepException(context.Context, string, time.Time, int32) error
+	SaveActiveTimeException(context.Context, string, int32, domain.ActiveTimeException) (dao.ActiveTimeException, error)
+	DeleteActiveTimeException(context.Context, string, time.Time, int32) error
 	FindAllocationConflict(context.Context, string, time.Time, time.Time, string, time.Time) (dao.Allocation, error)
 	ListUserIDs(context.Context) ([]string, error)
 }
 
 type UseCases struct {
-	GetWeek              *GetWeekUseCase
-	GetRules             *GetRulesUseCase
-	PutRules             *PutRulesUseCase
-	GetPlans             *GetPlansUseCase
-	PutPlans             *PutPlansUseCase
-	Create               *CreateAllocationUseCase
-	Update               *UpdateOccurrenceUseCase
-	Delete               *DeleteOccurrenceUseCase
-	PutSleepException    *PutSleepExceptionUseCase
-	DeleteSleepException *DeleteSleepExceptionUseCase
+	GetWeek                   *GetWeekUseCase
+	GetRules                  *GetRulesUseCase
+	PutRules                  *PutRulesUseCase
+	GetPlans                  *GetPlansUseCase
+	PutPlans                  *PutPlansUseCase
+	Create                    *CreateAllocationUseCase
+	Update                    *UpdateOccurrenceUseCase
+	Delete                    *DeleteOccurrenceUseCase
+	PutActiveTimeException    *PutActiveTimeExceptionUseCase
+	DeleteActiveTimeException *DeleteActiveTimeExceptionUseCase
 }
 
 func NewUseCases(repo Repository, uow UnitOfWork, issueID func() string, now func() time.Time, readUOWs ...UnitOfWork) UseCases {
@@ -78,10 +78,10 @@ func NewUseCases(repo Repository, uow UnitOfWork, issueID func() string, now fun
 		GetWeek:  NewGetWeekUseCase(repo),
 		GetRules: NewGetRulesUseCase(readUOW), PutRules: NewPutRulesUseCase(repo, uow, issueID, now),
 		GetPlans: NewGetPlansUseCase(readUOW), PutPlans: NewPutPlansUseCase(repo, uow),
-		Create:               NewCreateAllocationUseCase(repo, uow, issueID, now),
-		Update:               NewUpdateOccurrenceUseCase(repo, uow, issueID, now),
-		Delete:               NewDeleteOccurrenceUseCase(repo, uow, issueID, now),
-		PutSleepException:    NewPutSleepExceptionUseCase(repo, uow, now),
-		DeleteSleepException: NewDeleteSleepExceptionUseCase(repo, uow, now),
+		Create:                    NewCreateAllocationUseCase(repo, uow, issueID, now),
+		Update:                    NewUpdateOccurrenceUseCase(repo, uow, issueID, now),
+		Delete:                    NewDeleteOccurrenceUseCase(repo, uow, issueID, now),
+		PutActiveTimeException:    NewPutActiveTimeExceptionUseCase(repo, uow, now),
+		DeleteActiveTimeException: NewDeleteActiveTimeExceptionUseCase(repo, uow, now),
 	}
 }

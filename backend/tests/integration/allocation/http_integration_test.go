@@ -14,27 +14,35 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/port/rest"
 )
 
-func TestAllocationHTTPSleepExceptionCanBeSavedAndReset(t *testing.T) {
+func TestAllocationHTTPActiveTimeExceptionCanBeSavedAndReset(t *testing.T) {
 	api := newAllocationHTTP(t)
 	userID := api.seedUser(t, "Asia/Tokyo")
-	if response := api.request(t, userID, http.MethodPatch, "/api/users/me/sleep", `{"wake_up_time":"07:00","bedtime":"23:00"}`); response.Code != http.StatusOK {
-		t.Fatalf("PATCH /users/me/sleep status/body=%d/%s", response.Code, response.Body.String())
+	if response := api.request(t, userID, http.MethodPatch, "/api/users/me/active-time", `{"active_start_time":"07:00","active_end_time":"23:00"}`); response.Code != http.StatusOK {
+		t.Fatalf("PATCH /users/me/active-time status/body=%d/%s", response.Code, response.Body.String())
 	}
 
 	date := time.Now().In(mustLocation(t, "Asia/Tokyo")).AddDate(0, 0, 1)
 	dateKey := date.Format("2006-01-02")
-	put := api.request(t, userID, http.MethodPut, "/api/daily-sleep-exceptions/"+dateKey,
-		fmt.Sprintf(`{"wake_local":%q,"bedtime_local":%q,"timezone":"Asia/Tokyo"}`,
+	projectID := createAllocationProject(t, api, userID, "Active time containment")
+	allocationStart := time.Date(date.Year(), date.Month(), date.Day(), 9, 0, 0, 0, mustLocation(t, "Asia/Tokyo"))
+	allocation := api.request(t, userID, http.MethodPost, "/api/allocations", fmt.Sprintf(
+		`{"project_id":%q,"timezone":"Asia/Tokyo","start_at":%q,"end_at":%q,"repeat_weekly":false}`,
+		projectID, allocationStart.Format(time.RFC3339), allocationStart.Add(time.Hour).Format(time.RFC3339)))
+	if allocation.Code != http.StatusCreated {
+		t.Fatalf("POST contained allocation status/body=%d/%s", allocation.Code, allocation.Body.String())
+	}
+	put := api.request(t, userID, http.MethodPut, "/api/daily-active-time-exceptions/"+dateKey,
+		fmt.Sprintf(`{"active_start_local":%q,"active_end_local":%q,"timezone":"Asia/Tokyo"}`,
 			dateKey+"T08:00", dateKey+"T22:00"), [2]string{"If-Match", `"0"`})
 	if put.Code != http.StatusOK {
-		t.Fatalf("PUT daily sleep exception status/body=%d/%s", put.Code, put.Body.String())
+		t.Fatalf("PUT daily active_time exception status/body=%d/%s", put.Code, put.Body.String())
 	}
-	var exception rest.SleepExceptionResponse
+	var exception rest.ActiveTimeExceptionResponse
 	if err := json.Unmarshal(put.Body.Bytes(), &exception); err != nil {
 		t.Fatal(err)
 	}
-	if !exception.HasException || exception.Timezone != "Asia/Tokyo" {
-		t.Fatalf("saved sleep exception=%+v; expected a persisted Tokyo pair", exception)
+	if !exception.HasException || exception.Timezone != "Asia/Tokyo" || exception.ActiveStartLocal != dateKey+"T08:00" || exception.ActiveEndLocal != dateKey+"T22:00" {
+		t.Fatalf("saved active_time exception=%+v; expected a persisted Tokyo pair", exception)
 	}
 
 	weekStart := mondayUTC(date)
@@ -47,18 +55,27 @@ func TestAllocationHTTPSleepExceptionCanBeSavedAndReset(t *testing.T) {
 		t.Fatal(err)
 	}
 	found := false
+	foundActiveInterval := false
 	for _, day := range projection.Days {
 		if day.Date == dateKey {
-			found = day.HasSleepException
+			found = day.HasActiveException && day.ActiveStartAt.Equal(allocationStart.Add(-time.Hour)) && day.ActiveEndAt.Equal(allocationStart.Add(13*time.Hour))
+		}
+	}
+	for _, interval := range projection.ActiveIntervals {
+		if interval.LocalDate == dateKey && interval.StartAt.Equal(allocationStart.Add(-time.Hour)) && interval.EndAt.Equal(allocationStart.Add(13*time.Hour)) {
+			foundActiveInterval = true
 		}
 	}
 	if !found {
-		t.Fatalf("week projection did not include saved sleep exception for %s: %+v", dateKey, projection.Days)
+		t.Fatalf("week projection did not include saved active_time exception with contained allocation for %s: %+v", dateKey, projection.Days)
+	}
+	if !foundActiveInterval {
+		t.Fatalf("week projection did not expose positive active interval for %s: %+v", dateKey, projection.ActiveIntervals)
 	}
 
-	reset := api.request(t, userID, http.MethodDelete, "/api/daily-sleep-exceptions/"+dateKey, "", [2]string{"If-Match", fmt.Sprintf(`"%d"`, exception.Revision)})
+	reset := api.request(t, userID, http.MethodDelete, "/api/daily-active-time-exceptions/"+dateKey, "", [2]string{"If-Match", fmt.Sprintf(`"%d"`, exception.Revision)})
 	if reset.Code != http.StatusNoContent {
-		t.Fatalf("DELETE daily sleep exception status/body=%d/%s", reset.Code, reset.Body.String())
+		t.Fatalf("DELETE daily active_time exception status/body=%d/%s", reset.Code, reset.Body.String())
 	}
 	week = api.request(t, userID, http.MethodGet, "/api/allocation-weeks/"+weekStart.Format("2006-01-02"), "")
 	if week.Code != http.StatusOK {
@@ -68,19 +85,19 @@ func TestAllocationHTTPSleepExceptionCanBeSavedAndReset(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, day := range projection.Days {
-		if day.Date == dateKey && day.HasSleepException {
+		if day.Date == dateKey && day.HasActiveException {
 			t.Fatalf("reset projection still marks exception for %s: %+v", dateKey, day)
 		}
 	}
 }
 
-func TestAllocationHTTPRejectsSleepOverlap(t *testing.T) {
+func TestAllocationHTTPRequiresAllocationInsideActiveTime(t *testing.T) {
 	api := newAllocationHTTP(t)
 	userID := api.seedUser(t, "Asia/Tokyo")
-	if response := api.request(t, userID, http.MethodPatch, "/api/users/me/sleep", `{"wake_up_time":"07:00","bedtime":"23:00"}`); response.Code != http.StatusOK {
-		t.Fatalf("PATCH /users/me/sleep status/body=%d/%s", response.Code, response.Body.String())
+	if response := api.request(t, userID, http.MethodPatch, "/api/users/me/active-time", `{"active_start_time":"07:00","active_end_time":"23:00"}`); response.Code != http.StatusOK {
+		t.Fatalf("PATCH /users/me/active-time status/body=%d/%s", response.Code, response.Body.String())
 	}
-	projectID := createAllocationProject(t, api, userID, "Sleep overlap")
+	projectID := createAllocationProject(t, api, userID, "ActiveTime overlap")
 	location := mustLocation(t, "Asia/Tokyo")
 	date := time.Now().In(location).AddDate(0, 0, 2)
 	dateKey := date.Format("2006-01-02")
@@ -89,25 +106,25 @@ func TestAllocationHTTPRejectsSleepOverlap(t *testing.T) {
 		`{"project_id":%q,"timezone":"Asia/Tokyo","start_at":%q,"end_at":%q,"repeat_weekly":false}`,
 		projectID, start.Format(time.RFC3339), start.Add(time.Hour).Format(time.RFC3339)))
 	if allocation.Code != http.StatusCreated {
-		t.Fatalf("POST allocation status/body=%d/%s", allocation.Code, allocation.Body.String())
+		t.Fatalf("POST contained allocation status/body=%d/%s", allocation.Code, allocation.Body.String())
 	}
-	profileAdjacent := api.request(t, userID, http.MethodPatch, "/api/users/me/sleep", `{"wake_up_time":"10:00","bedtime":"12:00"}`)
+	profileAdjacent := api.request(t, userID, http.MethodPatch, "/api/users/me/active-time", `{"active_start_time":"10:00","active_end_time":"12:00"}`)
 	if profileAdjacent.Code != http.StatusOK {
-		t.Fatalf("sleep profile adjacent to allocation status/body=%d/%s; want no conflict", profileAdjacent.Code, profileAdjacent.Body.String())
+		t.Fatalf("active_time profile containing allocation status/body=%d/%s; want no conflict", profileAdjacent.Code, profileAdjacent.Body.String())
 	}
-	profileConflict := api.request(t, userID, http.MethodPatch, "/api/users/me/sleep", `{"wake_up_time":"10:30","bedtime":"12:00"}`)
+	profileConflict := api.request(t, userID, http.MethodPatch, "/api/users/me/active-time", `{"active_start_time":"10:30","active_end_time":"12:00"}`)
 	if profileConflict.Code != http.StatusConflict {
-		t.Fatalf("sleep profile overlapping allocation status/body=%d/%s; want conflict", profileConflict.Code, profileConflict.Body.String())
+		t.Fatalf("active_time profile excluding part of allocation status/body=%d/%s; want conflict", profileConflict.Code, profileConflict.Body.String())
 	}
-	response := api.request(t, userID, http.MethodPut, "/api/daily-sleep-exceptions/"+dateKey,
-		fmt.Sprintf(`{"wake_local":%q,"bedtime_local":%q,"timezone":"Asia/Tokyo"}`,
+	response := api.request(t, userID, http.MethodPut, "/api/daily-active-time-exceptions/"+dateKey,
+		fmt.Sprintf(`{"active_start_local":%q,"active_end_local":%q,"timezone":"Asia/Tokyo"}`,
 			dateKey+"T12:00", dateKey+"T22:00"), [2]string{"If-Match", `"0"`})
 	if response.Code != http.StatusConflict {
-		t.Fatalf("sleep exception overlapping allocation status/body=%d/%s; want conflict", response.Code, response.Body.String())
+		t.Fatalf("active_time exception excluding allocation status/body=%d/%s; want conflict", response.Code, response.Body.String())
 	}
 }
 
-func TestAllocationHTTPSleepUpdateAllowsStartedAllocation(t *testing.T) {
+func TestAllocationHTTPActiveTimeUpdateRejectsAllocationOutsideWindow(t *testing.T) {
 	api := newAllocationHTTP(t)
 	userID := api.seedUser(t, "Asia/Tokyo")
 	projectID := createAllocationProject(t, api, userID, "Started allocation")
@@ -124,26 +141,16 @@ func TestAllocationHTTPSleepUpdateAllowsStartedAllocation(t *testing.T) {
 	if err := json.Unmarshal(created.Body.Bytes(), &allocation); err != nil {
 		t.Fatal(err)
 	}
-	startedAt := time.Now().UTC().Truncate(time.Minute).Add(-15 * time.Minute)
-	endedAt := startedAt.Add(time.Hour)
-	if _, err := api.pool.Exec(t.Context(), `UPDATE project_time_allocations SET start_at=$1, end_at=$2 WHERE rule_id=$3 AND occurrence_date=$4`,
-		startedAt, endedAt, allocation.RuleID, allocation.OccurrenceDate); err != nil {
-		t.Fatalf("make allocation currently running: %v", err)
+	profile := api.request(t, userID, http.MethodPatch, "/api/users/me/active-time", `{"active_start_time":"10:00","active_end_time":"12:00"}`)
+	if profile.Code != http.StatusConflict {
+		t.Fatalf("active_time profile excluding allocation status/body=%d/%s; want conflict", profile.Code, profile.Body.String())
 	}
-	if _, err := api.pool.Exec(t.Context(), `INSERT INTO project_time_allocation_exceptions
-		(rule_id, occurrence_date, source_revision_id, user_id, project_id, start_at, end_at, timezone, changed_by)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$4)`, allocation.RuleID, allocation.OccurrenceDate,
-		allocation.SourceRevisionID, userID, projectID, startedAt, endedAt, allocation.Timezone); err != nil {
-		t.Fatalf("save current allocation snapshot: %v", err)
+	var activeStart, activeEnd string
+	if err := api.pool.QueryRow(t.Context(), `SELECT active_start_time::text,active_end_time::text FROM users WHERE id=$1`, userID).Scan(&activeStart, &activeEnd); err != nil {
+		t.Fatal(err)
 	}
-	hour := time.Now().In(location).Hour()
-	wake, bedtime := 0, 1
-	if hour < 21 {
-		wake, bedtime = hour+2, hour+3
-	}
-	profile := api.request(t, userID, http.MethodPatch, "/api/users/me/sleep", fmt.Sprintf(`{"wake_up_time":"%02d:00","bedtime":"%02d:00"}`, wake, bedtime))
-	if profile.Code != http.StatusOK {
-		t.Fatalf("sleep profile update overlapping already-started allocation status/body=%d/%s; want allowed", profile.Code, profile.Body.String())
+	if activeStart != "07:00:00" || activeEnd != "23:00:00" {
+		t.Fatalf("rejected profile change persisted active window %s-%s; want 07:00-23:00", activeStart, activeEnd)
 	}
 }
 
@@ -182,17 +189,17 @@ func TestAllocationHTTPCurrentMoveConflictsWithSameRuleVirtualOccurrence(t *test
 	}
 }
 
-func TestAllocationHTTPRejectsRulesThatOverlapSleep(t *testing.T) {
+func TestAllocationHTTPRejectsRulesThatOverlapActiveTime(t *testing.T) {
 	api := newAllocationHTTP(t)
 	userID := api.seedUser(t, "Asia/Tokyo")
-	projectID := createAllocationProject(t, api, userID, "plan sleep conflict")
+	projectID := createAllocationProject(t, api, userID, "plan active_time conflict")
 	weekday := time.Now().In(mustLocation(t, "Asia/Tokyo")).AddDate(0, 0, 2).Weekday()
 	rules := getAllocationRules(t, api, userID)
 	response := putAllocationRules(t, api, userID, rules.Revision, []allocationRuleWriteItem{{
 		ProjectID: projectID, Weekday: int(weekday), StartTime: "02:00", EndTime: "03:00", Timezone: "Asia/Tokyo",
 	}})
 	if response.Code != http.StatusConflict {
-		t.Fatalf("PUT allocation plan overlapping sleep status/body=%d/%s; want conflict", response.Code, response.Body.String())
+		t.Fatalf("PUT allocation plan overlapping active_time status/body=%d/%s; want conflict", response.Code, response.Body.String())
 	}
 	persisted := getAllocationRules(t, api, userID)
 	if persisted.Revision != rules.Revision || len(persisted.Items) != 0 {

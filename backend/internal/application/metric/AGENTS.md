@@ -6,6 +6,7 @@ Follow the [application guide](../AGENTS.md). Routes are registered in [cmd/api/
 
 - Read the signed-in user's Todo completion by day and period, and current overdue work by Project. This context is read-only and has no domain package.
 - Completion accepts 7 or 30 days; ratios use completed/planned item counts, with no ratio when a day has zero planned items. Overdue groups are sorted by count, with five displayed and the rest in `other_count`.
+- Completion metrics reflect current Todo rows, not an immutable activity log. Explicitly regenerating today's Todo replaces that day's rows, so its planned and completed counts can decrease or change; source completion and actual minutes remain on their source records.
 
 ## Endpoints
 

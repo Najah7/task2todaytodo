@@ -49,3 +49,7 @@ CREATE INDEX idx_todo_items_action_item_todo_id ON todo_items(action_item_id, to
     WHERE kind = 'action_item';
 CREATE INDEX idx_todo_items_task_todo_id ON todo_items(task_id, todo_id)
     WHERE kind = 'task';
+CREATE UNIQUE INDEX idx_todo_items_action_item_once_per_todo ON todo_items(todo_id, action_item_id)
+    WHERE kind = 'action_item';
+CREATE UNIQUE INDEX idx_todo_items_task_once_per_todo ON todo_items(todo_id, task_id)
+    WHERE kind = 'task';

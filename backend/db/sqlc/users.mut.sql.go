@@ -11,9 +11,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const updateUserActiveTimeSettings = `-- name: UpdateUserActiveTimeSettings :exec
+UPDATE users
+SET active_start_time = $1::time,
+    active_end_time = $2::time,
+    updated_at = now()
+WHERE id = $3::text
+`
+
+type UpdateUserActiveTimeSettingsParams struct {
+	ActiveStartTime pgtype.Time
+	ActiveEndTime   pgtype.Time
+	UserID          string
+}
+
+func (q *Queries) UpdateUserActiveTimeSettings(ctx context.Context, arg UpdateUserActiveTimeSettingsParams) error {
+	_, err := q.db.Exec(ctx, updateUserActiveTimeSettings, arg.ActiveStartTime, arg.ActiveEndTime, arg.UserID)
+	return err
+}
+
 const updateUserEmailByID = `-- name: UpdateUserEmailByID :one
 UPDATE users SET email = $2, updated_at = now()
-WHERE id = $1 RETURNING id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
+WHERE id = $1 RETURNING id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, active_start_time, active_end_time, minimum_gap_minutes
 `
 
 type UpdateUserEmailByIDParams struct {
@@ -35,8 +54,8 @@ func (q *Queries) UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailBy
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Timezone,
-		&i.WakeUpTime,
-		&i.Bedtime,
+		&i.ActiveStartTime,
+		&i.ActiveEndTime,
 		&i.MinimumGapMinutes,
 	)
 	return i, err
@@ -61,7 +80,7 @@ func (q *Queries) UpdateUserMinimumGapMinutes(ctx context.Context, arg UpdateUse
 
 const updateUserNameByID = `-- name: UpdateUserNameByID :one
 UPDATE users SET first_name = $2, last_name = $3, updated_at = now()
-WHERE id = $1 RETURNING id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
+WHERE id = $1 RETURNING id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, active_start_time, active_end_time, minimum_gap_minutes
 `
 
 type UpdateUserNameByIDParams struct {
@@ -84,30 +103,11 @@ func (q *Queries) UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByID
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Timezone,
-		&i.WakeUpTime,
-		&i.Bedtime,
+		&i.ActiveStartTime,
+		&i.ActiveEndTime,
 		&i.MinimumGapMinutes,
 	)
 	return i, err
-}
-
-const updateUserSleepSettings = `-- name: UpdateUserSleepSettings :exec
-UPDATE users
-SET wake_up_time = $1::time,
-    bedtime = $2::time,
-    updated_at = now()
-WHERE id = $3::text
-`
-
-type UpdateUserSleepSettingsParams struct {
-	WakeUpTime pgtype.Time
-	Bedtime    pgtype.Time
-	UserID     string
-}
-
-func (q *Queries) UpdateUserSleepSettings(ctx context.Context, arg UpdateUserSleepSettingsParams) error {
-	_, err := q.db.Exec(ctx, updateUserSleepSettings, arg.WakeUpTime, arg.Bedtime, arg.UserID)
-	return err
 }
 
 const updateUserTimezone = `-- name: UpdateUserTimezone :one

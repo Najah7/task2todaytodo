@@ -13,7 +13,7 @@ type weekRepo struct {
 	profile       dao.Profile
 	projects      []dao.Project
 	allocations   []dao.Allocation
-	exceptions    []dao.SleepException
+	exceptions    []dao.ActiveTimeException
 	plans         []dao.PlanItem
 	configuredSet bool
 }
@@ -78,7 +78,7 @@ func (r weekRepo) ListRuleRevisionsForProjection(context.Context, string) ([]dao
 	return nil, nil
 }
 
-func (r weekRepo) ListSleepExceptions(context.Context, string, time.Time, time.Time) ([]dao.SleepException, error) {
+func (r weekRepo) ListActiveTimeExceptions(context.Context, string, time.Time, time.Time) ([]dao.ActiveTimeException, error) {
 	return r.exceptions, nil
 }
 
@@ -90,11 +90,11 @@ func (weekRepo) ListPauseIntervals(context.Context, string) ([]dao.PauseInterval
 	return nil, nil
 }
 
-func TestGetWeekCountsSpringDSTDayAndWakingSleepAcrossMonday(t *testing.T) {
+func TestGetWeekCountsSpringDSTDayAndWakingActiveTimeAcrossMonday(t *testing.T) {
 	location := mustWeekLocation(t, "America/New_York")
 	weekStart := time.Date(2026, time.March, 2, 0, 0, 0, 0, time.UTC)
 	week, err := NewGetWeekUseCase(weekRepo{profile: dao.Profile{
-		Timezone: location.String(), WakeUpTime: "07:00", Bedtime: "23:00",
+		Timezone: location.String(), ActiveStartTime: "07:00", ActiveEndTime: "23:00",
 	}}).Execute(context.Background(), "user", weekStart)
 	if err != nil {
 		t.Fatalf("GetWeek() error = %v", err)
@@ -107,19 +107,19 @@ func TestGetWeekCountsSpringDSTDayAndWakingSleepAcrossMonday(t *testing.T) {
 	if got := sunday.FreeMinutes; got != 16*60 {
 		t.Errorf("spring-forward Sunday free minutes = %d, want 960", got)
 	}
-	if got := intervalHours(week.SleepIntervals, "2026-03-08"); got != 7 {
-		t.Errorf("spring-forward Sunday waking-date sleep interval = %d hours, want 7 hours", got)
+	if got := intervalHours(week.ActiveIntervals, "2026-03-08"); got != 16 {
+		t.Errorf("spring-forward Sunday active interval = %d hours, want 16 hours", got)
 	}
-	if got := intervalHours(week.SleepIntervals, "2026-03-02"); got != 7 {
-		t.Errorf("first Monday waking-date sleep interval = %d hours, want 7 hours clipped from prior Sunday bedtime to Monday wake", got)
+	if got := intervalHours(week.ActiveIntervals, "2026-03-02"); got != 16 {
+		t.Errorf("first Monday active interval = %d hours, want 16 hours", got)
 	}
-	for _, interval := range week.SleepIntervals {
-		if interval.LocalDate.Format("2006-01-02") == "2026-03-02" && interval.StartAt.In(location).Format("2006-01-02 15:04") != "2026-03-02 00:00" {
-			t.Errorf("first Monday sleep interval starts at %s, want week-clipped midnight", interval.StartAt.In(location))
+	for _, interval := range week.ActiveIntervals {
+		if interval.LocalDate.Format("2006-01-02") == "2026-03-02" && interval.StartAt.In(location).Format("2006-01-02 15:04") != "2026-03-02 07:00" {
+			t.Errorf("first Monday active interval starts at %s, want Monday 07:00", interval.StartAt.In(location))
 		}
 	}
-	if got := intervalHours(week.SleepIntervals, "2026-03-09"); got != 1 {
-		t.Errorf("final Monday sleep interval = %d hours, want 1 hour clipped at the exclusive week boundary", got)
+	if got := intervalHours(week.ActiveIntervals, "2026-03-09"); got != 0 {
+		t.Errorf("final Monday active interval = %d hours, want none beyond the exclusive week boundary", got)
 	}
 }
 
@@ -127,7 +127,7 @@ func TestGetWeekCountsFallDSTDayAtTwentyFiveHours(t *testing.T) {
 	location := mustWeekLocation(t, "America/New_York")
 	weekStart := time.Date(2026, time.October, 26, 0, 0, 0, 0, time.UTC)
 	week, err := NewGetWeekUseCase(weekRepo{profile: dao.Profile{
-		Timezone: location.String(), WakeUpTime: "07:00", Bedtime: "23:00",
+		Timezone: location.String(), ActiveStartTime: "07:00", ActiveEndTime: "23:00",
 	}}).Execute(context.Background(), "user", weekStart)
 	if err != nil {
 		t.Fatalf("GetWeek() error = %v", err)
@@ -138,16 +138,39 @@ func TestGetWeekCountsFallDSTDayAtTwentyFiveHours(t *testing.T) {
 		t.Errorf("fall-back Sunday length = %s, want 25h", got)
 	}
 	if got := sunday.FreeMinutes; got != 16*60 {
-		t.Errorf("fall-back Sunday free minutes = %d, want 960 awake minutes", got)
+		t.Errorf("fall-back Sunday free minutes = %d, want 960 activeWindow minutes", got)
 	}
-	if got := intervalHours(week.SleepIntervals, "2026-11-01"); got != 9 {
-		t.Errorf("fall-back Sunday waking-date sleep interval = %d hours, want 9 hours", got)
+	if got := intervalHours(week.ActiveIntervals, "2026-11-01"); got != 16 {
+		t.Errorf("fall-back Sunday active interval = %d hours, want 16 hours", got)
 	}
-	if got := intervalHours(week.SleepIntervals, "2026-10-26"); got != 7 {
-		t.Errorf("first Monday waking-date sleep interval = %d hours, want 7 hours clipped from prior Sunday bedtime to Monday wake", got)
+	if got := intervalHours(week.ActiveIntervals, "2026-10-26"); got != 16 {
+		t.Errorf("first Monday active interval = %d hours, want 16 hours", got)
 	}
-	if got := intervalHours(week.SleepIntervals, "2026-11-02"); got != 1 {
-		t.Errorf("final Monday sleep interval = %d hours, want 1 hour clipped at the exclusive week boundary", got)
+	if got := intervalHours(week.ActiveIntervals, "2026-11-02"); got != 0 {
+		t.Errorf("final Monday active interval = %d hours, want none beyond the exclusive week boundary", got)
+	}
+}
+
+func TestGetWeekIncludesOvernightActiveCarryInAtWeekBoundary(t *testing.T) {
+	location := mustWeekLocation(t, "UTC")
+	weekStart := time.Date(2026, time.October, 12, 0, 0, 0, 0, time.UTC)
+	week, err := NewGetWeekUseCase(weekRepo{profile: dao.Profile{
+		Timezone: location.String(), ActiveStartTime: "22:00", ActiveEndTime: "02:00",
+	}}).Execute(context.Background(), "user", weekStart)
+	if err != nil {
+		t.Fatalf("GetWeek() error = %v", err)
+	}
+	var carryIn time.Duration
+	for _, interval := range week.ActiveIntervals {
+		if interval.LocalDate.Format("2006-01-02") == "2026-10-11" {
+			carryIn += interval.EndAt.Sub(interval.StartAt)
+			if got := interval.StartAt.Format("2006-01-02 15:04"); got != "2026-10-12 00:00" {
+				t.Errorf("Sunday carry-in starts at %s, want Monday 00:00", got)
+			}
+		}
+	}
+	if carryIn != 2*time.Hour {
+		t.Errorf("Sunday carry-in = %s, want 2h", carryIn)
 	}
 }
 
@@ -160,7 +183,7 @@ func TestGetWeekUsesRecalculatedWakeWindowAndUnionsPastAllocationOverlap(t *test
 		{RuleID: "two", ProjectID: "project", StartAt: localWeekTime(location, 2026, time.October, 12, 11, 0), EndAt: localWeekTime(location, 2026, time.October, 12, 13, 0)},
 	}
 	repo := weekRepo{
-		profile:     dao.Profile{Timezone: location.String(), WakeUpTime: "10:00", Bedtime: "23:00"},
+		profile:     dao.Profile{Timezone: location.String(), ActiveStartTime: "10:00", ActiveEndTime: "23:00"},
 		projects:    []dao.Project{{ID: "project", Title: "Plan", TargetMinutes: 300}},
 		allocations: allocations,
 	}
@@ -171,7 +194,7 @@ func TestGetWeekUsesRecalculatedWakeWindowAndUnionsPastAllocationOverlap(t *test
 
 	monday := findWeekDay(t, week.Days, "2026-10-12")
 	if got := monday.FreeMinutes; got != 10*60 {
-		t.Errorf("Monday free minutes = %d, want 600 after subtracting the union 10:00–13:00 from the recalculated 10:00–23:00 awake window", got)
+		t.Errorf("Monday free minutes = %d, want 600 after subtracting the union 10:00–13:00 from the recalculated 10:00–23:00 activeWindow window", got)
 	}
 	if got := week.AllocatedMinutes; got != 6*60 {
 		t.Errorf("allocated minutes = %d, want both elapsed allocation rows totaling 360", got)
@@ -197,7 +220,7 @@ func TestGetWeekProjectsEffectiveRuleRevisionsOnceAndPauseExceptions(t *testing.
 	}
 	repo := projectionWeekRepo{
 		weekRepo: weekRepo{
-			profile:     dao.Profile{Timezone: "UTC", WakeUpTime: "07:00", Bedtime: "23:00"},
+			profile:     dao.Profile{Timezone: "UTC", ActiveStartTime: "07:00", ActiveEndTime: "23:00"},
 			projects:    []dao.Project{{ID: "project", Title: "Plan"}},
 			allocations: []dao.Allocation{{RuleID: "weekly", OccurrenceDate: weekStart.AddDate(0, 0, 2), SourceRevisionID: "weekly-r2", ProjectID: "project", ProjectTitle: "Plan", StartAt: movedStart, EndAt: movedStart.Add(time.Hour), IsException: true}},
 		},
@@ -241,7 +264,7 @@ func TestGetWeekKeepsStartedSlotAtSameDayRevisionCutover(t *testing.T) {
 	cutover := time.Date(2026, time.October, 14, 10, 0, 0, 0, location)
 	repo := projectionWeekRepo{
 		weekRepo: weekRepo{
-			profile:  dao.Profile{Timezone: "UTC", WakeUpTime: "07:00", Bedtime: "23:00"},
+			profile:  dao.Profile{Timezone: "UTC", ActiveStartTime: "07:00", ActiveEndTime: "23:00"},
 			projects: []dao.Project{{ID: "project", Title: "Plan"}},
 		},
 		rules: []dao.Rule{
@@ -268,7 +291,7 @@ func TestGetWeekShowsConfiguredAndReferencedProjectsOnly(t *testing.T) {
 	weekStart := time.Date(2026, time.October, 12, 0, 0, 0, 0, time.UTC)
 	start := weekStart.Add(10 * time.Hour)
 	repo := weekRepo{
-		profile: dao.Profile{Timezone: "UTC", WakeUpTime: "07:00", Bedtime: "23:00"},
+		profile: dao.Profile{Timezone: "UTC", ActiveStartTime: "07:00", ActiveEndTime: "23:00"},
 		projects: []dao.Project{
 			{ID: "configured", Title: "Configured"},
 			{ID: "historical", Title: "Historical"},
@@ -296,7 +319,7 @@ func TestGetWeekShowsProjectForPreservedVirtualFrameAfterplanRemoval(t *testing.
 	deletedAt := time.Date(2026, time.October, 16, 12, 0, 0, 0, location)
 	repo := projectionWeekRepo{
 		weekRepo: weekRepo{
-			profile:  dao.Profile{Timezone: "UTC", WakeUpTime: "07:00", Bedtime: "23:00"},
+			profile:  dao.Profile{Timezone: "UTC", ActiveStartTime: "07:00", ActiveEndTime: "23:00"},
 			projects: []dao.Project{{ID: "removed-target", Title: "Preserved history"}},
 			plans:    []dao.PlanItem{}, configuredSet: true,
 		},
@@ -326,7 +349,7 @@ func TestGetWeekPreservesStartedVirtualOriginsAfterFollowingStop(t *testing.T) {
 	lastOrigin := weekStart.AddDate(0, 0, -7)
 	repo := projectionWeekRepo{
 		weekRepo: weekRepo{
-			profile:  dao.Profile{Timezone: "UTC", WakeUpTime: "07:00", Bedtime: "23:00"},
+			profile:  dao.Profile{Timezone: "UTC", ActiveStartTime: "07:00", ActiveEndTime: "23:00"},
 			projects: []dao.Project{{ID: "project", Title: "Project"}},
 		},
 		rules: []dao.Rule{{
@@ -357,7 +380,7 @@ func TestGetWeekKeepsPreCutoffFramesForStoppedRule(t *testing.T) {
 		Frequency: "weekly", EffectiveFrom: weekStart, EffectiveAt: weekStart, DeletedAt: &cutoff,
 	}
 	firstRepo := projectionWeekRepo{
-		weekRepo: weekRepo{profile: dao.Profile{Timezone: "UTC", WakeUpTime: "07:00", Bedtime: "23:00"}, projects: []dao.Project{{ID: "project", Title: "Plan"}}},
+		weekRepo: weekRepo{profile: dao.Profile{Timezone: "UTC", ActiveStartTime: "07:00", ActiveEndTime: "23:00"}, projects: []dao.Project{{ID: "project", Title: "Plan"}}},
 		rules:    []dao.Rule{rule},
 	}
 	first, err := NewGetWeekUseCase(firstRepo).Execute(context.Background(), "user", weekStart)

@@ -34,11 +34,11 @@ type Occurrence struct {
 	Timezone         string
 }
 
-type SleepException struct {
-	LocalDate    time.Time
-	WakeLocal    time.Time
-	BedtimeLocal time.Time
-	Timezone     string
+type ActiveTimeException struct {
+	LocalDate        time.Time
+	ActiveStartLocal time.Time
+	ActiveEndLocal   time.Time
+	Timezone         string
 }
 
 func NewSlot(weekday int, startText, endText string, endDayOffset int, timezone, frequency string) (Slot, error) {

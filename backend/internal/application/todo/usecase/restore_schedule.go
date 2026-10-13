@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/todo/dao"
 	"github.com/Najah7/task2todaytodo/internal/application/todo/domain"
@@ -9,9 +10,8 @@ import (
 )
 
 type RestoreScheduleUseCase struct {
-	uow         UOW
-	regenerator *RegenerateTodayUseCase
-	logger      telemetry.Logger
+	uow    UOW
+	logger telemetry.Logger
 }
 
 func NewRestoreScheduleUseCase(uow UOW, newID func() string, loggers ...telemetry.Logger) *RestoreScheduleUseCase {
@@ -19,7 +19,7 @@ func NewRestoreScheduleUseCase(uow UOW, newID func() string, loggers ...telemetr
 	if len(loggers) > 0 {
 		logger = loggers[0]
 	}
-	return &RestoreScheduleUseCase{uow: uow, regenerator: NewRegenerateTodayUseCase(uow, newID), logger: telemetry.OrNop(logger)}
+	return &RestoreScheduleUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
 
 func (u *RestoreScheduleUseCase) Execute(ctx context.Context, userID, itemID string, expectedRevision int32) (result dao.Todo, err error) {
@@ -61,11 +61,56 @@ func (u *RestoreScheduleUseCase) Execute(ctx context.Context, userID, itemID str
 		if !ok || !occurrence.CanRestore {
 			return ErrPermissionDenied
 		}
-		result, err = u.regenerator.RegenerateTodayInTx(ctx, userID, day.Date, repos)
-		return err
+		model, err := restoredItem(*target)
+		if err != nil {
+			return err
+		}
+		model, err = model.SetHidden(false)
+		if err != nil {
+			return err
+		}
+		if _, err := repos.Items().Save(ctx, model); err != nil {
+			return err
+		}
+		items, err = repos.Items().ListByTodoID(ctx, todo.ID)
+		if err != nil {
+			return err
+		}
+		models, err := scheduleRestoreOrder(items, itemID, occurrence.StartAt)
+		if err != nil {
+			return err
+		}
+		if err := repos.Items().SavePositions(ctx, todo.ID, models); err != nil {
+			return err
+		}
+		return bumpTodoRevision(ctx, repos, &todo, &result)
 	})
 	if err == nil {
 		logTodoStateChange(u.logger, ctx, "todo.schedule.restore", userID, result.ID, itemID)
 	}
 	return result, err
+}
+
+func scheduleRestoreOrder(items []dao.Item, restoredID string, start time.Time) ([]domain.TodoItem, error) {
+	models := make([]domain.TodoItem, 0, len(items))
+	found := false
+	for _, item := range items {
+		model, err := restoredItem(item)
+		if err != nil {
+			return nil, err
+		}
+		if item.ID == restoredID {
+			found = true
+			model, err = model.SetHidden(false)
+			if err != nil {
+				return nil, err
+			}
+			model.Start, model.End = &start, item.ScheduledEnd
+		}
+		models = append(models, model)
+	}
+	if !found {
+		return nil, ErrFrameNotFound
+	}
+	return domain.InsertScheduleByStart(models, restoredID, start)
 }

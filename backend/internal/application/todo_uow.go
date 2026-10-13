@@ -189,11 +189,7 @@ func mapTodoScheduleOwnerError(err error) error {
 }
 
 type taskTodoLifecycle struct {
-	items       todousecase.ItemRepository
-	todos       todousecase.TodoRepository
-	sources     todousecase.SourceReader
-	repos       todousecase.Repositories
-	regenerator *todousecase.RegenerateTodayUseCase
+	items todousecase.ItemRepository
 }
 
 func (l taskTodoLifecycle) HasCompletedFrame(ctx context.Context, actionItemID taskdomain.ActionItemID) (bool, error) {
@@ -208,21 +204,6 @@ func (l taskTodoLifecycle) CompleteTodayFrames(ctx context.Context, userID taskd
 func (l taskTodoLifecycle) ReopenFrames(ctx context.Context, actionItemID taskdomain.ActionItemID) error {
 	return l.items.ReopenFrames(ctx, string(actionItemID))
 }
-func (l taskTodoLifecycle) RegenerateToday(ctx context.Context, userID taskdomain.UserID) error {
-	day, err := l.sources.CurrentDay(ctx, string(userID))
-	if err != nil {
-		return err
-	}
-	if err := l.todos.LockUser(ctx, string(userID)); err != nil {
-		return err
-	}
-	_, err = l.regenerator.RegenerateTodayInTx(ctx, string(userID), day.Date, l.repos)
-	if err == todousecase.ErrNotFound {
-		return nil
-	}
-	return err
-}
-
 func (l taskTodoLifecycle) HasCompletedTaskFrame(ctx context.Context, taskID taskdomain.TaskID) (bool, error) {
 	return l.items.HasCompletedTaskFrame(ctx, string(taskID))
 }

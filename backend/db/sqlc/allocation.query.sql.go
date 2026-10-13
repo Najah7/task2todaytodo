@@ -74,6 +74,23 @@ func (q *Queries) FindAllocationOverlap(ctx context.Context, arg FindAllocationO
 	return i, err
 }
 
+const getAllocationActiveTimeProfile = `-- name: GetAllocationActiveTimeProfile :one
+SELECT timezone, active_start_time, active_end_time FROM users WHERE id = $1::text
+`
+
+type GetAllocationActiveTimeProfileRow struct {
+	Timezone        string
+	ActiveStartTime pgtype.Time
+	ActiveEndTime   pgtype.Time
+}
+
+func (q *Queries) GetAllocationActiveTimeProfile(ctx context.Context, userID string) (GetAllocationActiveTimeProfileRow, error) {
+	row := q.db.QueryRow(ctx, getAllocationActiveTimeProfile, userID)
+	var i GetAllocationActiveTimeProfileRow
+	err := row.Scan(&i.Timezone, &i.ActiveStartTime, &i.ActiveEndTime)
+	return i, err
+}
+
 const getAllocationOccurrenceForMutation = `-- name: GetAllocationOccurrenceForMutation :one
 SELECT a.id, a.rule_id, a.source_revision_id, a.project_id, a.occurrence_date,
        COALESCE(e.start_at, a.start_at) AS start_at,
@@ -130,41 +147,24 @@ func (q *Queries) GetAllocationOccurrenceForMutation(ctx context.Context, arg Ge
 	return i, err
 }
 
-const getAllocationSleepProfile = `-- name: GetAllocationSleepProfile :one
-SELECT timezone, wake_up_time, bedtime FROM users WHERE id = $1::text
-`
-
-type GetAllocationSleepProfileRow struct {
-	Timezone   string
-	WakeUpTime pgtype.Time
-	Bedtime    pgtype.Time
-}
-
-func (q *Queries) GetAllocationSleepProfile(ctx context.Context, userID string) (GetAllocationSleepProfileRow, error) {
-	row := q.db.QueryRow(ctx, getAllocationSleepProfile, userID)
-	var i GetAllocationSleepProfileRow
-	err := row.Scan(&i.Timezone, &i.WakeUpTime, &i.Bedtime)
-	return i, err
-}
-
-const getDailySleepException = `-- name: GetDailySleepException :one
-SELECT user_id, local_date, wake_local, bedtime_local, timezone, revision, changed_at FROM daily_sleep_exceptions
+const getDailyActiveTimeException = `-- name: GetDailyActiveTimeException :one
+SELECT user_id, local_date, active_start_local, active_end_local, timezone, revision, changed_at FROM daily_active_time_exceptions
 WHERE user_id = $1::text AND local_date = $2::date
 `
 
-type GetDailySleepExceptionParams struct {
+type GetDailyActiveTimeExceptionParams struct {
 	UserID    string
 	LocalDate pgtype.Date
 }
 
-func (q *Queries) GetDailySleepException(ctx context.Context, arg GetDailySleepExceptionParams) (DailySleepException, error) {
-	row := q.db.QueryRow(ctx, getDailySleepException, arg.UserID, arg.LocalDate)
-	var i DailySleepException
+func (q *Queries) GetDailyActiveTimeException(ctx context.Context, arg GetDailyActiveTimeExceptionParams) (DailyActiveTimeException, error) {
+	row := q.db.QueryRow(ctx, getDailyActiveTimeException, arg.UserID, arg.LocalDate)
+	var i DailyActiveTimeException
 	err := row.Scan(
 		&i.UserID,
 		&i.LocalDate,
-		&i.WakeLocal,
-		&i.BedtimeLocal,
+		&i.ActiveStartLocal,
+		&i.ActiveEndLocal,
 		&i.Timezone,
 		&i.Revision,
 		&i.ChangedAt,
@@ -496,33 +496,33 @@ func (q *Queries) ListAllocationUserIDs(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
-const listDailySleepExceptions = `-- name: ListDailySleepExceptions :many
-SELECT user_id, local_date, wake_local, bedtime_local, timezone, revision, changed_at FROM daily_sleep_exceptions
+const listDailyActiveTimeExceptions = `-- name: ListDailyActiveTimeExceptions :many
+SELECT user_id, local_date, active_start_local, active_end_local, timezone, revision, changed_at FROM daily_active_time_exceptions
 WHERE user_id = $1::text
   AND local_date BETWEEN $2::date AND $3::date
 ORDER BY local_date
 `
 
-type ListDailySleepExceptionsParams struct {
+type ListDailyActiveTimeExceptionsParams struct {
 	UserID      string
 	FromDate    pgtype.Date
 	ThroughDate pgtype.Date
 }
 
-func (q *Queries) ListDailySleepExceptions(ctx context.Context, arg ListDailySleepExceptionsParams) ([]DailySleepException, error) {
-	rows, err := q.db.Query(ctx, listDailySleepExceptions, arg.UserID, arg.FromDate, arg.ThroughDate)
+func (q *Queries) ListDailyActiveTimeExceptions(ctx context.Context, arg ListDailyActiveTimeExceptionsParams) ([]DailyActiveTimeException, error) {
+	rows, err := q.db.Query(ctx, listDailyActiveTimeExceptions, arg.UserID, arg.FromDate, arg.ThroughDate)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []DailySleepException
+	var items []DailyActiveTimeException
 	for rows.Next() {
-		var i DailySleepException
+		var i DailyActiveTimeException
 		if err := rows.Scan(
 			&i.UserID,
 			&i.LocalDate,
-			&i.WakeLocal,
-			&i.BedtimeLocal,
+			&i.ActiveStartLocal,
+			&i.ActiveEndLocal,
 			&i.Timezone,
 			&i.Revision,
 			&i.ChangedAt,

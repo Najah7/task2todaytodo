@@ -23,11 +23,10 @@ func NewDeleteRuleFollowingUseCase(uow UOW, issueID func() string, clocks ...fun
 	return &DeleteRuleFollowingUseCase{uow: uow, issueID: issueID, now: now}
 }
 
-func (uc *DeleteRuleFollowingUseCase) Execute(ctx context.Context, actorID, ruleID, occurrenceDate string, expectedRevision int32, confirmTodoRegeneration ...bool) error {
-	confirmed := len(confirmTodoRegeneration) > 0 && confirmTodoRegeneration[0]
+func (uc *DeleteRuleFollowingUseCase) Execute(ctx context.Context, actorID, ruleID, occurrenceDate string, expectedRevision int32) error {
 	return doWithTodoImpact(ctx, uc.uow, TodoImpactScope{
 		ActorID: actorID, RuleID: ruleID, OccurrenceDate: occurrenceDate, Following: true,
-	}, confirmed, func(ctx context.Context, repos Repositories) error {
+	}, func(ctx context.Context, repos Repositories) error {
 		repo := repos.Rules()
 		base, err := repo.GetEffectiveRevisionForDate(ctx, actorID, ruleID, occurrenceDate, shared.ScheduleDelete())
 		if err != nil {

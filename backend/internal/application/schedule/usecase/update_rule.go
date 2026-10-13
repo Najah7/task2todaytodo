@@ -40,7 +40,7 @@ func (uc *UpdateRuleUseCase) Execute(ctx context.Context, actorID, ruleID, occur
 	}
 	err = doWithTodoImpact(ctx, uc.uow, TodoImpactScope{
 		ActorID: actorID, RuleID: ruleID, OccurrenceDate: occurrenceDate, Following: true, AssigneeID: newAssignee,
-	}, input.ConfirmTodoRegeneration, func(ctx context.Context, repos Repositories) error {
+	}, func(ctx context.Context, repos Repositories) error {
 		repo := repos.Rules()
 		assignmentOnly := input.AssigneeID != nil && input.Title == nil && input.Description == nil && input.Location == nil &&
 			input.ProjectID == nil && input.Timezone == nil && input.LocalStart == nil && input.LocalEnd == nil &&

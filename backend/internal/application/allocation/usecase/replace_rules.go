@@ -111,7 +111,7 @@ func replaceRules(ctx context.Context, repo Repository, userID string, requested
 					return err
 				}
 			}
-		} else if old.PausedReason == "allocation_conflict" || old.PausedReason == "sleep_conflict" {
+		} else if old.PausedReason == "allocation_conflict" || old.PausedReason == "outside_active_time" {
 			if err := repo.SetRulePause(ctx, userID, ruleID, "", now); err != nil {
 				return err
 			}

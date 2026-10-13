@@ -35,22 +35,83 @@ func (u *ReflowUseCase) Execute(ctx context.Context, userID string, expectedRevi
 		if err := repos.Todos().LockUser(ctx, userID); err != nil {
 			return err
 		}
-		todo, saved, _, in, err := loadPlanningState(ctx, userID, day.Date, repos)
+		todo, err := repos.Todos().GetByUserDate(ctx, userID, day.Date)
 		if err != nil {
 			return err
 		}
 		if todo.Revision != expectedRevision {
 			return ErrRevisionConflict
 		}
-		order, err := requestedOrder(orderedItemIDs, saved)
+		saved, err := repos.Items().ListByTodoID(ctx, todo.ID)
 		if err != nil {
 			return err
 		}
-		plan, err := domain.Reflow(domain.ReflowInput{Input: in, Order: order})
+		sources, err := repos.Sources().ReadPlanningSources(ctx, userID, todo.Date, todo.Timezone)
 		if err != nil {
 			return err
 		}
-		if err := persistPlan(ctx, todo.ID, saved, plan, u.newID, repos); err != nil {
+		workSources, err := repos.Sources().ReadWorkSources(ctx, userID, todo.Date, todo.Timezone, workSourceRefs(saved, nil))
+		if err != nil {
+			return err
+		}
+		accessibleWork := make(map[string]bool, len(workSources))
+		for _, source := range workSources {
+			accessibleWork[sourceKey(source.Kind, source.ID)] = true
+		}
+		accessibleSchedules := make(map[string]bool, len(sources.Schedules))
+		for _, schedule := range sources.Schedules {
+			accessibleSchedules[scheduleKey(schedule.RuleID, schedule.OccurrenceDate)] = true
+		}
+		byID := make(map[string]dao.Item, len(saved))
+		accessible := make(map[string]bool, len(saved))
+		for _, item := range saved {
+			byID[item.ID] = item
+			if item.Hidden {
+				continue
+			}
+			if domain.FrameKind(item.Kind).IsWork() {
+				accessible[item.ID] = accessibleWork[sourceKey(item.Kind, itemSourceID(item))]
+			} else if item.Kind == string(domain.FrameSchedule) {
+				accessible[item.ID] = accessibleSchedules[scheduleKey(item.ScheduleRuleID, item.OccurrenceDate)]
+			}
+		}
+		seen := make(map[string]bool, len(orderedItemIDs))
+		models := make([]domain.TodoItem, 0, len(saved))
+		for _, id := range orderedItemIDs {
+			item, ok := byID[id]
+			if !ok || !accessible[id] || item.Hidden || seen[id] {
+				return domain.ErrInvalidReflow
+			}
+			seen[id] = true
+			model, err := restoredItem(item)
+			if err != nil {
+				return err
+			}
+			model.Position = len(models)
+			models = append(models, model)
+		}
+		accessibleCount := 0
+		for _, isAccessible := range accessible {
+			if isAccessible {
+				accessibleCount++
+			}
+		}
+		if len(seen) != accessibleCount {
+			return domain.ErrInvalidReflow
+		}
+		sort.SliceStable(saved, func(i, j int) bool { return saved[i].Position < saved[j].Position })
+		for _, item := range saved {
+			if seen[item.ID] {
+				continue
+			}
+			model, err := restoredItem(item)
+			if err != nil {
+				return err
+			}
+			model.Position = len(models)
+			models = append(models, model)
+		}
+		if err := repos.Items().SavePositions(ctx, todo.ID, models); err != nil {
 			return err
 		}
 		if _, err := repos.Todos().BumpRevision(ctx, todo.ID, todo.Revision); err != nil {
@@ -79,9 +140,8 @@ func loadPlanningState(ctx context.Context, userID string, todoDate time.Time, r
 	if err != nil {
 		return dao.Todo{}, nil, dao.PlanningSources{}, domain.Input{}, err
 	}
-	// Reflow operates on the persisted plan's calendar. A timezone update is
-	// applied only by full regeneration, so a manual change must retain the
-	// existing day and the Schedule times already saved in that plan.
+	// Reordering keeps the persisted Todo calendar and saved Schedule times;
+	// this operation changes positions only.
 	sources.Timezone = todo.Timezone
 	refs := workSourceRefs(saved, sources.History)
 	actionSources, err := repos.Sources().ReadWorkSources(ctx, userID, todo.Date, todo.Timezone, refs)
@@ -151,7 +211,7 @@ func loadPlanningState(ctx context.Context, userID string, todoDate time.Time, r
 	return todo, saved, sources, in, nil
 }
 
-func ensureTodayTodoInTx(ctx context.Context, userID string, day dao.CurrentDay, repos Repositories, regenerator *RegenerateTodayUseCase, newID func() string) (dao.Todo, error) {
+func ensureTodayTodoInTx(ctx context.Context, userID string, day dao.CurrentDay, repos Repositories, initialGenerator *GenerateTodayUseCase, newID func() string) (dao.Todo, error) {
 	todo, err := repos.Todos().GetByUserDate(ctx, userID, day.Date)
 	if err == nil {
 		return todo, nil
@@ -167,75 +227,7 @@ func ensureTodayTodoInTx(ctx context.Context, userID string, day dao.CurrentDay,
 	if err != nil {
 		return dao.Todo{}, err
 	}
-	return regenerator.generateExistingTodayInTx(ctx, userID, day.Date, day.Timezone, todo, repos, false, false)
-}
-
-func requestedOrder(ids []string, saved []dao.Item) ([]domain.OrderedItem, error) {
-	byID := make(map[string]dao.Item, len(saved))
-	for _, item := range saved {
-		byID[item.ID] = item
-	}
-	if len(ids) == 0 {
-		return nil, domain.ErrInvalidReflow
-	}
-	seen := make(map[string]bool, len(ids))
-	order := make([]domain.OrderedItem, 0, len(ids))
-	for _, id := range ids {
-		item, ok := byID[id]
-		if !ok || seen[id] {
-			return nil, domain.ErrInvalidReflow
-		}
-		seen[id] = true
-		if domain.FrameKind(item.Kind).IsWork() {
-			if item.PlannedMinutes == nil {
-				return nil, domain.ErrInvalidReflow
-			}
-			order = append(order, domain.OrderedItem{Kind: domain.FrameKind(item.Kind), FrameID: item.ID, SourceID: itemSourceID(item), PlannedMinutes: *item.PlannedMinutes})
-		} else {
-			order = append(order, domain.OrderedItem{Kind: domain.FrameSchedule, ScheduleID: scheduleKey(item.ScheduleRuleID, item.OccurrenceDate)})
-		}
-	}
-	for _, item := range saved {
-		if !item.Hidden && !seen[item.ID] {
-			return nil, domain.ErrInvalidReflow
-		}
-	}
-	var fixedSaved, fixedRequested []string
-	for _, item := range saved {
-		if !item.Hidden && (item.Kind == string(domain.FrameSchedule) || item.Completed) {
-			fixedSaved = append(fixedSaved, item.ID)
-		}
-	}
-	for _, id := range ids {
-		item := byID[id]
-		if item.Kind == string(domain.FrameSchedule) || item.Completed {
-			fixedRequested = append(fixedRequested, id)
-		}
-	}
-	if !equalStrings(fixedSaved, fixedRequested) {
-		return nil, domain.ErrInvalidReflow
-	}
-	return order, nil
-}
-
-func equalStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for index := range a {
-		if a[index] != b[index] {
-			return false
-		}
-	}
-	return true
-}
-
-func persistPlan(ctx context.Context, todoID string, saved []dao.Item, plan domain.Plan, newID func() string, repos Repositories) error {
-	items, err := planTodoItems(todoID, saved, plan, newID)
-	if err != nil {
-		return err
-	}
-	return repos.Items().ReplacePlanPreservingCompletedWork(ctx, todoID, items)
+	return initialGenerator.generateInitialInTx(ctx, userID, day.Date, day.Timezone, todo, repos)
 }
 
 func planTodoItems(todoID string, saved []dao.Item, plan domain.Plan, newID func() string) ([]domain.TodoItem, error) {

@@ -34,8 +34,9 @@ type TodoRepository interface {
 type ItemRepository interface {
 	ListByTodoID(context.Context, string) ([]dao.Item, error)
 	Insert(context.Context, domain.TodoItem) (dao.Item, error)
+	DeleteAllByTodoID(context.Context, string) error
 	Save(context.Context, domain.TodoItem) (dao.Item, error)
-	ReplacePlanPreservingCompletedWork(context.Context, string, []domain.TodoItem) error
+	SavePositions(context.Context, string, []domain.TodoItem) error
 	DeleteByID(context.Context, string, string) error
 	HasTodayWork(context.Context, string, dao.WorkSourceRef) (bool, error)
 	HasCompletedWork(context.Context, dao.WorkSourceRef) (bool, error)

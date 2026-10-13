@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/Najah7/task2todaytodo/internal/application/allocation/dao"
@@ -45,49 +46,65 @@ func validateAvailability(ctx context.Context, repo Repository, userID string, c
 		}
 	}
 	dateFrom, dateThrough := calendar.DateOnly(minDate), calendar.DateOnly(maxDate)
-	exceptions, err := repo.ListSleepExceptions(ctx, userID, dateFrom, dateThrough)
+	exceptions, err := repo.ListActiveTimeExceptions(ctx, userID, dateFrom, dateThrough)
 	if err != nil {
 		return err
 	}
-	exceptionByDate := make(map[string]dao.SleepException, len(exceptions))
+	exceptionByDate := make(map[string]dao.ActiveTimeException, len(exceptions))
 	for _, exception := range exceptions {
 		exceptionByDate[exception.LocalDate.Format("2006-01-02")] = exception
 	}
-	wakeDefault, _ := time.Parse("15:04", profile.WakeUpTime)
-	bedtimeDefault, _ := time.Parse("15:04", profile.Bedtime)
-	awake := make(map[string]domain.Interval)
+	activeStartDefault, _ := time.Parse("15:04", profile.ActiveStartTime)
+	activeEndTimeDefault, _ := time.Parse("15:04", profile.ActiveEndTime)
+	activeWindow := make(map[string]domain.Interval)
 	for date := dateFrom; !date.After(dateThrough); date = date.AddDate(0, 0, 1) {
-		wake, bedtime, zone := wakeDefault, bedtimeDefault, profile.Timezone
+		wake, activeEndTime, zone := activeStartDefault, activeEndTimeDefault, profile.Timezone
 		var interval domain.Interval
 		if exception, ok := exceptionByDate[date.Format("2006-01-02")]; ok {
-			interval, err = domain.AwakeIntervalFromLocalPair(date, exception.WakeLocal, exception.BedtimeLocal, exception.Timezone)
+			interval, err = domain.ActiveWindowFromLocalPair(date, exception.ActiveStartLocal, exception.ActiveEndLocal, exception.Timezone)
 		} else {
-			interval, err = domain.AwakeInterval(date, wake, bedtime, zone)
+			interval, err = domain.ActiveWindow(date, wake, activeEndTime, zone)
 		}
 		if err != nil {
 			return err
 		}
-		awake[date.Format("2006-01-02")] = interval
+		activeWindow[date.Format("2006-01-02")] = interval
 	}
 	for _, candidate := range candidates {
-		candidateDate := calendar.DateOnly(candidate.StartAt.In(location))
-		candidateEndDate := calendar.DateOnly(candidate.EndAt.In(location))
-		for date := candidateDate.AddDate(0, 0, -2); !date.After(candidateEndDate.AddDate(0, 0, 2)); date = date.AddDate(0, 0, 1) {
-			previous, prevOK := awake[date.AddDate(0, 0, -1).Format("2006-01-02")]
-			current, curOK := awake[date.Format("2006-01-02")]
-			if !prevOK || !curOK {
-				continue
-			}
-			sleepStart, sleepEnd := previous.End, current.Start
-			if sleepEnd.After(sleepStart) && calendar.Overlaps(candidate.StartAt, candidate.EndAt, sleepStart, sleepEnd) {
-				return conflict("sleep_conflict", candidate)
-			}
+		if !withinActiveTime(candidate.StartAt, candidate.EndAt, activeWindow) {
+			return conflict("outside_active_time", candidate)
 		}
 	}
 	if err := validateRecurringRules(ctx, repo, userID, candidates, excludeRule, now); err != nil {
 		return err
 	}
 	return nil
+}
+
+func withinActiveTime(start, end time.Time, windows map[string]domain.Interval) bool {
+	if !end.After(start) {
+		return false
+	}
+	intervals := make([]domain.Interval, 0, len(windows))
+	for _, window := range windows {
+		if window.End.After(start) && window.Start.Before(end) {
+			intervals = append(intervals, window)
+		}
+	}
+	sort.Slice(intervals, func(i, j int) bool { return intervals[i].Start.Before(intervals[j].Start) })
+	cursor := start
+	for _, window := range intervals {
+		if window.Start.After(cursor) {
+			return false
+		}
+		if window.End.After(cursor) {
+			cursor = window.End
+		}
+		if !cursor.Before(end) {
+			return true
+		}
+	}
+	return false
 }
 
 func validateRecurringRules(ctx context.Context, repo Repository, userID string, candidates []domain.Occurrence, excludeRule string, now time.Time) error {

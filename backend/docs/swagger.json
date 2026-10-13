@@ -600,7 +600,7 @@
                 }
             }
         },
-        "/daily-sleep-exceptions/{local_date}": {
+        "/daily-active-time-exceptions/{local_date}": {
             "put": {
                 "security": [
                     {
@@ -616,7 +616,7 @@
                 "tags": [
                     "Allocations"
                 ],
-                "summary": "Set daily sleep exception",
+                "summary": "Set daily active_time exception",
                 "parameters": [
                     {
                         "type": "string",
@@ -633,12 +633,12 @@
                         "required": true
                     },
                     {
-                        "description": "Sleep exception",
+                        "description": "ActiveTime exception",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.DailySleepExceptionRequest"
+                            "$ref": "#/definitions/rest.DailyActiveTimeExceptionRequest"
                         }
                     }
                 ],
@@ -646,7 +646,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.SleepExceptionResponse"
+                            "$ref": "#/definitions/rest.ActiveTimeExceptionResponse"
                         }
                     },
                     "409": {
@@ -666,7 +666,7 @@
                 "tags": [
                     "Allocations"
                 ],
-                "summary": "Reset daily sleep exception",
+                "summary": "Reset daily active_time exception",
                 "parameters": [
                     {
                         "type": "string",
@@ -3385,12 +3385,6 @@
                         "name": "If-Match",
                         "in": "header",
                         "required": true
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Confirm regeneration of affected Todos",
-                        "name": "confirm_todo_regeneration",
-                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3573,12 +3567,6 @@
                         "name": "If-Match",
                         "in": "header",
                         "required": true
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Confirm regeneration of affected Todos",
-                        "name": "confirm_todo_regeneration",
-                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3870,12 +3858,6 @@
                         "name": "If-Match",
                         "in": "header",
                         "required": true
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Confirm regeneration of affected Todos",
-                        "name": "confirm_todo_regeneration",
-                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3917,12 +3899,6 @@
                         "name": "If-Match",
                         "in": "header",
                         "required": true
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Confirm regeneration of affected Todos",
-                        "name": "confirm_todo_regeneration",
-                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5075,7 +5051,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deletes a saved ActionItem. When removing the final child of a Task, an optional body atomically supplies the childless Task's manual estimate and regeneration confirmation.",
+                "description": "Deletes a saved ActionItem. When removing the final child of a Task, an optional body atomically supplies the childless Task's manual estimate.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5105,7 +5081,7 @@
                         "in": "header"
                     },
                     {
-                        "description": "Atomic last-child estimate and Todo regeneration confirmation",
+                        "description": "Optional last-child Task estimate",
                         "name": "request",
                         "in": "body",
                         "schema": {
@@ -5812,6 +5788,9 @@
                         "BearerAuth": []
                     }
                 ],
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "Todo"
                 ],
@@ -5833,8 +5812,38 @@
                             "$ref": "#/definitions/rest.TodoTodayResponse"
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
                     "412": {
                         "description": "Precondition Failed",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "Precondition Required",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrResponse"
                         }
@@ -5980,6 +5989,62 @@
                 }
             }
         },
+        "/users/me/active-time": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Update current user active_time settings",
+                "parameters": [
+                    {
+                        "description": "ActiveTime settings",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.UserActiveTimeSettingsUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users/me/minimum-gap": {
             "patch": {
                 "security": [
@@ -6084,62 +6149,6 @@
                 }
             }
         },
-        "/users/me/sleep": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Update current user sleep settings",
-                "parameters": [
-                    {
-                        "description": "Sleep settings",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/rest.UserSleepSettingsUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/rest.UserResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/users/me/timezone": {
             "patch": {
                 "security": [
@@ -6216,9 +6225,6 @@
                 "estimated_minutes"
             ],
             "properties": {
-                "confirm_todo_regeneration": {
-                    "type": "boolean"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -6241,9 +6247,6 @@
         "rest.ActionItemDeleteRequest": {
             "type": "object",
             "properties": {
-                "confirm_todo_regeneration": {
-                    "type": "boolean"
-                },
                 "manual_estimated_minutes": {
                     "type": "integer",
                     "maximum": 2147483647,
@@ -6337,9 +6340,6 @@
                     "minimum": 0,
                     "x-nullable": true
                 },
-                "confirm_todo_regeneration": {
-                    "type": "boolean"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -6355,6 +6355,43 @@
                     "type": "string"
                 },
                 "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ActiveTimeExceptionResponse": {
+            "type": "object",
+            "properties": {
+                "active_end_local": {
+                    "type": "string"
+                },
+                "active_start_local": {
+                    "type": "string"
+                },
+                "has_exception": {
+                    "type": "boolean"
+                },
+                "local_date": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "rest.ActiveTimeIntervalResponse": {
+            "type": "object",
+            "properties": {
+                "end_at": {
+                    "type": "string"
+                },
+                "local_date": {
+                    "type": "string"
+                },
+                "start_at": {
                     "type": "string"
                 }
             }
@@ -6399,11 +6436,17 @@
         "rest.AllocationDayResponse": {
             "type": "object",
             "properties": {
-                "allocated_minutes": {
+                "active_end_at": {
+                    "type": "string"
+                },
+                "active_revision": {
                     "type": "integer"
                 },
-                "bedtime_at": {
+                "active_start_at": {
                     "type": "string"
+                },
+                "allocated_minutes": {
+                    "type": "integer"
                 },
                 "date": {
                     "type": "string"
@@ -6411,14 +6454,8 @@
                 "free_minutes": {
                     "type": "integer"
                 },
-                "has_sleep_exception": {
+                "has_active_exception": {
                     "type": "boolean"
-                },
-                "sleep_revision": {
-                    "type": "integer"
-                },
-                "wake_at": {
-                    "type": "string"
                 }
             }
         },
@@ -6647,6 +6684,12 @@
         "rest.AllocationWeekResponse": {
             "type": "object",
             "properties": {
+                "active_intervals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.ActiveTimeIntervalResponse"
+                    }
+                },
                 "allocated_minutes": {
                     "type": "integer"
                 },
@@ -6678,12 +6721,6 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/rest.AllocationWeekProjectResponse"
-                    }
-                },
-                "sleep_intervals": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/rest.SleepIntervalResponse"
                     }
                 },
                 "target_minutes": {
@@ -6725,20 +6762,20 @@
                 }
             }
         },
-        "rest.DailySleepExceptionRequest": {
+        "rest.DailyActiveTimeExceptionRequest": {
             "type": "object",
             "properties": {
-                "bedtime_local": {
+                "active_end_local": {
                     "type": "string",
                     "example": "2026-10-13T01:00"
+                },
+                "active_start_local": {
+                    "type": "string",
+                    "example": "2026-10-12T07:00"
                 },
                 "timezone": {
                     "type": "string",
                     "example": "Asia/Tokyo"
-                },
-                "wake_local": {
-                    "type": "string",
-                    "example": "2026-10-12T07:00"
                 }
             }
         },
@@ -8194,9 +8231,6 @@
         "rest.ScheduleOccurrenceRescheduleRequest": {
             "type": "object",
             "properties": {
-                "confirm_todo_regeneration": {
-                    "type": "boolean"
-                },
                 "end_at": {
                     "type": "string"
                 },
@@ -8359,9 +8393,6 @@
                 "assignee_id": {
                     "type": "string"
                 },
-                "confirm_todo_regeneration": {
-                    "type": "boolean"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -8391,9 +8422,6 @@
                 },
                 "assignee_id": {
                     "type": "string"
-                },
-                "confirm_todo_regeneration": {
-                    "type": "boolean"
                 },
                 "description": {
                     "type": "string"
@@ -8599,9 +8627,6 @@
                 "assignee_id": {
                     "type": "string"
                 },
-                "confirm_todo_regeneration": {
-                    "type": "boolean"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -8655,43 +8680,6 @@
                     "type": "string"
                 },
                 "password": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.SleepExceptionResponse": {
-            "type": "object",
-            "properties": {
-                "bedtime_local": {
-                    "type": "string"
-                },
-                "has_exception": {
-                    "type": "boolean"
-                },
-                "local_date": {
-                    "type": "string"
-                },
-                "revision": {
-                    "type": "integer"
-                },
-                "timezone": {
-                    "type": "string"
-                },
-                "wake_local": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.SleepIntervalResponse": {
-            "type": "object",
-            "properties": {
-                "end_at": {
-                    "type": "string"
-                },
-                "local_date": {
-                    "type": "string"
-                },
-                "start_at": {
                     "type": "string"
                 }
             }
@@ -9020,9 +9008,6 @@
                     "type": "integer",
                     "x-nullable": true
                 },
-                "confirm_todo_regeneration": {
-                    "type": "boolean"
-                },
                 "description": {
                     "type": "string",
                     "x-nullable": true
@@ -9151,9 +9136,6 @@
                 "completed": {
                     "type": "boolean"
                 },
-                "completes_source": {
-                    "type": "boolean"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -9204,9 +9186,6 @@
                     "x-nullable": true
                 },
                 "source_completed": {
-                    "type": "boolean"
-                },
-                "started": {
                     "type": "boolean"
                 },
                 "task_id": {
@@ -9346,6 +9325,17 @@
                 }
             }
         },
+        "rest.UserActiveTimeSettingsUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "active_end_time": {
+                    "type": "string"
+                },
+                "active_start_time": {
+                    "type": "string"
+                }
+            }
+        },
         "rest.UserInfoUpdateRequest": {
             "type": "object",
             "properties": {
@@ -9381,7 +9371,10 @@
         "rest.UserResponse": {
             "type": "object",
             "properties": {
-                "bedtime": {
+                "active_end_time": {
+                    "type": "string"
+                },
+                "active_start_time": {
                     "type": "string"
                 },
                 "email": {
@@ -9397,20 +9390,6 @@
                     "type": "string"
                 },
                 "user_name": {
-                    "type": "string"
-                },
-                "wake_up_time": {
-                    "type": "string"
-                }
-            }
-        },
-        "rest.UserSleepSettingsUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "bedtime": {
-                    "type": "string"
-                },
-                "wake_up_time": {
                     "type": "string"
                 }
             }

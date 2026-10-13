@@ -94,15 +94,13 @@ func TestMetricsProjectTodoFramesSchedulesTimezoneDueDatesAndAccess(t *testing.T
 		return id
 	}
 
-	// Duplicate frames group once, and every frame must be complete. ActionItem
-	// completion comes from Todo frames while Schedule completion comes from the
-	// current occurrence row.
-	insertTaskFrame(todayTodo, frameTaskID, 0, true)
-	insertTaskFrame(todayTodo, frameTaskID, 1, false)
+	// Each source appears at most once per Todo. ActionItem and Task completion
+	// comes from the whole-source Todo row, while Schedule completion comes from
+	// the current occurrence row.
+	insertTaskFrame(todayTodo, frameTaskID, 0, false)
 	insertTaskFrame(yesterdayTodo, frameTaskID, 0, true)
 	groupedActionID := insertAction(frameActionTaskID, "Grouped action", 0, nil, false)
-	insertActionFrame(todayTodo, groupedActionID, 2, true)
-	insertActionFrame(todayTodo, groupedActionID, 3, true)
+	insertActionFrame(todayTodo, groupedActionID, 1, true)
 	insertTaskFrame(oldTodo, suppressedTaskID, 0, true)
 	suppressedActionID := insertAction(suppressedTaskID, "Suppressed action", 0, nil, true)
 	insertActionFrame(oldTodo, suppressedActionID, 1, true)
@@ -212,7 +210,7 @@ func TestMetricsProjectTodoFramesSchedulesTimezoneDueDatesAndAccess(t *testing.T
 	}
 	todayMetrics := completion.Days[6]
 	if todayMetrics.PlannedItems != 3 || todayMetrics.CompletedItems != 2 || todayMetrics.CompletionRatio == nil || *todayMetrics.CompletionRatio != (2.0/3.0) {
-		t.Fatalf("today=%+v, want 3 planned / 2 completed from grouped frames and current Schedule state", todayMetrics)
+		t.Fatalf("today=%+v, want one Task, one ActionItem, and one Schedule with two complete", todayMetrics)
 	}
 	oldMetrics := completion.Days[4]
 	if oldMetrics.PlannedItems != 1 || oldMetrics.CompletedItems != 0 {

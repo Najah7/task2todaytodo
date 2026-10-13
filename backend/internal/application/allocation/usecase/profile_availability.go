@@ -11,7 +11,7 @@ import (
 
 // ProfileAvailabilityValidator is bound to the same SQL transaction as the
 // auth write. It serializes by user before checking both persisted allocations
-// and future rule occurrences against the proposed sleep window.
+// and future rule occurrences against the proposed active_time window.
 type ProfileAvailabilityValidator struct {
 	repo Repository
 	now  func() time.Time
@@ -28,7 +28,7 @@ func (v *ProfileAvailabilityValidator) LockUser(ctx context.Context, userID stri
 	return v.repo.LockUser(ctx, userID)
 }
 
-func (v *ProfileAvailabilityValidator) ValidateUserProfile(ctx context.Context, userID, timezone, wakeUpTime, bedtime string) error {
+func (v *ProfileAvailabilityValidator) ValidateUserProfile(ctx context.Context, userID, timezone, activeStartTime, activeEndTime string) error {
 	if userID == "" {
 		return ErrInvalidRequest
 	}
@@ -46,30 +46,30 @@ func (v *ProfileAvailabilityValidator) ValidateUserProfile(ctx context.Context, 
 	if err != nil {
 		return err
 	}
-	exceptions, err := v.repo.ListSleepExceptions(ctx, userID, from.AddDate(0, 0, -2), through.AddDate(0, 0, 2))
+	exceptions, err := v.repo.ListActiveTimeExceptions(ctx, userID, from.AddDate(0, 0, -2), through.AddDate(0, 0, 2))
 	if err != nil {
 		return err
 	}
-	byDate := make(map[string]dao.SleepException, len(exceptions))
+	byDate := make(map[string]dao.ActiveTimeException, len(exceptions))
 	for _, item := range exceptions {
 		byDate[item.LocalDate.Format("2006-01-02")] = item
 	}
-	awake := make(map[string]domain.Interval, 406)
+	activeWindow := make(map[string]domain.Interval, 406)
 	for date := from.AddDate(0, 0, -2); !date.After(through.AddDate(0, 0, 2)); date = date.AddDate(0, 0, 1) {
-		wake, bed, zone := mustWall(wakeUpTime), mustWall(bedtime), timezone
+		wake, bed, zone := mustWall(activeStartTime), mustWall(activeEndTime), timezone
 		var interval domain.Interval
 		if item, ok := byDate[date.Format("2006-01-02")]; ok {
-			interval, err = domain.AwakeIntervalFromLocalPair(date, item.WakeLocal, item.BedtimeLocal, item.Timezone)
+			interval, err = domain.ActiveWindowFromLocalPair(date, item.ActiveStartLocal, item.ActiveEndLocal, item.Timezone)
 		} else {
-			interval, err = domain.AwakeInterval(date, wake, bed, zone)
+			interval, err = domain.ActiveWindow(date, wake, bed, zone)
 		}
 		if err != nil {
 			return ErrInvalidRequest
 		}
-		awake[date.Format("2006-01-02")] = interval
+		activeWindow[date.Format("2006-01-02")] = interval
 	}
 	for date := from.AddDate(0, 0, -1); !date.After(through.AddDate(0, 0, 1)); date = date.AddDate(0, 0, 1) {
-		previous, current := awake[date.AddDate(0, 0, -1).Format("2006-01-02")], awake[date.Format("2006-01-02")]
+		previous, current := activeWindow[date.AddDate(0, 0, -1).Format("2006-01-02")], activeWindow[date.Format("2006-01-02")]
 		if current.Start.Before(previous.End) {
 			return ErrInvalidRequest
 		}
@@ -80,44 +80,36 @@ func (v *ProfileAvailabilityValidator) ValidateUserProfile(ctx context.Context, 
 			return err
 		}
 		for _, occ := range occurrences {
-			if occ.StartAt.Before(now) {
-				continue
-			}
 			candidate := domain.Occurrence{RuleID: rule.ID, ProjectID: rule.ProjectID, OccurrenceDate: occ.OccurrenceDate, StartAt: occ.StartAt, EndAt: occ.EndAt, Timezone: rule.Timezone}
-			if err := validateAgainstAwake(candidate, awake); err != nil {
+			if err := validateWithinActiveTime(candidate, activeWindow); err != nil {
 				return err
 			}
 		}
 	}
-	allocations, err := v.repo.ListAllocations(ctx, userID, now, now.AddDate(0, 0, 401))
+	start, ok := calendar.ResolveForward(from.AddDate(0, 0, -2), time.Time{}, 0, location)
+	if !ok {
+		return ErrInvalidRequest
+	}
+	end, ok := calendar.ResolveForward(through.AddDate(0, 0, 3), time.Time{}, 0, location)
+	if !ok {
+		return ErrInvalidRequest
+	}
+	allocations, err := v.repo.ListAllocations(ctx, userID, start, end)
 	if err != nil {
 		return err
 	}
 	for _, allocation := range allocations {
-		// Profile changes only revalidate upcoming allocations. An allocation
-		// that has already started remains part of history even if it now
-		// overlaps the newly projected sleep window.
-		if allocation.StartAt.Before(now) {
-			continue
-		}
 		candidate := domain.Occurrence{RuleID: allocation.RuleID, ProjectID: allocation.ProjectID, OccurrenceDate: allocation.OccurrenceDate, StartAt: allocation.StartAt, EndAt: allocation.EndAt, Timezone: allocation.Timezone}
-		if err := validateAgainstAwake(candidate, awake); err != nil {
+		if err := validateWithinActiveTime(candidate, activeWindow); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func validateAgainstAwake(candidate domain.Occurrence, awake map[string]domain.Interval) error {
-	for date := calendar.DateOnly(candidate.StartAt).AddDate(0, 0, -2); !date.After(calendar.DateOnly(candidate.EndAt).AddDate(0, 0, 2)); date = date.AddDate(0, 0, 1) {
-		previous, ok1 := awake[date.AddDate(0, 0, -1).Format("2006-01-02")]
-		current, ok2 := awake[date.Format("2006-01-02")]
-		if !ok1 || !ok2 {
-			continue
-		}
-		if current.Start.After(previous.End) && calendar.Overlaps(candidate.StartAt, candidate.EndAt, previous.End, current.Start) {
-			return conflict("sleep_conflict", candidate)
-		}
+func validateWithinActiveTime(candidate domain.Occurrence, activeWindow map[string]domain.Interval) error {
+	if !withinActiveTime(candidate.StartAt, candidate.EndAt, activeWindow) {
+		return conflict("outside_active_time", candidate)
 	}
 	return nil
 }

@@ -13,9 +13,9 @@ SELECT timezone
 FROM users
 WHERE id = $1;
 
--- name: GetUserSleepSettings :one
-SELECT to_char(wake_up_time, 'HH24:MI') AS wake_up_time,
-       to_char(bedtime, 'HH24:MI') AS bedtime
+-- name: GetUserActiveTimeSettings :one
+SELECT to_char(active_start_time, 'HH24:MI') AS active_start_time,
+       to_char(active_end_time, 'HH24:MI') AS active_end_time
 FROM users
 WHERE id = sqlc.arg(user_id)::text;
 

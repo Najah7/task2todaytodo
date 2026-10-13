@@ -220,7 +220,8 @@ SELECT t.id,
        t.actual_minutes,
        task_has_permission(t.id, sqlc.arg(user_id)::text, 'task', 'update') AS can_update,
        (task_has_permission(t.id, sqlc.arg(user_id)::text, 'task', 'update') AND t.status <> 'done'
-        AND (p.id IS NULL OR p.status <> 'done')) AS can_add_to_today,
+        AND t.manual_estimated_minutes > 0 AND (p.id IS NULL OR p.status <> 'done')
+        AND NOT EXISTS (SELECT 1 FROM action_items child WHERE child.task_id=t.id AND child.deleted_at IS NULL)) AS can_add_to_today,
        task_has_permission(t.id, sqlc.arg(user_id)::text, 'task', 'read') AS can_read,
        (task_has_permission(t.id, sqlc.arg(user_id)::text, 'action_item', 'create') AND t.status <> 'done'
         AND (p.id IS NULL OR p.status <> 'done') AND NOT EXISTS (SELECT 1 FROM todo_items locked WHERE locked.kind='task' AND locked.task_id=t.id AND locked.completed=true)) AS can_add_action_item,
@@ -234,8 +235,6 @@ WHERE t.id = ANY(sqlc.arg(task_ids)::text[])
   AND t.deleted_at IS NULL
   AND t.assignee_id = sqlc.arg(user_id)::text
   AND task_has_permission(t.id, sqlc.arg(user_id)::text, 'task', 'read')
-  AND t.manual_estimated_minutes > 0
-  AND NOT EXISTS (SELECT 1 FROM action_items child WHERE child.task_id=t.id AND child.deleted_at IS NULL)
   AND (t.project_id IS NULL OR p.id IS NOT NULL)
 ORDER BY t.created_at ASC, t.id ASC;
 

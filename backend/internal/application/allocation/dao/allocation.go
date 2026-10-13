@@ -55,13 +55,13 @@ type Allocation struct {
 }
 
 type Day struct {
-	Date              time.Time
-	WakeAt            time.Time
-	BedtimeAt         time.Time
-	SleepRevision     int32
-	HasSleepException bool
-	AllocatedMinutes  int
-	FreeMinutes       int
+	Date               time.Time
+	ActiveStartAt      time.Time
+	ActiveEndAt        time.Time
+	ActiveRevision     int32
+	HasActiveException bool
+	AllocatedMinutes   int
+	FreeMinutes        int
 }
 
 type Interval struct {
@@ -82,7 +82,7 @@ type Week struct {
 	Projects          []Project
 	Allocations       []Allocation
 	Days              []Day
-	SleepIntervals    []Interval
+	ActiveIntervals   []Interval
 	AllocatedMinutes  int
 	TargetMinutes     int
 	DifferenceMinutes int
@@ -91,19 +91,19 @@ type Week struct {
 }
 
 type WeekSource struct {
-	WeekStart       time.Time
-	Timezone        string
-	WakeUpTime      string
-	Bedtime         string
-	Projects        []Project
-	Allocations     []Allocation
-	SleepExceptions []SleepException
+	WeekStart            time.Time
+	Timezone             string
+	ActiveStartTime      string
+	ActiveEndTime        string
+	Projects             []Project
+	Allocations          []Allocation
+	ActiveTimeExceptions []ActiveTimeException
 }
 
 type Profile struct {
-	Timezone   string
-	WakeUpTime string
-	Bedtime    string
+	Timezone        string
+	ActiveStartTime string
+	ActiveEndTime   string
 }
 
 type RuleCollection struct {
@@ -123,13 +123,13 @@ type PlanCollection struct {
 	Items    []PlanItem
 }
 
-type SleepException struct {
-	LocalDate    time.Time
-	WakeLocal    time.Time
-	BedtimeLocal time.Time
-	Timezone     string
-	Revision     int32
-	HasException bool
+type ActiveTimeException struct {
+	LocalDate        time.Time
+	ActiveStartLocal time.Time
+	ActiveEndLocal   time.Time
+	Timezone         string
+	Revision         int32
+	HasException     bool
 }
 
 type PauseInterval struct {

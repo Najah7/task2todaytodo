@@ -34,7 +34,7 @@ func (q *Queries) GetTimezoneChoices(ctx context.Context) ([]string, error) {
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
+SELECT id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, active_start_time, active_end_time, minimum_gap_minutes
 FROM users
 WHERE id = $1
 `
@@ -53,15 +53,34 @@ func (q *Queries) GetUser(ctx context.Context, id string) (User, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Timezone,
-		&i.WakeUpTime,
-		&i.Bedtime,
+		&i.ActiveStartTime,
+		&i.ActiveEndTime,
 		&i.MinimumGapMinutes,
 	)
 	return i, err
 }
 
+const getUserActiveTimeSettings = `-- name: GetUserActiveTimeSettings :one
+SELECT to_char(active_start_time, 'HH24:MI') AS active_start_time,
+       to_char(active_end_time, 'HH24:MI') AS active_end_time
+FROM users
+WHERE id = $1::text
+`
+
+type GetUserActiveTimeSettingsRow struct {
+	ActiveStartTime string
+	ActiveEndTime   string
+}
+
+func (q *Queries) GetUserActiveTimeSettings(ctx context.Context, userID string) (GetUserActiveTimeSettingsRow, error) {
+	row := q.db.QueryRow(ctx, getUserActiveTimeSettings, userID)
+	var i GetUserActiveTimeSettingsRow
+	err := row.Scan(&i.ActiveStartTime, &i.ActiveEndTime)
+	return i, err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
+SELECT id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, active_start_time, active_end_time, minimum_gap_minutes
 FROM users
 WHERE email = $1
 `
@@ -80,29 +99,10 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Timezone,
-		&i.WakeUpTime,
-		&i.Bedtime,
+		&i.ActiveStartTime,
+		&i.ActiveEndTime,
 		&i.MinimumGapMinutes,
 	)
-	return i, err
-}
-
-const getUserSleepSettings = `-- name: GetUserSleepSettings :one
-SELECT to_char(wake_up_time, 'HH24:MI') AS wake_up_time,
-       to_char(bedtime, 'HH24:MI') AS bedtime
-FROM users
-WHERE id = $1::text
-`
-
-type GetUserSleepSettingsRow struct {
-	WakeUpTime string
-	Bedtime    string
-}
-
-func (q *Queries) GetUserSleepSettings(ctx context.Context, userID string) (GetUserSleepSettingsRow, error) {
-	row := q.db.QueryRow(ctx, getUserSleepSettings, userID)
-	var i GetUserSleepSettingsRow
-	err := row.Scan(&i.WakeUpTime, &i.Bedtime)
 	return i, err
 }
 

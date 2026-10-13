@@ -12,14 +12,14 @@ var utc = time.UTC
 func at(hour, minute int) time.Time { return time.Date(2026, 10, 12, hour, minute, 0, 0, utc) }
 
 func baseInput() Input {
-	return Input{Day: Interval{at(9, 0), at(17, 0)}, GapMinutes: 5, Today: at(0, 0), Location: utc}
+	return Input{Day: Interval{at(9, 0), at(17, 0)}, ActiveTime: []Interval{{at(7, 0), at(23, 0)}}, GapMinutes: 5, Today: at(0, 0), Location: utc}
 }
 
 func candidate(id, project string, estimate, priority int) Candidate {
 	return Candidate{Kind: FrameActionItem, ID: id, ProjectID: project, EstimatedMinutes: estimate, PriorityWeight: priority, TaskStatus: "open", CreatedAt: at(8, 0)}
 }
 
-func TestStartedTaskAndProjectlessWorkShareSlackInAllowedWindow(t *testing.T) {
+func TestWholeTaskAndProjectlessWorkFitContiguousActiveWindow(t *testing.T) {
 	in := baseInput()
 	in.Day = Interval{at(7, 0), at(9, 0)}
 	in.Candidates = []Candidate{
@@ -32,13 +32,35 @@ func TestStartedTaskAndProjectlessWorkShareSlackInAllowedWindow(t *testing.T) {
 	}
 	started := firstFrame(plan.Frames, "started")
 	action := firstFrame(plan.Frames, "new-action")
-	if started.Start == nil || !started.Start.Equal(at(7, 0)) || !started.End.Equal(at(7, 30)) {
-		t.Fatalf("started=%+v", started)
+	if started.Start == nil || !started.Start.Equal(at(7, 35)) || !started.End.Equal(at(8, 5)) {
+		t.Fatalf("task=%+v, want one contiguous 07:35-08:05 window after the higher-scored action", started)
 	}
-	if action.Start == nil || !action.Start.Equal(at(8, 30)) || !action.End.Equal(at(9, 0)) {
-		t.Fatalf("projectless=%+v, want equal slack spread at 08:30-09:00", action)
+	if action.Start == nil || !action.Start.Equal(at(7, 0)) || !action.End.Equal(at(7, 30)) {
+		t.Fatalf("projectless=%+v, want the earliest contiguous 07:00-07:30 window", action)
 	}
 	assertActionsSeparated(t, plan.Frames, in.GapMinutes)
+}
+
+func TestProjectlessChildlessTaskCanFitBesideTimedSchedule(t *testing.T) {
+	in := baseInput()
+	in.Schedules = []Schedule{{
+		ID: "rule/2026-10-12", RuleID: "rule", OccurrenceDate: at(0, 0),
+		Interval: Interval{at(9, 0), at(10, 0)},
+	}}
+	in.Candidates = []Candidate{{
+		Kind: FrameTask, ID: "standalone", EstimatedMinutes: 45, TaskStatus: "open", CreatedAt: at(8, 0),
+	}}
+	plan, err := Generate(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if countSource(plan.Frames, "standalone") != 1 {
+		t.Fatalf("frames=%+v, want the whole standalone Task beside the fixed Schedule", plan.Frames)
+	}
+	frame := firstFrame(plan.Frames, "standalone")
+	if frame.Start == nil || !frame.Start.Equal(at(10, 5)) || !frame.End.Equal(at(10, 50)) {
+		t.Fatalf("Task frame=%+v, want earliest 10:05-10:50 fit after the Schedule gap", frame)
+	}
 }
 
 func TestScoreUsesUrgencyBoundaries(t *testing.T) {
@@ -130,54 +152,6 @@ func TestTaskAndActionItemShareIDWithoutSourceCollision(t *testing.T) {
 	}
 }
 
-func TestGenerateRetainsStartedPendingWorkAndExcludesUnstartedAndDone(t *testing.T) {
-	in := baseInput()
-	in.Allocations = []ProjectAllocation{{ProjectID: "p", Interval: Interval{at(9, 0), at(12, 0)}}}
-	pending := candidate("pending", "p", 60, 50)
-	pending.CompletedBeforeDayMinutes = 30
-	pending.HasCompletedFrame = true
-	pending.TaskStatus = "pending"
-	waiting := candidate("waiting", "p", 30, 25)
-	waiting.HasCompletedFrame = true
-	waiting.TaskStatus = "waiting_on_others"
-	pendingNew := candidate("pending-new", "p", 20, 15)
-	pendingNew.TaskStatus = "pending"
-	waitingNew := candidate("waiting-new", "p", 20, 10)
-	waitingNew.TaskStatus = "waiting_on_others"
-	done := candidate("done", "p", 30, 20)
-	done.CompletedBeforeDayMinutes = 10
-	done.HasCompletedFrame = true
-	done.TaskStatus = "done"
-	in.Candidates = []Candidate{pending, waiting, pendingNew, waitingNew, done}
-	automatic, err := Generate(in)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, sourceID := range []string{"pending", "waiting"} {
-		if countSource(automatic.Frames, sourceID) == 0 {
-			t.Fatalf("automatic plan omitted started %s source: %+v", sourceID, automatic.Frames)
-		}
-	}
-	for _, sourceID := range []string{"pending-new", "waiting-new", "done"} {
-		if countSource(automatic.Frames, sourceID) != 0 {
-			t.Fatalf("automatic plan included unstarted or done %s source: %+v", sourceID, automatic.Frames)
-		}
-	}
-	if got := totalSourceMinutes(automatic.Frames, "pending"); got != 30 {
-		t.Fatalf("started pending remainder=%d, want 30 minutes", got)
-	}
-	if got := totalSourceMinutes(automatic.Frames, "waiting"); got != 30 {
-		t.Fatalf("started waiting remainder=%d, want 30 minutes", got)
-	}
-	manual, err := Reflow(ReflowInput{Input: in, Order: []OrderedItem{{Kind: FrameActionItem, SourceID: "pending"}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if countSource(manual.Frames, "pending") != 1 {
-		t.Fatalf("manual reflow omitted pending task: %+v", manual.Frames)
-	}
-}
-
 func totalSourceMinutes(frames []Frame, sourceID string) int {
 	total := 0
 	for _, frame := range frames {
@@ -186,131 +160,6 @@ func totalSourceMinutes(frames []Frame, sourceID string) int {
 		}
 	}
 	return total
-}
-
-func TestGenerateDistributesRemainingAllocationTimeAcrossActionGaps(t *testing.T) {
-	in := baseInput()
-	in.Allocations = []ProjectAllocation{{ProjectID: "p", Interval: Interval{at(9, 0), at(10, 30)}}}
-	in.Candidates = []Candidate{candidate("a", "p", 30, 50), candidate("b", "p", 30, 25)}
-	plan, err := Generate(in)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var starts []time.Time
-	for _, f := range plan.Frames {
-		if f.Kind == FrameActionItem && f.Start != nil {
-			starts = append(starts, *f.Start)
-		}
-	}
-	if len(starts) != 2 || !starts[0].Equal(at(9, 0)) || !starts[1].Equal(at(10, 0)) {
-		t.Fatalf("starts=%v, want 09:00 and 10:00", starts)
-	}
-}
-
-func TestGenerateStartedSlackDistributionAvoidsNormalAllocationFrames(t *testing.T) {
-	in := baseInput()
-	in.Candidates = []Candidate{
-		startedCandidate("a", 30), startedCandidate("b", 30), startedCandidate("c", 30),
-		candidate("normal", "p", 60, 50),
-	}
-	in.Allocations = []ProjectAllocation{{ProjectID: "p", Interval: Interval{at(12, 0), at(13, 0)}}}
-	plan, err := Generate(in)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assertActionsSeparated(t, plan.Frames, in.GapMinutes)
-	var normal Frame
-	for _, f := range plan.Frames {
-		if f.SourceID == "normal" {
-			normal = f
-		}
-	}
-	if normal.Start == nil || !normal.Start.Equal(at(12, 0)) || !normal.End.Equal(at(13, 0)) {
-		t.Fatalf("normal allocation moved or got overlapped: %+v", normal)
-	}
-}
-
-func TestGenerateAllocationSlackTreatsCrossingStartedFrameAsObstacle(t *testing.T) {
-	in := baseInput()
-	in.Candidates = []Candidate{
-		startedCandidate("started", 90),
-		candidate("normal-a", "p", 30, 50),
-		candidate("normal-b", "p", 30, 25),
-		candidate("other-project", "q", 30, 10),
-	}
-	in.Sleep = []Interval{{at(15, 0), at(16, 0)}}
-	in.Schedules = []Schedule{{ID: "schedule", Interval: Interval{at(13, 0), at(13, 30)}}}
-	in.Allocations = []ProjectAllocation{
-		{ProjectID: "p", Interval: Interval{at(10, 0), at(12, 0)}},
-		{ProjectID: "q", Interval: Interval{at(12, 0), at(13, 0)}},
-	}
-	plan, err := Generate(in)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assertActionsSeparated(t, plan.Frames, in.GapMinutes)
-	frames := make(map[string]Frame)
-	for _, frame := range plan.Frames {
-		if frame.Kind == FrameActionItem && frame.Start != nil {
-			frames[frame.SourceID] = frame
-		}
-	}
-	if got := frames["started"]; got.Start == nil || !got.Start.Equal(at(9, 0)) || !got.End.Equal(at(10, 30)) {
-		t.Fatalf("started crossing allocation moved or collided: %+v", got)
-	}
-	for _, id := range []string{"normal-a", "normal-b"} {
-		got := frames[id]
-		if got.Start == nil || got.Start.Before(at(10, 35)) || got.End.After(at(12, 0)) {
-			t.Fatalf("normal frame escaped allocation or crossed started frame: %+v", got)
-		}
-	}
-}
-
-func TestStartedWorkOverridesProjectAndSplitsAroundSleepAndSchedule(t *testing.T) {
-	in := baseInput()
-	in.GapMinutes = 5
-	in.Sleep = []Interval{{at(10, 0), at(11, 0)}}
-	in.Schedules = []Schedule{{ID: "s", Interval: Interval{at(12, 0), at(13, 0)}}}
-	started := candidate("started", "", 240, 0)
-	started.HasCompletedFrame = true
-	in.Candidates = []Candidate{started}
-	plan, err := Generate(in)
-	if err != nil {
-		t.Fatal(err)
-	}
-	frames := framesFor(plan.Frames, "started")
-	if len(frames) < 2 {
-		t.Fatalf("expected split around blocked intervals, got %+v", frames)
-	}
-	var total int
-	for _, frame := range frames {
-		total += frame.PlannedMinutes
-		if frame.Start == nil || frame.End == nil {
-			t.Fatalf("unexpected overflow for 240 minutes: %+v", frame)
-		}
-		if overlaps(*frame.Start, *frame.End, at(10, 0), at(11, 0)) || overlaps(*frame.Start, *frame.End, at(11, 55), at(13, 5)) {
-			t.Fatalf("frame overlaps sleep/schedule gap: %+v", frame)
-		}
-	}
-	if total != 240 {
-		t.Fatalf("planned total=%d, want 240", total)
-	}
-}
-
-func TestGenerateKeepsStartedOverflowAsUnscheduledPositiveWork(t *testing.T) {
-	in := baseInput()
-	in.Day = Interval{at(9, 0), at(10, 0)}
-	c := candidate("started", "", 90, 0)
-	c.HasCompletedFrame = true
-	in.Candidates = []Candidate{c}
-	plan, err := Generate(in)
-	if err != nil {
-		t.Fatal(err)
-	}
-	frames := framesFor(plan.Frames, "started")
-	if len(frames) != 2 || frames[0].PlannedMinutes != 60 || frames[1].PlannedMinutes != 30 || frames[1].Start != nil || frames[1].End != nil {
-		t.Fatalf("frames=%+v", frames)
-	}
 }
 
 func TestGapAndCompletedFramesAreFixed(t *testing.T) {
@@ -346,108 +195,11 @@ func TestAllDayScheduleSuppressesWorkAndKeepsCompletedHistorySeparate(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(plan.Frames) != 1 || plan.Frames[0].Kind != FrameSchedule {
-		t.Fatalf("all-day visible frames=%+v", plan.Frames)
+	if len(plan.Frames) != 2 || plan.Frames[0].Kind != FrameSchedule || plan.Frames[1].ID != "history" {
+		t.Fatalf("all-day saved frames=%+v, want schedule and preserved completed work", plan.Frames)
 	}
 	if len(plan.PreservedCompletedFrames) != 1 || plan.PreservedCompletedFrames[0].ID != "history" {
 		t.Fatalf("history was not preserved: %+v", plan.PreservedCompletedFrames)
-	}
-}
-
-func TestReflowScheduleAnchorAndAllocationBypass(t *testing.T) {
-	in := baseInput()
-	in.Allocations = nil
-	in.Schedules = []Schedule{{ID: "s", Interval: Interval{at(12, 0), at(13, 0)}}}
-	in.Candidates = []Candidate{candidate("a", "", 90, 1), candidate("b", "", 30, 1)}
-	plan, err := Reflow(ReflowInput{Input: in, Order: []OrderedItem{{Kind: FrameSchedule, ScheduleID: "s"}, {Kind: FrameActionItem, SourceID: "a"}, {Kind: FrameActionItem, SourceID: "b"}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, f := range plan.Frames {
-		if f.Kind == FrameActionItem && f.SourceID == "a" && f.Start != nil && f.Start.Before(at(13, 5)) {
-			t.Fatalf("post-schedule work moved before anchor: %+v", f)
-		}
-	}
-	if countSource(plan.Frames, "a") == 0 || countSource(plan.Frames, "b") == 0 {
-		t.Fatalf("manual items missing: %+v", plan.Frames)
-	}
-}
-
-func TestReflowPreservesFrameUnitsAndOriginalIDOnlyOnFirstSplit(t *testing.T) {
-	in := baseInput()
-	in.Day = Interval{at(9, 0), at(10, 0)}
-	in.Schedules = []Schedule{{ID: "s", Interval: Interval{at(9, 30), at(9, 40)}}}
-	c := candidate("a", "", 30, 1)
-	c.HasCompletedFrame = true
-	in.Candidates = []Candidate{c}
-	plan, err := Reflow(ReflowInput{Input: in, Order: []OrderedItem{{Kind: FrameActionItem, FrameID: "old-a", SourceID: "a", PlannedMinutes: 30}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	frames := framesFor(plan.Frames, "a")
-	if len(frames) != 2 {
-		t.Fatalf("expected split at schedule, got %+v", frames)
-	}
-	if frames[0].OriginalFrameID != "old-a" || frames[1].OriginalFrameID != "" {
-		t.Fatalf("original ID must map to first segment only: %+v", frames)
-	}
-}
-
-func TestReflowKeepsRepeatedSourceFramesInRequestedOrder(t *testing.T) {
-	in := baseInput()
-	in.Schedules = []Schedule{{ID: "s", Interval: Interval{at(10, 0), at(10, 15)}}}
-	c := candidate("a", "", 30, 1)
-	c.HasCompletedFrame = true
-	in.Candidates = []Candidate{c, candidate("b", "", 15, 1)}
-	plan, err := Reflow(ReflowInput{Input: in, Order: []OrderedItem{
-		{Kind: FrameActionItem, FrameID: "a-first", SourceID: "a", PlannedMinutes: 15},
-		{Kind: FrameSchedule, ScheduleID: "s"},
-		{Kind: FrameActionItem, FrameID: "a-second", SourceID: "a", PlannedMinutes: 15},
-		{Kind: FrameActionItem, FrameID: "b-one", SourceID: "b", PlannedMinutes: 15},
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var bFrame Frame
-	var aCount, bCount int
-	for _, f := range plan.Frames {
-		if f.SourceID == "a" && f.Kind == FrameActionItem {
-			aCount++
-		}
-		if f.SourceID == "b" && f.Kind == FrameActionItem {
-			bCount++
-			bFrame = f
-		}
-	}
-	if aCount != 2 || bCount != 1 {
-		t.Fatalf("frame counts A=%d B=%d: %+v", aCount, bCount, plan.Frames)
-	}
-	var aAfterSchedule time.Time
-	for _, f := range plan.Frames {
-		if f.OriginalFrameID == "a-second" && f.Start != nil {
-			aAfterSchedule = *f.Start
-		}
-	}
-	if aAfterSchedule.Before(at(10, 20)) || bFrame.Start == nil || !bFrame.Start.After(aAfterSchedule) {
-		t.Fatalf("requested frame order lost: %+v", plan.Frames)
-	}
-}
-
-func TestReflowCompletedFrameActsAsAnchor(t *testing.T) {
-	in := baseInput()
-	start, end := at(10, 0), at(10, 30)
-	in.CompletedFrames = []Frame{{ID: "done", Kind: FrameActionItem, SourceID: "a", PlannedMinutes: 30, Start: &start, End: &end, Completed: true}}
-	c := candidate("a", "", 60, 1)
-	c.HasCompletedFrame = true
-	in.Candidates = []Candidate{c}
-	plan, err := Reflow(ReflowInput{Input: in, Order: []OrderedItem{{Kind: FrameActionItem, FrameID: "done", SourceID: "a", PlannedMinutes: 30}, {Kind: FrameActionItem, FrameID: "todo", SourceID: "a", PlannedMinutes: 30}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, f := range plan.Frames {
-		if f.OriginalFrameID == "todo" && f.Start != nil && f.Start.Before(at(10, 35)) {
-			t.Fatalf("work moved before completed anchor: %+v", f)
-		}
 	}
 }
 
@@ -506,8 +258,8 @@ func TestGeneratedPlanInvariantsAcrossFixedSeedInputs(t *testing.T) {
 	rng := rand.New(rand.NewSource(20261012))
 	for sample := 0; sample < 30; sample++ {
 		in := Input{
-			Day:   Interval{at(9, 0), at(17, 0)},
-			Sleep: []Interval{{at(12, 0), at(12, 35)}, {at(15, 30), at(16, 0)}},
+			Day:        Interval{at(9, 0), at(17, 0)},
+			ActiveTime: []Interval{{at(12, 0), at(12, 35)}, {at(15, 30), at(16, 0)}},
 			Schedules: []Schedule{
 				{ID: "s1", Interval: Interval{at(10, 0), at(10, 40)}},
 				{ID: "s2", Interval: Interval{at(13, 0), at(14, 0)}},
@@ -554,13 +306,18 @@ func TestGeneratedPlanInvariantsAcrossFixedSeedInputs(t *testing.T) {
 			if f.Start.Before(in.Day.Start) || f.End.After(in.Day.End) {
 				t.Fatalf("sample %d action escaped day: %+v", sample, f)
 			}
-			for _, sleep := range in.Sleep {
-				if f.Start.Before(sleep.End) && sleep.Start.Before(*f.End) {
-					t.Fatalf("sample %d action overlaps sleep: %+v / %+v", sample, f, sleep)
+			withinActive := false
+			for _, activeInterval := range in.ActiveTime {
+				if !f.Start.Before(activeInterval.Start) && !f.End.After(activeInterval.End) {
+					withinActive = true
+					break
 				}
 			}
+			if !withinActive {
+				t.Fatalf("sample %d action is outside active time: %+v / %+v", sample, f, in.ActiveTime)
+			}
 			c := candidateByID[f.SourceID]
-			if !c.HasCompletedFrame { // Untouched items must stay inside own Project allocations.
+			if c.ProjectID != "" { // Project work stays inside one of its allocations.
 				within := false
 				for _, allocation := range in.Allocations {
 					if allocation.ProjectID == c.ProjectID && !f.Start.Before(allocation.Interval.Start) && !f.End.After(allocation.Interval.End) {
@@ -575,19 +332,14 @@ func TestGeneratedPlanInvariantsAcrossFixedSeedInputs(t *testing.T) {
 		}
 		for _, c := range in.Candidates {
 			want := 0
-			if c.TaskStatus == "open" || c.TaskStatus == "in_progress" {
-				if c.HasCompletedFrame {
-					want = c.EstimatedMinutes
-				}
-				if !c.HasCompletedFrame && c.ProjectID != "" && gotMinutes[c.ID] != 0 {
-					want = c.EstimatedMinutes
-				}
+			if (c.TaskStatus == "open" || c.TaskStatus == "in_progress") && gotMinutes[c.ID] > 0 {
+				want = c.EstimatedMinutes
 			}
 			if gotMinutes[c.ID] != want {
 				t.Fatalf("sample %d candidate %s planned=%d want=%d", sample, c.ID, gotMinutes[c.ID], want)
 			}
-			if !c.HasCompletedFrame && len(gotFrames[c.ID]) > 1 {
-				t.Fatalf("sample %d untouched candidate %s split: %+v", sample, c.ID, gotFrames[c.ID])
+			if len(gotFrames[c.ID]) > 1 {
+				t.Fatalf("sample %d candidate %s split: %+v", sample, c.ID, gotFrames[c.ID])
 			}
 		}
 	}

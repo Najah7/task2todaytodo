@@ -57,8 +57,8 @@ func newAllocationHTTP(t *testing.T) *allocationHTTP {
 		r.Post("/allocations", handlers.Allocation.Create)
 		r.Patch("/allocations/{rule_id}/{occurrence_date}", handlers.Allocation.Update)
 		r.Delete("/allocations/{rule_id}/{occurrence_date}", handlers.Allocation.Delete)
-		r.Put("/daily-sleep-exceptions/{local_date}", handlers.Allocation.PutSleepException)
-		r.Delete("/daily-sleep-exceptions/{local_date}", handlers.Allocation.DeleteSleepException)
+		r.Put("/daily-active-time-exceptions/{local_date}", handlers.Allocation.PutActiveTimeException)
+		r.Delete("/daily-active-time-exceptions/{local_date}", handlers.Allocation.DeleteActiveTimeException)
 		r.Post("/admin/jobs/prefill-allocations:run", handlers.Admin.RunAllocationPrefill)
 		r.Get("/admin/operations/{id}", handlers.Admin.GetOperation)
 		r.Post("/projects", handlers.Project.Create)
@@ -67,7 +67,7 @@ func newAllocationHTTP(t *testing.T) *allocationHTTP {
 		r.Post("/projects/{id}:complete", handlers.Project.Complete)
 		r.Post("/projects/{id}:reopen", handlers.Project.Reopen)
 		r.Post("/projects/{id}/schedules", handlers.Schedule.CreateProjectRule)
-		r.Patch("/users/me/sleep", handlers.User.UpdateSleepSettings)
+		r.Patch("/users/me/active-time", handlers.User.UpdateActiveTimeSettings)
 		r.Patch("/users/me/minimum-gap", handlers.User.UpdateMinimumGap)
 	})
 	api := &allocationHTTP{pool: pool, router: router, closeApp: closeApp}
@@ -163,7 +163,7 @@ func (api *allocationHTTP) registerCleanup(t *testing.T) {
 		}
 		if len(users) > 0 {
 			exec(`DELETE FROM admin_operations WHERE requested_by = ANY($1::text[])`, users)
-			exec(`DELETE FROM daily_sleep_exceptions WHERE user_id = ANY($1::text[])`, users)
+			exec(`DELETE FROM daily_active_time_exceptions WHERE user_id = ANY($1::text[])`, users)
 			exec(`DELETE FROM project_time_allocation_exceptions WHERE user_id = ANY($1::text[])`, users)
 			exec(`DELETE FROM project_time_allocations WHERE user_id = ANY($1::text[])`, users)
 			exec(`DELETE FROM project_time_allocation_pause_intervals WHERE rule_id IN (SELECT id FROM project_time_allocation_rules WHERE user_id = ANY($1::text[]))`, users)

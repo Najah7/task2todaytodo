@@ -127,7 +127,7 @@ func main() {
 		auth.Get("/users/me", handler.User.Get)
 		auth.Patch("/users/me", handler.User.UpdateBasicInfo)
 		auth.Patch("/users/me/timezone", handler.User.UpdateTimezone)
-		auth.Patch("/users/me/sleep", handler.User.UpdateSleepSettings)
+		auth.Patch("/users/me/active-time", handler.User.UpdateActiveTimeSettings)
 		auth.Patch("/users/me/minimum-gap", handler.User.UpdateMinimumGap)
 		auth.Patch("/users/me/password", handler.User.UpdatePassword)
 
@@ -139,7 +139,7 @@ func main() {
 
 		// Today's generated execution plan
 		auth.Get("/today-todo", handler.Todos.GetToday)
-		auth.Post("/today-todo:regenerate", handler.Todos.Regenerate)
+		auth.Post("/today-todo:regenerate", handler.Todos.RegenerateToday)
 		auth.Post("/today-todo/action-items/{actionItemId}", handler.Todos.AddActionItem)
 		auth.Post("/today-todo/tasks/{taskId}", handler.Todos.AddTask)
 		auth.Post("/today-todo:reorder", handler.Todos.Reorder)
@@ -196,8 +196,8 @@ func main() {
 		auth.Post("/allocations", handler.Allocation.Create)
 		auth.Patch("/allocations/{rule_id}/{occurrence_date}", handler.Allocation.Update)
 		auth.Delete("/allocations/{rule_id}/{occurrence_date}", handler.Allocation.Delete)
-		auth.Put("/daily-sleep-exceptions/{local_date}", handler.Allocation.PutSleepException)
-		auth.Delete("/daily-sleep-exceptions/{local_date}", handler.Allocation.DeleteSleepException)
+		auth.Put("/daily-active-time-exceptions/{local_date}", handler.Allocation.PutActiveTimeException)
+		auth.Delete("/daily-active-time-exceptions/{local_date}", handler.Allocation.DeleteActiveTimeException)
 
 		// Tasks
 		auth.Get("/tasks", handler.Task.List)

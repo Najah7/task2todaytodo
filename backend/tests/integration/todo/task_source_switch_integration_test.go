@@ -5,9 +5,8 @@ package todo_test
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"encoding/json"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -38,42 +37,31 @@ func mountTaskSourceMutationRoutes(t *testing.T, fixture *todoFixture) {
 	router.Delete("/tasks/{taskId}/action-items/{id}", actionItems.Delete)
 }
 
-func TestTaskManualEstimateLocksAfterDoneOrCompletedTaskHistory(t *testing.T) {
+func TestTaskManualEstimateLocksAfterDone(t *testing.T) {
 	fixture := newTodoFixture(t, "UTC", 60)
 	mountTaskSourceMutationRoutes(t, fixture)
-	doneTaskID, startedTaskID := ulid.Make().String(), ulid.Make().String()
-	if _, err := fixture.pool.Exec(t.Context(), `INSERT INTO tasks(id,user_id,assignee_id,title,manual_estimated_minutes,priority,status,changed_by) VALUES($1,$2,$2,'Done manual estimate',30,'high','done',$2),($3,$2,$2,'Started manual estimate',30,'high','open',$2)`, doneTaskID, fixture.userID, startedTaskID); err != nil {
-		t.Fatal(err)
-	}
-	previousDate := time.Now().UTC().AddDate(0, 0, -1).Format("2006-01-02")
-	todoID, frameID := ulid.Make().String(), ulid.Make().String()
-	if _, err := fixture.pool.Exec(t.Context(), `INSERT INTO todos(id,user_id,todo_date,timezone) VALUES($1,$2,$3,'UTC')`, todoID, fixture.userID, previousDate); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := fixture.pool.Exec(t.Context(), `INSERT INTO todo_items(id,todo_id,kind,task_id,planned_minutes,completed,position) VALUES($1,$2,'task',$3,10,true,0)`, frameID, todoID, startedTaskID); err != nil {
+	doneTaskID := ulid.Make().String()
+	if _, err := fixture.pool.Exec(t.Context(), `INSERT INTO tasks(id,user_id,assignee_id,title,manual_estimated_minutes,priority,status,changed_by) VALUES($1,$2,$2,'Done manual estimate',30,'high','done',$2)`, doneTaskID, fixture.userID); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_, _ = fixture.pool.Exec(ctx, `DELETE FROM tasks WHERE id=ANY($1::text[])`, []string{doneTaskID, startedTaskID})
+		_, _ = fixture.pool.Exec(ctx, `DELETE FROM tasks WHERE id=$1`, doneTaskID)
 	})
-	for _, taskID := range []string{doneTaskID, startedTaskID} {
-		revision := taskRevision(t, fixture, taskID)
-		response := fixture.request(t, http.MethodPatch, "/tasks/"+taskID, `{"manual_estimated_minutes":45}`, revision)
-		if response.Code != http.StatusConflict {
-			t.Errorf("PATCH manual estimate for done/started Task %s status/body=%d/%s; want 409", taskID, response.Code, response.Body.String())
-		}
-		var estimate int
-		if err := fixture.pool.QueryRow(t.Context(), `SELECT manual_estimated_minutes FROM tasks WHERE id=$1`, taskID).Scan(&estimate); err != nil {
-			t.Fatal(err)
-		}
-		if estimate != 30 {
-			t.Errorf("locked Task %s estimate changed to %d; want 30", taskID, estimate)
-		}
+	revision := taskRevision(t, fixture, doneTaskID)
+	response := fixture.request(t, http.MethodPatch, "/tasks/"+doneTaskID, `{"manual_estimated_minutes":45}`, revision)
+	if response.Code != http.StatusConflict {
+		t.Fatalf("PATCH manual estimate for done Task status/body=%d/%s; want 409", response.Code, response.Body.String())
+	}
+	var estimate int
+	if err := fixture.pool.QueryRow(t.Context(), `SELECT manual_estimated_minutes FROM tasks WHERE id=$1`, doneTaskID).Scan(&estimate); err != nil {
+		t.Fatal(err)
+	}
+	if estimate != 30 {
+		t.Fatalf("done Task estimate changed to %d; want 30", estimate)
 	}
 }
-
 func taskRevision(t *testing.T, fixture *todoFixture, taskID string) int32 {
 	t.Helper()
 	var revision int32
@@ -83,11 +71,11 @@ func taskRevision(t *testing.T, fixture *todoFixture, taskID string) int32 {
 	return revision
 }
 
-func TestFirstActionItemRequiresConfirmationBeforeReplacingTodayTask(t *testing.T) {
+func TestFirstActionItemCreationDoesNotRebuildExistingTodo(t *testing.T) {
 	fixture := newTodoFixture(t, "UTC", 60)
 	mountTaskSourceMutationRoutes(t, fixture)
 	taskID := ulid.Make().String()
-	if _, err := fixture.pool.Exec(t.Context(), `INSERT INTO tasks(id,user_id,assignee_id,title,manual_estimated_minutes,priority,status,changed_by) VALUES($1,$2,$2,'First child confirmation',60,'high','open',$2)`, taskID, fixture.userID); err != nil {
+	if _, err := fixture.pool.Exec(t.Context(), `INSERT INTO tasks(id,user_id,assignee_id,title,manual_estimated_minutes,priority,status,changed_by) VALUES($1,$2,$2,'First child source',60,'high','open',$2)`, taskID, fixture.userID); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
@@ -95,74 +83,58 @@ func TestFirstActionItemRequiresConfirmationBeforeReplacingTodayTask(t *testing.
 		defer cancel()
 		_, _ = fixture.pool.Exec(ctx, `DELETE FROM tasks WHERE id=$1`, taskID)
 	})
-
 	initialResponse := fixture.request(t, http.MethodGet, "/today-todo", "", 0)
 	if initialResponse.Code != http.StatusOK {
-		t.Fatalf("GET Today status/body=%d/%s", initialResponse.Code, initialResponse.Body.String())
+		t.Fatalf("GET Todo status/body=%d/%s", initialResponse.Code, initialResponse.Body.String())
 	}
 	initial := decodeToday(t, initialResponse)
-	var directFrameID string
+	var taskFrameID string
 	for _, item := range initial.Items {
 		if item.Kind == "task" && item.TaskID == taskID {
-			directFrameID = item.ID
+			taskFrameID = item.ID
 		}
 	}
-	if directFrameID == "" {
-		t.Fatalf("childless Task was not in initial Today plan: %+v", initial.Items)
+	if taskFrameID == "" {
+		t.Fatalf("childless Task absent from initial Todo: %+v", initial.Items)
 	}
-	createPath := fmt.Sprintf("/tasks/%s/action-items", taskID)
-	createBody := `{"title":"First child","estimated_minutes":30}`
-	unconfirmed := fixture.request(t, http.MethodPost, createPath, createBody, 0)
-	if unconfirmed.Code != http.StatusConflict || !strings.Contains(unconfirmed.Body.String(), "todo_regeneration_required") {
-		t.Fatalf("unconfirmed first-child create status/body=%d/%s; want regeneration confirmation 409", unconfirmed.Code, unconfirmed.Body.String())
+	created := fixture.request(t, http.MethodPost, "/tasks/"+taskID+"/action-items", `{"title":"First child","estimated_minutes":30}`, 0)
+	if created.Code != http.StatusCreated {
+		t.Fatalf("first-child create status/body=%d/%s", created.Code, created.Body.String())
 	}
-	var children int
-	if err := fixture.pool.QueryRow(t.Context(), `SELECT count(*) FROM action_items WHERE task_id=$1 AND deleted_at IS NULL`, taskID).Scan(&children); err != nil {
+	var todoRevision int32
+	var persistedTaskFrames int
+	if err := fixture.pool.QueryRow(t.Context(), `SELECT revision FROM todos WHERE id=$1`, initial.ID).Scan(&todoRevision); err != nil {
 		t.Fatal(err)
 	}
-	var revision int32
-	if err := fixture.pool.QueryRow(t.Context(), `SELECT revision FROM todos WHERE id=$1`, initial.ID).Scan(&revision); err != nil {
+	if err := fixture.pool.QueryRow(t.Context(), `SELECT count(*) FROM todo_items WHERE todo_id=$1 AND kind='task' AND task_id=$2`, initial.ID, taskID).Scan(&persistedTaskFrames); err != nil {
 		t.Fatal(err)
 	}
-	if children != 0 || revision != initial.Revision {
-		t.Fatalf("cancelled first-child create mutated source/todo: children=%d listRevision=%d initial=%d", children, revision, initial.Revision)
+	if todoRevision != initial.Revision || persistedTaskFrames != 1 {
+		t.Fatalf("source change repaired existing Todo: revision=%d/%d saved Task rows=%d", todoRevision, initial.Revision, persistedTaskFrames)
 	}
-	unchanged := decodeToday(t, fixture.request(t, http.MethodGet, "/today-todo", "", 0))
-	if itemByID(unchanged.Items, directFrameID).Kind != "task" {
-		t.Fatalf("cancelled first-child create replaced direct Task frame: %+v", unchanged.Items)
+	reloaded := fixture.request(t, http.MethodGet, "/today-todo", "", 0)
+	if reloaded.Code != http.StatusOK {
+		t.Fatalf("GET after first ActionItem creation status/body=%d/%s", reloaded.Code, reloaded.Body.String())
 	}
-
-	confirmed := fixture.request(t, http.MethodPost, createPath, `{"title":"First child","estimated_minutes":30,"confirm_todo_regeneration":true}`, 0)
-	if confirmed.Code != http.StatusCreated {
-		t.Fatalf("confirmed first-child create status/body=%d/%s", confirmed.Code, confirmed.Body.String())
-	}
-	var newRevision int32
-	if err := fixture.pool.QueryRow(t.Context(), `SELECT revision FROM todos WHERE id=$1`, initial.ID).Scan(&newRevision); err != nil {
-		t.Fatal(err)
-	}
-	if newRevision <= initial.Revision {
-		t.Fatalf("confirmed first-child create did not regenerate the todo: revision %d -> %d", initial.Revision, newRevision)
-	}
-	updated := decodeToday(t, fixture.request(t, http.MethodGet, "/today-todo", "", 0))
-	var actionFrameFound bool
-	for _, item := range updated.Items {
-		if item.Kind == "task" && item.TaskID == taskID {
-			t.Fatalf("confirmed first-child create left a direct Task row: %+v", updated.Items)
+	items := decodeToday(t, reloaded).Items
+	foundTask, foundNewAction := false, false
+	for _, item := range items {
+		if item.ID == taskFrameID && item.Kind == "task" && item.TaskID == taskID {
+			foundTask = true
 		}
-		if item.Kind == "action_item" && item.TaskID == taskID && item.PlannedMinutes != nil && *item.PlannedMinutes == 30 {
-			actionFrameFound = true
+		if item.Kind == "action_item" && item.TaskID == taskID {
+			foundNewAction = true
 		}
 	}
-	if !actionFrameFound {
-		t.Fatalf("confirmed first-child create did not replace the Task row with its 30m ActionItem frame: %+v", updated.Items)
+	if !foundTask || foundNewAction {
+		t.Fatalf("first ActionItem creation replaced saved direct Task or exposed the new child: %+v", items)
 	}
 }
-
-func TestLastActionItemDeleteRequiresRevisionAndAtomicallyRestoresTaskSource(t *testing.T) {
+func TestLastActionItemDeleteDoesNotRebuildExistingTodo(t *testing.T) {
 	fixture := newTodoFixture(t, "UTC", 60)
 	mountTaskSourceMutationRoutes(t, fixture)
 	taskID, actionItemID := ulid.Make().String(), ulid.Make().String()
-	if _, err := fixture.pool.Exec(t.Context(), `INSERT INTO tasks(id,user_id,assignee_id,title,priority,status,changed_by) VALUES($1,$2,$2,'Last child fallback','high','open',$2)`, taskID, fixture.userID); err != nil {
+	if _, err := fixture.pool.Exec(t.Context(), `INSERT INTO tasks(id,user_id,assignee_id,title,priority,status,changed_by) VALUES($1,$2,$2,'Last child source','high','open',$2)`, taskID, fixture.userID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(t.Context(), `INSERT INTO action_items(id,task_id,title,position,estimated_minutes,priority) VALUES($1,$2,'Only child',0,30,'high')`, actionItemID, taskID); err != nil {
@@ -173,87 +145,127 @@ func TestLastActionItemDeleteRequiresRevisionAndAtomicallyRestoresTaskSource(t *
 		defer cancel()
 		_, _ = fixture.pool.Exec(ctx, `DELETE FROM tasks WHERE id=$1`, taskID)
 	})
+	initialResponse := fixture.request(t, http.MethodGet, "/today-todo", "", 0)
+	if initialResponse.Code != http.StatusOK {
+		t.Fatalf("GET Todo status/body=%d/%s", initialResponse.Code, initialResponse.Body.String())
+	}
+	initial := decodeToday(t, initialResponse)
+	var frame restapi.TodoItemResponse
+	for _, item := range initial.Items {
+		if item.Kind == "action_item" && item.ActionItemID == actionItemID {
+			frame = item
+		}
+	}
+	if frame.ID == "" {
+		t.Fatalf("ActionItem absent from initial Todo: %+v", initial.Items)
+	}
+	var originalStart, originalEnd sql.NullTime
+	if err := fixture.pool.QueryRow(t.Context(), `SELECT scheduled_start,scheduled_end FROM todo_items WHERE id=$1`, frame.ID).Scan(&originalStart, &originalEnd); err != nil {
+		t.Fatal(err)
+	}
+	if !originalStart.Valid || !originalEnd.Valid {
+		t.Fatalf("generated ActionItem lacks internal schedule: %+v/%+v", originalStart, originalEnd)
+	}
+	taskRevision := taskRevision(t, fixture, taskID)
+	deleted := fixture.request(t, http.MethodDelete, "/tasks/"+taskID+"/action-items/"+actionItemID, `{"manual_estimated_minutes":45}`, taskRevision)
+	if deleted.Code != http.StatusNoContent {
+		t.Fatalf("delete last ActionItem status/body=%d/%s", deleted.Code, deleted.Body.String())
+	}
+	var sourceDeleted bool
+	var manualEstimate sql.NullInt32
+	if err := fixture.pool.QueryRow(t.Context(), `SELECT deleted_at IS NOT NULL FROM action_items WHERE id=$1`, actionItemID).Scan(&sourceDeleted); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.pool.QueryRow(t.Context(), `SELECT manual_estimated_minutes FROM tasks WHERE id=$1`, taskID).Scan(&manualEstimate); err != nil {
+		t.Fatal(err)
+	}
+	var todoRevision int32
+	var savedActionFrames int
+	var savedStart, savedEnd time.Time
+	if err := fixture.pool.QueryRow(t.Context(), `SELECT l.revision FROM todos l WHERE l.id=$1`, initial.ID).Scan(&todoRevision); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.pool.QueryRow(t.Context(), `SELECT count(*) FROM todo_items WHERE id=$1 AND action_item_id=$2`, frame.ID, actionItemID).Scan(&savedActionFrames); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.pool.QueryRow(t.Context(), `SELECT scheduled_start,scheduled_end FROM todo_items WHERE id=$1`, frame.ID).Scan(&savedStart, &savedEnd); err != nil {
+		t.Fatal(err)
+	}
+	if !sourceDeleted || !manualEstimate.Valid || manualEstimate.Int32 != 45 || todoRevision != initial.Revision || savedActionFrames != 1 || !savedStart.Equal(originalStart.Time) || !savedEnd.Equal(originalEnd.Time) {
+		t.Fatalf("source delete rebuilt Todo: deleted=%t estimate=%+v revision=%d/%d frames=%d times=%s-%s original=%s-%s", sourceDeleted, manualEstimate, todoRevision, initial.Revision, savedActionFrames, savedStart, savedEnd, originalStart.Time, originalEnd.Time)
+	}
+}
+
+func TestTodoHidesUnavailableWorkAndCanReorderRemainingItems(t *testing.T) {
+	fixture := newTodoFixture(t, "UTC", 30)
+	enableInitialActionItemGeneration(t, fixture)
+	mountTaskSourceMutationRoutes(t, fixture)
+	directTaskID := ulid.Make().String()
+	if _, err := fixture.pool.Exec(t.Context(), `INSERT INTO tasks(id,user_id,assignee_id,title,manual_estimated_minutes,priority,status,changed_by) VALUES($1,$2,$2,'Visible direct Task',15,'urgent','open',$2)`, directTaskID, fixture.userID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, _ = fixture.pool.Exec(ctx, `DELETE FROM tasks WHERE id=$1`, directTaskID)
+	})
 
 	initialResponse := fixture.request(t, http.MethodGet, "/today-todo", "", 0)
 	if initialResponse.Code != http.StatusOK {
-		t.Fatalf("GET Today status/body=%d/%s", initialResponse.Code, initialResponse.Body.String())
+		t.Fatalf("initial GET Todo status/body=%d/%s", initialResponse.Code, initialResponse.Body.String())
 	}
 	initial := decodeToday(t, initialResponse)
-	var sourceFrameFound bool
+	var directRow, actionRow restapi.TodoItemResponse
 	for _, item := range initial.Items {
-		if item.Kind == "action_item" && item.ActionItemID == actionItemID {
-			sourceFrameFound = true
+		if item.Kind == "task" && item.TaskID == directTaskID {
+			directRow = item
+		}
+		if item.Kind == "action_item" && item.ActionItemID == fixture.itemID {
+			actionRow = item
 		}
 	}
-	if !sourceFrameFound {
-		t.Fatalf("only child was not in initial Today plan: %+v", initial.Items)
+	if directRow.ID == "" || actionRow.ID == "" {
+		t.Fatalf("initial Todo lacks both work sources: %+v", initial.Items)
 	}
-	deletePath := fmt.Sprintf("/tasks/%s/action-items/%s", taskID, actionItemID)
-	body := `{"manual_estimated_minutes":45}`
-	missingRevision := fixture.request(t, http.MethodDelete, deletePath, body, 0)
-	if missingRevision.Code != http.StatusPreconditionRequired {
-		t.Fatalf("last-child delete without Task If-Match status/body=%d/%s; want 428", missingRevision.Code, missingRevision.Body.String())
-	}
-	currentTaskRevision := taskRevision(t, fixture, taskID)
-	staleRevision := fixture.request(t, http.MethodDelete, deletePath, body, currentTaskRevision+1)
-	if staleRevision.Code != http.StatusPreconditionFailed {
-		t.Fatalf("last-child delete with stale Task If-Match status/body=%d/%s; want 412", staleRevision.Code, staleRevision.Body.String())
-	}
-	currentTaskRevision = taskRevision(t, fixture, taskID)
-	unconfirmed := fixture.request(t, http.MethodDelete, deletePath, body, currentTaskRevision)
-	if unconfirmed.Code != http.StatusConflict || !strings.Contains(unconfirmed.Body.String(), "todo_regeneration_required") {
-		t.Fatalf("unconfirmed last-child delete status/body=%d/%s; want regeneration confirmation 409", unconfirmed.Code, unconfirmed.Body.String())
-	}
-	var deleted bool
-	var manual sql.NullInt32
-	if err := fixture.pool.QueryRow(t.Context(), `SELECT deleted_at IS NOT NULL FROM action_items WHERE id=$1`, actionItemID).Scan(&deleted); err != nil {
+	var originalStart, originalEnd sql.NullTime
+	if err := fixture.pool.QueryRow(t.Context(), `SELECT scheduled_start,scheduled_end FROM todo_items WHERE id=$1`, directRow.ID).Scan(&originalStart, &originalEnd); err != nil {
 		t.Fatal(err)
 	}
-	if err := fixture.pool.QueryRow(t.Context(), `SELECT manual_estimated_minutes FROM tasks WHERE id=$1`, taskID).Scan(&manual); err != nil {
-		t.Fatal(err)
-	}
-	var listRevision int32
-	if err := fixture.pool.QueryRow(t.Context(), `SELECT revision FROM todos WHERE id=$1`, initial.ID).Scan(&listRevision); err != nil {
-		t.Fatal(err)
-	}
-	if deleted || manual.Valid || listRevision != initial.Revision {
-		t.Fatalf("cancelled last-child delete mutated source/todo: deleted=%t manual=%+v listRevision=%d initial=%d", deleted, manual, listRevision, initial.Revision)
+	if !originalStart.Valid || !originalEnd.Valid {
+		t.Fatalf("direct work did not retain internal times: %+v/%+v", originalStart, originalEnd)
 	}
 
-	confirmed := fixture.request(t, http.MethodDelete, deletePath, `{"manual_estimated_minutes":45,"confirm_todo_regeneration":true}`, currentTaskRevision)
-	if confirmed.Code != http.StatusNoContent {
-		t.Fatalf("confirmed last-child delete status/body=%d/%s", confirmed.Code, confirmed.Body.String())
+	deleted := fixture.request(t, http.MethodDelete, "/tasks/"+fixture.taskID+"/action-items/"+fixture.itemID, `{"manual_estimated_minutes":30}`, taskRevision(t, fixture, fixture.taskID))
+	if deleted.Code != http.StatusNoContent {
+		t.Fatalf("delete saved ActionItem source status/body=%d/%s", deleted.Code, deleted.Body.String())
 	}
-	if err := fixture.pool.QueryRow(t.Context(), `SELECT deleted_at IS NOT NULL FROM action_items WHERE id=$1`, actionItemID).Scan(&deleted); err != nil {
+	reloaded := fixture.request(t, http.MethodGet, "/today-todo", "", 0)
+	if reloaded.Code != http.StatusOK {
+		t.Fatalf("GET Todo after source becomes unavailable status/body=%d/%s", reloaded.Code, reloaded.Body.String())
+	}
+	afterDelete := decodeToday(t, reloaded)
+	if len(afterDelete.Items) != 1 || afterDelete.Items[0].ID != directRow.ID || afterDelete.Items[0].ScheduledStart != nil || afterDelete.Items[0].ScheduledEnd != nil {
+		t.Fatalf("Todo should hide deleted ActionItem and retain visible Task: %+v", afterDelete.Items)
+	}
+	body, err := json.Marshal(struct {
+		ItemIDs []string `json:"item_ids"`
+	}{ItemIDs: []string{directRow.ID}})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := fixture.pool.QueryRow(t.Context(), `SELECT manual_estimated_minutes FROM tasks WHERE id=$1`, taskID).Scan(&manual); err != nil {
+	reordered := fixture.request(t, http.MethodPost, "/today-todo:reorder", string(body), afterDelete.Revision)
+	if reordered.Code != http.StatusOK {
+		t.Fatalf("reorder remaining visible work status/body=%d/%s", reordered.Code, reordered.Body.String())
+	}
+	afterReorder := decodeToday(t, reordered)
+	if len(afterReorder.Items) != 1 || afterReorder.Items[0].ID != directRow.ID {
+		t.Fatalf("reorder regenerated or exposed unavailable work: %+v", afterReorder.Items)
+	}
+	var currentStart, currentEnd sql.NullTime
+	if err := fixture.pool.QueryRow(t.Context(), `SELECT scheduled_start,scheduled_end FROM todo_items WHERE id=$1`, directRow.ID).Scan(&currentStart, &currentEnd); err != nil {
 		t.Fatal(err)
 	}
-	if !deleted || !manual.Valid || manual.Int32 != 45 {
-		t.Fatalf("confirmed last-child delete did not atomically persist source fallback: deleted=%t manual=%+v", deleted, manual)
-	}
-	var newListRevision int32
-	if err := fixture.pool.QueryRow(t.Context(), `SELECT revision FROM todos WHERE id=$1`, initial.ID).Scan(&newListRevision); err != nil {
-		t.Fatal(err)
-	}
-	if newListRevision <= initial.Revision {
-		t.Fatalf("confirmed last-child delete did not regenerate todo: revision %d -> %d", initial.Revision, newListRevision)
-	}
-	updated := decodeToday(t, fixture.request(t, http.MethodGet, "/today-todo", "", 0))
-	var taskFrameFound bool
-	for _, item := range updated.Items {
-		if item.Kind == "task" && item.TaskID == taskID {
-			if item.PlannedMinutes == nil || *item.PlannedMinutes != 45 {
-				t.Fatalf("restored Task frame planned minutes=%v; want 45", item.PlannedMinutes)
-			}
-			taskFrameFound = true
-		}
-		if item.Kind == "action_item" && item.ActionItemID == actionItemID {
-			t.Fatalf("confirmed last-child delete left a stale ActionItem row: %+v", updated.Items)
-		}
-	}
-	if !taskFrameFound {
-		t.Fatalf("confirmed last-child delete did not restore direct Task plan row: %+v", updated.Items)
+	if !currentStart.Valid || !currentEnd.Valid || !currentStart.Time.Equal(originalStart.Time) || !currentEnd.Time.Equal(originalEnd.Time) {
+		t.Fatalf("reorder changed remaining work internal times: before=%+v/%+v after=%+v/%+v", originalStart, originalEnd, currentStart, currentEnd)
 	}
 }

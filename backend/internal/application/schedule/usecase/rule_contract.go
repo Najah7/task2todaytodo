@@ -9,49 +9,46 @@ import (
 )
 
 type CreateRuleInput struct {
-	Title                   string
-	Description             string
-	Location                string
-	ProjectID               string
-	AssigneeID              string
-	Timezone                string
-	LocalStart              time.Time
-	LocalEnd                time.Time
-	AllDay                  bool
-	Frequency               string
-	Interval                int
-	Weekdays                []string
-	EndDate                 *time.Time
-	ConfirmTodoRegeneration bool
+	Title       string
+	Description string
+	Location    string
+	ProjectID   string
+	AssigneeID  string
+	Timezone    string
+	LocalStart  time.Time
+	LocalEnd    time.Time
+	AllDay      bool
+	Frequency   string
+	Interval    int
+	Weekdays    []string
+	EndDate     *time.Time
 }
 
 type UpdateRuleInput struct {
-	Title                   *string
-	Description             *string
-	Location                *string
-	ProjectID               *string
-	AssigneeID              *string
-	Timezone                *string
-	LocalStart              *time.Time
-	LocalEnd                *time.Time
-	AllDay                  *bool
-	Frequency               *string
-	Interval                *int
-	Weekdays                *[]string
-	EndDate                 **time.Time
-	ConfirmTodoRegeneration bool
+	Title       *string
+	Description *string
+	Location    *string
+	ProjectID   *string
+	AssigneeID  *string
+	Timezone    *string
+	LocalStart  *time.Time
+	LocalEnd    *time.Time
+	AllDay      *bool
+	Frequency   *string
+	Interval    *int
+	Weekdays    *[]string
+	EndDate     **time.Time
 }
 
 type UpdateScheduleInput struct {
-	Title                   *string
-	Description             *string
-	Location                *string
-	ProjectID               *string
-	AssigneeID              *string
-	StartAt                 *time.Time
-	EndAt                   *time.Time
-	AllDay                  *bool
-	ConfirmTodoRegeneration bool
+	Title       *string
+	Description *string
+	Location    *string
+	ProjectID   *string
+	AssigneeID  *string
+	StartAt     *time.Time
+	EndAt       *time.Time
+	AllDay      *bool
 }
 
 type ProjectRuleLifecycle interface {

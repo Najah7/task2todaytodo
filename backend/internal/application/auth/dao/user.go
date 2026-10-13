@@ -9,8 +9,8 @@ type User struct {
 	EmailVerifiedAt   int64
 	AuthVersion       int64
 	Timezone          string
-	WakeUpTime        string
-	Bedtime           string
+	ActiveStartTime   string
+	ActiveEndTime     string
 	MinimumGapMinutes int
 	CreatedAt         int64
 	UpdatedAt         int64

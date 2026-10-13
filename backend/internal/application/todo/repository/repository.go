@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/Najah7/task2todaytodo/db/sqlc"
@@ -122,12 +121,17 @@ func (r *ItemRepository) Insert(ctx context.Context, model domain.TodoItem) (dao
 	return itemDAOFields(record.ID, record.TodoID, record.Kind, record.ActionItemID, record.TaskID, record.ScheduleRuleID, record.OccurrenceDate, record.PlannedMinutes, record.ScheduledStart, record.ScheduledEnd, record.Completed, record.Hidden, record.Position, record.CreatedAt, record.UpdatedAt), nil
 }
 
+func (r *ItemRepository) DeleteAllByTodoID(ctx context.Context, todoID string) error {
+	return r.queries.DeleteAllTodoItemsForTodo(ctx, todoID)
+}
+
 func (r *ItemRepository) Save(ctx context.Context, model domain.TodoItem) (dao.Item, error) {
 	if err := model.Validate(); err != nil {
 		return dao.Item{}, err
 	}
 	rows, err := r.queries.UpdateTodoItemState(ctx, sqlc.UpdateTodoItemStateParams{
-		Completed: model.Completed, Hidden: model.Hidden, Position: int32(model.Position), ID: model.ID, TodoID: model.TodoID,
+		Completed: model.Completed, Hidden: model.Hidden, Position: int32(model.Position),
+		ScheduledStart: pgTimestamp(model.Start), ScheduledEnd: pgTimestamp(model.End), ID: model.ID, TodoID: model.TodoID,
 	})
 	if err != nil {
 		return dao.Item{}, err
@@ -141,37 +145,24 @@ func (r *ItemRepository) Save(ctx context.Context, model domain.TodoItem) (dao.I
 		Position: int32(model.Position)}, nil
 }
 
-func (r *ItemRepository) ReplacePlanPreservingCompletedWork(ctx context.Context, todoID string, models []domain.TodoItem) error {
-	seenIDs := make(map[string]bool, len(models))
-	seenPositions := make(map[int]bool, len(models))
-	for _, model := range models {
-		if err := model.Validate(); err != nil || model.TodoID != todoID || seenIDs[model.ID] || seenPositions[model.Position] {
+func (r *ItemRepository) SavePositions(ctx context.Context, todoID string, models []domain.TodoItem) error {
+	seen := make(map[string]bool, len(models))
+	for position, model := range models {
+		if model.TodoID != todoID || model.Position != position || seen[model.ID] {
 			return domain.ErrInvalidTodoItem
 		}
-		seenIDs[model.ID] = true
-		seenPositions[model.Position] = true
+		seen[model.ID] = true
 	}
 	if _, err := r.db.Exec(ctx, "SET CONSTRAINTS todo_items_todo_position_key DEFERRED"); err != nil {
 		return err
 	}
-	if err := r.queries.DeleteTodoItemsExceptCompletedWork(ctx, todoID); err != nil {
-		return err
-	}
 	for _, model := range models {
-		if model.Kind.IsWork() && model.Completed {
-			rows, err := r.queries.UpdateTodoItemPosition(ctx, sqlc.UpdateTodoItemPositionParams{
-				Position: int32(model.Position), ID: model.ID, TodoID: todoID,
-			})
-			if err != nil {
-				return err
-			}
-			if rows != 1 {
-				return fmt.Errorf("completed action item %s disappeared during plan replacement", model.ID)
-			}
-			continue
-		}
-		if _, err := r.Insert(ctx, model); err != nil {
+		rows, err := r.queries.UpdateTodoItemPosition(ctx, sqlc.UpdateTodoItemPositionParams{Position: int32(model.Position), ID: model.ID, TodoID: todoID})
+		if err != nil {
 			return err
+		}
+		if rows != 1 {
+			return usecase.ErrFrameNotFound
 		}
 	}
 	return nil

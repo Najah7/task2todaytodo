@@ -144,14 +144,14 @@ type AuthLinkToken struct {
 	CreatedAt pgtype.Timestamptz
 }
 
-type DailySleepException struct {
-	UserID       string
-	LocalDate    pgtype.Date
-	WakeLocal    pgtype.Timestamp
-	BedtimeLocal pgtype.Timestamp
-	Timezone     string
-	Revision     int32
-	ChangedAt    pgtype.Timestamptz
+type DailyActiveTimeException struct {
+	UserID           string
+	LocalDate        pgtype.Date
+	ActiveStartLocal pgtype.Timestamp
+	ActiveEndLocal   pgtype.Timestamp
+	Timezone         string
+	Revision         int32
+	ChangedAt        pgtype.Timestamptz
 }
 
 type EmailDeliveryAttempt struct {
@@ -569,7 +569,7 @@ type User struct {
 	CreatedAt         pgtype.Timestamptz
 	UpdatedAt         pgtype.Timestamptz
 	Timezone          string
-	WakeUpTime        pgtype.Time
-	Bedtime           pgtype.Time
+	ActiveStartTime   pgtype.Time
+	ActiveEndTime     pgtype.Time
 	MinimumGapMinutes int32
 }

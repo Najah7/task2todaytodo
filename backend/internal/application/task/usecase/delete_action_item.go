@@ -15,10 +15,9 @@ import (
 var ErrActionItemCompleted = errors.New("completed action item cannot be deleted")
 
 type DeleteActionItemOptions struct {
-	ConfirmTodoRegeneration bool
-	ManualEstimatedMinutes  *int
-	ManualEstimatePresent   bool
-	ExpectedTaskRevision    *int32
+	ManualEstimatedMinutes *int
+	ManualEstimatePresent  bool
+	ExpectedTaskRevision   *int32
 }
 
 type DeleteActionItemUseCase struct {
@@ -30,19 +29,14 @@ func NewDeleteActionItemUseCase(uow UOW, logger telemetry.Logger) *DeleteActionI
 	return &DeleteActionItemUseCase{logger: telemetry.OrNop(logger), uow: uow}
 }
 
-func (uc *DeleteActionItemUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, actionItemID domain.ActionItemID, confirm ...bool) (err error) {
-	options := DeleteActionItemOptions{}
-	if len(confirm) > 0 {
-		options.ConfirmTodoRegeneration = confirm[0]
-	}
-	return uc.ExecuteWithOptions(ctx, userID, taskID, actionItemID, options)
+func (uc *DeleteActionItemUseCase) Execute(ctx context.Context, userID domain.UserID, taskID domain.TaskID, actionItemID domain.ActionItemID) (err error) {
+	return uc.ExecuteWithOptions(ctx, userID, taskID, actionItemID, DeleteActionItemOptions{})
 }
 
 func (uc *DeleteActionItemUseCase) ExecuteWithOptions(ctx context.Context, userID domain.UserID, taskID domain.TaskID, actionItemID domain.ActionItemID, options DeleteActionItemOptions) (err error) {
 	defer func() { logUnexpectedTaskFailure(uc.logger, ctx, "DeleteActionItemUseCase.Execute", err) }()
 	asOf := time.Now()
 	return uc.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
-		confirmed := options.ConfirmTodoRegeneration
 		return withTaskProgressMutationForPermissionAndState(ctx, repos, userID, taskID, asOf, shared.ActionItemDelete(), func(task dao.Task, _ taskProjectMutationSnapshot) error {
 			if options.ExpectedTaskRevision != nil && task.Revision != *options.ExpectedTaskRevision {
 				return ErrRevisionConflict
@@ -62,13 +56,9 @@ func (uc *DeleteActionItemUseCase) ExecuteWithOptions(ctx context.Context, userI
 			if err != nil {
 				return err
 			}
-			regenerate := childCount == 1
-			assignee := domain.UserID(task.AssigneeID)
-			if assignee == "" {
-				assignee = userID
-			}
+			becameChildless := childCount == 1
 			var fallbackEstimate *int
-			if regenerate {
+			if becameChildless {
 				fallbackEstimate = copyOptionalInt(task.ManualEstimatedMinutes)
 				if options.ManualEstimatePresent {
 					fallbackEstimate = copyOptionalInt(options.ManualEstimatedMinutes)
@@ -85,14 +75,6 @@ func (uc *DeleteActionItemUseCase) ExecuteWithOptions(ctx context.Context, userI
 					if started || task.Status.Value == "done" {
 						return ErrTaskStarted
 					}
-				}
-				hasToday, err := repos.TaskTodos().HasTodayTaskWork(ctx, assignee, taskID)
-				if err != nil {
-					return err
-				}
-				regenerate = hasToday
-				if hasToday && !confirmed {
-					return ErrTodoRegenerationRequired
 				}
 			}
 			if err := repository.DeleteForOwnedTask(ctx, userID, taskID, actionItemID); err != nil {
@@ -115,9 +97,6 @@ func (uc *DeleteActionItemUseCase) ExecuteWithOptions(ctx context.Context, userI
 				if _, err = repos.Tasks().UpdateByUserID(ctx, userID, validated, current.Revision); err != nil {
 					return err
 				}
-			}
-			if regenerate {
-				return repos.TaskTodos().RegenerateToday(ctx, assignee)
 			}
 			return nil
 		})

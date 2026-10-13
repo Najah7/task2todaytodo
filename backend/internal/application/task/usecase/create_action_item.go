@@ -11,15 +11,14 @@ import (
 )
 
 type CreateActionItemInput struct {
-	ID                      domain.ActionItemID
-	UserID                  domain.UserID
-	TaskID                  domain.TaskID
-	Title                   string
-	Description             string
-	DueDate                 time.Time
-	EstimatedMinutes        *int
-	Priority                string
-	ConfirmTodoRegeneration bool
+	ID               domain.ActionItemID
+	UserID           domain.UserID
+	TaskID           domain.TaskID
+	Title            string
+	Description      string
+	DueDate          time.Time
+	EstimatedMinutes *int
+	Priority         string
 }
 
 type CreateActionItemUseCase struct {
@@ -42,7 +41,6 @@ func (uc *CreateActionItemUseCase) Execute(ctx context.Context, input CreateActi
 			if err != nil {
 				return err
 			}
-			regenerate := false
 			if childCount == 0 {
 				started, err := repos.TaskTodos().HasCompletedTaskFrame(ctx, input.TaskID)
 				if err != nil {
@@ -54,13 +52,6 @@ func (uc *CreateActionItemUseCase) Execute(ctx context.Context, input CreateActi
 				assignee := domain.UserID(task.AssigneeID)
 				if assignee == "" {
 					assignee = input.UserID
-				}
-				regenerate, err = repos.TaskTodos().HasTodayTaskFrame(ctx, assignee, input.TaskID)
-				if err != nil {
-					return err
-				}
-				if regenerate && !input.ConfirmTodoRegeneration {
-					return ErrTodoRegenerationRequired
 				}
 			}
 			priorityValue := input.Priority
@@ -82,13 +73,6 @@ func (uc *CreateActionItemUseCase) Execute(ctx context.Context, input CreateActi
 				return err
 			}
 			created, err = repos.ActionItems().CreateForOwnedTask(ctx, input.UserID, item, true)
-			if err == nil && regenerate {
-				assignee := domain.UserID(task.AssigneeID)
-				if assignee == "" {
-					assignee = input.UserID
-				}
-				err = repos.TaskTodos().RegenerateToday(ctx, assignee)
-			}
 			return err
 		})
 	})

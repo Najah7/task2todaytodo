@@ -10,21 +10,20 @@ import (
 
 type RemoveActionItemUseCase struct {
 	uow    UOW
-	newID  func() string
 	logger telemetry.Logger
 }
 
-func NewRemoveActionItemUseCase(uow UOW, newID func() string, loggers ...telemetry.Logger) *RemoveActionItemUseCase {
+func NewRemoveActionItemUseCase(uow UOW, _ func() string, loggers ...telemetry.Logger) *RemoveActionItemUseCase {
 	var logger telemetry.Logger
 	if len(loggers) > 0 {
 		logger = loggers[0]
 	}
-	return &RemoveActionItemUseCase{uow: uow, newID: newID, logger: telemetry.OrNop(logger)}
+	return &RemoveActionItemUseCase{uow: uow, logger: telemetry.OrNop(logger)}
 }
 
 func (u *RemoveActionItemUseCase) Execute(ctx context.Context, userID, frameID string, expectedRevision int32) (result dao.Todo, err error) {
 	defer func() { logUnexpectedTodoFailure(u.logger, ctx, "RemoveActionItemUseCase.Execute", err) }()
-	var workRef dao.WorkSourceRef
+	var removedID string
 	err = u.uow.Do(ctx, func(ctx context.Context, repos Repositories) error {
 		day, err := repos.Sources().CurrentDay(ctx, userID)
 		if err != nil {
@@ -33,77 +32,68 @@ func (u *RemoveActionItemUseCase) Execute(ctx context.Context, userID, frameID s
 		if err := repos.Todos().LockUser(ctx, userID); err != nil {
 			return err
 		}
-		todo, saved, _, in, err := loadPlanningState(ctx, userID, day.Date, repos)
+		todo, err := repos.Todos().GetByUserDate(ctx, userID, day.Date)
 		if err != nil {
 			return err
 		}
 		if todo.Revision != expectedRevision {
 			return ErrRevisionConflict
 		}
-		var requested *dao.Item
-		for index := range saved {
-			if saved[index].ID == frameID && domain.FrameKind(saved[index].Kind).IsWork() {
-				requested = &saved[index]
-				break
-			}
-		}
-		if requested == nil {
-			return ErrFrameNotFound
-		}
-		workRef = itemRef(*requested)
-		workSources, err := repos.Sources().ReadWorkSources(ctx, userID, todo.Date, todo.Timezone, []dao.WorkSourceRef{workRef})
+		items, err := repos.Items().ListByTodoID(ctx, todo.ID)
 		if err != nil {
 			return err
 		}
-		source, ok := sourceByRef(workSources, workRef)
-		if !ok {
-			if workRef.Kind == string(domain.FrameTask) {
-				return ErrTaskNotFound
+		var target *dao.Item
+		for index := range items {
+			if items[index].ID == frameID && domain.FrameKind(items[index].Kind).IsWork() {
+				target = &items[index]
+				break
 			}
-			return ErrActionItemNotFound
+		}
+		if target == nil {
+			return ErrFrameNotFound
+		}
+		if target.Completed {
+			return ErrFrameCompleted
+		}
+		ref := itemRef(*target)
+		workSources, err := repos.Sources().ReadWorkSources(ctx, userID, todo.Date, todo.Timezone, []dao.WorkSourceRef{ref})
+		if err != nil {
+			return err
+		}
+		source, ok := sourceByRef(workSources, ref)
+		if !ok {
+			return ErrPermissionDenied
 		}
 		if !source.CanRemoveFromToday {
 			return ErrPermissionDenied
 		}
-		if source.HasCompletedFrame || source.Completed {
-			if workRef.Kind == string(domain.FrameTask) {
-				return ErrTaskStarted
-			}
-			return ErrActionItemStarted
+		if err := repos.Items().DeleteByID(ctx, todo.ID, target.ID); err != nil {
+			return err
 		}
-		found := false
-		for _, item := range saved {
-			if item.Kind == workRef.Kind && itemSourceID(item) == workRef.ID {
-				found = true
-				if item.Completed {
-					if workRef.Kind == string(domain.FrameTask) {
-						return ErrTaskStarted
-					}
-					return ErrActionItemStarted
-				}
-			}
-		}
-		if !found {
-			return ErrFrameNotFound
-		}
-		order := make([]domain.OrderedItem, 0, len(saved))
-		for _, item := range saved {
-			if item.Kind == workRef.Kind && itemSourceID(item) == workRef.ID && !item.Completed {
+		models := make([]domain.TodoItem, 0, len(items)-1)
+		for _, item := range items {
+			if item.ID == target.ID {
 				continue
 			}
-			order = append(order, orderedItemsForSaved([]dao.Item{item})[0])
+			model, err := restoredItem(item)
+			if err != nil {
+				return err
+			}
+			model.Position = len(models)
+			models = append(models, model)
 		}
-		plan, err := domain.Reflow(domain.ReflowInput{Input: in, Order: order})
-		if err != nil {
+		if err := repos.Items().SavePositions(ctx, todo.ID, models); err != nil {
 			return err
 		}
-		if err := persistPlan(ctx, todo.ID, saved, plan, u.newID, repos); err != nil {
+		if err := bumpTodoRevision(ctx, repos, &todo, &result); err != nil {
 			return err
 		}
-		return bumpTodoRevision(ctx, repos, &todo, &result)
+		removedID = ref.ID
+		return nil
 	})
 	if err == nil {
-		logTodoStateChange(u.logger, ctx, "todo.work.remove", userID, result.ID, workRef.ID)
+		logTodoStateChange(u.logger, ctx, "todo.work.remove", userID, result.ID, removedID)
 	}
 	return result, err
 }

@@ -51,7 +51,7 @@ func NewHandler(usecases application.UseCase, issueID func() string, pageTokenKe
 		Admin:                       NewAdminHandler(usecases.Admin.Job, usecases.Admin.Operation, pageTokens),
 		Inbox:                       NewInboxHandler(usecases.Inbox, pageTokens),
 		Allocation:                  NewAllocationHandler(usecases.Allocation),
-		Todos:                       NewTodosHandler(TodosUseCases{GetToday: usecases.Todo.GetToday, Regenerate: usecases.Todo.Regenerate, AddActionItem: usecases.Todo.AddActionItem, AddTask: usecases.Todo.AddTask, Reflow: usecases.Todo.Reflow, CompleteFrame: usecases.Todo.CompleteFrame, ReopenFrame: usecases.Todo.ReopenFrame, RemoveActionItem: usecases.Todo.RemoveActionItem, HideSchedule: usecases.Todo.HideSchedule, RestoreSchedule: usecases.Todo.RestoreSchedule}),
+		Todos:                       NewTodosHandler(TodosUseCases{GetToday: usecases.Todo.GetToday, RegenerateToday: usecases.Todo.RegenerateToday, AddActionItem: usecases.Todo.AddActionItem, AddTask: usecases.Todo.AddTask, Reflow: usecases.Todo.Reflow, CompleteFrame: usecases.Todo.CompleteFrame, ReopenFrame: usecases.Todo.ReopenFrame, RemoveActionItem: usecases.Todo.RemoveActionItem, HideSchedule: usecases.Todo.HideSchedule, RestoreSchedule: usecases.Todo.RestoreSchedule}),
 		Metrics:                     NewMetricsHandler(usecases.Metric.TodoCompletion, usecases.Metric.OverdueWork),
 	}, nil
 }

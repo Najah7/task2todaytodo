@@ -51,9 +51,6 @@ func (u *ReopenFrameUseCase) Execute(ctx context.Context, userID, frameID string
 		if !target.Completed {
 			return ErrFrameNotFound
 		}
-		if domain.FrameKind(target.Kind).IsWork() && hasVisibleAllDaySchedule(sources, saved) {
-			return ErrPermissionDenied
-		}
 		if target.Kind == string(domain.FrameSchedule) && target.Hidden {
 			return ErrPermissionDenied
 		}
@@ -86,22 +83,13 @@ func (u *ReopenFrameUseCase) Execute(ctx context.Context, userID, frameID string
 		if _, err := repos.Items().Save(ctx, model.SetCompleted(false)); err != nil {
 			return err
 		}
-		completedMinutes := source.CompletedBeforeDayMinutes
-		for _, item := range saved {
-			if item.ID != target.ID && item.Kind == target.Kind && itemSourceID(item) == source.ID && item.Completed && item.PlannedMinutes != nil {
-				completedMinutes += *item.PlannedMinutes
-			}
+		if target.Kind == string(domain.FrameTask) {
+			err = repos.Tasks().ReopenFromTodoFrame(ctx, userID, target.TaskID)
+		} else {
+			err = repos.ActionItems().ReopenFromTodoFrame(ctx, userID, source.TaskID, target.ActionItemID)
 		}
-		if source.Completed && completedMinutes < source.EstimatedMinutes {
-			var commandErr error
-			if target.Kind == string(domain.FrameTask) {
-				commandErr = repos.Tasks().ReopenFromTodoFrame(ctx, userID, target.TaskID)
-			} else {
-				commandErr = repos.ActionItems().ReopenFromTodoFrame(ctx, userID, source.TaskID, target.ActionItemID)
-			}
-			if commandErr != nil {
-				return commandErr
-			}
+		if err != nil {
+			return err
 		}
 		return bumpTodoRevision(ctx, repos, &todo, &result)
 	})

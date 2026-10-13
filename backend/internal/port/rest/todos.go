@@ -16,7 +16,7 @@ var todoFailure = NewFailureErrSpec("todos", "get_today", "Failed to get today's
 
 type TodosUseCases struct {
 	GetToday         *todousecase.GetTodayUseCase
-	Regenerate       *todousecase.RegenerateTodayUseCase
+	RegenerateToday  *todousecase.RegenerateTodayUseCase
 	AddActionItem    *todousecase.AddActionItemUseCase
 	AddTask          *todousecase.AddTaskUseCase
 	Reflow           *todousecase.ReflowUseCase
@@ -25,6 +25,41 @@ type TodosUseCases struct {
 	RemoveActionItem *todousecase.RemoveActionItemUseCase
 	HideSchedule     *todousecase.HideScheduleUseCase
 	RestoreSchedule  *todousecase.RestoreScheduleUseCase
+}
+
+// RegenerateToday discards today's saved Todo rows and rebuilds the plan from
+// current sources while retaining source completion state.
+//
+//	@Summary	Regenerate today's Todo
+//	@ID			RegenerateTodayTodo
+//	@Tags		Todo
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		If-Match	header		string	true	"Current Todo revision"
+//	@Success	200			{object}	TodoTodayResponse
+//	@Failure	400			{object}	ErrResponse
+//	@Failure	401			{object}	ErrResponse
+//	@Failure	404			{object}	ErrResponse
+//	@Failure	412			{object}	ErrResponse
+//	@Failure	428			{object}	ErrResponse
+//	@Failure	500			{object}	ErrResponse
+//	@Router		/today-todo:regenerate [post]
+func (h *TodosHandler) RegenerateToday(w http.ResponseWriter, r *http.Request) {
+	userID, ok := todoUserID(w, r, todoFailure)
+	if !ok {
+		return
+	}
+	expected, ok := expectedRevision(w, r, todoFailure)
+	if !ok {
+		return
+	}
+	snapshot, err := h.usecases.RegenerateToday.Execute(r.Context(), userID, expected)
+	if err != nil {
+		writeTodoError(w, todoFailure, err)
+		return
+	}
+	setResourceETag(w, snapshot.Todo.Revision)
+	WriteJSON(w, http.StatusOK, todoTodayResponse(snapshot))
 }
 
 type TodosHandler struct{ usecases TodosUseCases }
@@ -50,12 +85,10 @@ type TodoItemResponse struct {
 	ScheduledStart   *string `json:"scheduled_start" extensions:"x-nullable"`
 	ScheduledEnd     *string `json:"scheduled_end" extensions:"x-nullable"`
 	Completed        bool    `json:"completed"`
-	Started          bool    `json:"started"`
 	Hidden           bool    `json:"hidden"`
 	History          bool    `json:"history"`
 	Position         int32   `json:"position"`
 	ActualMinutes    *int    `json:"actual_minutes" extensions:"x-nullable"`
-	CompletesSource  bool    `json:"completes_source"`
 	SourceCompleted  bool    `json:"source_completed"`
 	CanAddActionItem bool    `json:"can_add_action_item"`
 	EstimateEditable bool    `json:"estimate_editable"`
@@ -130,32 +163,6 @@ func (h *TodosHandler) GetToday(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, todoTodayResponse(snapshot))
 }
 
-// Regenerate explicitly resets unfinished work according to the current generator inputs.
-//
-//	@Summary	Regenerate today's Todo
-//	@ID			RegenerateTodayTodo
-//	@Tags		Todo
-//	@Security	BearerAuth
-//	@Param		If-Match	header		string	true	"Current Todo revision"
-//	@Success	200			{object}	TodoTodayResponse
-//	@Failure	412			{object}	ErrResponse
-//	@Router		/today-todo:regenerate [post]
-func (h *TodosHandler) Regenerate(w http.ResponseWriter, r *http.Request) {
-	userID, ok := todoUserID(w, r, todoFailure)
-	if !ok {
-		return
-	}
-	expected, ok := expectedRevision(w, r, todoFailure)
-	if !ok {
-		return
-	}
-	if _, err := h.usecases.Regenerate.Execute(r.Context(), userID, expected); err != nil {
-		writeTodoError(w, todoFailure, err)
-		return
-	}
-	h.writeToday(w, r, userID)
-}
-
 // AddActionItem manually adds an ActionItem to today's plan.
 //
 //	@Summary	Add an ActionItem to today's Todo
@@ -213,7 +220,7 @@ func (h *TodosHandler) AddTask(w http.ResponseWriter, r *http.Request) {
 	h.writeToday(w, r, userID)
 }
 
-// Reorder reflows unfinished ActionItem frames using the requested ordered rows.
+// Reorder persists only the requested display positions.
 //
 //	@Summary	Reorder today's Todo items
 //	@ID			ReorderTodayTodo
@@ -347,7 +354,7 @@ func (h *TodosHandler) RemoveActionItem(w http.ResponseWriter, r *http.Request) 
 	h.writeToday(w, r, userID)
 }
 
-// HideSchedule hides a scheduled block from today's plan and releases its time.
+// HideSchedule hides a scheduled block from today's display without changing work rows.
 //
 //	@Summary	Hide a Schedule frame
 //	@ID			HideTodayTodoSchedule
@@ -373,7 +380,7 @@ func (h *TodosHandler) HideSchedule(w http.ResponseWriter, r *http.Request) {
 	h.writeToday(w, r, userID)
 }
 
-// RestoreSchedule restores a hidden Schedule and regenerates unfinished work.
+// RestoreSchedule restores a hidden Schedule and inserts it by its internal start time.
 //
 //	@Summary	Restore a hidden Schedule
 //	@ID			RestoreTodayTodoSchedule
@@ -449,9 +456,9 @@ func mapTodoItemPointer(item *todousecase.TodayItem) *TodoItemResponse {
 func mapTodoItem(item todousecase.TodayItem) TodoItemResponse {
 	result := TodoItemResponse{ID: item.ID, Kind: item.Kind, ActionItemID: item.ActionItemID, ScheduleRuleID: item.ScheduleRuleID,
 		TaskID: item.TaskID, TaskTitle: item.TaskTitle, ProjectID: item.ProjectID, ProjectTitle: item.ProjectTitle,
-		Title: item.Title, Description: item.Description, DurationMinutes: item.DurationMinutes, PlannedMinutes: item.PlannedMinutes, Completed: item.Completed, Started: item.Started,
+		Title: item.Title, Description: item.Description, DurationMinutes: item.DurationMinutes, PlannedMinutes: item.PlannedMinutes, Completed: item.Completed,
 		Hidden: item.Hidden, History: item.History, Position: item.Position, ActualMinutes: item.ActualMinutes,
-		CompletesSource: item.CompletesSource, SourceCompleted: item.SourceCompleted,
+		SourceCompleted:  item.SourceCompleted,
 		CanAddActionItem: item.CanAddActionItem, EstimateEditable: item.EstimateEditable,
 		CanComplete: item.CanComplete, CanReopen: item.CanReopen,
 		CanMove: item.CanMove, CanRemove: item.CanRemove, CanHide: item.CanHide, CanRestore: item.CanRestore}
@@ -459,8 +466,10 @@ func mapTodoItem(item todousecase.TodayItem) TodoItemResponse {
 		date := item.OccurrenceDate.Format("2006-01-02")
 		result.OccurrenceDate = &date
 	}
-	result.ScheduledStart = formatTodoTime(item.ScheduledStart)
-	result.ScheduledEnd = formatTodoTime(item.ScheduledEnd)
+	if item.Kind == string(tododomain.FrameSchedule) {
+		result.ScheduledStart = formatTodoTime(item.ScheduledStart)
+		result.ScheduledEnd = formatTodoTime(item.ScheduledEnd)
+	}
 	return result
 }
 

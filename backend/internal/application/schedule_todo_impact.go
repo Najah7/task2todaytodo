@@ -8,25 +8,20 @@ import (
 
 	"github.com/Najah7/task2todaytodo/db/sqlc"
 	"github.com/Najah7/task2todaytodo/internal/application/schedule/usecase"
+	tododao "github.com/Najah7/task2todaytodo/internal/application/todo/dao"
 	todousecase "github.com/Najah7/task2todaytodo/internal/application/todo/usecase"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type todoScheduleReservation struct {
-	ruleID, occurrenceDate string
-	start, end             time.Time
-	allDay                 bool
-}
-
 type todoScheduleSnapshot struct {
-	userID  string
-	listDay time.Time
-	hasList bool
-	rows    []todoScheduleReservation
+	userID    string
+	todo      tododao.Todo
+	hasList   bool
+	schedules []tododao.ScheduleOccurrence
 }
 
-func (u *ScheduleUOW) DoWithTodoImpact(ctx context.Context, scope usecase.TodoImpactScope, confirmed bool, fn func(context.Context, usecase.Repositories) error) error {
+func (u *ScheduleUOW) DoWithTodoImpact(ctx context.Context, scope usecase.TodoImpactScope, fn func(context.Context, usecase.Repositories) error) error {
 	return RunInTodoWorkflowTx(ctx, u.pool, func(tx pgx.Tx) error {
 		targets, err := scheduleImpactUsers(ctx, tx, scope)
 		if err != nil {
@@ -39,6 +34,11 @@ func (u *ScheduleUOW) DoWithTodoImpact(ctx context.Context, scope usecase.TodoIm
 
 		repos := u.repositories(tx)
 		todoRepos := newTodoRepositories(u.sourceStore, u.taskStore, u.projects, u.store, tx, u.newID, nil)
+		for _, userID := range targets {
+			if err := todoRepos.Todos().LockUser(ctx, userID); err != nil {
+				return err
+			}
+		}
 		before, err := captureTodoScheduleSnapshots(ctx, todoRepos, targets)
 		if err != nil {
 			return err
@@ -54,23 +54,15 @@ func (u *ScheduleUOW) DoWithTodoImpact(ctx context.Context, scope usecase.TodoIm
 		for _, userID := range targets {
 			oldSnapshot, oldOK := before[userID]
 			newSnapshot, newOK := after[userID]
-			if oldOK && newOK && oldSnapshot.hasList && newSnapshot.hasList && !sameTodoReservations(oldSnapshot.rows, newSnapshot.rows) {
+			if oldOK && newOK && oldSnapshot.hasList && newSnapshot.hasList && !sameTodoScheduleSources(oldSnapshot.schedules, newSnapshot.schedules) {
 				changed = append(changed, userID)
 			}
 		}
 		if len(changed) == 0 {
 			return nil
 		}
-		if !confirmed {
-			return usecase.ErrTodoRegenerationRequired
-		}
-		regenerator := todousecase.NewRegenerateTodayUseCase(nil, u.newID)
 		for _, userID := range changed {
-			snapshot := after[userID]
-			if err := todoRepos.Todos().LockUser(ctx, userID); err != nil {
-				return err
-			}
-			if _, err := regenerator.RegenerateTodayInTx(ctx, userID, snapshot.listDay, todoRepos); err != nil {
+			if err := syncTodoSchedules(ctx, todoRepos, before[userID], after[userID], u.newID); err != nil {
 				return err
 			}
 		}
@@ -106,8 +98,8 @@ func captureTodoScheduleSnapshots(ctx context.Context, repos todousecase.Reposit
 		if err != nil {
 			return nil, err
 		}
-		snapshot := todoScheduleSnapshot{userID: userID, listDay: day.Date}
-		_, err = repos.Todos().GetByUserDate(ctx, userID, day.Date)
+		snapshot := todoScheduleSnapshot{userID: userID}
+		todo, err := repos.Todos().GetByUserDate(ctx, userID, day.Date)
 		if err == todousecase.ErrNotFound {
 			result[userID] = snapshot
 			continue
@@ -115,48 +107,52 @@ func captureTodoScheduleSnapshots(ctx context.Context, repos todousecase.Reposit
 		if err != nil {
 			return nil, err
 		}
-		snapshot.hasList = true
+		snapshot.hasList, snapshot.todo = true, todo
 		sources, err := repos.Sources().ReadPlanningSources(ctx, userID, day.Date, day.Timezone)
 		if err != nil {
 			return nil, err
 		}
-		snapshot.rows = make([]todoScheduleReservation, 0, len(sources.Schedules))
-		for _, schedule := range sources.Schedules {
-			snapshot.rows = append(snapshot.rows, todoScheduleReservation{
-				ruleID: schedule.RuleID, occurrenceDate: schedule.OccurrenceDate.Format("2006-01-02"),
-				start: schedule.StartAt, end: schedule.EndAt, allDay: schedule.AllDay,
-			})
-		}
-		sortTodoReservations(snapshot.rows)
+		snapshot.schedules = sources.Schedules
 		result[userID] = snapshot
 	}
 	return result, nil
 }
 
-func sameTodoReservations(left, right []todoScheduleReservation) bool {
+func sameTodoScheduleSources(left, right []tododao.ScheduleOccurrence) bool {
 	if len(left) != len(right) {
 		return false
 	}
-	sortTodoReservations(left)
-	sortTodoReservations(right)
+	left = append([]tododao.ScheduleOccurrence(nil), left...)
+	right = append([]tododao.ScheduleOccurrence(nil), right...)
+	sortTodoScheduleSources(left)
+	sortTodoScheduleSources(right)
 	for i := range left {
-		if left[i] != right[i] {
+		if scheduleTodoKey(left[i].RuleID, left[i].OccurrenceDate) != scheduleTodoKey(right[i].RuleID, right[i].OccurrenceDate) ||
+			!left[i].StartAt.Equal(right[i].StartAt) || !left[i].EndAt.Equal(right[i].EndAt) || left[i].AllDay != right[i].AllDay {
 			return false
 		}
 	}
 	return true
 }
 
-func sortTodoReservations(rows []todoScheduleReservation) {
+func sortTodoScheduleSources(rows []tododao.ScheduleOccurrence) {
 	sort.Slice(rows, func(i, j int) bool {
-		if rows[i].start != rows[j].start {
-			return rows[i].start.Before(rows[j].start)
+		if !rows[i].StartAt.Equal(rows[j].StartAt) {
+			return rows[i].StartAt.Before(rows[j].StartAt)
 		}
-		if rows[i].ruleID != rows[j].ruleID {
-			return rows[i].ruleID < rows[j].ruleID
+		if rows[i].RuleID != rows[j].RuleID {
+			return rows[i].RuleID < rows[j].RuleID
 		}
-		return rows[i].occurrenceDate < rows[j].occurrenceDate
+		return rows[i].OccurrenceDate.Before(rows[j].OccurrenceDate)
 	})
+}
+
+func syncTodoSchedules(ctx context.Context, repos todousecase.Repositories, before, after todoScheduleSnapshot, newID func() string) error {
+	return todousecase.SyncScheduleSourcesInTx(ctx, repos, after.todo, after.schedules, newID)
+}
+
+func scheduleTodoKey(ruleID string, occurrenceDate time.Time) string {
+	return ruleID + "/" + occurrenceDate.Format("2006-01-02")
 }
 
 func uniqueSortedStrings(values []string) []string {

@@ -8,7 +8,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/todo/domain"
 )
 
-func TestPlanTodoItemsRestoresOrPreservesHiddenScheduleWithoutDuplicates(t *testing.T) {
+func TestPlanTodoItemsKeepsScheduleIdentityAndHiddenState(t *testing.T) {
 	date := time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)
 	start := date.Add(9 * time.Hour)
 	end := start.Add(time.Hour)
@@ -33,7 +33,7 @@ func TestPlanTodoItemsRestoresOrPreservesHiddenScheduleWithoutDuplicates(t *test
 		}
 	})
 
-	t.Run("regeneration preserves hidden row", func(t *testing.T) {
+	t.Run("keeps a hidden saved row when absent from the projection", func(t *testing.T) {
 		items, err := planTodoItems("todo", saved, domain.Plan{}, newID)
 		if err != nil {
 			t.Fatal(err)

@@ -72,7 +72,7 @@ func (r *stubUserRepository) UpdateTimezone(_ context.Context, _ domain.UserID, 
 	return r.updateTimezoneErr
 }
 
-func (*stubUserRepository) UpdateSleepSettings(_ context.Context, _ domain.UserID, _, _ string) error {
+func (*stubUserRepository) UpdateActiveTimeSettings(_ context.Context, _ domain.UserID, _, _ string) error {
 	return nil
 }
 

@@ -15,10 +15,9 @@ var ErrActionItemPatchRequiredFieldNull = errors.New("required action item field
 var ErrActionItemActualMinutesRequiresCompletion = errors.New("actual minutes can only be set on completed action items")
 
 type ActionItemPlanningPatch struct {
-	EstimatedMinutes        PatchField[int]
-	ActualMinutes           PatchField[int]
-	Priority                PatchField[string]
-	ConfirmTodoRegeneration bool
+	EstimatedMinutes PatchField[int]
+	ActualMinutes    PatchField[int]
+	Priority         PatchField[string]
 }
 
 type UpdateActionItemUseCase struct {
@@ -86,11 +85,6 @@ func (uc *UpdateActionItemUseCase) Execute(
 				}
 			}
 			estimateChanged := patch.EstimatedMinutes.Present && (current.EstimatedMinutes == nil || item.EstimatedMinutes == nil || *current.EstimatedMinutes != *item.EstimatedMinutes)
-			todayHasItem := false
-			assigneeID := domain.UserID(task.AssigneeID)
-			if assigneeID == "" {
-				assigneeID = userID
-			}
 			if estimateChanged {
 				if current.Completed {
 					return ErrActionItemStarted
@@ -101,13 +95,6 @@ func (uc *UpdateActionItemUseCase) Execute(
 				}
 				if started {
 					return ErrActionItemStarted
-				}
-				todayHasItem, err = repos.ActionItemTodos().HasTodayActionItem(ctx, assigneeID, itemID)
-				if err != nil {
-					return err
-				}
-				if todayHasItem && !patch.ConfirmTodoRegeneration {
-					return ErrTodoRegenerationRequired
 				}
 			}
 			if patch.ActualMinutes.Present {
@@ -133,9 +120,6 @@ func (uc *UpdateActionItemUseCase) Execute(
 				return err
 			}
 			result, err = repos.ActionItems().UpdateForOwnedTask(ctx, userID, item)
-			if err == nil && estimateChanged && todayHasItem {
-				err = repos.ActionItemTodos().RegenerateToday(ctx, assigneeID)
-			}
 			return err
 		})
 	})

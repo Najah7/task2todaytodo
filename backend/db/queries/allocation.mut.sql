@@ -189,20 +189,20 @@ UPDATE project_time_allocation_pause_intervals
 SET resumed_at = sqlc.arg(resumed_at)::timestamptz
 WHERE project_id = sqlc.arg(project_id)::text AND resumed_at IS NULL;
 
--- name: CreateDailySleepException :one
-INSERT INTO daily_sleep_exceptions(user_id, local_date, wake_local, bedtime_local, timezone)
+-- name: CreateDailyActiveTimeException :one
+INSERT INTO daily_active_time_exceptions(user_id, local_date, active_start_local, active_end_local, timezone)
 VALUES (
     sqlc.arg(user_id)::text, sqlc.arg(local_date)::date,
-    sqlc.arg(wake_local)::timestamp, sqlc.arg(bedtime_local)::timestamp,
+    sqlc.arg(active_start_local)::timestamp, sqlc.arg(active_end_local)::timestamp,
     sqlc.arg(timezone)::text
 )
 ON CONFLICT (user_id, local_date) DO UPDATE SET
-    wake_local = EXCLUDED.wake_local, bedtime_local = EXCLUDED.bedtime_local,
+    active_start_local = EXCLUDED.active_start_local, active_end_local = EXCLUDED.active_end_local,
     timezone = EXCLUDED.timezone,
-    revision = daily_sleep_exceptions.revision + 1, changed_at = now()
+    revision = daily_active_time_exceptions.revision + 1, changed_at = now()
 RETURNING *;
 
--- name: DeleteDailySleepException :execrows
-DELETE FROM daily_sleep_exceptions
+-- name: DeleteDailyActiveTimeException :execrows
+DELETE FROM daily_active_time_exceptions
 WHERE user_id = sqlc.arg(user_id)::text AND local_date = sqlc.arg(local_date)::date
   AND revision = sqlc.arg(revision)::integer;

@@ -5,27 +5,45 @@ import (
 	"time"
 )
 
-func allocationWindows(allocations []ProjectAllocation, projectID string, day Interval) []Interval {
+func allocationWindows(allocations []ProjectAllocation, projectID string, day Interval, active []Interval) []Interval {
 	var out []Interval
 	for _, a := range allocations {
 		if a.ProjectID != projectID {
 			continue
 		}
 		if clipped, ok := intersect(a.Interval, day); ok {
-			out = append(out, clipped)
+			for _, window := range active {
+				if fit, ok := intersect(clipped, window); ok {
+					out = append(out, fit)
+				}
+			}
 		}
 	}
 	return mergeIntervals(out)
 }
 
-func projectlessWindows(allocations []ProjectAllocation, day Interval) []Interval {
+func projectlessWindows(allocations []ProjectAllocation, day Interval, active []Interval) []Interval {
 	blocked := make([]Interval, 0, len(allocations))
 	for _, allocation := range allocations {
 		if clipped, ok := intersect(allocation.Interval, day); ok {
 			blocked = append(blocked, clipped)
 		}
 	}
-	return freeIntervals(day, blocked)
+	var out []Interval
+	for _, window := range active {
+		out = append(out, freeIntervals(window, blocked)...)
+	}
+	return out
+}
+
+func activeWindows(in Input) []Interval {
+	var out []Interval
+	for _, interval := range in.ActiveTime {
+		if clipped, ok := intersect(interval, in.Day); ok {
+			out = append(out, clipped)
+		}
+	}
+	return mergeIntervals(out)
 }
 
 func findWholeFit(windows, occupied []Interval, minutes, gap int) (time.Time, time.Time, Interval, bool) {
@@ -41,51 +59,6 @@ func findWholeFit(windows, occupied []Interval, minutes, gap int) (time.Time, ti
 		}
 	}
 	return time.Time{}, time.Time{}, Interval{}, false
-}
-
-func placeSplitKind(day Interval, occupied []Interval, minutes, gap int, sourceID string, kind FrameKind) ([]Frame, []Interval) {
-	return placeSplitFromKind(day, day.Start, occupied, minutes, gap, sourceID, "", kind)
-}
-
-func placeSplitFromKind(day Interval, lowerBound time.Time, occupied []Interval, minutes, gap int, sourceID, originalFrameID string, kind FrameKind) ([]Frame, []Interval) {
-	window := day
-	if lowerBound.After(window.Start) {
-		window.Start = lowerBound
-	}
-	if !window.End.After(window.Start) {
-		return []Frame{{Kind: kind, SourceID: sourceID, PlannedMinutes: minutes, OriginalFrameID: originalFrameID}}, nil
-	}
-	free := freeIntervals(window, occupied)
-	var frames []Frame
-	var reservations []Interval
-	left := minutes
-	for _, slot := range free {
-		if left == 0 {
-			break
-		}
-		available := int(slot.End.Sub(slot.Start).Minutes())
-		if available <= 0 {
-			continue
-		}
-		use := min(left, available)
-		start, end := slot.Start, slot.Start.Add(time.Duration(use)*time.Minute)
-		frame := workFrame(kind, sourceID, use, start, end)
-		if originalFrameID != "" && len(frames) == 0 {
-			frame.OriginalFrameID = originalFrameID
-		}
-		frames = append(frames, frame)
-		padding := time.Duration(gap) * time.Minute
-		reservations = append(reservations, Interval{start.Add(-padding), end.Add(padding)})
-		left -= use
-	}
-	if left > 0 {
-		frame := Frame{Kind: kind, SourceID: sourceID, PlannedMinutes: left}
-		if len(frames) == 0 {
-			frame.OriginalFrameID = originalFrameID
-		}
-		frames = append(frames, frame)
-	}
-	return frames, reservations
 }
 
 func freeIntervals(window Interval, occupied []Interval) []Interval {
@@ -113,7 +86,7 @@ func freeIntervals(window Interval, occupied []Interval) []Interval {
 }
 
 func initialOccupied(in Input, completed []Frame) []Interval {
-	occupied := append([]Interval(nil), in.Sleep...)
+	var occupied []Interval
 	padding := time.Duration(in.GapMinutes) * time.Minute
 	for _, s := range in.Schedules {
 		if !s.Hidden {
@@ -162,16 +135,6 @@ func mergeIntervals(intervals []Interval) []Interval {
 func workFrame(kind FrameKind, sourceID string, minutes int, start, end time.Time) Frame {
 	startCopy, endCopy := start, end
 	return Frame{Kind: kind, SourceID: sourceID, PlannedMinutes: minutes, Start: &startCopy, End: &endCopy}
-}
-
-func remainingMinutes(c Candidate, completed []Frame) int {
-	used := c.CompletedBeforeDayMinutes
-	for _, f := range completed {
-		if f.Kind == c.Kind && f.SourceID == c.ID {
-			used += f.PlannedMinutes
-		}
-	}
-	return c.EstimatedMinutes - used
 }
 
 func orderFrames(frames []Frame) []Frame {

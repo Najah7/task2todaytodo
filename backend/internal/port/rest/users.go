@@ -25,8 +25,8 @@ type UserResponse struct {
 	UserName          string `json:"user_name,omitempty"`
 	Email             string `json:"email"`
 	Timezone          string `json:"timezone"`
-	WakeUpTime        string `json:"wake_up_time"`
-	Bedtime           string `json:"bedtime"`
+	ActiveStartTime   string `json:"active_start_time"`
+	ActiveEndTime     string `json:"active_end_time"`
 	MinimumGapMinutes int    `json:"minimum_gap_minutes"`
 }
 
@@ -40,8 +40,8 @@ func newUserResponse(u dao.User) UserResponse {
 		UserName:          auth.NewUserName(u.FirstName, u.LastName).FullName(),
 		Email:             u.Email,
 		Timezone:          u.Timezone,
-		WakeUpTime:        u.WakeUpTime,
-		Bedtime:           u.Bedtime,
+		ActiveStartTime:   u.ActiveStartTime,
+		ActiveEndTime:     u.ActiveEndTime,
 		MinimumGapMinutes: u.MinimumGapMinutes,
 	}
 }
@@ -90,43 +90,43 @@ func (h UserHandler) UpdateMinimumGap(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, newUserResponse(u))
 }
 
-type UserSleepSettingsUpdateRequest struct {
-	WakeUpTime string `json:"wake_up_time"`
-	Bedtime    string `json:"bedtime"`
+type UserActiveTimeSettingsUpdateRequest struct {
+	ActiveStartTime string `json:"active_start_time"`
+	ActiveEndTime   string `json:"active_end_time"`
 }
 
-// UpdateSleepSettings updates the current user's basic sleep window as one pair.
+// UpdateActiveTimeSettings updates the current user's basic active_time window as one pair.
 //
-//	@Summary	Update current user sleep settings
+//	@Summary	Update current user active_time settings
 //	@Tags		Users
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		request	body		UserSleepSettingsUpdateRequest	true	"Sleep settings"
+//	@Param		request	body		UserActiveTimeSettingsUpdateRequest	true	"ActiveTime settings"
 //	@Success	200		{object}	UserResponse
 //	@Failure	400		{object}	ErrResponse
 //	@Failure	401		{object}	ErrResponse
 //	@Failure	409		{object}	ErrResponse
-//	@Router		/users/me/sleep [patch]
-func (h UserHandler) UpdateSleepSettings(w http.ResponseWriter, r *http.Request) {
+//	@Router		/users/me/active-time [patch]
+func (h UserHandler) UpdateActiveTimeSettings(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(UserIDContextKey).(string)
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, ErrSpecUsersUpdateSleepSettingsFailed, ErrDetailUnauthorized)
+		WriteError(w, http.StatusUnauthorized, ErrSpecUsersUpdateActiveTimeSettingsFailed, ErrDetailUnauthorized)
 		return
 	}
-	var req UserSleepSettingsUpdateRequest
+	var req UserActiveTimeSettingsUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecUsersUpdateSleepSettingsFailed, ErrDetailInvalidRequestBody)
+		WriteError(w, http.StatusBadRequest, ErrSpecUsersUpdateActiveTimeSettingsFailed, ErrDetailInvalidRequestBody)
 		return
 	}
-	u, err := h.user.UpdateSleepSettings.Execute(r.Context(), auth.UserID(userID), req.WakeUpTime, req.Bedtime)
+	u, err := h.user.UpdateActiveTimeSettings.Execute(r.Context(), auth.UserID(userID), req.ActiveStartTime, req.ActiveEndTime)
 	if err != nil {
-		if errors.Is(err, authusecase.ErrInvalidSleepTime) {
-			WriteError(w, http.StatusBadRequest, ErrSpecUsersUpdateSleepSettingsFailed, NewErrDetail("wake_up_time", "invalid_time", "Sleep times must use HH:mm format"))
+		if errors.Is(err, authusecase.ErrInvalidActiveTimeTime) {
+			WriteError(w, http.StatusBadRequest, ErrSpecUsersUpdateActiveTimeSettingsFailed, NewErrDetail("active_start_time", "invalid_time", "ActiveTime times must use HH:mm format"))
 			return
 		}
 		status, detail := errToErrResponse(err, "")
-		WriteError(w, status, ErrSpecUsersUpdateSleepSettingsFailed, detail)
+		WriteError(w, status, ErrSpecUsersUpdateActiveTimeSettingsFailed, detail)
 		return
 	}
 	WriteJSON(w, http.StatusOK, newUserResponse(u))
@@ -312,11 +312,17 @@ func errToErrResponse(err error, passwordField string) (int, ErrDetail) {
 		return http.StatusBadRequest, NewErrDetail("first_name", "first_name_required", "First name is required")
 	case errors.Is(err, auth.ErrInvalidUserTimezone):
 		return http.StatusBadRequest, NewErrDetail("timezone", "invalid_timezone", "Timezone must be a valid IANA timezone")
-	case errors.Is(err, authusecase.ErrInvalidSleepTime):
-		return http.StatusBadRequest, NewErrDetail("wake_up_time", "invalid_time", "Sleep times must use HH:mm format")
+	case errors.Is(err, authusecase.ErrInvalidActiveTimeTime):
+		return http.StatusBadRequest, NewErrDetail("active_start_time", "invalid_time", "ActiveTime times must use HH:mm format")
 	case errors.Is(err, allocationusecase.ErrConflict):
 		var conflict allocationusecase.ConflictError
-		detail := NewErrDetail("sleep", "allocation_conflict", "Sleep settings conflict with an allocation")
+		reason, message := "allocation_conflict", "Active-time settings conflict with an allocation"
+		if errors.As(err, &conflict) {
+			if conflict.Kind == "outside_active_time" {
+				reason, message = "outside_active_time", "Active-time changes would leave an allocation outside the available interval"
+			}
+		}
+		detail := NewErrDetail("active_time", reason, message)
 		if errors.As(err, &conflict) {
 			detail.Metadata = &AllocationConflictMetadata{
 				Kind: conflict.Kind, RuleID: conflict.RuleID,

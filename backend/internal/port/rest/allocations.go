@@ -24,7 +24,7 @@ type AllocationWeekResponse struct {
 	Projects          []AllocationWeekProjectResponse `json:"projects"`
 	Allocations       []AllocationOccurrenceResponse  `json:"allocations"`
 	Days              []AllocationDayResponse         `json:"days"`
-	SleepIntervals    []SleepIntervalResponse         `json:"sleep_intervals"`
+	ActiveIntervals   []ActiveTimeIntervalResponse    `json:"active_intervals"`
 	AllocatedMinutes  int                             `json:"allocated_minutes"`
 	TargetMinutes     int                             `json:"target_minutes"`
 	DifferenceMinutes int                             `json:"difference_minutes"`
@@ -58,15 +58,15 @@ type AllocationOccurrenceResponse struct {
 	CanDeleteFollowing bool      `json:"can_delete_following"`
 }
 type AllocationDayResponse struct {
-	Date              string    `json:"date"`
-	WakeAt            time.Time `json:"wake_at"`
-	BedtimeAt         time.Time `json:"bedtime_at"`
-	SleepRevision     int32     `json:"sleep_revision"`
-	HasSleepException bool      `json:"has_sleep_exception"`
-	AllocatedMinutes  int       `json:"allocated_minutes"`
-	FreeMinutes       int       `json:"free_minutes"`
+	Date               string    `json:"date"`
+	ActiveStartAt      time.Time `json:"active_start_at"`
+	ActiveEndAt        time.Time `json:"active_end_at"`
+	ActiveRevision     int32     `json:"active_revision"`
+	HasActiveException bool      `json:"has_active_exception"`
+	AllocatedMinutes   int       `json:"allocated_minutes"`
+	FreeMinutes        int       `json:"free_minutes"`
 }
-type SleepIntervalResponse struct {
+type ActiveTimeIntervalResponse struct {
 	StartAt   time.Time `json:"start_at"`
 	EndAt     time.Time `json:"end_at"`
 	LocalDate string    `json:"local_date"`
@@ -102,13 +102,13 @@ type AllocationPlanItemResponse struct {
 	Title         string `json:"title"`
 	TargetMinutes int    `json:"target_minutes"`
 }
-type SleepExceptionResponse struct {
-	LocalDate    string `json:"local_date"`
-	WakeLocal    string `json:"wake_local"`
-	BedtimeLocal string `json:"bedtime_local"`
-	Timezone     string `json:"timezone"`
-	Revision     int32  `json:"revision"`
-	HasException bool   `json:"has_exception"`
+type ActiveTimeExceptionResponse struct {
+	LocalDate        string `json:"local_date"`
+	ActiveStartLocal string `json:"active_start_local"`
+	ActiveEndLocal   string `json:"active_end_local"`
+	Timezone         string `json:"timezone"`
+	Revision         int32  `json:"revision"`
+	HasException     bool   `json:"has_exception"`
 }
 
 type AllocationRuleRequest struct {
@@ -145,13 +145,13 @@ type UpdateAllocationRequest struct {
 	Scope        string    `json:"scope" example:"current"`
 	RuleRevision int32     `json:"rule_revision,omitempty"`
 }
-type DailySleepExceptionRequest struct {
-	WakeLocal    string `json:"wake_local" example:"2026-10-12T07:00"`
-	BedtimeLocal string `json:"bedtime_local" example:"2026-10-13T01:00"`
-	Timezone     string `json:"timezone" example:"Asia/Tokyo"`
+type DailyActiveTimeExceptionRequest struct {
+	ActiveStartLocal string `json:"active_start_local" example:"2026-10-12T07:00"`
+	ActiveEndLocal   string `json:"active_end_local" example:"2026-10-13T01:00"`
+	Timezone         string `json:"timezone" example:"Asia/Tokyo"`
 }
 
-// GetWeek returns bounded, server-projected allocation and sleep data.
+// GetWeek returns bounded, server-projected allocation and active_time data.
 //
 //	@Summary	Get project allocation week
 //	@Tags		Allocations
@@ -417,20 +417,20 @@ func (h *AllocationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// PutSleepException saves a full per-date sleep pair.
+// PutActiveTimeException saves a full per-date active_time pair.
 //
-//	@Summary	Set daily sleep exception
+//	@Summary	Set daily active_time exception
 //	@Tags		Allocations
 //	@Accept		json
 //	@Produce	json
 //	@Security	BearerAuth
-//	@Param		local_date	path		string						true	"Waking date"
-//	@Param		If-Match	header		string						true	"Exception revision, or 0 when absent"
-//	@Param		request		body		DailySleepExceptionRequest	true	"Sleep exception"
-//	@Success	200			{object}	SleepExceptionResponse
+//	@Param		local_date	path		string							true	"Waking date"
+//	@Param		If-Match	header		string							true	"Exception revision, or 0 when absent"
+//	@Param		request		body		DailyActiveTimeExceptionRequest	true	"ActiveTime exception"
+//	@Success	200			{object}	ActiveTimeExceptionResponse
 //	@Failure	409			{object}	ErrResponse
-//	@Router		/daily-sleep-exceptions/{local_date} [put]
-func (h *AllocationHandler) PutSleepException(w http.ResponseWriter, r *http.Request) {
+//	@Router		/daily-active-time-exceptions/{local_date} [put]
+func (h *AllocationHandler) PutActiveTimeException(w http.ResponseWriter, r *http.Request) {
 	actor, ok := allocationActor(w, r)
 	if !ok {
 		return
@@ -444,36 +444,36 @@ func (h *AllocationHandler) PutSleepException(w http.ResponseWriter, r *http.Req
 		WriteError(w, http.StatusBadRequest, ErrSpecAllocationsUpdateFailed, NewErrDetail("local_date", "invalid_date", "Date must use YYYY-MM-DD"))
 		return
 	}
-	var req DailySleepExceptionRequest
+	var req DailyActiveTimeExceptionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		WriteError(w, http.StatusBadRequest, ErrSpecAllocationsUpdateFailed, ErrDetailInvalidRequestBody)
 		return
 	}
-	wake, err1 := time.Parse("2006-01-02T15:04", req.WakeLocal)
-	bed, err2 := time.Parse("2006-01-02T15:04", req.BedtimeLocal)
+	wake, err1 := time.Parse("2006-01-02T15:04", req.ActiveStartLocal)
+	bed, err2 := time.Parse("2006-01-02T15:04", req.ActiveEndLocal)
 	if err1 != nil || err2 != nil {
-		WriteError(w, http.StatusBadRequest, ErrSpecAllocationsUpdateFailed, NewErrDetail("wake_local", "invalid_local_time", "Sleep window must use local YYYY-MM-DDTHH:mm values"))
+		WriteError(w, http.StatusBadRequest, ErrSpecAllocationsUpdateFailed, NewErrDetail("active_start_local", "invalid_local_time", "ActiveTime window must use local YYYY-MM-DDTHH:mm values"))
 		return
 	}
-	result, err := h.usecases.PutSleepException.Execute(r.Context(), actor, date, revision, wake, bed, req.Timezone)
+	result, err := h.usecases.PutActiveTimeException.Execute(r.Context(), actor, date, revision, wake, bed, req.Timezone)
 	if err != nil {
 		writeAllocationError(w, ErrSpecAllocationsUpdateFailed, err)
 		return
 	}
 	setResourceETag(w, result.Revision)
-	WriteJSON(w, http.StatusOK, sleepExceptionResponse(result))
+	WriteJSON(w, http.StatusOK, activeTimeExceptionResponse(result))
 }
 
-// DeleteSleepException resets a date to the current user sleep profile.
+// DeleteActiveTimeException resets a date to the current user active_time profile.
 //
-//	@Summary	Reset daily sleep exception
+//	@Summary	Reset daily active_time exception
 //	@Tags		Allocations
 //	@Security	BearerAuth
 //	@Param		local_date	path	string	true	"Waking date"
 //	@Param		If-Match	header	string	true	"Exception revision"
 //	@Success	204
-//	@Router		/daily-sleep-exceptions/{local_date} [delete]
-func (h *AllocationHandler) DeleteSleepException(w http.ResponseWriter, r *http.Request) {
+//	@Router		/daily-active-time-exceptions/{local_date} [delete]
+func (h *AllocationHandler) DeleteActiveTimeException(w http.ResponseWriter, r *http.Request) {
 	actor, ok := allocationActor(w, r)
 	if !ok {
 		return
@@ -487,7 +487,7 @@ func (h *AllocationHandler) DeleteSleepException(w http.ResponseWriter, r *http.
 		WriteError(w, http.StatusBadRequest, ErrSpecAllocationsDeleteFailed, NewErrDetail("local_date", "invalid_date", "Date must use YYYY-MM-DD"))
 		return
 	}
-	if err := h.usecases.DeleteSleepException.Execute(r.Context(), actor, date, revision); err != nil {
+	if err := h.usecases.DeleteActiveTimeException.Execute(r.Context(), actor, date, revision); err != nil {
 		writeAllocationError(w, ErrSpecAllocationsDeleteFailed, err)
 		return
 	}
@@ -507,7 +507,13 @@ func writeAllocationError(w http.ResponseWriter, spec ErrSpec, err error) {
 	switch {
 	case errors.Is(err, allocationusecase.ErrConflict):
 		var conflict allocationusecase.ConflictError
-		detail := NewErrDetail("allocation", "allocation_conflict", "Allocation conflicts with an existing allocation or sleep interval")
+		reason, message := "allocation_conflict", "Allocation conflicts with an existing allocation or active-time interval"
+		if errors.As(err, &conflict) {
+			if conflict.Kind == "outside_active_time" {
+				reason, message = "outside_active_time", "Allocation must fit wholly within active time"
+			}
+		}
+		detail := NewErrDetail("allocation", reason, message)
 		if errors.As(err, &conflict) {
 			detail.Metadata = &AllocationConflictMetadata{Kind: conflict.Kind, RuleID: conflict.RuleID, OccurrenceDate: conflict.OccurrenceDate.Format("2006-01-02"), ProjectID: conflict.ProjectID, StartAt: conflict.StartAt.UTC().Format(time.RFC3339), EndAt: conflict.EndAt.UTC().Format(time.RFC3339)}
 		}
@@ -530,11 +536,11 @@ func allocationWeekResponse(value allocationdao.Week) AllocationWeekResponse {
 		WeekStart: value.WeekStart.Format("2006-01-02"), Timezone: value.Timezone,
 		AllocatedMinutes: value.AllocatedMinutes, TargetMinutes: value.TargetMinutes,
 		DifferenceMinutes: value.DifferenceMinutes, FreeMinutes: value.FreeMinutes,
-		Projects:       make([]AllocationWeekProjectResponse, 0, len(value.Projects)),
-		Allocations:    make([]AllocationOccurrenceResponse, 0, len(value.Allocations)),
-		Days:           make([]AllocationDayResponse, 0, len(value.Days)),
-		SleepIntervals: make([]SleepIntervalResponse, 0, len(value.SleepIntervals)),
-		PausedRules:    make([]PausedAllocationRuleResponse, 0, len(value.PausedRules)),
+		Projects:        make([]AllocationWeekProjectResponse, 0, len(value.Projects)),
+		Allocations:     make([]AllocationOccurrenceResponse, 0, len(value.Allocations)),
+		Days:            make([]AllocationDayResponse, 0, len(value.Days)),
+		ActiveIntervals: make([]ActiveTimeIntervalResponse, 0, len(value.ActiveIntervals)),
+		PausedRules:     make([]PausedAllocationRuleResponse, 0, len(value.PausedRules)),
 	}
 	for _, p := range value.Projects {
 		out.Projects = append(out.Projects, AllocationWeekProjectResponse{ProjectID: p.ID, Title: p.Title, TargetMinutes: p.TargetMinutes, AllocatedMinutes: p.AllocatedMinutes, DifferenceMinutes: p.DifferenceMinutes})
@@ -543,10 +549,10 @@ func allocationWeekResponse(value allocationdao.Week) AllocationWeekResponse {
 		out.Allocations = append(out.Allocations, allocationRowResponse(a))
 	}
 	for _, d := range value.Days {
-		out.Days = append(out.Days, AllocationDayResponse{Date: d.Date.Format("2006-01-02"), WakeAt: d.WakeAt, BedtimeAt: d.BedtimeAt, SleepRevision: d.SleepRevision, HasSleepException: d.HasSleepException, AllocatedMinutes: d.AllocatedMinutes, FreeMinutes: d.FreeMinutes})
+		out.Days = append(out.Days, AllocationDayResponse{Date: d.Date.Format("2006-01-02"), ActiveStartAt: d.ActiveStartAt, ActiveEndAt: d.ActiveEndAt, ActiveRevision: d.ActiveRevision, HasActiveException: d.HasActiveException, AllocatedMinutes: d.AllocatedMinutes, FreeMinutes: d.FreeMinutes})
 	}
-	for _, i := range value.SleepIntervals {
-		out.SleepIntervals = append(out.SleepIntervals, SleepIntervalResponse{StartAt: i.StartAt, EndAt: i.EndAt, LocalDate: i.LocalDate.Format("2006-01-02")})
+	for _, i := range value.ActiveIntervals {
+		out.ActiveIntervals = append(out.ActiveIntervals, ActiveTimeIntervalResponse{StartAt: i.StartAt, EndAt: i.EndAt, LocalDate: i.LocalDate.Format("2006-01-02")})
 	}
 	for _, rule := range value.PausedRules {
 		out.PausedRules = append(out.PausedRules, PausedAllocationRuleResponse{RuleID: rule.RuleID, ProjectID: rule.ProjectID, Reason: rule.Reason})
@@ -578,6 +584,6 @@ func allocationRowResponse(value allocationdao.Allocation) AllocationOccurrenceR
 	return AllocationOccurrenceResponse{ID: value.ID, RuleID: value.RuleID, OccurrenceDate: value.OccurrenceDate.Format("2006-01-02"), SourceRevisionID: value.SourceRevisionID, ProjectID: value.ProjectID, ProjectTitle: value.ProjectTitle, Timezone: value.Timezone, StartAt: value.StartAt, EndAt: value.EndAt, Revision: value.Revision, RuleRevision: value.RuleRevision, IsException: value.IsException, CanUpdate: value.CanUpdate, CanDelete: value.CanDelete, CanUpdateFollowing: value.CanUpdateFollowing, CanDeleteFollowing: value.CanDeleteFollowing}
 }
 
-func sleepExceptionResponse(value allocationdao.SleepException) SleepExceptionResponse {
-	return SleepExceptionResponse{LocalDate: value.LocalDate.Format("2006-01-02"), WakeLocal: value.WakeLocal.Format("2006-01-02T15:04"), BedtimeLocal: value.BedtimeLocal.Format("2006-01-02T15:04"), Timezone: value.Timezone, Revision: value.Revision, HasException: value.HasException}
+func activeTimeExceptionResponse(value allocationdao.ActiveTimeException) ActiveTimeExceptionResponse {
+	return ActiveTimeExceptionResponse{LocalDate: value.LocalDate.Format("2006-01-02"), ActiveStartLocal: value.ActiveStartLocal.Format("2006-01-02T15:04"), ActiveEndLocal: value.ActiveEndLocal.Format("2006-01-02T15:04"), Timezone: value.Timezone, Revision: value.Revision, HasException: value.HasException}
 }

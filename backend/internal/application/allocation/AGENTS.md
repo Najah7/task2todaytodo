@@ -4,19 +4,19 @@ Follow the [application guide](../AGENTS.md). Routes are registered in [cmd/api/
 
 ## Features
 
-- Define weekly and one-off Project allocation windows, materialize their occurrences, and serve weekly plans. Provide sleep windows from profile settings and per-day exceptions.
+- Define weekly and one-off Project allocation windows, materialize their occurrences, and serve weekly plans. Project the user's available Active time from profile settings and per-day exceptions.
 - Weekly Rules and target-minute Plans are independent resources with separate revisions; Project completion pauses Rules and reopening resumes their cadence.
 
 ## Endpoints
 
 - `GET /api/allocation-weeks/{week_start}`, `/api/allocation-rules`, `/api/allocation-plans`; `PUT /api/allocation-rules`, `/api/allocation-plans`.
 - `POST /api/allocations`; `PATCH/DELETE /api/allocations/{rule_id}/{occurrence_date}`.
-- `PUT/DELETE /api/daily-sleep-exceptions/{local_date}`; related Auth-owned `PATCH /api/users/me/sleep`.
+- `PUT/DELETE /api/daily-active-time-exceptions/{local_date}`; related Auth-owned `PATCH /api/users/me/active-time`.
 - Prefill trigger: `POST /api/admin/jobs/prefill-allocations:run` (Admin-owned).
 
 ## Key files
 
-- [domain/interval.go](domain/interval.go), [domain/sleep.go](domain/sleep.go): overlap and sleep-window rules.
+- [domain/interval.go](domain/interval.go), [domain/active_time.go](domain/active_time.go): overlap and Active-time window rules.
 - [usecase/put_rules.go](usecase/put_rules.go), [usecase/put_plans.go](usecase/put_plans.go): separate weekly resource writes.
 - [usecase/get_week.go](usecase/get_week.go), [usecase/prefill.go](usecase/prefill.go): weekly projection and materialization.
 - [repository/repository.go](repository/repository.go), [usecase/project_lifecycle.go](usecase/project_lifecycle.go): persistence and Project pause/resume coordination.
@@ -24,7 +24,7 @@ Follow the [application guide](../AGENTS.md). Routes are registered in [cmd/api/
 ## Change checks
 
 - Preserve ownership and Project read-access checks; changing Rules must not change Plan revisions or hidden rows, and vice versa.
-- Keep rule timezone and original occurrence identity stable; adjacent windows are valid, overlaps are not. Sleep remains a projection, not materialized.
+- Keep rule timezone and original occurrence identity stable; adjacent windows are valid, overlaps are not. Active time remains a projection, not materialized.
 - Project completion/reopen must update allocation pause state in the same transaction; changes affect [Todo](../todo/AGENTS.md) and the [Allocation UI](../../../../frontend/src/features/allocation/AGENTS.md).
 
 ## Verification
@@ -42,15 +42,16 @@ allocation. Losing Project read access hides and stops that owner's generation.
 Rules retain their IANA timezone. Weekly weekday values are 0=Sunday through
 6=Saturday. Weekly slots and one-off slots use shared calendar recurrence
 helpers. Moving an occurrence preserves its original rule
-and occurrence date. Saved exceptions are full snapshots. Allocation and sleep
+and occurrence date. Saved exceptions are full snapshots. Allocation and Active-time
 windows cannot overlap; allocation windows cannot overlap each other. Adjacent
 windows are valid. Conflicts never move or shorten other windows automatically.
 
-Sleep settings consist of current profile wake and bedtime values plus optional
-per-date full-pair exceptions. Sleep is a read projection, not materialized.
-Dates identify the waking day. A bedtime at or before wake time ends on the next
-local date. Basic profile changes recalculate virtual sleep days; exception
-timezone and values remain as saved.
+Active-time settings consist of profile `active_start_time` and `active_end_time`
+values plus optional per-date full-pair exceptions. Active time is a read
+projection, not materialized. Dates identify the active-start day. An end time
+at or before the start time ends on the next local date. Profile changes
+recalculate projected Active-time windows; exception timezone and values remain
+as saved.
 
 Project completion pauses its allocation rules in the Project transaction.
 Reopening resumes original cadence at reopening time. Rules with conflicts stay

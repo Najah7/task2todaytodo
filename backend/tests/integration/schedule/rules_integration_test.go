@@ -54,7 +54,7 @@ func (u ruleTestUOW) Do(ctx context.Context, fn func(context.Context, usecase.Re
 	return tx.Commit(ctx)
 }
 
-func (u ruleTestUOW) DoWithTodoImpact(ctx context.Context, _ usecase.TodoImpactScope, _ bool, fn func(context.Context, usecase.Repositories) error) error {
+func (u ruleTestUOW) DoWithTodoImpact(ctx context.Context, _ usecase.TodoImpactScope, fn func(context.Context, usecase.Repositories) error) error {
 	return u.Do(ctx, fn)
 }
 

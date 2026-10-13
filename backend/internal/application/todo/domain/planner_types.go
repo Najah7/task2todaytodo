@@ -65,23 +65,22 @@ func sourceKey(kind FrameKind, id string) string { return string(kind) + "\x00" 
 // Frame describes either an action-item work segment or a fixed schedule.
 // Unscheduled work has nil Start/End and retains positive PlannedMinutes.
 type Frame struct {
-	ID              string // Existing frame ID; empty for a newly generated frame.
-	OriginalFrameID string // Persisted frame represented by first replacement segment.
-	Kind            FrameKind
-	SourceID        string
-	RuleID          string
-	OccurrenceDate  time.Time
-	PlannedMinutes  int
-	Start           *time.Time
-	End             *time.Time
-	Completed       bool
-	Hidden          bool
-	Position        int
+	ID             string // Existing frame ID; empty for a newly generated frame.
+	Kind           FrameKind
+	SourceID       string
+	RuleID         string
+	OccurrenceDate time.Time
+	PlannedMinutes int
+	Start          *time.Time
+	End            *time.Time
+	Completed      bool
+	Hidden         bool
+	Position       int
 }
 
 type Input struct {
 	Day             Interval
-	Sleep           []Interval
+	ActiveTime      []Interval
 	Allocations     []ProjectAllocation
 	Schedules       []Schedule
 	CompletedFrames []Frame
@@ -96,21 +95,5 @@ type Plan struct {
 	PreservedCompletedFrames []Frame
 }
 
-// OrderedItem is an existing item in a manual sequence. Schedule items are
-// anchors; action items identify source work and retain the requested order.
-type OrderedItem struct {
-	Kind           FrameKind
-	FrameID        string
-	SourceID       string
-	ScheduleID     string
-	PlannedMinutes int
-}
-
-type ReflowInput struct {
-	Input
-	Order []OrderedItem
-}
-
-// Generate creates a deterministic day plan. Started work can split and
-// ignores Project allocations. Untouched work is selected only when its whole
-// estimate fits a single Project allocation window.
+// Generate creates a deterministic day plan, placing each whole work item in
+// one contiguous active-time window allowed by its Project allocation.

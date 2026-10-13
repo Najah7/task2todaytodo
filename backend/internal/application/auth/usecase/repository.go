@@ -14,7 +14,7 @@ type UserRepository interface {
 	UpdateName(ctx context.Context, id domain.UserID, name domain.UserName) (dao.User, error)
 	UpdateEmail(ctx context.Context, id domain.UserID, email domain.Email) (dao.User, error)
 	UpdateTimezone(ctx context.Context, id domain.UserID, timezone domain.UserTimezone) error
-	UpdateSleepSettings(ctx context.Context, id domain.UserID, wakeUpTime, bedtime string) error
+	UpdateActiveTimeSettings(ctx context.Context, id domain.UserID, activeStartTime, activeEndTime string) error
 	UpdateMinimumGapMinutes(ctx context.Context, id domain.UserID, minutes int) error
 	TimezoneExists(ctx context.Context, timezone string) (bool, error)
 }

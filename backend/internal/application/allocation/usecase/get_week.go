@@ -122,12 +122,12 @@ func projectWeek(ctx context.Context, repo Repository, userID string, weekStart 
 		}
 	}
 	sort.Slice(projects, func(i, j int) bool { return projects[i].ID < projects[j].ID })
-	exceptions, err := repo.ListSleepExceptions(ctx, userID, date.AddDate(0, 0, -1), endDate.AddDate(0, 0, 1))
+	exceptions, err := repo.ListActiveTimeExceptions(ctx, userID, date.AddDate(0, 0, -1), endDate.AddDate(0, 0, 1))
 	if err != nil {
 		return dao.Week{}, err
 	}
 	week := dao.Week{WeekStart: date, Timezone: profile.Timezone, Projects: projects, Allocations: allocations,
-		Days: make([]dao.Day, 0, 7), SleepIntervals: make([]dao.Interval, 0, 8), PausedRules: make([]dao.PausedRule, 0)}
+		Days: make([]dao.Day, 0, 7), ActiveIntervals: make([]dao.Interval, 0, 8), PausedRules: make([]dao.PausedRule, 0)}
 	projectIndex := make(map[string]int, len(projects))
 	for i := range week.Projects {
 		projectIndex[week.Projects[i].ID] = i
@@ -169,30 +169,30 @@ func projectWeek(ctx context.Context, repo Repository, userID string, weekStart 
 		week.PausedRules = append(week.PausedRules, dao.PausedRule{RuleID: ruleID, ProjectID: paused.projectID, Reason: paused.reason})
 	}
 	sort.Slice(week.PausedRules, func(i, j int) bool { return week.PausedRules[i].RuleID < week.PausedRules[j].RuleID })
-	exceptionByDate := make(map[string]dao.SleepException, len(exceptions))
+	exceptionByDate := make(map[string]dao.ActiveTimeException, len(exceptions))
 	for _, exception := range exceptions {
 		exceptionByDate[exception.LocalDate.Format("2006-01-02")] = exception
 	}
-	wakeDefault, _ := time.Parse("15:04", profile.WakeUpTime)
-	bedDefault, _ := time.Parse("15:04", profile.Bedtime)
-	awake := make(map[string]domain.Interval, 10)
+	activeStartDefault, _ := time.Parse("15:04", profile.ActiveStartTime)
+	activeEndDefault, _ := time.Parse("15:04", profile.ActiveEndTime)
+	activeWindow := make(map[string]domain.Interval, 10)
 	days := make(map[string]dao.Day, 7)
 	for day := date.AddDate(0, 0, -1); !day.After(endDate); day = day.AddDate(0, 0, 1) {
-		wake, bedtime, timezone, exception := wakeDefault, bedDefault, profile.Timezone, dao.SleepException{}
+		wake, activeEndTime, timezone, exception := activeStartDefault, activeEndDefault, profile.Timezone, dao.ActiveTimeException{}
 		hasException := false
-		var awakeInterval domain.Interval
+		var activeWindowInterval domain.Interval
 		if saved, ok := exceptionByDate[day.Format("2006-01-02")]; ok {
-			awakeInterval, err = domain.AwakeIntervalFromLocalPair(day, saved.WakeLocal, saved.BedtimeLocal, saved.Timezone)
+			activeWindowInterval, err = domain.ActiveWindowFromLocalPair(day, saved.ActiveStartLocal, saved.ActiveEndLocal, saved.Timezone)
 			exception, hasException = saved, true
 		} else {
-			awakeInterval, err = domain.AwakeInterval(day, wake, bedtime, timezone)
+			activeWindowInterval, err = domain.ActiveWindow(day, wake, activeEndTime, timezone)
 		}
 		if err != nil {
 			return dao.Week{}, err
 		}
-		awake[day.Format("2006-01-02")] = awakeInterval
+		activeWindow[day.Format("2006-01-02")] = activeWindowInterval
 		if !day.Before(date) && day.Before(endDate) {
-			days[day.Format("2006-01-02")] = dao.Day{Date: day, WakeAt: awakeInterval.Start, BedtimeAt: awakeInterval.End, SleepRevision: exception.Revision, HasSleepException: hasException}
+			days[day.Format("2006-01-02")] = dao.Day{Date: day, ActiveStartAt: activeWindowInterval.Start, ActiveEndAt: activeWindowInterval.End, ActiveRevision: exception.Revision, HasActiveException: hasException}
 		}
 	}
 	weekFree := time.Duration(0)
@@ -209,28 +209,28 @@ func projectWeek(ctx context.Context, repo Repository, userID string, weekStart 
 			dayAllocationDuration += clippedDuration(allocation.StartAt, allocation.EndAt, dayStart, dayEnd)
 		}
 		day.AllocatedMinutes = int(dayAllocationDuration.Minutes())
-		awakeParts := make([]domain.Interval, 0, 3)
+		activeWindowParts := make([]domain.Interval, 0, 3)
 		for offset := -1; offset <= 1; offset++ {
-			window, exists := awake[dayDate.AddDate(0, 0, offset).Format("2006-01-02")]
+			window, exists := activeWindow[dayDate.AddDate(0, 0, offset).Format("2006-01-02")]
 			if !exists {
 				continue
 			}
 			start, end := maxTime(window.Start, maxTime(dayStart, from)), minTime(window.End, minTime(dayEnd, through))
 			if end.After(start) {
-				awakeParts = append(awakeParts, domain.Interval{Start: start, End: end})
+				activeWindowParts = append(activeWindowParts, domain.Interval{Start: start, End: end})
 			}
 		}
-		awakeDuration := unionDuration(awakeParts)
+		activeWindowDuration := unionDuration(activeWindowParts)
 		occupied := make([]domain.Interval, 0)
 		for _, allocation := range allocations {
-			for _, awakePart := range awakeParts {
-				start, end := maxTime(allocation.StartAt, awakePart.Start), minTime(allocation.EndAt, awakePart.End)
+			for _, activeWindowPart := range activeWindowParts {
+				start, end := maxTime(allocation.StartAt, activeWindowPart.Start), minTime(allocation.EndAt, activeWindowPart.End)
 				if end.After(start) {
 					occupied = append(occupied, domain.Interval{Start: start, End: end})
 				}
 			}
 		}
-		freeDuration := awakeDuration - unionDuration(occupied)
+		freeDuration := activeWindowDuration - unionDuration(occupied)
 		if freeDuration < 0 {
 			freeDuration = 0
 		}
@@ -240,13 +240,12 @@ func projectWeek(ctx context.Context, repo Repository, userID string, weekStart 
 		week.Days = append(week.Days, day)
 	}
 	week.FreeMinutes = int(weekFree.Minutes())
-	for i := 0; i <= 7; i++ {
+	for i := -1; i < 7; i++ {
 		wakeDate := date.AddDate(0, 0, i)
-		previousAwake := awake[wakeDate.AddDate(0, 0, -1).Format("2006-01-02")]
-		currentAwake := awake[wakeDate.Format("2006-01-02")]
-		start, end := maxTime(previousAwake.End, from), minTime(currentAwake.Start, through)
+		currentActiveWindow := activeWindow[wakeDate.Format("2006-01-02")]
+		start, end := maxTime(currentActiveWindow.Start, from), minTime(currentActiveWindow.End, through)
 		if end.After(start) {
-			week.SleepIntervals = append(week.SleepIntervals, dao.Interval{StartAt: start, EndAt: end, LocalDate: wakeDate})
+			week.ActiveIntervals = append(week.ActiveIntervals, dao.Interval{StartAt: start, EndAt: end, LocalDate: wakeDate})
 		}
 	}
 	return week, nil

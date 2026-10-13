@@ -11,42 +11,42 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createDailySleepException = `-- name: CreateDailySleepException :one
-INSERT INTO daily_sleep_exceptions(user_id, local_date, wake_local, bedtime_local, timezone)
+const createDailyActiveTimeException = `-- name: CreateDailyActiveTimeException :one
+INSERT INTO daily_active_time_exceptions(user_id, local_date, active_start_local, active_end_local, timezone)
 VALUES (
     $1::text, $2::date,
     $3::timestamp, $4::timestamp,
     $5::text
 )
 ON CONFLICT (user_id, local_date) DO UPDATE SET
-    wake_local = EXCLUDED.wake_local, bedtime_local = EXCLUDED.bedtime_local,
+    active_start_local = EXCLUDED.active_start_local, active_end_local = EXCLUDED.active_end_local,
     timezone = EXCLUDED.timezone,
-    revision = daily_sleep_exceptions.revision + 1, changed_at = now()
-RETURNING user_id, local_date, wake_local, bedtime_local, timezone, revision, changed_at
+    revision = daily_active_time_exceptions.revision + 1, changed_at = now()
+RETURNING user_id, local_date, active_start_local, active_end_local, timezone, revision, changed_at
 `
 
-type CreateDailySleepExceptionParams struct {
-	UserID       string
-	LocalDate    pgtype.Date
-	WakeLocal    pgtype.Timestamp
-	BedtimeLocal pgtype.Timestamp
-	Timezone     string
+type CreateDailyActiveTimeExceptionParams struct {
+	UserID           string
+	LocalDate        pgtype.Date
+	ActiveStartLocal pgtype.Timestamp
+	ActiveEndLocal   pgtype.Timestamp
+	Timezone         string
 }
 
-func (q *Queries) CreateDailySleepException(ctx context.Context, arg CreateDailySleepExceptionParams) (DailySleepException, error) {
-	row := q.db.QueryRow(ctx, createDailySleepException,
+func (q *Queries) CreateDailyActiveTimeException(ctx context.Context, arg CreateDailyActiveTimeExceptionParams) (DailyActiveTimeException, error) {
+	row := q.db.QueryRow(ctx, createDailyActiveTimeException,
 		arg.UserID,
 		arg.LocalDate,
-		arg.WakeLocal,
-		arg.BedtimeLocal,
+		arg.ActiveStartLocal,
+		arg.ActiveEndLocal,
 		arg.Timezone,
 	)
-	var i DailySleepException
+	var i DailyActiveTimeException
 	err := row.Scan(
 		&i.UserID,
 		&i.LocalDate,
-		&i.WakeLocal,
-		&i.BedtimeLocal,
+		&i.ActiveStartLocal,
+		&i.ActiveEndLocal,
 		&i.Timezone,
 		&i.Revision,
 		&i.ChangedAt,
@@ -156,20 +156,20 @@ func (q *Queries) CreateProjectTimeAllocationRuleRevision(ctx context.Context, a
 	return i, err
 }
 
-const deleteDailySleepException = `-- name: DeleteDailySleepException :execrows
-DELETE FROM daily_sleep_exceptions
+const deleteDailyActiveTimeException = `-- name: DeleteDailyActiveTimeException :execrows
+DELETE FROM daily_active_time_exceptions
 WHERE user_id = $1::text AND local_date = $2::date
   AND revision = $3::integer
 `
 
-type DeleteDailySleepExceptionParams struct {
+type DeleteDailyActiveTimeExceptionParams struct {
 	UserID    string
 	LocalDate pgtype.Date
 	Revision  int32
 }
 
-func (q *Queries) DeleteDailySleepException(ctx context.Context, arg DeleteDailySleepExceptionParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteDailySleepException, arg.UserID, arg.LocalDate, arg.Revision)
+func (q *Queries) DeleteDailyActiveTimeException(ctx context.Context, arg DeleteDailyActiveTimeExceptionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteDailyActiveTimeException, arg.UserID, arg.LocalDate, arg.Revision)
 	if err != nil {
 		return 0, err
 	}

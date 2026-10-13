@@ -9,7 +9,6 @@ import (
 	projectusecase "github.com/Najah7/task2todaytodo/internal/application/project/usecase"
 	"github.com/Najah7/task2todaytodo/internal/application/shared"
 	"github.com/Najah7/task2todaytodo/internal/application/task/usecase"
-	todousecase "github.com/Najah7/task2todaytodo/internal/application/todo/usecase"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/oklog/ulid/v2"
@@ -53,8 +52,7 @@ func (u *TaskUOW) Do(
 		scheduleRules := u.schedules.WithTx(tx).Schedules
 		allocationRules := allocationrepository.NewAllocationRepository(u.pool).WithTx(tx)
 		todoRepos := newTodoRepositoriesFromTx(store, u.projects, u.schedules, tx, u.newID, nil)
-		lifecycle := taskTodoLifecycle{items: todoRepos.Items(), todos: todoRepos.Todos(), sources: todoRepos.Sources(), repos: todoRepos,
-			regenerator: todousecase.NewRegenerateTodayUseCase(nil, u.newID)}
+		lifecycle := taskTodoLifecycle{items: todoRepos.Items()}
 		return fn(ctx, taskRepositories{
 			store:     store,
 			lifecycle: projectusecase.NewProjectLifecycleUseCase(projects, projects, scheduleRules, allocationProjectLifecycleAdapter{repository: allocationRules}),

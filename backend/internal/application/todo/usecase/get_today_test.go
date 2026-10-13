@@ -7,7 +7,7 @@ import (
 	"github.com/Najah7/task2todaytodo/internal/application/todo/dao"
 )
 
-func TestTodayViewSuppressesActionItemsAndHistoryForAllDaySchedule(t *testing.T) {
+func TestTodayViewKeepsSavedWorkVisibleWithAllDaySchedule(t *testing.T) {
 	date := time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)
 	start := date.Add(9 * time.Hour)
 	end := start.Add(time.Hour)
@@ -22,21 +22,19 @@ func TestTodayViewSuppressesActionItemsAndHistoryForAllDaySchedule(t *testing.T)
 		History:   []dao.HistoryFrame{{ID: "history", ActionItemID: "a", PlannedMinutes: 20, CompletedAt: date.AddDate(0, 0, -1)}},
 	}
 	view, err := buildTodaySnapshot(todo, saved, sources, []dao.WorkSource{
-		{ID: "a", Title: "Review", EstimatedMinutes: 50, CompletedBeforeDayMinutes: 20},
+		{Kind: "action_item", ID: "a", Title: "Review", EstimatedMinutes: 50, CompletedBeforeDayMinutes: 20},
 	}, start.Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(view.Items) != 1 || view.Items[0].ScheduleRuleID != "r" || !view.Items[0].Completed {
-		t.Fatalf("visible items=%+v, want completed all-day schedule only", view.Items)
+	if len(view.Items) != 2 || view.Items[0].ActionItemID != "a" || view.Items[1].ScheduleRuleID != "r" || !view.Items[1].Completed {
+		t.Fatalf("visible items=%+v, want saved work and completed all-day schedule", view.Items)
 	}
-	if len(view.HiddenSchedules) != 0 || view.Progress.TotalItems != 1 || view.Progress.TotalMinutes != 60 {
+	if len(view.HiddenSchedules) != 0 || view.Progress.TotalItems != 2 || view.Progress.TotalMinutes != 90 {
 		t.Fatalf("hidden/progress=%+v %+v", view.HiddenSchedules, view.Progress)
 	}
-	for _, item := range view.Items {
-		if item.Kind == "action_item" || item.History {
-			t.Fatalf("all-day view exposed invisible action history: %+v", item)
-		}
+	if view.Items[0].History {
+		t.Fatalf("history artifact was exposed: %+v", view.Items[0])
 	}
 }
 
@@ -55,33 +53,29 @@ func TestTodayScheduleCompletionUsesCurrentOwnerProjection(t *testing.T) {
 	}
 }
 
-func TestTodayActionStartedReflectsCompletedFrameHistory(t *testing.T) {
+func TestTodayActionRemainsRemovableAfterEarlierHistory(t *testing.T) {
 	date := time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)
 	minutes := 30
 	start := date.Add(10 * time.Hour)
 	end := start.Add(30 * time.Minute)
 	row := workTodayItem(dao.Item{ID: "frame", Kind: "action_item", ActionItemID: "a", PlannedMinutes: &minutes, ScheduledStart: &start, ScheduledEnd: &end},
-		dao.WorkSource{Kind: "action_item", ID: "a", EstimatedMinutes: 60, HasCompletedFrame: true, CanRemoveFromToday: true}, 0)
-	if !row.Started || row.CanRemove {
-		t.Fatalf("started row=%+v, want started and not removable", row)
+		dao.WorkSource{Kind: "action_item", ID: "a", EstimatedMinutes: 60, HasCompletedFrame: true, CanRemoveFromToday: true})
+	if !row.CanRemove {
+		t.Fatalf("work row=%+v, want removable regardless of earlier history", row)
 	}
 }
 
-func TestTodayCompletesSourceUsesCurrentFrameAndPriorCompletedMinutes(t *testing.T) {
+func TestTodayWorkCompletionReflectsWholeSourceState(t *testing.T) {
 	minutes := 30
-	source := dao.WorkSource{Kind: "action_item", ID: "a", EstimatedMinutes: 60}
-	first := workTodayItem(dao.Item{ID: "first", Kind: "action_item", ActionItemID: "a", PlannedMinutes: &minutes}, source, 0)
-	second := workTodayItem(dao.Item{ID: "second", Kind: "action_item", ActionItemID: "a", PlannedMinutes: &minutes}, source, 0)
-	if first.CompletesSource || second.CompletesSource {
-		t.Fatalf("initial split rows=%+v/%+v, want neither frame alone to complete source", first, second)
+	source := dao.WorkSource{Kind: "action_item", ID: "a", EstimatedMinutes: 60, Completed: false}
+	item := workTodayItem(dao.Item{ID: "whole", Kind: "action_item", ActionItemID: "a", PlannedMinutes: &minutes}, source)
+	if item.WorkComplete || item.PlannedMinutes == nil || *item.PlannedMinutes != minutes {
+		t.Fatalf("work row=%+v, want persisted whole-source state and estimate", item)
 	}
-	secondAfterFirstCompleted := workTodayItem(dao.Item{ID: "second", Kind: "action_item", ActionItemID: "a", PlannedMinutes: &minutes}, source, 30)
-	if !secondAfterFirstCompleted.CompletesSource {
-		t.Fatalf("remaining row=%+v, want it to complete source after the other 30 minutes are complete", secondAfterFirstCompleted)
-	}
-	completed := workTodayItem(dao.Item{ID: "first", Kind: "action_item", ActionItemID: "a", PlannedMinutes: &minutes, Completed: true}, source, 30)
-	if completed.CompletesSource {
-		t.Fatalf("completed row=%+v, capability should only indicate completing an unfinished row", completed)
+	source.Completed, source.CanReopen = true, true
+	completed := workTodayItem(dao.Item{ID: "whole", Kind: "action_item", ActionItemID: "a", PlannedMinutes: &minutes, Completed: true}, source)
+	if !completed.WorkComplete || completed.CanComplete || !completed.CanReopen {
+		t.Fatalf("completed row=%+v, want whole-source completion and reopen state", completed)
 	}
 }
 

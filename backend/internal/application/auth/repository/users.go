@@ -56,8 +56,8 @@ func recordToUserDAO(record sqlc.User) dao.User {
 		EmailVerifiedAt:   pgTimeUnix(record.EmailVerifiedAt),
 		AuthVersion:       record.AuthVersion,
 		Timezone:          record.Timezone,
-		WakeUpTime:        pgTimeString(record.WakeUpTime),
-		Bedtime:           pgTimeString(record.Bedtime),
+		ActiveStartTime:   pgTimeString(record.ActiveStartTime),
+		ActiveEndTime:     pgTimeString(record.ActiveEndTime),
 		MinimumGapMinutes: int(record.MinimumGapMinutes),
 		CreatedAt:         pgTimeUnix(record.CreatedAt),
 		UpdatedAt:         pgTimeUnix(record.UpdatedAt),
@@ -114,16 +114,16 @@ func (r UserRepository) UpdateTimezone(ctx context.Context, id domain.UserID, ti
 	return err
 }
 
-func (r UserRepository) UpdateSleepSettings(ctx context.Context, id domain.UserID, wakeUpTime, bedtime string) error {
-	wake, err := parsePGTime(wakeUpTime)
+func (r UserRepository) UpdateActiveTimeSettings(ctx context.Context, id domain.UserID, activeStartTime, activeEndTime string) error {
+	wake, err := parsePGTime(activeStartTime)
 	if err != nil {
 		return err
 	}
-	bed, err := parsePGTime(bedtime)
+	bed, err := parsePGTime(activeEndTime)
 	if err != nil {
 		return err
 	}
-	return r.queries.UpdateUserSleepSettings(ctx, sqlc.UpdateUserSleepSettingsParams{WakeUpTime: wake, Bedtime: bed, UserID: string(id)})
+	return r.queries.UpdateUserActiveTimeSettings(ctx, sqlc.UpdateUserActiveTimeSettingsParams{ActiveStartTime: wake, ActiveEndTime: bed, UserID: string(id)})
 }
 
 func (r UserRepository) UpdateMinimumGapMinutes(ctx context.Context, id domain.UserID, minutes int) error {

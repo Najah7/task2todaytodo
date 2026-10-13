@@ -111,16 +111,16 @@ CREATE UNIQUE INDEX idx_project_time_allocation_pause_active
 CREATE INDEX idx_project_time_allocation_pause_interval
     ON project_time_allocation_pause_intervals(rule_id, project_id, paused_at, resumed_at);
 
-CREATE TABLE daily_sleep_exceptions (
+CREATE TABLE daily_active_time_exceptions (
     user_id text NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     local_date date NOT NULL,
-    wake_local timestamp NOT NULL,
-    bedtime_local timestamp NOT NULL,
+    active_start_local timestamp NOT NULL,
+    active_end_local timestamp NOT NULL,
     timezone text NOT NULL REFERENCES timezone_master(timezone) ON DELETE RESTRICT,
     revision integer NOT NULL DEFAULT 1 CHECK (revision > 0),
     changed_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (user_id, local_date),
-    CONSTRAINT daily_sleep_exceptions_ordered CHECK (bedtime_local > wake_local)
+    CONSTRAINT daily_active_time_exceptions_ordered CHECK (active_end_local > active_start_local)
 );
 
 CREATE FUNCTION prepare_project_time_allocation_revision() RETURNS trigger LANGUAGE plpgsql AS $$

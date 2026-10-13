@@ -32,10 +32,9 @@ RETURNING id, todo_id, kind, action_item_id, task_id, schedule_rule_id, occurren
           planned_minutes, scheduled_start, scheduled_end, completed, hidden, position,
           created_at, updated_at;
 
--- name: DeleteTodoItemsExceptCompletedWork :exec
+-- name: DeleteAllTodoItemsForTodo :exec
 DELETE FROM todo_items
-WHERE todo_id = sqlc.arg(todo_id)::text
-  AND NOT (kind IN ('action_item','task') AND completed = true);
+WHERE todo_id = sqlc.arg(todo_id)::text;
 
 -- name: DeleteTodoItemByID :execrows
 DELETE FROM todo_items
@@ -49,12 +48,15 @@ WHERE id = sqlc.arg(id)::text AND todo_id = sqlc.arg(todo_id)::text;
 -- name: UpdateTodoItemPosition :execrows
 UPDATE todo_items
 SET position = sqlc.arg(position)::integer, updated_at = now()
-WHERE id = sqlc.arg(id)::text AND todo_id = sqlc.arg(todo_id)::text AND completed = true;
+WHERE id = sqlc.arg(id)::text AND todo_id = sqlc.arg(todo_id)::text;
 
 -- name: UpdateTodoItemState :execrows
 UPDATE todo_items
 SET completed = sqlc.arg(completed)::boolean, hidden = sqlc.arg(hidden)::boolean,
-    position = sqlc.arg(position)::integer, updated_at = now()
+    position = sqlc.arg(position)::integer,
+    scheduled_start = sqlc.narg(scheduled_start)::timestamptz,
+    scheduled_end = sqlc.narg(scheduled_end)::timestamptz,
+    updated_at = now()
 WHERE id = sqlc.arg(id)::text AND todo_id = sqlc.arg(todo_id)::text;
 
 -- name: UpdateTodoScheduleHidden :execrows

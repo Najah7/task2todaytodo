@@ -5,7 +5,7 @@ Follow the [application guide](../AGENTS.md). Routes are registered in [cmd/api/
 ## Features
 
 - Register and authenticate users; verify email ownership; issue and revoke personal access tokens; reset or change passwords.
-- Manage the current user's name, timezone, sleep settings, and minimum gap. Serve role, permission, and timezone catalogs.
+- Manage the current user's name, timezone, Active-time settings, and minimum gap. Serve role, permission, and timezone catalogs.
 - Registration stores a password hash and sends a one-use email link. Confirmation checks the link and password, marks the email verified, and issues a personal access token in one transaction. Password reset uses a separate auth-link purpose.
 - Project invitation acceptance uses Auth's recipient operation inside the Project transaction. Existing verified users authenticate as the invited account; new or unverified recipients become verified on acceptance.
 
@@ -14,7 +14,7 @@ Follow the [application guide](../AGENTS.md). Routes are registered in [cmd/api/
 - `POST /api/signup`, `/api/login`, `/api/email-verification/resend`, `/api/email-verification/confirm`, `/api/password-reset/request`, `/api/password-reset/confirm`.
 - `DELETE /api/personal-access-token:revoke`.
 - `GET /api/users/me`, `/api/roles`, `/api/permissions`, `/api/timezones`.
-- `PATCH /api/users/me`, `/api/users/me/timezone`, `/api/users/me/sleep`, `/api/users/me/minimum-gap`, `/api/users/me/password`.
+- `PATCH /api/users/me`, `/api/users/me/timezone`, `/api/users/me/active-time`, `/api/users/me/minimum-gap`, `/api/users/me/password`.
 - Related Project-owned flow: `POST /api/invitations/accept`.
 
 ## Key files

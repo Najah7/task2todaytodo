@@ -55,9 +55,6 @@ func (u *CompleteFrameUseCase) Execute(ctx context.Context, userID, frameID stri
 		if actualMinutes != nil && (*actualMinutes < 0 || int64(*actualMinutes) > math.MaxInt32) {
 			return domain.ErrInvalidInput
 		}
-		if domain.FrameKind(target.Kind).IsWork() && hasVisibleAllDaySchedule(sources, saved) {
-			return ErrPermissionDenied
-		}
 		model, err := restoredItem(*target)
 		if err != nil {
 			return err
@@ -97,25 +94,13 @@ func (u *CompleteFrameUseCase) Execute(ctx context.Context, userID, frameID stri
 		if _, err := repos.Items().Save(ctx, updated); err != nil {
 			return err
 		}
-		completedMinutes := source.CompletedBeforeDayMinutes + *target.PlannedMinutes
-		for _, item := range saved {
-			if item.ID != target.ID && item.Kind == target.Kind && itemSourceID(item) == source.ID && item.Completed && item.PlannedMinutes != nil {
-				completedMinutes += *item.PlannedMinutes
-			}
+		if target.Kind == string(domain.FrameTask) {
+			err = repos.Tasks().CompleteFromTodoFrame(ctx, userID, target.TaskID, actualMinutes)
+		} else {
+			err = repos.ActionItems().CompleteFromTodoFrame(ctx, userID, source.TaskID, target.ActionItemID, actualMinutes)
 		}
-		if completedMinutes >= source.EstimatedMinutes {
-			if target.Kind == string(domain.FrameTask) {
-				err = repos.Tasks().CompleteFromTodoFrame(ctx, userID, target.TaskID, actualMinutes)
-			} else {
-				err = repos.ActionItems().CompleteFromTodoFrame(ctx, userID, source.TaskID, target.ActionItemID, actualMinutes)
-			}
-			if err != nil {
-				return err
-			}
-			return bumpTodoRevision(ctx, repos, &todo, &result)
-		}
-		if actualMinutes != nil {
-			return domain.ErrInvalidInput
+		if err != nil {
+			return err
 		}
 		return bumpTodoRevision(ctx, repos, &todo, &result)
 	})
@@ -123,25 +108,6 @@ func (u *CompleteFrameUseCase) Execute(ctx context.Context, userID, frameID stri
 		logTodoStateChange(u.logger, ctx, "todo.frame.complete", userID, result.ID, frameID)
 	}
 	return result, err
-}
-
-func hasVisibleAllDaySchedule(sources dao.PlanningSources, saved []dao.Item) bool {
-	for _, schedule := range sources.Schedules {
-		if !schedule.AllDay {
-			continue
-		}
-		hidden := schedule.Hidden
-		for _, item := range saved {
-			if item.Kind == string(domain.FrameSchedule) && scheduleKey(item.ScheduleRuleID, item.OccurrenceDate) == scheduleKey(schedule.RuleID, schedule.OccurrenceDate) {
-				hidden = item.Hidden
-				break
-			}
-		}
-		if !hidden {
-			return true
-		}
-	}
-	return false
 }
 
 func bumpTodoRevision(ctx context.Context, repos Repositories, todo *dao.Todo, result *dao.Todo) error {

@@ -25,17 +25,16 @@ func NewSetOccurrenceStateUseCase(uow UOW, state string, logger telemetry.Logger
 	return &SetOccurrenceStateUseCase{uow: uow, state: state, logger: telemetry.OrNop(logger), issueID: issueID, now: time.Now}
 }
 
-func (uc *SetOccurrenceStateUseCase) Execute(ctx context.Context, actorID, ruleID, occurrenceDate string, expectedRevision int32, confirmTodoRegeneration ...bool) (err error) {
+func (uc *SetOccurrenceStateUseCase) Execute(ctx context.Context, actorID, ruleID, occurrenceDate string, expectedRevision int32) (err error) {
 	defer func() { logUnexpectedScheduleFailure(uc.logger, ctx, "SetOccurrenceStateUseCase.Execute", err) }()
 	mutate := func(ctx context.Context, repos Repositories) error {
 		return uc.ExecuteInTx(ctx, actorID, ruleID, occurrenceDate, expectedRevision, repos)
 	}
 
 	if uc.state == "skip" || uc.state == "restore" || uc.state == "delete" {
-		confirmed := len(confirmTodoRegeneration) > 0 && confirmTodoRegeneration[0]
 		err = doWithTodoImpact(ctx, uc.uow, TodoImpactScope{
 			ActorID: actorID, RuleID: ruleID, OccurrenceDate: occurrenceDate,
-		}, confirmed, mutate)
+		}, mutate)
 	} else {
 		err = uc.uow.Do(ctx, mutate)
 	}

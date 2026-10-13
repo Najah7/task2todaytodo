@@ -63,7 +63,7 @@ func (uc *UpdateUserTimezoneUseCase) Execute(ctx context.Context, userID domain.
 			return ErrAvailabilityValidationUnavailable
 		}
 		if availability != nil {
-			if err := availability.ValidateUserProfile(ctx, string(userID), updatedUser.Timezone.String(), current.WakeUpTime, current.Bedtime); err != nil {
+			if err := availability.ValidateUserProfile(ctx, string(userID), updatedUser.Timezone.String(), current.ActiveStartTime, current.ActiveEndTime); err != nil {
 				return err
 			}
 		}

@@ -699,8 +699,9 @@ FOR UPDATE
 
 func (q *Queries) LockProjectForLifecycle(ctx context.Context, id string) (string, error) {
 	row := q.db.QueryRow(ctx, lockProjectForLifecycle, id)
-	err := row.Scan(&id)
-	return id, err
+	var id_2 string
+	err := row.Scan(&id_2)
+	return id_2, err
 }
 
 const readProjectListSummary = `-- name: ReadProjectListSummary :one

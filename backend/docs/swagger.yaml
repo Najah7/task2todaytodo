@@ -10,8 +10,6 @@ definitions:
     type: object
   rest.ActionItemCreateRequest:
     properties:
-      confirm_todo_regeneration:
-        type: boolean
       description:
         type: string
       due_date:
@@ -29,8 +27,6 @@ definitions:
     type: object
   rest.ActionItemDeleteRequest:
     properties:
-      confirm_todo_regeneration:
-        type: boolean
       manual_estimated_minutes:
         maximum: 2147483647
         minimum: 1
@@ -95,8 +91,6 @@ definitions:
         minimum: 0
         type: integer
         x-nullable: true
-      confirm_todo_regeneration:
-        type: boolean
       description:
         type: string
       due_date:
@@ -108,6 +102,30 @@ definitions:
       priority:
         type: string
       title:
+        type: string
+    type: object
+  rest.ActiveTimeExceptionResponse:
+    properties:
+      active_end_local:
+        type: string
+      active_start_local:
+        type: string
+      has_exception:
+        type: boolean
+      local_date:
+        type: string
+      revision:
+        type: integer
+      timezone:
+        type: string
+    type: object
+  rest.ActiveTimeIntervalResponse:
+    properties:
+      end_at:
+        type: string
+      local_date:
+        type: string
+      start_at:
         type: string
     type: object
   rest.AdminOperationListResponse:
@@ -136,20 +154,20 @@ definitions:
     type: object
   rest.AllocationDayResponse:
     properties:
+      active_end_at:
+        type: string
+      active_revision:
+        type: integer
+      active_start_at:
+        type: string
       allocated_minutes:
         type: integer
-      bedtime_at:
-        type: string
       date:
         type: string
       free_minutes:
         type: integer
-      has_sleep_exception:
+      has_active_exception:
         type: boolean
-      sleep_revision:
-        type: integer
-      wake_at:
-        type: string
     type: object
   rest.AllocationOccurrenceResponse:
     properties:
@@ -299,6 +317,10 @@ definitions:
     type: object
   rest.AllocationWeekResponse:
     properties:
+      active_intervals:
+        items:
+          $ref: '#/definitions/rest.ActiveTimeIntervalResponse'
+        type: array
       allocated_minutes:
         type: integer
       allocations:
@@ -320,10 +342,6 @@ definitions:
       projects:
         items:
           $ref: '#/definitions/rest.AllocationWeekProjectResponse'
-        type: array
-      sleep_intervals:
-        items:
-          $ref: '#/definitions/rest.SleepIntervalResponse'
         type: array
       target_minutes:
         type: integer
@@ -350,16 +368,16 @@ definitions:
       timezone:
         type: string
     type: object
-  rest.DailySleepExceptionRequest:
+  rest.DailyActiveTimeExceptionRequest:
     properties:
-      bedtime_local:
+      active_end_local:
         example: 2026-10-13T01:00
+        type: string
+      active_start_local:
+        example: 2026-10-12T07:00
         type: string
       timezone:
         example: Asia/Tokyo
-        type: string
-      wake_local:
-        example: 2026-10-12T07:00
         type: string
     type: object
   rest.EmailAddressRequest:
@@ -1360,8 +1378,6 @@ definitions:
     type: object
   rest.ScheduleOccurrenceRescheduleRequest:
     properties:
-      confirm_todo_regeneration:
-        type: boolean
       end_at:
         type: string
       start_at:
@@ -1469,8 +1485,6 @@ definitions:
         type: boolean
       assignee_id:
         type: string
-      confirm_todo_regeneration:
-        type: boolean
       description:
         type: string
       end_at:
@@ -1491,8 +1505,6 @@ definitions:
         type: boolean
       assignee_id:
         type: string
-      confirm_todo_regeneration:
-        type: boolean
       description:
         type: string
       end_date:
@@ -1628,8 +1640,6 @@ definitions:
         type: boolean
       assignee_id:
         type: string
-      confirm_todo_regeneration:
-        type: boolean
       description:
         type: string
       end_date:
@@ -1666,30 +1676,6 @@ definitions:
       email:
         type: string
       password:
-        type: string
-    type: object
-  rest.SleepExceptionResponse:
-    properties:
-      bedtime_local:
-        type: string
-      has_exception:
-        type: boolean
-      local_date:
-        type: string
-      revision:
-        type: integer
-      timezone:
-        type: string
-      wake_local:
-        type: string
-    type: object
-  rest.SleepIntervalResponse:
-    properties:
-      end_at:
-        type: string
-      local_date:
-        type: string
-      start_at:
         type: string
     type: object
   rest.TaskAssigneeListResponse:
@@ -1920,8 +1906,6 @@ definitions:
       actual_minutes:
         type: integer
         x-nullable: true
-      confirm_todo_regeneration:
-        type: boolean
       description:
         type: string
         x-nullable: true
@@ -2009,8 +1993,6 @@ definitions:
         type: boolean
       completed:
         type: boolean
-      completes_source:
-        type: boolean
       description:
         type: string
       duration_minutes:
@@ -2046,8 +2028,6 @@ definitions:
         type: string
         x-nullable: true
       source_completed:
-        type: boolean
-      started:
         type: boolean
       task_id:
         type: string
@@ -2139,6 +2119,13 @@ definitions:
       start_at:
         type: string
     type: object
+  rest.UserActiveTimeSettingsUpdateRequest:
+    properties:
+      active_end_time:
+        type: string
+      active_start_time:
+        type: string
+    type: object
   rest.UserInfoUpdateRequest:
     properties:
       first_name:
@@ -2162,7 +2149,9 @@ definitions:
     type: object
   rest.UserResponse:
     properties:
-      bedtime:
+      active_end_time:
+        type: string
+      active_start_time:
         type: string
       email:
         type: string
@@ -2173,15 +2162,6 @@ definitions:
       user_id:
         type: string
       user_name:
-        type: string
-      wake_up_time:
-        type: string
-    type: object
-  rest.UserSleepSettingsUpdateRequest:
-    properties:
-      bedtime:
-        type: string
-      wake_up_time:
         type: string
     type: object
   rest.UserTimezoneUpdateRequest:
@@ -2586,7 +2566,7 @@ paths:
       summary: Update Project allocation occurrence
       tags:
       - Allocations
-  /daily-sleep-exceptions/{local_date}:
+  /daily-active-time-exceptions/{local_date}:
     delete:
       parameters:
       - description: Waking date
@@ -2604,7 +2584,7 @@ paths:
           description: No Content
       security:
       - BearerAuth: []
-      summary: Reset daily sleep exception
+      summary: Reset daily active_time exception
       tags:
       - Allocations
     put:
@@ -2621,26 +2601,26 @@ paths:
         name: If-Match
         required: true
         type: string
-      - description: Sleep exception
+      - description: ActiveTime exception
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rest.DailySleepExceptionRequest'
+          $ref: '#/definitions/rest.DailyActiveTimeExceptionRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rest.SleepExceptionResponse'
+            $ref: '#/definitions/rest.ActiveTimeExceptionResponse'
         "409":
           description: Conflict
           schema:
             $ref: '#/definitions/rest.ErrResponse'
       security:
       - BearerAuth: []
-      summary: Set daily sleep exception
+      summary: Set daily active_time exception
       tags:
       - Allocations
   /email-verification/confirm:
@@ -4377,10 +4357,6 @@ paths:
         name: If-Match
         required: true
         type: string
-      - description: Confirm regeneration of affected Todos
-        in: query
-        name: confirm_todo_regeneration
-        type: boolean
       responses:
         "204":
           description: No Content
@@ -4472,10 +4448,6 @@ paths:
         name: If-Match
         required: true
         type: string
-      - description: Confirm regeneration of affected Todos
-        in: query
-        name: confirm_todo_regeneration
-        type: boolean
       responses:
         "204":
           description: No Content
@@ -4686,10 +4658,6 @@ paths:
         name: If-Match
         required: true
         type: string
-      - description: Confirm regeneration of affected Todos
-        in: query
-        name: confirm_todo_regeneration
-        type: boolean
       responses:
         "204":
           description: No Content
@@ -4716,10 +4684,6 @@ paths:
         name: If-Match
         required: true
         type: string
-      - description: Confirm regeneration of affected Todos
-        in: query
-        name: confirm_todo_regeneration
-        type: boolean
       responses:
         "204":
           description: No Content
@@ -5475,8 +5439,7 @@ paths:
       consumes:
       - application/json
       description: Deletes a saved ActionItem. When removing the final child of a
-        Task, an optional body atomically supplies the childless Task's manual estimate
-        and regeneration confirmation.
+        Task, an optional body atomically supplies the childless Task's manual estimate.
       parameters:
       - description: Task ID
         in: path
@@ -5493,7 +5456,7 @@ paths:
         in: header
         name: If-Match
         type: string
-      - description: Atomic last-child estimate and Todo regeneration confirmation
+      - description: Optional last-child Task estimate
         in: body
         name: request
         schema:
@@ -5953,13 +5916,35 @@ paths:
         name: If-Match
         required: true
         type: string
+      produces:
+      - application/json
       responses:
         "200":
           description: OK
           schema:
             $ref: '#/definitions/rest.TodoTodayResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
         "412":
           description: Precondition Failed
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "428":
+          description: Precondition Required
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/rest.ErrResponse'
       security:
@@ -6054,6 +6039,41 @@ paths:
       summary: Update current user basic info
       tags:
       - Users
+  /users/me/active-time:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ActiveTime settings
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rest.UserActiveTimeSettingsUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrResponse'
+      security:
+      - BearerAuth: []
+      summary: Update current user active_time settings
+      tags:
+      - Users
   /users/me/minimum-gap:
     patch:
       consumes:
@@ -6117,41 +6137,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Update current user password
-      tags:
-      - Users
-  /users/me/sleep:
-    patch:
-      consumes:
-      - application/json
-      parameters:
-      - description: Sleep settings
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/rest.UserSleepSettingsUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/rest.UserResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/rest.ErrResponse'
-      security:
-      - BearerAuth: []
-      summary: Update current user sleep settings
       tags:
       - Users
   /users/me/timezone:

@@ -38,7 +38,6 @@ type TodayItem struct {
 	Completed        bool
 	Hidden           bool
 	History          bool
-	Started          bool
 	Position         int32
 	ActualMinutes    *int
 	CanComplete      bool
@@ -49,7 +48,6 @@ type TodayItem struct {
 	CanRemove        bool
 	CanHide          bool
 	CanRestore       bool
-	CompletesSource  bool
 	CanAddActionItem bool
 	EstimateEditable bool
 }
@@ -63,10 +61,10 @@ type Progress struct {
 }
 
 type GetTodayUseCase struct {
-	uow         UOW
-	regenerator *RegenerateTodayUseCase
-	newID       func() string
-	logger      telemetry.Logger
+	uow       UOW
+	generator *GenerateTodayUseCase
+	newID     func() string
+	logger    telemetry.Logger
 }
 
 func NewGetTodayUseCase(uow UOW, newID func() string, loggers ...telemetry.Logger) *GetTodayUseCase {
@@ -75,7 +73,7 @@ func NewGetTodayUseCase(uow UOW, newID func() string, loggers ...telemetry.Logge
 		logger = loggers[0]
 	}
 	logger = telemetry.OrNop(logger)
-	return &GetTodayUseCase{uow: uow, newID: newID, logger: logger, regenerator: NewRegenerateTodayUseCase(uow, newID, logger)}
+	return &GetTodayUseCase{uow: uow, newID: newID, logger: logger, generator: NewGenerateTodayUseCase(newID)}
 }
 
 func (u *GetTodayUseCase) Execute(ctx context.Context, userID string) (result TodaySnapshot, err error) {
@@ -102,7 +100,7 @@ func (u *GetTodayUseCase) Execute(ctx context.Context, userID string) (result To
 			return err
 		}
 		if created {
-			todo, err = u.regenerator.generateExistingTodayInTx(ctx, userID, day.Date, day.Timezone, todo, repos, false, false)
+			todo, err = u.generator.generateInitialInTx(ctx, userID, day.Date, day.Timezone, todo, repos)
 			if err != nil {
 				return err
 			}
@@ -145,40 +143,14 @@ func buildTodaySnapshot(todo dao.Todo, saved []dao.Item, sources dao.PlanningSou
 	for _, source := range workSources {
 		sourceByID[sourceKey(source.Kind, source.ID)] = source
 	}
-	hiddenByKey := make(map[string]bool)
-	for _, item := range saved {
-		if item.Kind == string(domain.FrameSchedule) {
-			key := scheduleKey(item.ScheduleRuleID, item.OccurrenceDate)
-			hiddenByKey[key] = item.Hidden
-		}
-	}
-	allDay := false
-	for _, schedule := range sources.Schedules {
-		key := scheduleKey(schedule.RuleID, schedule.OccurrenceDate)
-		if schedule.AllDay && !hiddenByKey[key] {
-			allDay = true
-			break
-		}
-	}
-	var completedActionMinutes = make(map[string]int)
-	for _, item := range saved {
-		if domain.FrameKind(item.Kind).IsWork() && item.PlannedMinutes != nil {
-			if item.Completed {
-				completedActionMinutes[sourceKey(item.Kind, itemSourceID(item))] += *item.PlannedMinutes
-			}
-		}
-	}
 	for _, item := range saved {
 		if domain.FrameKind(item.Kind).IsWork() {
-			if allDay {
-				continue
-			}
 			key := sourceKey(item.Kind, itemSourceID(item))
 			source, ok := sourceByID[key]
 			if !ok {
 				continue
 			}
-			row := workTodayItem(item, source, completedActionMinutes[key])
+			row := workTodayItem(item, source)
 			result.Items = append(result.Items, row)
 			continue
 		}
@@ -197,40 +169,8 @@ func buildTodaySnapshot(todo dao.Todo, saved []dao.Item, sources dao.PlanningSou
 			result.Items = append(result.Items, row)
 		}
 	}
-	if !allDay {
-		savedActionItems := make(map[string]bool)
-		for _, item := range saved {
-			if domain.FrameKind(item.Kind).IsWork() {
-				savedActionItems[sourceKey(item.Kind, itemSourceID(item))] = true
-			}
-		}
-		for _, frame := range sources.History {
-			ref := historyRef(frame)
-			key := sourceKey(ref.Kind, ref.ID)
-			if !savedActionItems[key] {
-				continue
-			}
-			source, ok := sourceByID[key]
-			if !ok {
-				continue
-			}
-			minutes := frame.PlannedMinutes
-			result.Items = append(result.Items, TodayItem{
-				ID: frame.ID, Kind: frame.Kind, ActionItemID: frame.ActionItemID,
-				TaskID: source.TaskID, TaskTitle: source.TaskTitle, ProjectID: source.ProjectID, ProjectTitle: source.ProjectTitle,
-				Title: source.Title, Description: source.Description, PlannedMinutes: &minutes, Completed: true,
-				History: true, DurationMinutes: minutes, ActualMinutes: source.ActualMinutes, WorkComplete: source.Completed, SourceCompleted: source.Completed,
-			})
-		}
-	}
 	sort.SliceStable(result.Items, func(i, j int) bool {
-		if result.Items[i].ScheduledStart == nil {
-			return false
-		}
-		if result.Items[j].ScheduledStart == nil {
-			return true
-		}
-		return result.Items[i].ScheduledStart.Before(*result.Items[j].ScheduledStart)
+		return result.Items[i].Position < result.Items[j].Position
 	})
 	result.Progress = calculateProgress(result.Items)
 	for index := range result.Items {
@@ -245,18 +185,16 @@ func buildTodaySnapshot(todo dao.Todo, saved []dao.Item, sources dao.PlanningSou
 	return result, nil
 }
 
-func workTodayItem(item dao.Item, source dao.WorkSource, completed int) TodayItem {
-	wholeComplete := source.Completed || source.CompletedBeforeDayMinutes+completed >= source.EstimatedMinutes
-	completesSource := !item.Completed && !source.Completed && source.CompletedBeforeDayMinutes+completed+plannedMinutes(item.PlannedMinutes) >= source.EstimatedMinutes
+func workTodayItem(item dao.Item, source dao.WorkSource) TodayItem {
 	return TodayItem{
 		ID: item.ID, Kind: item.Kind, ActionItemID: item.ActionItemID, TaskID: source.TaskID,
 		TaskTitle: source.TaskTitle, ProjectID: source.ProjectID, ProjectTitle: source.ProjectTitle,
 		Title: source.Title, Description: source.Description, PlannedMinutes: item.PlannedMinutes,
 		ScheduledStart: item.ScheduledStart, ScheduledEnd: item.ScheduledEnd, Completed: item.Completed,
 		DurationMinutes: plannedMinutes(item.PlannedMinutes), Position: item.Position, ActualMinutes: source.ActualMinutes,
-		WorkComplete: wholeComplete, CompletesSource: completesSource, Started: source.HasCompletedFrame,
-		CanComplete: !item.Completed && source.CanComplete, SourceCompleted: source.Completed, CanReopen: item.Completed && source.CanReopen,
-		CanMove: !item.Completed, CanRemove: !item.Completed && !source.HasCompletedFrame && source.CanRemoveFromToday,
+		WorkComplete: source.Completed,
+		CanComplete:  !item.Completed && source.CanComplete, SourceCompleted: source.Completed, CanReopen: item.Completed && source.CanReopen,
+		CanMove: !item.Completed, CanRemove: !item.Completed && source.CanRemoveFromToday,
 		CanAddActionItem: source.CanAddActionItem, EstimateEditable: source.EstimateEditable,
 	}
 }

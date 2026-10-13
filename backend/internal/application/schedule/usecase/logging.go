@@ -26,7 +26,6 @@ func isExpectedScheduleError(err error) bool {
 		ErrOccurrenceDateRequired, ErrOccurrenceNotFound, ErrOccurrenceInactive, ErrOccurrenceCompleted,
 		ErrOccurrenceRevisionMismatch, ErrOccurrenceTimeInvalid, ErrOccurrenceTitleEmpty,
 		ErrOccurrenceRuleMismatch, ErrRescheduleDateMismatch, ErrInvalidSchedulePage, ErrPermissionDenied,
-		ErrTodoRegenerationRequired,
 		domain.ErrRuleIDEmpty, domain.ErrRuleTitleEmpty, domain.ErrRuleTimezoneEmpty,
 		domain.ErrRuleFrequency, domain.ErrRuleInterval, domain.ErrRuleWeekdays,
 		domain.ErrRuleDateRange, domain.ErrRuleTimeRange,

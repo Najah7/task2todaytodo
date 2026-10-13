@@ -12,10 +12,10 @@ SET timezone = $2, updated_at = now()
 WHERE id = $1
 RETURNING timezone;
 
--- name: UpdateUserSleepSettings :exec
+-- name: UpdateUserActiveTimeSettings :exec
 UPDATE users
-SET wake_up_time = sqlc.arg(wake_up_time)::time,
-    bedtime = sqlc.arg(bedtime)::time,
+SET active_start_time = sqlc.arg(active_start_time)::time,
+    active_end_time = sqlc.arg(active_end_time)::time,
     updated_at = now()
 WHERE id = sqlc.arg(user_id)::text;
 

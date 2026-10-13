@@ -11,5 +11,5 @@ var ErrAvailabilityValidationUnavailable = errors.New("allocation availability v
 // allocation windows. The application root binds this port to the same UOW.
 type UserAvailabilityValidator interface {
 	LockUser(ctx context.Context, userID string) error
-	ValidateUserProfile(ctx context.Context, userID, timezone, wakeUpTime, bedtime string) error
+	ValidateUserProfile(ctx context.Context, userID, timezone, activeStartTime, activeEndTime string) error
 }

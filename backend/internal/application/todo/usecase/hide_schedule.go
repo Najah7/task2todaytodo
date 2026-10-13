@@ -32,7 +32,7 @@ func (u *HideScheduleUseCase) Execute(ctx context.Context, userID, itemID string
 		if err := repos.Todos().LockUser(ctx, userID); err != nil {
 			return err
 		}
-		todo, saved, sources, in, err := loadPlanningState(ctx, userID, day.Date, repos)
+		todo, saved, sources, _, err := loadPlanningState(ctx, userID, day.Date, repos)
 		if err != nil {
 			return err
 		}
@@ -65,26 +65,6 @@ func (u *HideScheduleUseCase) Execute(ctx context.Context, userID, itemID string
 			return err
 		}
 		if _, err := repos.Items().Save(ctx, hidden); err != nil {
-			return err
-		}
-		for index := range in.Schedules {
-			if in.Schedules[index].ID == scheduleKey(target.ScheduleRuleID, target.OccurrenceDate) {
-				in.Schedules[index].Hidden = true
-			}
-		}
-		var order []domain.OrderedItem
-		for _, item := range saved {
-			if item.ID == itemID {
-				continue
-			}
-			order = append(order, orderedItemsForSaved([]dao.Item{item})[0])
-		}
-		plan, err := domain.Reflow(domain.ReflowInput{Input: in, Order: order})
-		if err != nil {
-			return err
-		}
-		saved[targetIndex(saved, itemID)].Hidden = true
-		if err := persistPlan(ctx, todo.ID, saved, plan, u.newID, repos); err != nil {
 			return err
 		}
 		return bumpTodoRevision(ctx, repos, &todo, &result)

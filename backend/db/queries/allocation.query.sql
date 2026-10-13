@@ -1,5 +1,5 @@
--- name: GetAllocationSleepProfile :one
-SELECT timezone, wake_up_time, bedtime FROM users WHERE id = sqlc.arg(user_id)::text;
+-- name: GetAllocationActiveTimeProfile :one
+SELECT timezone, active_start_time, active_end_time FROM users WHERE id = sqlc.arg(user_id)::text;
 
 -- name: ListAllocationUserIDs :many
 SELECT id FROM users ORDER BY id;
@@ -131,12 +131,12 @@ WHERE e.user_id = sqlc.arg(user_id)::text
   AND e.occurrence_date BETWEEN sqlc.arg(from_date)::date AND sqlc.arg(through_date)::date
 ORDER BY e.rule_id, e.occurrence_date;
 
--- name: GetDailySleepException :one
-SELECT * FROM daily_sleep_exceptions
+-- name: GetDailyActiveTimeException :one
+SELECT * FROM daily_active_time_exceptions
 WHERE user_id = sqlc.arg(user_id)::text AND local_date = sqlc.arg(local_date)::date;
 
--- name: ListDailySleepExceptions :many
-SELECT * FROM daily_sleep_exceptions
+-- name: ListDailyActiveTimeExceptions :many
+SELECT * FROM daily_active_time_exceptions
 WHERE user_id = sqlc.arg(user_id)::text
   AND local_date BETWEEN sqlc.arg(from_date)::date AND sqlc.arg(through_date)::date
 ORDER BY local_date;

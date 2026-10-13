@@ -3,14 +3,14 @@ package usecase
 import "github.com/Najah7/task2todaytodo/internal/telemetry"
 
 type UserUseCases struct {
-	Get                 *GetUserUseCase
-	GetByEmail          *GetUserByEmailUseCase
-	UpdateName          *UpdateUserNameUseCase
-	UpdateEmail         *UpdateUserEmailUseCase
-	UpdatePassword      *UpdateUserPasswordUseCase
-	UpdateTimezone      *UpdateUserTimezoneUseCase
-	UpdateSleepSettings *UpdateUserSleepSettingsUseCase
-	UpdateMinimumGap    *UpdateUserMinimumGapUseCase
+	Get                      *GetUserUseCase
+	GetByEmail               *GetUserByEmailUseCase
+	UpdateName               *UpdateUserNameUseCase
+	UpdateEmail              *UpdateUserEmailUseCase
+	UpdatePassword           *UpdateUserPasswordUseCase
+	UpdateTimezone           *UpdateUserTimezoneUseCase
+	UpdateActiveTimeSettings *UpdateUserActiveTimeSettingsUseCase
+	UpdateMinimumGap         *UpdateUserMinimumGapUseCase
 }
 
 type EmailAuthUseCases struct {

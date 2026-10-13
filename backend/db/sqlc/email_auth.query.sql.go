@@ -83,7 +83,7 @@ func (q *Queries) CreateEmailDeliveryAttempt(ctx context.Context, arg CreateEmai
 const createUnverifiedUser = `-- name: CreateUnverifiedUser :one
 INSERT INTO users (id, first_name, last_name, email, password_hash)
 VALUES ($1, '', '', $2, $3)
-RETURNING id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes
+RETURNING id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, active_start_time, active_end_time, minimum_gap_minutes
 `
 
 type CreateUnverifiedUserParams struct {
@@ -106,8 +106,8 @@ func (q *Queries) CreateUnverifiedUser(ctx context.Context, arg CreateUnverified
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Timezone,
-		&i.WakeUpTime,
-		&i.Bedtime,
+		&i.ActiveStartTime,
+		&i.ActiveEndTime,
 		&i.MinimumGapMinutes,
 	)
 	return i, err
@@ -187,7 +187,7 @@ func (q *Queries) GetAuthLinkTokenForUpdate(ctx context.Context, tokenHash []byt
 }
 
 const getUserByEmailForAuth = `-- name: GetUserByEmailForAuth :one
-SELECT id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes FROM users WHERE email = $1 FOR UPDATE
+SELECT id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, active_start_time, active_end_time, minimum_gap_minutes FROM users WHERE email = $1 FOR UPDATE
 `
 
 func (q *Queries) GetUserByEmailForAuth(ctx context.Context, email string) (User, error) {
@@ -204,15 +204,15 @@ func (q *Queries) GetUserByEmailForAuth(ctx context.Context, email string) (User
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Timezone,
-		&i.WakeUpTime,
-		&i.Bedtime,
+		&i.ActiveStartTime,
+		&i.ActiveEndTime,
 		&i.MinimumGapMinutes,
 	)
 	return i, err
 }
 
 const getUserByIDForAuth = `-- name: GetUserByIDForAuth :one
-SELECT id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, wake_up_time, bedtime, minimum_gap_minutes FROM users WHERE id = $1 FOR UPDATE
+SELECT id, first_name, last_name, email, password_hash, email_verified_at, auth_version, created_at, updated_at, timezone, active_start_time, active_end_time, minimum_gap_minutes FROM users WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetUserByIDForAuth(ctx context.Context, id string) (User, error) {
@@ -229,8 +229,8 @@ func (q *Queries) GetUserByIDForAuth(ctx context.Context, id string) (User, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Timezone,
-		&i.WakeUpTime,
-		&i.Bedtime,
+		&i.ActiveStartTime,
+		&i.ActiveEndTime,
 		&i.MinimumGapMinutes,
 	)
 	return i, err

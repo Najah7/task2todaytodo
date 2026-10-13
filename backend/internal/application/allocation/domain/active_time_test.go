@@ -5,12 +5,12 @@ import (
 	"time"
 )
 
-func TestAwakeIntervalUsesWakingDateAndMovesDSTGapForward(t *testing.T) {
+func TestActiveWindowUsesWakingDateAndMovesDSTGapForward(t *testing.T) {
 	t.Parallel()
 	date := time.Date(2026, 3, 8, 0, 0, 0, 0, time.UTC)
 	wake, _ := time.Parse("15:04", "02:30")
-	bedtime, _ := time.Parse("15:04", "04:00")
-	interval, err := AwakeInterval(date, wake, bedtime, "America/New_York")
+	activeEndTime, _ := time.Parse("15:04", "04:00")
+	interval, err := ActiveWindow(date, wake, activeEndTime, "America/New_York")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -18,22 +18,22 @@ func TestAwakeIntervalUsesWakingDateAndMovesDSTGapForward(t *testing.T) {
 		t.Fatalf("wake gap resolved to %s", got)
 	}
 	if got := interval.End.In(mustLocation(t, "America/New_York")).Format("2006-01-02 15:04"); got != "2026-03-08 04:00" {
-		t.Fatalf("bedtime resolved to %s", got)
+		t.Fatalf("activeEndTime resolved to %s", got)
 	}
 }
 
-func TestAwakeIntervalBedtimeCanBeOnFollowingDate(t *testing.T) {
+func TestActiveWindowActiveEndTimeCanBeOnFollowingDate(t *testing.T) {
 	t.Parallel()
 	date := time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)
 	wake, _ := time.Parse("15:04", "09:00")
-	bedtime, _ := time.Parse("15:04", "01:00")
-	interval, err := AwakeInterval(date, wake, bedtime, "Asia/Tokyo")
+	activeEndTime, _ := time.Parse("15:04", "01:00")
+	interval, err := ActiveWindow(date, wake, activeEndTime, "Asia/Tokyo")
 	if err != nil {
 		t.Fatal(err)
 	}
 	location := mustLocation(t, "Asia/Tokyo")
 	if got := interval.End.In(location).Format("2006-01-02 15:04"); got != "2026-10-13 01:00" {
-		t.Fatalf("bedtime resolved to %s", got)
+		t.Fatalf("activeEndTime resolved to %s", got)
 	}
 }
 

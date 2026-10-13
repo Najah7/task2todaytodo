@@ -42,7 +42,7 @@ type PlanningSources struct {
 	PriorityWeights map[string]int
 	Candidates      []WorkSource
 	Schedules       []ScheduleOccurrence
-	Sleep           []Interval
+	ActiveTime      []Interval
 	Allocations     []ProjectAllocation
 	History         []HistoryFrame
 }

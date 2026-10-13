@@ -30,6 +30,7 @@ func TestTodoSourceReaderProjectsVirtualScheduleAndAllocationInUsersLocalDay(t *
 	localDate := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
 	dateString := localDate.Format("2006-01-02")
 	previousWeek := localDate.AddDate(0, 0, -7)
+	effectiveAt := time.Date(previousWeek.Year(), previousWeek.Month(), previousWeek.Day(), 0, 0, 0, 0, location)
 	weekday := int(today.Weekday())
 
 	if _, err := pool.Exec(ctx, `
@@ -78,10 +79,10 @@ func TestTodoSourceReaderProjectsVirtualScheduleAndAllocationInUsersLocalDay(t *
 	}
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO project_time_allocation_rule_revisions(
-		  id,rule_id,user_id,project_id,revision,effective_from,recurrence_start_date,
+		  id,rule_id,user_id,project_id,revision,effective_from,recurrence_start_date,effective_at,
 		  weekday,local_start,local_end,end_day_offset,timezone,frequency,changed_by)
-		VALUES($1,$2,$3,$4,1,$5,$5,$6,TIME '09:00',TIME '17:00',0,'America/Los_Angeles','weekly',$3)`,
-		allocationRevisionID, allocationRuleID, userID, projectID, previousWeek.Format("2006-01-02"), weekday); err != nil {
+		VALUES($1,$2,$3,$4,1,$5,$5,$6,$7,TIME '09:00',TIME '17:00',0,'America/Los_Angeles','weekly',$3)`,
+		allocationRevisionID, allocationRuleID, userID, projectID, previousWeek.Format("2006-01-02"), effectiveAt, weekday); err != nil {
 		t.Fatalf("insert recurring allocation revision: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO schedule_rules(id,user_id) VALUES($1,$2)`, scheduleRuleID, userID); err != nil {
@@ -172,19 +173,19 @@ func TestTodoSourceReaderProjectsVirtualScheduleAndAllocationInUsersLocalDay(t *
 	if savedCalendar.Timezone != "America/Los_Angeles" {
 		t.Fatalf("saved calendar timezone=%q, want America/Los_Angeles", savedCalendar.Timezone)
 	}
-	foundSavedAllocation, foundSavedSleep := false, false
+	foundSavedAllocation, foundSavedActiveTime := false, false
 	for _, allocation := range savedCalendar.Allocations {
 		if allocation.ProjectID == projectID && allocation.StartAt.In(location).Format("2006-01-02 15:04") == dateString+" 09:00" && allocation.EndAt.In(location).Format("15:04") == "17:00" {
 			foundSavedAllocation = true
 		}
 	}
-	for _, sleep := range savedCalendar.Sleep {
-		if sleep.Start.Equal(time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, location)) && sleep.End.Equal(time.Date(today.Year(), today.Month(), today.Day(), 7, 0, 0, 0, location)) {
-			foundSavedSleep = true
+	for _, activeTime := range savedCalendar.ActiveTime {
+		if activeTime.Start.Equal(time.Date(today.Year(), today.Month(), today.Day(), 7, 0, 0, 0, location)) && activeTime.End.Equal(time.Date(today.Year(), today.Month(), today.Day(), 23, 0, 0, 0, location)) {
+			foundSavedActiveTime = true
 		}
 	}
-	if !foundSavedAllocation || !foundSavedSleep {
-		t.Fatalf("saved todo calendar after profile timezone change: allocations=%+v sleep=%+v, want LA 09:00-17:00 allocation and 00:00-07:00 sleep boundary", savedCalendar.Allocations, savedCalendar.Sleep)
+	if !foundSavedAllocation || !foundSavedActiveTime {
+		t.Fatalf("saved todo calendar after profile timezone change: allocations=%+v active_time=%+v, want LA 09:00-17:00 allocation and positive 07:00-23:00 active_time window", savedCalendar.Allocations, savedCalendar.ActiveTime)
 	}
 	viewerSources, err := application.NewTodoSourceReader(store, tx).ReadPlanningSources(ctx, viewerID, localDate, "America/Los_Angeles")
 	if err != nil {

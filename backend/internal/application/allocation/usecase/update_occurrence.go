@@ -171,7 +171,7 @@ func (uc *UpdateOccurrenceUseCase) Execute(ctx context.Context, userID, ruleID s
 				if err := repo.StartPauseInterval(ctx, projectID, ruleID, now); err != nil {
 					return err
 				}
-			} else if projectStatus != "done" && (oldRule.PausedReason == "allocation_conflict" || oldRule.PausedReason == "sleep_conflict" || oldRule.PausedReason == "project_completed") {
+			} else if projectStatus != "done" && (oldRule.PausedReason == "allocation_conflict" || oldRule.PausedReason == "outside_active_time" || oldRule.PausedReason == "project_completed") {
 				if err := repo.SetRulePause(ctx, userID, ruleID, "", now); err != nil {
 					return err
 				}
