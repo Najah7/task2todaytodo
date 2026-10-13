@@ -1,0 +1,42 @@
+erDiagram
+    %% Tables created by 000008_billing.up.sql.
+    %% users is defined in auth.mmd.
+    %% user_billing.stripe_customer_id and stripe_subscription_id are each unique when set.
+    %% checkout_plan, plan, and pending_plan allow only pro or team when set.
+    %% pending_plan_at requires pending_plan.
+
+    users {
+        text id PK "NOT NULL"
+    }
+
+    user_billing {
+        text user_id PK, FK "NOT NULL"
+        text stripe_customer_id UK "NULL"
+        text stripe_subscription_id UK "NULL"
+        text stripe_subscription_schedule_id "NULL"
+        bigint stripe_subscription_created_at "NOT NULL, DEFAULT 0"
+        text checkout_idempotency_key "NULL"
+        text checkout_plan "NULL"
+        text checkout_session_id "NULL"
+        text checkout_url "NULL"
+        timestamptz checkout_expires_at "NULL"
+        text plan "NULL"
+        text stripe_price_id "NULL"
+        text status "NULL"
+        timestamptz current_period_start "NULL"
+        timestamptz current_period_end "NULL"
+        boolean cancel_at_period_end "NOT NULL, DEFAULT false"
+        text pending_plan "NULL"
+        timestamptz pending_plan_at "NULL"
+        bigint last_event_created "NOT NULL, DEFAULT 0"
+        timestamptz created_at "NOT NULL, DEFAULT now()"
+        timestamptz updated_at "NOT NULL, DEFAULT now()"
+    }
+
+    stripe_webhook_events {
+        text event_id PK "NOT NULL"
+        bigint created_at "NOT NULL"
+        timestamptz received_at "NOT NULL, DEFAULT now()"
+    }
+
+    users ||--o| user_billing : has_billing

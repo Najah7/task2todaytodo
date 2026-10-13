@@ -13,6 +13,10 @@ and business-layer boundaries.
   that renames, alters, or backfills an initial schema which has not shipped.
 - Keep each down migration consistent with its up migration and reverse object
   dependencies when dropping schema.
+- Migration SQL in `db/migrations/` is the schema source of truth. Every schema
+  change must update the matching `docs/er/*.mmd` diagram. For a new migration,
+  add its diagram and list the pair in `docs/er/README.md`; keep columns,
+  constraints, and relationships consistent with the migration.
 - Rebuild an existing development database separately when migration history
   changes. Do not modify it as part of migration authoring.
 
