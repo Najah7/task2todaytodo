@@ -8,6 +8,7 @@ export type AllocationAPIDataState = "loading" | "error" | "forbidden" | "ready"
 
 export type AllocationAPIData = {
   state: AllocationAPIDataState
+  isPaid: boolean
   weekStart: string
   timezone: string
   week?: RestAllocationWeekResponse

@@ -8,6 +8,7 @@ import TodayBoard from "~/features/todo/components/TodayBoard"
 import { civilDateLabel, minutesLabel, timeLabel, todoItems2boardItems } from "~/features/todo/converters/todoItems2boardItems"
 import { TodayActionProvider } from "~/features/todo/providers/TodayActionProvider"
 import { TodayActionContext } from "~/features/todo/providers/TodayActionProvider/context"
+import { useGetBillingStatus } from "~/api/generated/billing"
 import { TodayAPIDataProvider } from "~/features/todo/providers/TodayAPIDataProvider"
 import { TodayAPIDataContext } from "~/features/todo/providers/TodayAPIDataProvider/context"
 import controls from "~/styles/controls.module.css"
@@ -17,10 +18,12 @@ function TodayContent() {
   const data = useContext(TodayAPIDataContext)
   const actions = useContext(TodayActionContext)
   const i18n = useI18n()
+  const billing = useGetBillingStatus()
   const { language } = useLanguage()
   const [showHidden, setShowHidden] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
   const [confirmRegenerate, setConfirmRegenerate] = useState(false)
+  const [withoutAllocations, setWithoutAllocations] = useState(false)
   const [pendingRestore, setPendingRestore] = useState<RestTodoItemResponse>()
   const [pendingComplete, setPendingComplete] = useState<RestTodoItemResponse>()
   const [now, setNow] = useState(() => Date.now())
@@ -54,6 +57,7 @@ function TodayContent() {
   if (!data || data.state === "loading") return <p className="text-body">{i18n("inbox.loading")}</p>
   if (data.state === "error" || !todo || !actions) return <div className={styles.loadError}><p className="text-body">{i18n("today.error")}</p><button className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} text-button-small`} type="button" onClick={() => void data.refetch()}>{i18n("inbox.retry")}</button></div>
   const todayActions = actions
+  const canRegenerateWithoutAllocations = billing.data?.access_plan === "pro" || billing.data?.access_plan === "team"
 
   async function complete(itemId: string, actualMinutes?: number) {
     const success = await todayActions.complete(itemId, actualMinutes)
@@ -101,10 +105,11 @@ function TodayContent() {
       onHideSchedule={(itemId) => void todayActions.hide(itemId)}
       onShowHiddenSchedules={() => setShowHidden(true)}
       onOpenHelp={() => setShowHelp(true)}
-      onRegenerate={() => setConfirmRegenerate(true)}
+      onRegenerate={() => { setWithoutAllocations(false); setConfirmRegenerate(true) }}
+      onRegenerateWithoutAllocations={canRegenerateWithoutAllocations ? () => { setWithoutAllocations(true); setConfirmRegenerate(true) } : undefined}
     />
     <ActionItemActualMinutesDialog open={Boolean(pendingComplete)} busy={todayActions.busy} onComplete={(minutes) => pendingComplete?.id && void complete(pendingComplete.id, minutes)} onCancel={() => setPendingComplete(undefined)} />
-    <ConfirmationDialog open={confirmRegenerate} title={i18n("today.confirm.regenerateTitle")} description={i18n("today.confirm.regenerateDescription")} confirmLabel={i18n("today.confirm.regenerate")} cancelLabel={i18n("today.confirm.cancel")} destructive busy={todayActions.busy} onCancel={() => setConfirmRegenerate(false)} onConfirm={() => { void todayActions.regenerate().then((ok) => { if (ok) setConfirmRegenerate(false) }) }} />
+    <ConfirmationDialog open={confirmRegenerate} title={i18n(withoutAllocations ? "today.confirm.regenerateWithoutAllocationsTitle" : "today.confirm.regenerateTitle")} description={i18n(withoutAllocations ? "today.confirm.regenerateWithoutAllocationsDescription" : "today.confirm.regenerateDescription")} confirmLabel={i18n("today.confirm.regenerate")} cancelLabel={i18n("today.confirm.cancel")} destructive busy={todayActions.busy} onCancel={() => setConfirmRegenerate(false)} onConfirm={() => { void todayActions.regenerate(withoutAllocations).then((ok) => { if (ok) setConfirmRegenerate(false) }) }} />
     <ConfirmationDialog open={Boolean(pendingRestore)} title={i18n("today.confirm.restoreTitle")} description={i18n("today.confirm.restoreDescription")} confirmLabel={i18n("today.confirm.restore")} cancelLabel={i18n("today.confirm.cancel")} busy={todayActions.busy} onCancel={() => setPendingRestore(undefined)} onConfirm={() => { const item = pendingRestore; if (!item?.id) return; void todayActions.restore(item.id).then((ok) => { if (ok) { setPendingRestore(undefined); if ((todo.hidden_schedules?.length || 0) <= 1) setShowHidden(false) } }) }} />
     {showHidden && <dialog className={styles.dialog} open aria-labelledby="today-hidden-title">
       <h2 className="text-card-title" id="today-hidden-title">{i18n("today.hidden.title")}</h2>

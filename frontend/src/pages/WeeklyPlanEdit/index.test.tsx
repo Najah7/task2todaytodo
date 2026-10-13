@@ -20,6 +20,7 @@ test("waits for independent allocation resources before mounting the form", asyn
   const fetchMock = vi.fn(async (input: RequestInfo | URL): Promise<Response> => {
     const url = String(input)
     const pathname = new URL(url, "http://localhost").pathname
+    if (pathname === "/api/billing") return jsonResponse({ plan: "pro", status: "active", access_plan: "pro" })
     if (pathname === "/api/users/me") return jsonResponse({ user_id: "user-1", timezone: "Asia/Tokyo", active_start_time: "07:00", active_end_time: "23:00" })
     if (pathname === "/api/allocation-rules") return jsonResponse({ revision: "rules-v1", timezone: "Asia/Tokyo", items: [] })
     if (pathname === "/api/allocation-plans") return plansResponse

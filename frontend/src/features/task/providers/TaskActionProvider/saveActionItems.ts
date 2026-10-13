@@ -7,7 +7,7 @@ import {
 import { getTasksId } from "~/api/generated/tasks"
 import type { TaskFormSaveResult } from "./context"
 import { minutesToDurationText, type TaskFormValues } from "~/features/task/components/TaskForm/schema"
-import { actionItemFieldErrors } from "~/features/task/errors"
+import { actionItemFieldErrors, taskErrorMessageKey } from "~/features/task/errors"
 import type { TaskActionItemSaveOperation } from "~/features/task/converters/taskFormValues2updateRequest"
 import { ApiError } from "~/api/http"
 
@@ -54,10 +54,13 @@ export async function saveTaskActionItems(taskId: string, operations: TaskAction
     } catch (error) {
       if (operation.type === "create" && hasReplacementCreate) replacementCreateFailed = true
       if (isTaskRevisionConflict(error)) return { outcomes, hasSavedItems, revisionConflict: true, pendingOperations: operations.slice(outcomes.length) }
+      const messageKey = taskErrorMessageKey(error)
       outcomes.push({
         index: operation.index,
         key: operation.key,
-        error: "tasks.form.actionItemSaveError",
+        error: messageKey === "tasks.form.freeProjectLimit" || messageKey === "tasks.form.freeActionItemLimit"
+          ? messageKey
+          : "tasks.form.actionItemSaveError",
         fieldErrors: actionItemFieldErrors(error),
       })
     }

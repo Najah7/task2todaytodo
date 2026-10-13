@@ -26,7 +26,17 @@ import type {
 
 import { apiFetch } from "~/api/http";
 import type { ErrorType } from "~/api/http";
+export type SharedPlanAccess = typeof SharedPlanAccess[keyof typeof SharedPlanAccess];
+
+
+export const SharedPlanAccess = {
+  PlanAccessFree: 'free',
+  PlanAccessPro: 'pro',
+  PlanAccessTeam: 'team',
+} as const;
+
 export interface RestBillingStateResponse {
+  access_plan?: SharedPlanAccess;
   cancel_at_period_end?: boolean;
   checkout_pending?: boolean;
   current_period_end?: string;

@@ -153,3 +153,27 @@ test("replaces a stale pagination URL when returning to the first page", async (
   expect(new URLSearchParams(router.state.location.search).get("status")).toBe("pending")
   expect(fetchMock.mock.calls.some(([input]) => new URL(String(input), window.location.origin).searchParams.get("page_token") === "stale")).toBe(true)
 })
+
+test("hides shared Project write controls when the API reports Team access is unavailable", async () => {
+  const lockedProject = { ...project, can_update: false, can_delete: false }
+  const fetchMock = vi.fn(async (input: RequestInfo | URL): Promise<Response> => {
+    const url = new URL(String(input), window.location.origin)
+    if (url.pathname === "/api/projects/options") return response(options)
+    if (url.pathname === "/api/projects") return response({ ...list, items: [lockedProject] })
+    throw new Error(`Unexpected request: ${url}`)
+  })
+  vi.stubGlobal("fetch", fetchMock)
+
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const router = createMemoryRouter([{ path: "/projects", element: <ProjectList /> }], { initialEntries: ["/projects"] })
+  render(
+    <LanguageProviderContext.Provider value={{ language: "ja", setLanguage: vi.fn() }}>
+      <QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>
+    </LanguageProviderContext.Provider>,
+  )
+
+  await screen.findByText("Conflict project")
+  expect(screen.queryByRole("button", { name: "編集" })).toBeNull()
+  expect(screen.queryByRole("button", { name: "Conflict projectをゴミ箱に移動" })).toBeNull()
+  expect((screen.getByRole("button", { name: /Conflict projectの状態/ }) as HTMLButtonElement).disabled).toBe(true)
+})

@@ -107,7 +107,7 @@ function WeeklyPlanContents() {
 
   return <>
     <PageHeading messageKey="page.weeklyPlan.title" descriptionKey="weeklyPlan.description" />
-    <WeeklyPlanBoard {...board} canEdit busy={actions.busy}
+    <WeeklyPlanBoard {...board} canEdit={data.isPaid} canEditActiveTime showAllocationData={data.isPaid} busy={actions.busy}
       onChangeWeek={navigation.changeWeek} onEditPlan={navigation.editPlan}
       onCreateAllocation={(projectId, date, startMinute, endMinute) => setEditor({ kind: "create", projectId, date, startMinute, endMinute })}
       onEditAllocation={(allocation) => setEditor({ kind: "edit", allocation })}

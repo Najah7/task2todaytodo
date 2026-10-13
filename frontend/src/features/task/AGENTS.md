@@ -6,6 +6,7 @@ Follow the [feature guide](../AGENTS.md). Paths are defined in [router.tsx](../.
 
 - `/tasks`, `/tasks/new`, `/tasks/:id/edit`: list, create, edit, assign, change status, and delete Tasks and their ActionItems.
 - Task and ActionItem rows also appear in `/inbox` and `/today`; those Pages own their interactions.
+- Free users may have 100 nondeleted ActionItems per Project and a separate 100 across projectless Tasks. Keep existing over-cap data editable and report count-increasing denials in the row/form that failed.
 
 ## Key files
 

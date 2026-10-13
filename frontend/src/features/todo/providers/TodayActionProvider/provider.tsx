@@ -95,8 +95,8 @@ export function TodayActionProvider({ children }: Props) {
     return saved
   }
 
-  async function regenerate() {
-    const saved = await mutate((headers) => regenerateTodayTodo({ headers }), "today.toast.regenerated")
+  async function regenerate(withoutAllocations = false) {
+    const saved = await mutate((headers) => regenerateTodayTodo(withoutAllocations ? { ignore_allocations: true } : {}, { headers }), "today.toast.regenerated")
     if (saved) await queryClient.invalidateQueries({ queryKey: getGetTodoCompletionMetricsQueryKey() })
     return saved
   }

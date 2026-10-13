@@ -139,6 +139,13 @@ export interface RestTodoReorderRequest {
   item_ids: string[];
 }
 
+export type RegenerateTodayTodoParams = {
+/**
+ * Ignore Project allocations for this regeneration
+ */
+ignore_allocations?: boolean;
+};
+
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
@@ -792,20 +799,27 @@ export const useAddTodayTodoTask = <TError = ErrorType<unknown>,
       return useMutation(getAddTodayTodoTaskMutationOptions(options), queryClient);
     }
 
-export const getRegenerateTodayTodoUrl = () => {
+export const getRegenerateTodayTodoUrl = (params?: RegenerateTodayTodoParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/today-todo:regenerate`
+  return stringifiedParams.length > 0 ? `/api/today-todo:regenerate?${stringifiedParams}` : `/api/today-todo:regenerate`
 }
 
 /**
  * @summary Regenerate today's Todo
  */
-export const regenerateTodayTodo = async ( options?: Parameters<typeof apiFetch>[1]): Promise<RestTodoTodayResponse> => {
+export const regenerateTodayTodo = async (params?: RegenerateTodayTodoParams, options?: Parameters<typeof apiFetch>[1]): Promise<RestTodoTodayResponse> => {
 
-  return apiFetch<RestTodoTodayResponse>(getRegenerateTodayTodoUrl(),
+  return apiFetch<RestTodoTodayResponse>(getRegenerateTodayTodoUrl(params),
   {
     ...options,
     method: 'POST'
@@ -821,8 +835,8 @@ export const regenerateTodayTodo = async ( options?: Parameters<typeof apiFetch>
 export const getRegenerateTodayTodoMutationKey = () => ['regenerateTodayTodo'] as const;
 
 export const getRegenerateTodayTodoMutationOptions = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateTodayTodo>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof regenerateTodayTodo>>, TError,void, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateTodayTodo>>, TError,RegenerateTodayTodoMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof regenerateTodayTodo>>, TError,RegenerateTodayTodoMutationVariables, TContext> => {
 
 const mutationKey = getRegenerateTodayTodoMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -834,10 +848,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof regenerateTodayTodo>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof regenerateTodayTodo>>, RegenerateTodayTodoMutationVariables> = (props) => {
+          const {params} = props ?? {};
 
-
-          return  regenerateTodayTodo(requestOptions)
+          return  regenerateTodayTodo(params,requestOptions)
         }
 
 
@@ -850,17 +864,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type RegenerateTodayTodoMutationResult = NonNullable<Awaited<ReturnType<typeof regenerateTodayTodo>>>
 
     export type RegenerateTodayTodoMutationError = ErrorType<RestErrResponse>
-
+    export type RegenerateTodayTodoMutationVariables = {params?: RegenerateTodayTodoParams}
 
     /**
  * @summary Regenerate today's Todo
  */
 export const useRegenerateTodayTodo = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateTodayTodo>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateTodayTodo>>, TError,RegenerateTodayTodoMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof regenerateTodayTodo>>,
         TError,
-        void,
+        RegenerateTodayTodoMutationVariables,
         TContext
       > => {
       return useMutation(getRegenerateTodayTodoMutationOptions(options), queryClient);

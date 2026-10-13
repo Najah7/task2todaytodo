@@ -26,6 +26,7 @@ export default function TodayBoard(props: TodayBoardProps) {
       </div>
       <div className={styles.headerActions}>
         <button className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} text-button-small`} type="button" disabled={props.busy} onClick={props.onRegenerate}>{i18n("today.regenerate")}</button>
+        {props.onRegenerateWithoutAllocations && <button className={`${styles.allocationFreeAction} ${controls.focusRing} text-caption`} type="button" disabled={props.busy} onClick={props.onRegenerateWithoutAllocations}>{i18n("today.regenerateWithoutAllocations")}</button>}
         <button className={`${controls.button} ${controls.neutralButton} ${controls.focusRing} text-button-small`} type="button" onClick={props.onOpenHelp}>{i18n("today.helpLink")}</button>
       </div>
     </header>

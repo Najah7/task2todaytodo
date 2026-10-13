@@ -9,7 +9,7 @@ export type TodayActions = {
   restore: (itemId: string) => Promise<boolean>
   addActionItem: (actionItemId: string) => Promise<boolean>
   reorder: (itemIds: string[]) => Promise<boolean>
-  regenerate: () => Promise<boolean>
+  regenerate: (withoutAllocations?: boolean) => Promise<boolean>
 }
 
 export const TodayActionContext = createContext<TodayActions | null>(null)

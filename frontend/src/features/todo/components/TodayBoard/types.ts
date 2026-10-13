@@ -37,4 +37,5 @@ export type TodayBoardProps = {
   onShowHiddenSchedules: () => void
   onOpenHelp: () => void
   onRegenerate: () => void
+  onRegenerateWithoutAllocations?: () => void
 }

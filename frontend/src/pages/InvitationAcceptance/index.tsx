@@ -7,10 +7,19 @@ import AuthActionPanel from "~/features/auth/components/AuthActionPanel"
 import { getAuthErrorMessage } from "~/features/auth/errors"
 import { getPersonalAccessToken, clearPersonalAccessToken, savePersonalAccessToken } from "~/features/auth/lib/localStorage"
 import InvitationAcceptForm from "~/features/project/components/InvitationAcceptForm"
+import { clearPendingTeamInvitation, rememberTeamInvitation } from "~/features/project/lib/teamInvitationReturn"
 import { useI18n, type MessageKey } from "~/features/i18n/hooks"
 import AuthPageFrame from "~/features/auth/components/AuthPageFrame"
 import { useEmailActionToken } from "~/features/auth/hooks/useEmailActionToken"
 import styles from "./index.module.css"
+
+function planRequirementError(cause: unknown): MessageKey | null {
+  if (!(cause instanceof ApiError)) return null
+  const details = (cause.data as { error?: { details?: { code?: string }[] } } | undefined)?.error?.details ?? []
+  if (details.some((detail) => detail.code === "owner_team_required")) return "members.invitation.ownerTeamRequired"
+  if (details.some((detail) => detail.code === "team_required")) return "members.invitation.teamRequired"
+  return null
+}
 
 export default function InvitationAcceptancePage() {
   const i18n = useI18n()
@@ -52,11 +61,25 @@ export default function InvitationAcceptancePage() {
       const response = await postInvitationsAccept({ token, password })
       const accessToken = response?.personal_access_token
       if (typeof accessToken === "string" && accessToken.trim()) savePersonalAccessToken(accessToken)
+      if (response?.requires_team_subscription) {
+        rememberTeamInvitation(token)
+        await queryClient.cancelQueries()
+        queryClient.clear()
+        navigate("/billing?plan=team", { replace: true })
+        return
+      }
+      clearPendingTeamInvitation()
       await queryClient.cancelQueries()
       queryClient.clear()
       navigate(`/members?projectId=${encodeURIComponent(invitation.project_id ?? "")}`, { replace: true })
-    } catch {
-      setError("members.invitation.acceptError")
+    } catch (cause) {
+      const planError = planRequirementError(cause)
+      if (planError) {
+        rememberTeamInvitation(token)
+        setError(planError)
+      } else {
+        setError("members.invitation.acceptError")
+      }
     } finally {
       setBusy(false)
     }
@@ -74,11 +97,25 @@ export default function InvitationAcceptancePage() {
       const response = await postInvitationsAccept({ token: token! })
       const accessToken = response?.personal_access_token
       if (typeof accessToken === "string" && accessToken.trim()) savePersonalAccessToken(accessToken)
+      if (response?.requires_team_subscription) {
+        rememberTeamInvitation(token!)
+        await queryClient.cancelQueries()
+        queryClient.clear()
+        navigate("/billing?plan=team", { replace: true })
+        return
+      }
+      clearPendingTeamInvitation()
       await queryClient.cancelQueries()
       queryClient.clear()
       navigate(`/members?projectId=${encodeURIComponent(invitation.project_id ?? "")}`, { replace: true })
     } catch (cause) {
-      setError(cause instanceof ApiError ? getAuthErrorMessage(cause) : "members.invitation.acceptError")
+      const planError = planRequirementError(cause)
+      if (planError) {
+        rememberTeamInvitation(token!)
+        setError(planError)
+      } else {
+        setError(cause instanceof ApiError ? getAuthErrorMessage(cause) : "members.invitation.acceptError")
+      }
     } finally {
       setBusy(false)
     }

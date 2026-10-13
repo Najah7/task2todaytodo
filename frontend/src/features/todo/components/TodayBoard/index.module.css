@@ -3,6 +3,8 @@
 .header h1, .header p { margin: 0; }
 .header > div:first-child { display: grid; gap: var(--space-xs); }
 .headerActions { display: flex; align-items: center; gap: var(--space-sm); }
+.allocationFreeAction { padding: var(--space-xs); border: 0; background: transparent; color: var(--color-text-muted); text-decoration: underline; text-underline-offset: 0.15em; cursor: pointer; white-space: nowrap; }
+.allocationFreeAction:disabled { opacity: 0.45; cursor: not-allowed; }
 .columns { display: grid; grid-template-columns: minmax(0, 2.05fr) minmax(17rem, 0.8fr); align-items: start; gap: var(--space-md); }
 .taskCard { min-width: 0; overflow: hidden; }
 .cardHeading { padding: var(--space-md) var(--space-lg); border-bottom: var(--border-width) solid var(--color-border); }

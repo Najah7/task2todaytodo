@@ -26,6 +26,7 @@ export function getProjectFormFieldErrors(error: unknown): ProjectFieldError | u
 export function getProjectErrorMessageKey(error: unknown): MessageKey {
   if (error instanceof ApiError) {
     const details = (error.data as RestErrResponse | undefined)?.error?.details ?? []
+    if (details.some((detail) => detail.code === "free_project_limit_reached")) return "projects.error.freeLimit"
     if (error.status === 401) return "projects.error.unauthorized"
     if (error.status === 403) return "projects.error.forbidden"
     if (error.status === 409 || details.some((detail) => detail.code === "revision_conflict")) return "projects.error.conflict"

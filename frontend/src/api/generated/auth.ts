@@ -29,6 +29,7 @@ import type { ErrorType } from "~/api/http";
 export interface RestPersonalAccessTokenResponse {
   expires_at?: string;
   personal_access_token?: string;
+  requires_team_subscription?: boolean;
 }
 
 export interface RestAllocationConflictMetadata {

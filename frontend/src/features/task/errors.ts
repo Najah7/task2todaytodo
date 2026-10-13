@@ -27,8 +27,11 @@ export function actionItemFieldErrors(error: unknown): Partial<Record<"title" | 
   return Object.keys(fields).length ? fields : undefined
 }
 
-export function taskErrorMessageKey(error: unknown): "tasks.form.forbidden" | "tasks.form.conflict" | "tasks.form.networkError" | "tasks.form.genericError" {
+export function taskErrorMessageKey(error: unknown): "tasks.form.forbidden" | "tasks.form.conflict" | "tasks.form.networkError" | "tasks.form.genericError" | "tasks.form.freeProjectLimit" | "tasks.form.freeActionItemLimit" {
   if (error instanceof ApiError) {
+    const details = (error.data as RestErrResponse | undefined)?.error?.details ?? []
+    if (details.some((detail) => detail.code === "free_project_limit_reached")) return "tasks.form.freeProjectLimit"
+    if (details.some((detail) => detail.code === "free_action_item_limit_reached")) return "tasks.form.freeActionItemLimit"
     if (error.status === 403) return "tasks.form.forbidden"
     if (error.status === 409) return "tasks.form.conflict"
     if (error.status === 401) return "tasks.form.forbidden"

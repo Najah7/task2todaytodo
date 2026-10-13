@@ -75,6 +75,7 @@ export default function InvitationAcceptForm({ email, mode, signedIn = false, ac
         </form>
       )}
       {mode === "verified" && signedIn && error && <p className={styles.error} role="alert">{i18n(error)}</p>}
+      {error === "members.invitation.teamRequired" && <Link className={`${styles.linkButton} ${controls.focusRing} text-caption`} to="/billing?plan=team">{i18n("members.invitation.teamRequiredAction")}</Link>}
     </div>
   )
 }

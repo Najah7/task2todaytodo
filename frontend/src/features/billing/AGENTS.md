@@ -9,6 +9,7 @@ Follow the [feature guide](../AGENTS.md). The page path is `/billing`, defined i
 - Do not implement product access checks or repeat billing rules in the client.
 - Use Checkout and Portal URLs only when they point to the expected Stripe hosts.
 - Prices are JPY 1,350/month for Pro and JPY 2,250/month for Team, quantity one per user.
+- A pending Team invitation return is held in session storage during Checkout; after billing reports effective Team access, return to the same invitation and clear the pending token.
 
 ## Verification
 

@@ -43,6 +43,7 @@ test("period switch updates URL and chart displays daily completion details", as
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input)
     const pathname = new URL(url, "http://localhost").pathname
+    if (pathname === "/api/billing") return jsonResponse({ plan: "pro", status: "active", access_plan: "pro" })
     if (pathname === "/api/metrics/todo-completion") return jsonResponse(completionResponse(1))
     if (pathname === "/api/metrics/overdue-work") return jsonResponse({ timezone: "Asia/Tokyo", as_of_date: "2026-10-13", total_overdue_count: 0, projects: [], other_count: 0 })
     throw new Error(`Unexpected request: ${url}`)
@@ -63,6 +64,7 @@ test("period switch updates URL and chart displays daily completion details", as
 test("zero planned work shows no-data state instead of a zero completion rate", async () => {
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
     const pathname = new URL(String(input), "http://localhost").pathname
+    if (pathname === "/api/billing") return jsonResponse({ plan: "pro", status: "active", access_plan: "pro" })
     if (pathname === "/api/metrics/todo-completion") return jsonResponse(completionResponse())
     if (pathname === "/api/metrics/overdue-work") return jsonResponse({ timezone: "Asia/Tokyo", as_of_date: "2026-10-13", total_overdue_count: 0, projects: [], other_count: 0 })
     throw new Error(`Unexpected request: ${String(input)}`)
@@ -79,6 +81,7 @@ test("load failure exposes retry and renders data after retry", async () => {
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
     if (fail) throw new Error("offline")
     const pathname = new URL(String(input), "http://localhost").pathname
+    if (pathname === "/api/billing") return jsonResponse({ plan: "pro", status: "active", access_plan: "pro" })
     if (pathname === "/api/metrics/todo-completion") return jsonResponse(completionResponse())
     if (pathname === "/api/metrics/overdue-work") return jsonResponse({ timezone: "Asia/Tokyo", as_of_date: "2026-10-13", total_overdue_count: 0, projects: [], other_count: 0 })
     throw new Error(`Unexpected request: ${String(input)}`)

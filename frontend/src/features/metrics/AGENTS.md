@@ -5,6 +5,7 @@ Follow the [feature guide](../AGENTS.md). The path is defined in [router.tsx](..
 ## Features and page
 
 - `/metrics`: show personal Todo completion for the most recent 7 or 30 days and current overdue work by Project. The `days` query parameter selects the period.
+- Metrics are Pro/Team features. Free users see a Billing upsell and the page does not request metric data; backend use cases enforce the same entitlement.
 
 ## Key files
 

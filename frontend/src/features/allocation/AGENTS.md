@@ -6,6 +6,7 @@ Follow the [feature guide](../AGENTS.md). Paths are defined in [router.tsx](../.
 
 - `/weekly-plan`: inspect Project allocations and positive 作業可能時間 ranges for a week; `/weekly-plan/edit`: edit weekly Rules and target-minute Plans.
 - `/profile`: edit the default 作業可能時間. Per-day overrides are edited from the weekly plan.
+- Free users can view and edit active-time settings and daily overrides; weekly allocation data and allocation editing are available only to Pro/Team. The backend owns enforcement, while this UI hides gated data and links to Billing.
 
 ## Key files
 

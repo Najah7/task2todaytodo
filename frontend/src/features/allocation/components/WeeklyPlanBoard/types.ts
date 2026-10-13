@@ -66,6 +66,8 @@ export type WeeklyPlanBoardProps = {
   differenceMinutes: number
   freeMinutes: number
   canEdit: boolean
+  canEditActiveTime?: boolean
+  showAllocationData?: boolean
   busy: boolean
   onChangeWeek: (weekStart: string) => void
   onEditPlan: () => void

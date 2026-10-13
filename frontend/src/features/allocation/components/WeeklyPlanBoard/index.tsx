@@ -13,6 +13,8 @@ export default function WeeklyPlanBoard(props: WeeklyPlanBoardProps) {
   const i18n = useI18n()
   const { language } = useLanguage()
   const { weekStart, timezone, projects, days, allocations, allocatedMinutes, targetMinutes, differenceMinutes, freeMinutes, canEdit, busy, onChangeWeek, onEditPlan, onCreateAllocation, onEditAllocation, onEditActiveTime } = props
+  const showAllocationData = props.showAllocationData ?? true
+  const canEditActiveTime = props.canEditActiveTime ?? canEdit
   const dates = weekDates(weekStart)
   const today = mondayOf(new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()))
   const locale = language === "ja" ? "ja-JP" : "en-US"
@@ -72,7 +74,8 @@ export default function WeeklyPlanBoard(props: WeeklyPlanBoardProps) {
   }
 
   return <section className={styles.layout}>
-    <aside className={styles.projectPanel} aria-label={i18n("weeklyPlan.projects.label")}>
+    <aside className={styles.projectPanel} aria-label={i18n(showAllocationData ? "weeklyPlan.projects.label" : "weeklyPlan.activeTime.freeTitle")}>
+      {showAllocationData ? <>
       <header className={styles.projectHeader}>
         <h2 className="text-section-title">{i18n("weeklyPlan.projects.label")}</h2>
         {canEdit && <button className={styles.textButton} type="button" onClick={onEditPlan}>{i18n("weeklyPlan.editPlan")}</button>}
@@ -100,6 +103,11 @@ export default function WeeklyPlanBoard(props: WeeklyPlanBoardProps) {
       </dl>
       <div className={styles.todoHelp}><p className="text-caption">{i18n("weeklyPlan.todoHelp")}</p><button type="button" onClick={() => setShowTodoHelp(true)}>{i18n("weeklyPlan.todoLink")}</button></div>
       {showTodoHelp && <div className={styles.helpOverlay} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowTodoHelp(false) }}><section ref={todoHelpModal.ref} onKeyDown={todoHelpModal.onKeyDown} role="dialog" aria-modal="true" aria-labelledby="todo-help-title" className={styles.helpDialog}><h2 id="todo-help-title" className="text-section-title">{i18n("weeklyPlan.todoLink")}</h2><p className="text-body">{i18n("weeklyPlan.todoHelp")}</p><button className={controls.button} type="button" onClick={() => setShowTodoHelp(false)}>{i18n("common.close")}</button></section></div>}
+      </> : <>
+        <header className={styles.projectHeader}><h2 className="text-section-title">{i18n("weeklyPlan.activeTime.freeTitle")}</h2></header>
+        <p className="text-body">{i18n("weeklyPlan.activeTime.freeDescription")}</p>
+        <Link to="/billing" className="text-button-small">{i18n("weeklyPlan.upgrade")}</Link>
+      </>}
     </aside>
     <section className={styles.calendarPanel} aria-label={i18n("weeklyPlan.calendar.label")}>
       <header className={styles.calendarToolbar}>
@@ -124,7 +132,7 @@ export default function WeeklyPlanBoard(props: WeeklyPlanBoardProps) {
           }
           if (availableCursor < 1440) unavailable.push({ startMinute: availableCursor, endMinute: 1440 })
           return <section key={date} data-date={date} className={styles.dayColumn} aria-label={new Intl.DateTimeFormat(locale, { dateStyle: "full", timeZone: "UTC" }).format(dateValue)}>
-            <header className={styles.dayHeader}><span>{label}</span><strong>{dateValue.getUTCDate()}</strong><span>{durationLabel(day?.allocatedMinutes ?? 0)}</span><button type="button" disabled={!canEdit || busy} className={styles.activeTimeSettings} aria-label={i18n("weeklyPlan.activeTime.editDay", { start: day?.activeStartAt || "07:00", end: day?.activeEndAt || "23:00" })} onClick={() => onEditActiveTime(date)}><span>{i18n("weeklyPlan.activeTime.range", { start: day?.activeStartAt || "07:00", end: day?.activeEndAt || "23:00" })}</span><span>{i18n("weeklyPlan.activeTime.available")}{day?.hasActiveException ? " · " + i18n("weeklyPlan.activeTime.overrideMark") : ""}</span></button></header>
+            <header className={styles.dayHeader}><span>{label}</span><strong>{dateValue.getUTCDate()}</strong>{showAllocationData && <span>{durationLabel(day?.allocatedMinutes ?? 0)}</span>}<button type="button" disabled={!canEditActiveTime || busy} className={styles.activeTimeSettings} aria-label={i18n("weeklyPlan.activeTime.editDay", { start: day?.activeStartAt || "07:00", end: day?.activeEndAt || "23:00" })} onClick={() => onEditActiveTime(date)}><span>{i18n("weeklyPlan.activeTime.range", { start: day?.activeStartAt || "07:00", end: day?.activeEndAt || "23:00" })}</span><span>{i18n("weeklyPlan.activeTime.available")}{day?.hasActiveException ? " · " + i18n("weeklyPlan.activeTime.overrideMark") : ""}</span></button></header>
             <div className={styles.dayTimeline} onPointerDown={(event) => startDrag(event, date)} onPointerMove={(event) => moveDrag(event, date)} onPointerUp={(event) => finishDrag(event, date)}>
               {drag?.date === date && drag.end > drag.start && <div aria-hidden="true" className={styles.dragSelection} style={{ top: drag.start / 60 * 3 + "rem", height: (drag.end - drag.start) / 60 * 3 + "rem" }} />}
               {unavailable.map((interval, index) => <div key={index} aria-hidden="true" className={styles.unavailableTimeBlock} style={{ top: interval.startMinute / 60 * 3 + "rem", height: (interval.endMinute - interval.startMinute) / 60 * 3 + "rem" }} />)}
@@ -134,7 +142,7 @@ export default function WeeklyPlanBoard(props: WeeklyPlanBoardProps) {
                 const isSlotAvailable = isWithinActiveTime(date, startMinute, endMinute)
                 return <button key={hour} type="button" disabled={!canEdit || busy || !activeProjectId || !isSlotAvailable} className={styles.hourSlot} aria-label={date + " " + String(hour).padStart(2, "0") + ":00 " + i18n(isSlotAvailable ? "weeklyPlan.createAllocation" : "weeklyPlan.outsideActiveTime")} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return } if (activeProjectId) onCreateAllocation(activeProjectId, date, startMinute, endMinute) }} />
               })}
-              {dayAllocations.map((allocation) => <button key={allocation.id} type="button" disabled={!allocation.canUpdate || busy} className={styles.allocationBlock} style={{ ...color(allocation.colorIndex), top: (allocation.startMinute / 60 * 3) + "rem", height: "max(1.5rem, " + ((allocation.endMinute - allocation.startMinute) / 60 * 3) + "rem)" }} onClick={() => onEditAllocation(allocation)} aria-label={allocation.projectTitle + ", " + allocation.startLabel + "–" + allocation.endLabel}>
+              {showAllocationData && dayAllocations.map((allocation) => <button key={allocation.id} type="button" disabled={!allocation.canUpdate || busy} className={styles.allocationBlock} style={{ ...color(allocation.colorIndex), top: (allocation.startMinute / 60 * 3) + "rem", height: "max(1.5rem, " + ((allocation.endMinute - allocation.startMinute) / 60 * 3) + "rem)" }} onClick={() => onEditAllocation(allocation)} aria-label={allocation.projectTitle + ", " + allocation.startLabel + "–" + allocation.endLabel}>
                 <strong>{allocation.projectTitle}</strong><span>{allocation.startLabel}–{allocation.endLabel}</span>
               </button>)}
             </div>
@@ -142,7 +150,7 @@ export default function WeeklyPlanBoard(props: WeeklyPlanBoardProps) {
         })}
         <div className={styles.timeGutter} aria-hidden="true">{Array.from({ length: 24 }, (_, hour) => <span key={hour} style={{ top: hour * 3 + "rem" }}>{String(hour).padStart(2, "0")}:00</span>)}</div>
       </div></div>
-      <footer className={styles.calendarLegend}><span className={styles.legendAllocation}>{i18n("weeklyPlan.legendAllocation")}</span><span className={styles.legendUnavailableTime}>{i18n("weeklyPlan.legendUnavailableTime")}</span></footer>
+      <footer className={styles.calendarLegend}>{showAllocationData && <span className={styles.legendAllocation}>{i18n("weeklyPlan.legendAllocation")}</span>}<span className={styles.legendUnavailableTime}>{i18n("weeklyPlan.legendUnavailableTime")}</span></footer>
     </section>
   </section>
 }

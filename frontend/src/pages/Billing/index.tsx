@@ -1,11 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query"
-import { Link, useSearchParams } from "react-router"
+import { useEffect } from "react"
+import { Link, useNavigate, useSearchParams } from "react-router"
 import { changeBillingPlan, createBillingPortalSession, getGetBillingStatusQueryKey, startBillingCheckout, useGetBillingStatus } from "~/api/generated/billing"
 import { useI18n } from "~/features/i18n/hooks"
 import type { MessageKey } from "~/features/i18n/messages/types"
 import { notify } from "~/features/shared/notification"
 import controls from "~/styles/controls.module.css"
 import styles from "./index.module.css"
+import { clearPendingTeamInvitation, invitationPath, pendingTeamInvitation } from "~/features/project/lib/teamInvitationReturn"
 
 const plans = [
   { id: "free", name: "billing.plan.free", price: "¥0", detail: "billing.detail.free" },
@@ -39,12 +41,13 @@ function paidStatus(status?: string) {
 export default function BillingPage() {
   const i18n = useI18n()
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const state = useGetBillingStatus({ query: { retry: false, refetchOnWindowFocus: true } })
   const paid = paidStatus(state.data?.status)
   const incomplete = state.data?.status === "incomplete"
   const hasSubscription = paid || incomplete
-  const activePlan = paid ? state.data?.plan ?? "free" : "free"
+  const activePlan = state.data?.access_plan ?? "free"
   const busy = state.isPending
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: getGetBillingStatusQueryKey() })
@@ -78,9 +81,18 @@ export default function BillingPage() {
   }
 
   const checkoutResult = searchParams.get("checkout")
+  const requestedPlan = searchParams.get("plan")
+  const returnInvitation = pendingTeamInvitation()
   const pendingPlan = state.data?.pending_plan
   const pendingAt = state.data?.pending_plan_at
   const statusKey = statusMessages[state.data?.status ?? "none"] ?? "billing.status.none"
+
+  useEffect(() => {
+    if (returnInvitation && state.data?.access_plan === "team") {
+      clearPendingTeamInvitation()
+      navigate(invitationPath(returnInvitation), { replace: true })
+    }
+  }, [returnInvitation, state.data?.access_plan, navigate])
 
   if (state.isPending && !state.data) return <p className="text-body">{i18n("billing.loading")}</p>
   if (state.isError && !state.data) return <div className={styles.error} role="alert">
@@ -100,6 +112,10 @@ export default function BillingPage() {
 
     {checkoutResult === "success" && <p className={styles.notice} role="status">{i18n("billing.checkout.submitted")}</p>}
     {checkoutResult === "cancelled" && <p className={styles.notice} role="status">{i18n("billing.checkout.cancelled")}</p>}
+    {returnInvitation && state.data?.access_plan !== "team" && <div className={styles.notice} role="status">
+      <p>{i18n(checkoutResult === "success" ? "members.invitation.teamCheckoutPending" : "members.invitation.teamCheckoutNeeded")}</p>
+      <button className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} text-button-small`} type="button" onClick={() => { void state.refetch() }}>{i18n("billing.retry")}</button>
+    </div>}
     {state.isError && <p className={styles.notice} role="status">{i18n("billing.refreshError")}</p>}
 
     <div className={styles.planGrid}>
@@ -109,7 +125,7 @@ export default function BillingPage() {
         const isPaidCard = plan.id !== "free"
         const isPending = pendingPlan === plan.id
         const isAwaitingPayment = incomplete && state.data?.plan === plan.id
-        return <article className={`${styles.planCard} ${isPro ? styles.featured : ""}`} key={plan.id}>
+        return <article className={`${styles.planCard} ${isPro ? styles.featured : ""} ${plan.id === "team" && requestedPlan === "team" ? styles.required : ""}`} key={plan.id}>
           {isPro && <span className={styles.recommended}>{i18n("billing.recommended")}</span>}
           <div className={styles.planTitleRow}>
             <h2 className="text-card-title">{i18n(plan.name)}</h2>
