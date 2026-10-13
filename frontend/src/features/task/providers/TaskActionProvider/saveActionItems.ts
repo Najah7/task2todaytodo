@@ -9,12 +9,11 @@ import type { TaskFormSaveResult } from "./context"
 import { minutesToDurationText, type TaskFormValues } from "~/features/task/components/TaskForm/schema"
 import { actionItemFieldErrors } from "~/features/task/errors"
 import type { TaskActionItemSaveOperation } from "~/features/task/converters/taskFormValues2updateRequest"
-import { isTodoRegenerationRequired } from "~/api/http"
 import { ApiError } from "~/api/http"
 
 export type ActionItemSaveOutcome = NonNullable<TaskFormSaveResult["actionItems"]>[number]
 
-export async function saveTaskActionItems(taskId: string, operations: TaskActionItemSaveOperation[], confirmTodoRegeneration = false, initialTaskRevision?: number, initialManualEstimate?: number | null): Promise<{ outcomes: ActionItemSaveOutcome[]; hasSavedItems: boolean; regenerationConfirmationRequired?: boolean; revisionConflict?: true; pendingOperations?: TaskActionItemSaveOperation[] }> {
+export async function saveTaskActionItems(taskId: string, operations: TaskActionItemSaveOperation[], initialTaskRevision?: number, initialManualEstimate?: number | null): Promise<{ outcomes: ActionItemSaveOutcome[]; hasSavedItems: boolean; revisionConflict?: true; pendingOperations?: TaskActionItemSaveOperation[] }> {
   const outcomes: ActionItemSaveOutcome[] = []
   let hasSavedItems = false
   let taskRevision = initialTaskRevision
@@ -28,10 +27,7 @@ export async function saveTaskActionItems(taskId: string, operations: TaskAction
     }
     try {
       if (operation.type === "create") {
-        const created = await postTasksTaskIdActionItems(taskId, {
-          ...operation.data,
-          ...(confirmTodoRegeneration ? { confirm_todo_regeneration: true } : {}),
-        })
+        const created = await postTasksTaskIdActionItems(taskId, operation.data)
         outcomes.push({
           index: operation.index,
           key: operation.key,
@@ -39,10 +35,7 @@ export async function saveTaskActionItems(taskId: string, operations: TaskAction
           savedFields: responseSavedFields(created, operation.item),
         })
       } else if (operation.type === "update") {
-        const updated = await patchTasksTaskIdActionItemsId(taskId, operation.actionItemId, {
-          ...operation.data,
-          ...(confirmTodoRegeneration ? { confirm_todo_regeneration: true } : {}),
-        })
+        const updated = await patchTasksTaskIdActionItemsId(taskId, operation.actionItemId, operation.data)
         outcomes.push({ index: operation.index, key: operation.key, savedFields: responseSavedFields(updated, operation.item) })
       } else {
         // Keep the existing children if a replacement could not be created.
@@ -51,7 +44,6 @@ export async function saveTaskActionItems(taskId: string, operations: TaskAction
         if (replacementCreateFailed && hasReplacementCreate) continue
         const request = {
           ...(operation.manualEstimatedMinutes === undefined ? {} : { manual_estimated_minutes: operation.manualEstimatedMinutes }),
-          ...(confirmTodoRegeneration ? { confirm_todo_regeneration: true } : {}),
         }
         const options = operation.manualEstimatedMinutes === undefined ? undefined : { headers: { "If-Match": `"${await currentTaskRevision()}"` } }
         await deleteTasksTaskIdActionItemsId(taskId, operation.item.id!, Object.keys(request).length ? request : undefined, options)
@@ -61,9 +53,6 @@ export async function saveTaskActionItems(taskId: string, operations: TaskAction
       if (operation.type === "create" || operation.type === "update" || operation.type === "delete") taskRevisionNeedsRefresh = true
     } catch (error) {
       if (operation.type === "create" && hasReplacementCreate) replacementCreateFailed = true
-      if (isTodoRegenerationRequired(error)) {
-        return { outcomes, hasSavedItems, regenerationConfirmationRequired: true, pendingOperations: operations.slice(outcomes.length) }
-      }
       if (isTaskRevisionConflict(error)) return { outcomes, hasSavedItems, revisionConflict: true, pendingOperations: operations.slice(outcomes.length) }
       outcomes.push({
         index: operation.index,

@@ -8,18 +8,19 @@ test("formats time in the Todo timezone and keeps the civil date independent of 
   expect(civilDateLabel("2026-10-12", "en-US")).toContain("October 12, 2026")
 })
 
-test("shows history without a time and preserves backend started explanation capability", () => {
-  const [history, started] = todoItems2boardItems([
-    { id: "h", kind: "action_item", history: true, scheduled_start: "2026-10-12T09:00:00Z", planned_minutes: 15 },
-    { id: "a", kind: "action_item", started: true, can_remove: false },
+test("shows history and work items without planned start times", () => {
+  const [history, work] = todoItems2boardItems([
+    { id: "h", kind: "action_item", history: true, planned_minutes: 15 },
+    { id: "a", kind: "action_item", can_remove: true },
   ], "UTC", "en-US")
   expect(history?.timeLabel).toBe("—")
-  expect(started?.removalBlockedMessage).toBe("today.item.startedRemoveWarning")
+  expect(work?.timeLabel).toBe("—")
+  expect(work?.canRemove).toBe(true)
 })
 
 test("keeps a direct childless Task as its own Today work kind", () => {
   const [item] = todoItems2boardItems([
-    { id: "task-row", kind: "task", task_id: "task-1", title: "Direct work", planned_minutes: 45, can_complete: true, completes_source: true },
+    { id: "task-row", kind: "task", task_id: "task-1", title: "Direct work", planned_minutes: 45, can_complete: true },
   ], "UTC", "en-US")
   expect(item).toMatchObject({ kind: "task", title: "Direct work", durationLabel: "0:45", canComplete: true })
 })

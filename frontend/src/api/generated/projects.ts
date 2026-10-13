@@ -1387,7 +1387,7 @@ export const getPutProjectsIdMembersUserIdUrl = (id: string,
 }
 
 /**
- * @summary Add or update a project member
+ * @summary Update a project member role
  */
 export const putProjectsIdMembersUserId = async (id: string,
     userId: string,
@@ -1455,7 +1455,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PutProjectsIdMembersUserIdMutationVariables = {id: string;userId: string;data: RestProjectMemberUpsertRequest}
 
     /**
- * @summary Add or update a project member
+ * @summary Update a project member role
  */
 export const usePutProjectsIdMembersUserId = <TError = ErrorType<RestErrResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putProjectsIdMembersUserId>>, TError,PutProjectsIdMembersUserIdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
@@ -1554,7 +1554,7 @@ export const getPatchProjectsIdMembersUserIdUrl = (id: string,
 }
 
 /**
- * @summary Add or update a project member
+ * @summary Update a project member role
  */
 export const patchProjectsIdMembersUserId = async (id: string,
     userId: string,
@@ -1622,7 +1622,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PatchProjectsIdMembersUserIdMutationVariables = {id: string;userId: string;data: RestProjectMemberUpsertRequest}
 
     /**
- * @summary Add or update a project member
+ * @summary Update a project member role
  */
 export const usePatchProjectsIdMembersUserId = <TError = ErrorType<RestErrResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchProjectsIdMembersUserId>>, TError,PatchProjectsIdMembersUserIdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}

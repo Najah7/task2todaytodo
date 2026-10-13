@@ -64,7 +64,6 @@ function Submitter({ onResult }: { onResult: (result: TaskFormSaveResult) => voi
   const actions = useContext(TaskActionContext)!
   return <>
     <button onClick={() => void actions.submit({ ...emptyTaskFormValues, manualEstimate: "1:30" }, { manualEstimate: true }).then(onResult)}>save</button>
-    <button onClick={() => void actions.submit({ ...emptyTaskFormValues, manualEstimate: "1:30" }, { manualEstimate: true }, true).then(onResult)}>confirm</button>
   </>
 }
 
@@ -87,9 +86,8 @@ function PendingDeleteSubmitter({ onResult }: { onResult: (result: TaskFormSaveR
   </>
 }
 
-test("retries a Task estimate save with confirmation flag and same revision", async () => {
+test("saves Task estimate without Todo regeneration confirmation", async () => {
   const fetchMock = vi.fn()
-    .mockResolvedValueOnce(new Response(JSON.stringify({ error: { details: [{ code: "todo_regeneration_required" }] } }), { status: 409 }))
     .mockResolvedValueOnce(new Response(JSON.stringify({ ...task, manual_estimated_minutes: 90, estimated_minutes: 90, revision: 8 }), { status: 200 }))
   vi.stubGlobal("fetch", fetchMock)
   const onResult = vi.fn()
@@ -103,16 +101,11 @@ test("retries a Task estimate save with confirmation flag and same revision", as
   </QueryClientProvider>)
 
   await act(async () => { screen.getByRole("button", { name: "save" }).click() })
-  expect(onResult).toHaveBeenLastCalledWith(expect.objectContaining({ complete: false, regenerationConfirmationRequired: true }))
-  await act(async () => { screen.getByRole("button", { name: "confirm" }).click() })
-
   expect(onResult).toHaveBeenLastCalledWith(expect.objectContaining({ complete: true, taskSaved: true }))
   const requests = fetchMock.mock.calls.map(([url, request]) => ({ url, request: request as RequestInit }))
-  expect(requests.map(({ url }) => url)).toEqual(["/api/tasks/task-1", "/api/tasks/task-1"])
+  expect(requests.map(({ url }) => url)).toEqual(["/api/tasks/task-1"])
   expect(JSON.parse(String(requests[0]!.request.body))).toEqual({ manual_estimated_minutes: 90 })
-  expect(JSON.parse(String(requests[1]!.request.body))).toEqual({ manual_estimated_minutes: 90, confirm_todo_regeneration: true })
   expect(new Headers(requests[0]!.request.headers).get("If-Match")).toBe('"7"')
-  expect(new Headers(requests[1]!.request.headers).get("If-Match")).toBe('"7"')
 })
 
 test("does not adopt an external manual estimate during a pending final-delete refresh", async () => {

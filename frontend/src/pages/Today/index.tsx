@@ -4,7 +4,6 @@ import type { MessageKey } from "~/features/i18n/messages/types"
 import { useI18n, useLanguage } from "~/features/i18n/hooks"
 import ActionItemActualMinutesDialog from "~/features/shared/components/ActionItemActualMinutesDialog"
 import ConfirmationDialog from "~/features/shared/components/ConfirmationDialog"
-import { notify } from "~/features/shared/notification"
 import TodayBoard from "~/features/todo/components/TodayBoard"
 import { civilDateLabel, minutesLabel, timeLabel, todoItems2boardItems } from "~/features/todo/converters/todoItems2boardItems"
 import { TodayActionProvider } from "~/features/todo/providers/TodayActionProvider"
@@ -19,9 +18,9 @@ function TodayContent() {
   const actions = useContext(TodayActionContext)
   const i18n = useI18n()
   const { language } = useLanguage()
-  const [confirmRegenerate, setConfirmRegenerate] = useState(false)
   const [showHidden, setShowHidden] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false)
   const [pendingRestore, setPendingRestore] = useState<RestTodoItemResponse>()
   const [pendingComplete, setPendingComplete] = useState<RestTodoItemResponse>()
   const [now, setNow] = useState(() => Date.now())
@@ -92,7 +91,7 @@ function TodayContent() {
       busy={todayActions.busy}
       onComplete={(itemId) => {
         const item = todo.items?.find((candidate) => candidate.id === itemId)
-        if (item?.completes_source) setPendingComplete(item)
+        if (item?.kind === "task" || item?.kind === "action_item") setPendingComplete(item)
         else void todayActions.complete(itemId)
       }}
       onReopen={(itemId) => void todayActions.reopen(itemId)}
@@ -101,12 +100,11 @@ function TodayContent() {
       onRemove={(itemId) => void todayActions.remove(itemId)}
       onHideSchedule={(itemId) => void todayActions.hide(itemId)}
       onShowHiddenSchedules={() => setShowHidden(true)}
-      onRegenerate={() => setConfirmRegenerate(true)}
       onOpenHelp={() => setShowHelp(true)}
-      onScheduleMoveAttempt={() => notify.warning(i18n("today.toast.scheduleMove"))}
+      onRegenerate={() => setConfirmRegenerate(true)}
     />
     <ActionItemActualMinutesDialog open={Boolean(pendingComplete)} busy={todayActions.busy} onComplete={(minutes) => pendingComplete?.id && void complete(pendingComplete.id, minutes)} onCancel={() => setPendingComplete(undefined)} />
-    <ConfirmationDialog open={confirmRegenerate} title={i18n("today.confirm.regenerateTitle")} description={i18n("today.confirm.regenerateDescription")} confirmLabel={i18n("today.confirm.regenerate")} cancelLabel={i18n("today.confirm.cancel")} busy={todayActions.busy} onCancel={() => setConfirmRegenerate(false)} onConfirm={() => { void todayActions.regenerate().then((ok) => { if (ok) setConfirmRegenerate(false) }) }} />
+    <ConfirmationDialog open={confirmRegenerate} title={i18n("today.confirm.regenerateTitle")} description={i18n("today.confirm.regenerateDescription")} confirmLabel={i18n("today.confirm.regenerate")} cancelLabel={i18n("today.confirm.cancel")} destructive busy={todayActions.busy} onCancel={() => setConfirmRegenerate(false)} onConfirm={() => { void todayActions.regenerate().then((ok) => { if (ok) setConfirmRegenerate(false) }) }} />
     <ConfirmationDialog open={Boolean(pendingRestore)} title={i18n("today.confirm.restoreTitle")} description={i18n("today.confirm.restoreDescription")} confirmLabel={i18n("today.confirm.restore")} cancelLabel={i18n("today.confirm.cancel")} busy={todayActions.busy} onCancel={() => setPendingRestore(undefined)} onConfirm={() => { const item = pendingRestore; if (!item?.id) return; void todayActions.restore(item.id).then((ok) => { if (ok) { setPendingRestore(undefined); if ((todo.hidden_schedules?.length || 0) <= 1) setShowHidden(false) } }) }} />
     {showHidden && <dialog className={styles.dialog} open aria-labelledby="today-hidden-title">
       <h2 className="text-card-title" id="today-hidden-title">{i18n("today.hidden.title")}</h2>
@@ -118,8 +116,8 @@ function TodayContent() {
       <p className="text-body">{i18n("today.help.description")}</p>
       <ol className={`${styles.helpSteps} text-body`}>
         <li>{i18n("today.help.fixed")}</li>
-        <li>{i18n("today.help.started")}</li>
-        <li>{i18n("today.help.unstarted")}</li>
+        <li>{i18n("today.help.available")}</li>
+        <li>{i18n("today.help.order")}</li>
         <li>{i18n("today.help.score")}</li>
       </ol>
       <section className={styles.policyCard} aria-labelledby="today-help-priority-title">
@@ -130,10 +128,7 @@ function TodayContent() {
         <h3 className="text-label" id="today-help-urgency-title">{i18n("today.help.urgencyHeading")}</h3>
         <dl>{urgencyPolicy.map(({ label, value }) => <div key={label}><dt className="text-caption">{label}</dt><dd className="text-numeric">{value}</dd></div>)}</dl>
       </section>
-      <p className="text-body">{i18n("today.help.gap", { minutes: todo.policy?.gap_minutes ?? 0 })}</p>
-      <p className="text-body">{i18n("today.help.gaps")}</p>
       <p className="text-body">{i18n("today.help.manual")}</p>
-      <p className="text-body">{i18n("today.help.regeneration")}</p>
       <p className="text-body">{i18n("today.help.allDayHistory")}</p>
       <button className={`${controls.button} ${controls.primaryButton} ${controls.focusRing} text-button-small`} type="button" onClick={() => setShowHelp(false)}>{i18n("today.hidden.close")}</button>
     </dialog>}

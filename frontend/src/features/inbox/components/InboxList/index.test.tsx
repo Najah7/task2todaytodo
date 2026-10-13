@@ -106,17 +106,16 @@ test("expands Task row to show child ActionItems and records actual time on comp
   await waitFor(() => expect(completeActionItem).toHaveBeenCalledWith("task-1", expect.objectContaining({ id: "action-1" }), 0))
 })
 
-test("shows the first current Today time and ignores null-time history on Inbox child rows", async () => {
+test("shows Today membership without exposing planned work times on Inbox child rows", async () => {
   getActionItems.mockResolvedValue([{ id: "action-1", task_id: "task-1", title: "Draft introduction", estimated_minutes: 30, completed: false } satisfies RestActionItemResponse])
   renderList([taskItem], vi.fn().mockResolvedValue(undefined), [
-    { kind: "action_item", action_item_id: "action-1", scheduled_start: "2026-10-12T09:00:00Z" },
-    { kind: "action_item", action_item_id: "action-1", history: true, scheduled_start: null },
-    { kind: "action_item", action_item_id: "action-1", scheduled_start: "2026-10-12T10:00:00Z" },
+    { kind: "action_item", action_item_id: "action-1", history: false, position: 0 },
+    { kind: "action_item", action_item_id: "action-1", history: true, position: 1 },
   ])
   fireEvent.click(screen.getByText("Show ActionItems"))
   await screen.findByText("Draft introduction")
-  expect(screen.getByText("09:00")).toBeTruthy()
-  expect(screen.queryByText("10:00")).toBeNull()
+  expect(screen.getByText("Added to today's list")).toBeTruthy()
+  expect(screen.queryByText(/\d{2}:\d{2}/)).toBeNull()
 })
 
 test("completes editable Task rows and exposes child expansion without a Task-level Today action", () => {

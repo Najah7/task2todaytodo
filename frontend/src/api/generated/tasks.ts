@@ -178,7 +178,6 @@ export interface RestTaskDetailsResponse {
 export interface RestTaskUpdateRequest {
   /** @nullable */
   actual_minutes?: number | null;
-  confirm_todo_regeneration?: boolean;
   /** @nullable */
   description?: string | null;
   /** @nullable */
@@ -277,7 +276,6 @@ export interface RestActionItemListResponse {
 }
 
 export interface RestActionItemCreateRequest {
-  confirm_todo_regeneration?: boolean;
   description?: string;
   due_date?: string;
   /**
@@ -290,7 +288,6 @@ export interface RestActionItemCreateRequest {
 }
 
 export interface RestActionItemDeleteRequest {
-  confirm_todo_regeneration?: boolean;
   /**
      * @minimum 1
      * @maximum 2147483647
@@ -305,7 +302,6 @@ export interface RestActionItemUpdateRequest {
      * @nullable
      */
   actual_minutes?: number | null;
-  confirm_todo_regeneration?: boolean;
   description?: string;
   due_date?: string;
   /**
@@ -2230,7 +2226,7 @@ export const getDeleteTasksTaskIdActionItemsIdUrl = (taskId: string,
 }
 
 /**
- * Deletes a saved ActionItem. When removing the final child of a Task, an optional body atomically supplies the childless Task's manual estimate and regeneration confirmation.
+ * Deletes a saved ActionItem. When removing the final child of a Task, an optional body atomically supplies the childless Task's manual estimate.
  * @summary Delete action item
  */
 export const deleteTasksTaskIdActionItemsId = async (taskId: string,

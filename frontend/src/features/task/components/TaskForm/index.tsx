@@ -12,7 +12,7 @@ import type { TaskFormProps } from "./types"
 
 export default function TaskForm({ form, ...viewProps }: TaskFormProps) {
   const i18n = useI18n()
-  const { heading, submitLabel, options, showTaskPriorityInheritance, showActionItemPriorityInheritance, showEstimateWillRecalculate, partialSaveMessage, actionItemErrors, serverError, onClearActionItemError, onSubmit, onCancel, discardConfirmation, regenerationConfirmation, conflict } = viewProps
+  const { heading, submitLabel, options, showTaskPriorityInheritance, showActionItemPriorityInheritance, showEstimateWillRecalculate, partialSaveMessage, actionItemErrors, serverError, onClearActionItemError, onSubmit, onCancel, discardConfirmation, conflict } = viewProps
   const { register, control, setValue, formState: { errors, isSubmitting } } = form
   const { fields, append } = useFieldArray({ control, name: "actionItems" })
   const busy = isSubmitting || Boolean(conflict?.reloading)
@@ -23,7 +23,6 @@ export default function TaskForm({ form, ...viewProps }: TaskFormProps) {
   const derivedEstimate = activeItems.length > 0
   const taskPriority = useWatch({ control, name: "priority" })
   const taskCompleted = useWatch({ control, name: "taskCompleted" }) === true
-  const taskStarted = useWatch({ control, name: "taskStarted" }) === true
   const taskEstimateEditable = useWatch({ control, name: "taskEstimateEditable" }) !== false
   const canAddActionItem = useWatch({ control, name: "canAddActionItem" }) !== false
   const taskActualMinutesError = errorText(errors.actualMinutes?.message)
@@ -82,10 +81,10 @@ export default function TaskForm({ form, ...viewProps }: TaskFormProps) {
               {derivedEstimate ? (
                 <div className={`${styles.readOnly} text-body-strong`} id="task-form-estimate" aria-describedby="task-form-estimate-help">{hasEstimate ? minutesToDurationText(totalMinutes) : "—"}</div>
               ) : (
-                <input {...register("manualEstimate")} className={`${controls.input} ${styles.control}`} id="task-form-estimate" placeholder="30 / 1:30" inputMode="numeric" disabled={!taskEstimateEditable || taskStarted} aria-invalid={Boolean(errors.manualEstimate?.message)} aria-describedby={`task-form-estimate-help${errors.manualEstimate?.message ? " task-form-estimate-error" : ""}`} />
+                <input {...register("manualEstimate")} className={`${controls.input} ${styles.control}`} id="task-form-estimate" placeholder="30 / 1:30" inputMode="numeric" disabled={!taskEstimateEditable} aria-invalid={Boolean(errors.manualEstimate?.message)} aria-describedby={`task-form-estimate-help${errors.manualEstimate?.message ? " task-form-estimate-error" : ""}`} />
               )}
               <p className="text-caption" id="task-form-estimate-help">{i18n(derivedEstimate ? "tasks.form.actionItemsEstimate" : "tasks.form.manualEstimate")}</p>
-              {!derivedEstimate && <p className="text-caption">{i18n(!taskEstimateEditable || taskStarted ? "tasks.form.taskEstimateLocked" : "tasks.form.estimateHint")}</p>}
+              {!derivedEstimate && <p className="text-caption">{i18n(!taskEstimateEditable ? "tasks.form.taskEstimateLocked" : "tasks.form.estimateHint")}</p>}
               {showEstimateWillRecalculate && <p className="text-caption">{i18n("tasks.form.estimateWillRecalculate")}</p>}
               {errorText(errors.manualEstimate?.message) && <p className={styles.error} id="task-form-estimate-error">{errorText(errors.manualEstimate?.message)}</p>}
             </div>
@@ -119,7 +118,7 @@ export default function TaskForm({ form, ...viewProps }: TaskFormProps) {
                 const actualMinutesError = errorText(errors.actionItems?.[index]?.actualMinutes?.message)
                 const itemKey = actionItemKey(item, index)
                 const saveError = actionItemErrors[itemKey]
-                const estimateLocked = item.started || item.estimateEditable === false
+                const estimateLocked = item.estimateEditable === false
                 if (item.deletionSucceeded) return null
                 if (item.pendingDelete) return (
                   <div className={styles.actionItemRow} key={field.id} role="group" aria-label={titleLabel}>
@@ -183,16 +182,6 @@ export default function TaskForm({ form, ...viewProps }: TaskFormProps) {
         busy={busy}
         onConfirm={discardConfirmation.onConfirm}
         onCancel={discardConfirmation.onCancel}
-      />
-      <ConfirmationDialog
-        open={regenerationConfirmation.open}
-        title={i18n("today.confirm.sourceChangeTitle")}
-        description={i18n("today.confirm.sourceChangeDescription")}
-        confirmLabel={i18n("today.regenerate")}
-        cancelLabel={i18n("tasks.form.keepEditing")}
-        busy={busy}
-        onConfirm={regenerationConfirmation.onConfirm}
-        onCancel={regenerationConfirmation.onCancel}
       />
       {conflict && <ConfirmationDialog
         open={conflict.confirmation.open}

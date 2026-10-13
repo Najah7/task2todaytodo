@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { getGetUsersMeQueryOptions, patchUsersMeSleep } from "~/api/generated/auth"
+import { getGetUsersMeQueryOptions, patchUsersMeActiveTime } from "~/api/generated/auth"
 import { ApiError } from "~/api/http"
 import { useI18n } from "~/features/i18n/hooks"
 import { useLanguage } from "~/features/i18n/hooks"
@@ -15,10 +15,10 @@ import controls from "~/styles/controls.module.css"
 import styles from "./index.module.css"
 import MinimumGapSettings from "./MinimumGapSettings"
 
-const schema = z.object({ wake: z.string().regex(/^\d{2}:\d{2}$/), bedtime: z.string().regex(/^\d{2}:\d{2}$/) })
+const schema = z.object({ activeStart: z.string().regex(/^\d{2}:\d{2}$/), activeEnd: z.string().regex(/^\d{2}:\d{2}$/) })
 type Values = z.infer<typeof schema>
 
-export default function ProfileSleepSettings() {
+export default function ProfileActiveTimeSettings() {
   const i18n = useI18n()
   const { language } = useLanguage()
   const client = useQueryClient()
@@ -26,15 +26,15 @@ export default function ProfileSleepSettings() {
   const projectsQuery = useQuery({ queryKey: ["projects", "active-options"], queryFn: ({ signal }) => fetchActiveProjects(signal), retry: false })
   const { register, handleSubmit, reset, formState: { isDirty, isSubmitting } } = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { wake: "07:00", bedtime: "23:00" },
+    defaultValues: { activeStart: "07:00", activeEnd: "23:00" },
   })
   useEffect(() => {
-    if (userQuery.data && !isDirty) reset({ wake: userQuery.data.wake_up_time || "07:00", bedtime: userQuery.data.bedtime || "23:00" })
+    if (userQuery.data && !isDirty) reset({ activeStart: userQuery.data.active_start_time || "07:00", activeEnd: userQuery.data.active_end_time || "23:00" })
   }, [userQuery.data, isDirty, reset])
 
   async function save(values: Values) {
     try {
-      await patchUsersMeSleep({ wake_up_time: values.wake, bedtime: values.bedtime })
+      await patchUsersMeActiveTime({ active_start_time: values.activeStart, active_end_time: values.activeEnd })
       await Promise.all([
         client.invalidateQueries({ queryKey: getGetUsersMeQueryOptions().queryKey }),
         client.invalidateQueries({ predicate: (query) => typeof query.queryKey[0] === "string" && query.queryKey[0].startsWith("/api/allocation-weeks/") }),
@@ -54,14 +54,14 @@ export default function ProfileSleepSettings() {
   return <>
     <PageHeading messageKey="page.profile.title" />
     <section className={styles.section}>
-      <h2 className="text-section-title">{i18n("weeklyPlan.sleep.profile")}</h2>
-      <p className="text-body">{i18n("weeklyPlan.sleep.profileDescription")}</p>
+      <h2 className="text-section-title">{i18n("weeklyPlan.activeTime.profile")}</h2>
+      <p className="text-body">{i18n("weeklyPlan.activeTime.profileDescription")}</p>
       {userQuery.isLoading ? <p className="text-body">{i18n("weeklyPlan.loading")}</p> : userQuery.isError ? <p role="alert">{i18n("weeklyPlan.loadError")}</p> : <form className={styles.form} onSubmit={handleSubmit(save)} aria-busy={isSubmitting}>
-        <label className="text-field-label" htmlFor="profile-wake">{i18n("weeklyPlan.sleep.wake")}</label>
-        <input id="profile-wake" className={controls.input} type="time" step={60} {...register("wake")} />
-        <label className="text-field-label" htmlFor="profile-bedtime">{i18n("weeklyPlan.sleep.bedtime")}</label>
-        <input id="profile-bedtime" className={controls.input} type="time" step={60} {...register("bedtime")} />
-        <button type="submit" className={controls.button + " " + controls.primaryButton} disabled={isSubmitting || !isDirty}>{i18n("weeklyPlan.sleep.profileSave")}</button>
+        <label className="text-field-label" htmlFor="profile-active-start">{i18n("weeklyPlan.activeTime.start")}</label>
+        <input id="profile-active-start" className={controls.input} type="time" step={60} {...register("activeStart")} />
+        <label className="text-field-label" htmlFor="profile-active-end">{i18n("weeklyPlan.activeTime.end")}</label>
+        <input id="profile-active-end" className={controls.input} type="time" step={60} {...register("activeEnd")} />
+        <button type="submit" className={controls.button + " " + controls.primaryButton} disabled={isSubmitting || !isDirty}>{i18n("weeklyPlan.activeTime.profileSave")}</button>
       </form>}
     </section>
     {!userQuery.isLoading && !userQuery.isError && userQuery.data && <MinimumGapSettings minimumGapMinutes={userQuery.data.minimum_gap_minutes ?? 0} />}

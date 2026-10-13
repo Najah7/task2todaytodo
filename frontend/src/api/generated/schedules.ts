@@ -88,7 +88,6 @@ export interface RestScheduleRuleResponse {
 export interface RestScheduleRuleCreateRequest {
   all_day?: boolean;
   assignee_id?: string;
-  confirm_todo_regeneration?: boolean;
   description?: string;
   end_date?: string;
   frequency?: string;
@@ -105,7 +104,6 @@ export interface RestScheduleRuleCreateRequest {
 export interface RestScheduleRuleUpdateRequest {
   all_day?: boolean;
   assignee_id?: string;
-  confirm_todo_regeneration?: boolean;
   description?: string;
   /** @nullable */
   end_date?: string | null;
@@ -172,7 +170,6 @@ export interface RestListEnvelopeRestScheduleRuleRevisionResponse {
 export interface RestScheduleOccurrenceUpdateRequest {
   all_day?: boolean;
   assignee_id?: string;
-  confirm_todo_regeneration?: boolean;
   description?: string;
   end_at?: string;
   location?: string;
@@ -209,7 +206,6 @@ export interface RestListEnvelopeRestScheduleOccurrenceRevisionResponse {
 }
 
 export interface RestScheduleOccurrenceRescheduleRequest {
-  confirm_todo_regeneration?: boolean;
   end_at?: string;
   start_at?: string;
 }
@@ -235,13 +231,6 @@ page_size?: number;
  * Opaque page token
  */
 page_token?: string;
-};
-
-export type DeleteScheduleRulesIdFollowingOccurrenceDateParams = {
-/**
- * Confirm regeneration of affected Todos
- */
-confirm_todo_regeneration?: boolean;
 };
 
 export type GetScheduleRulesIdRevisionsParams = {
@@ -278,13 +267,6 @@ page_size?: number;
 page_token?: string;
 };
 
-export type DeleteSchedulesRuleIdOccurrenceDateParams = {
-/**
- * Confirm regeneration of affected Todos
- */
-confirm_todo_regeneration?: boolean;
-};
-
 export type GetSchedulesRuleIdOccurrenceDateRevisionsParams = {
 /**
  * Items per page
@@ -294,20 +276,6 @@ page_size?: number;
  * Opaque page token
  */
 page_token?: string;
-};
-
-export type PostSchedulesRuleIdOccurrenceDaterestoreParams = {
-/**
- * Confirm regeneration of affected Todos
- */
-confirm_todo_regeneration?: boolean;
-};
-
-export type PostSchedulesRuleIdOccurrenceDateskipParams = {
-/**
- * Confirm regeneration of affected Todos
- */
-confirm_todo_regeneration?: boolean;
 };
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
@@ -914,30 +882,21 @@ export function useGetScheduleRulesIdAssignees<TData = Awaited<ReturnType<typeof
 
 
 export const getDeleteScheduleRulesIdFollowingOccurrenceDateUrl = (id: string,
-    occurrenceDate: string,
-    params?: DeleteScheduleRulesIdFollowingOccurrenceDateParams,) => {
-  const normalizedParams = new URLSearchParams();
+    occurrenceDate: string,) => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
 
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/schedule-rules/${id}/following/${occurrenceDate}?${stringifiedParams}` : `/api/schedule-rules/${id}/following/${occurrenceDate}`
+  return `/api/schedule-rules/${id}/following/${occurrenceDate}`
 }
 
 /**
  * @summary Delete following schedule occurrences
  */
 export const deleteScheduleRulesIdFollowingOccurrenceDate = async (id: string,
-    occurrenceDate: string,
-    params?: DeleteScheduleRulesIdFollowingOccurrenceDateParams, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+    occurrenceDate: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
 
-  return apiFetch<void>(getDeleteScheduleRulesIdFollowingOccurrenceDateUrl(id,occurrenceDate,params),
+  return apiFetch<void>(getDeleteScheduleRulesIdFollowingOccurrenceDateUrl(id,occurrenceDate),
   {
     ...options,
     method: 'DELETE'
@@ -967,9 +926,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteScheduleRulesIdFollowingOccurrenceDate>>, DeleteScheduleRulesIdFollowingOccurrenceDateMutationVariables> = (props) => {
-          const {id,occurrenceDate,params} = props ?? {};
+          const {id,occurrenceDate} = props ?? {};
 
-          return  deleteScheduleRulesIdFollowingOccurrenceDate(id,occurrenceDate,params,requestOptions)
+          return  deleteScheduleRulesIdFollowingOccurrenceDate(id,occurrenceDate,requestOptions)
         }
 
 
@@ -982,7 +941,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeleteScheduleRulesIdFollowingOccurrenceDateMutationResult = NonNullable<Awaited<ReturnType<typeof deleteScheduleRulesIdFollowingOccurrenceDate>>>
 
     export type DeleteScheduleRulesIdFollowingOccurrenceDateMutationError = ErrorType<unknown>
-    export type DeleteScheduleRulesIdFollowingOccurrenceDateMutationVariables = {id: string;occurrenceDate: string;params?: DeleteScheduleRulesIdFollowingOccurrenceDateParams}
+    export type DeleteScheduleRulesIdFollowingOccurrenceDateMutationVariables = {id: string;occurrenceDate: string}
 
     /**
  * @summary Delete following schedule occurrences
@@ -1332,30 +1291,21 @@ export function useGetSchedulesRuleIdOccurrenceDate<TData = Awaited<ReturnType<t
 
 
 export const getDeleteSchedulesRuleIdOccurrenceDateUrl = (ruleId: string,
-    occurrenceDate: string,
-    params?: DeleteSchedulesRuleIdOccurrenceDateParams,) => {
-  const normalizedParams = new URLSearchParams();
+    occurrenceDate: string,) => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
 
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/schedules/${ruleId}/${occurrenceDate}?${stringifiedParams}` : `/api/schedules/${ruleId}/${occurrenceDate}`
+  return `/api/schedules/${ruleId}/${occurrenceDate}`
 }
 
 /**
  * @summary Delete schedule occurrence
  */
 export const deleteSchedulesRuleIdOccurrenceDate = async (ruleId: string,
-    occurrenceDate: string,
-    params?: DeleteSchedulesRuleIdOccurrenceDateParams, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+    occurrenceDate: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
 
-  return apiFetch<void>(getDeleteSchedulesRuleIdOccurrenceDateUrl(ruleId,occurrenceDate,params),
+  return apiFetch<void>(getDeleteSchedulesRuleIdOccurrenceDateUrl(ruleId,occurrenceDate),
   {
     ...options,
     method: 'DELETE'
@@ -1385,9 +1335,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSchedulesRuleIdOccurrenceDate>>, DeleteSchedulesRuleIdOccurrenceDateMutationVariables> = (props) => {
-          const {ruleId,occurrenceDate,params} = props ?? {};
+          const {ruleId,occurrenceDate} = props ?? {};
 
-          return  deleteSchedulesRuleIdOccurrenceDate(ruleId,occurrenceDate,params,requestOptions)
+          return  deleteSchedulesRuleIdOccurrenceDate(ruleId,occurrenceDate,requestOptions)
         }
 
 
@@ -1400,7 +1350,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeleteSchedulesRuleIdOccurrenceDateMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSchedulesRuleIdOccurrenceDate>>>
 
     export type DeleteSchedulesRuleIdOccurrenceDateMutationError = ErrorType<unknown>
-    export type DeleteSchedulesRuleIdOccurrenceDateMutationVariables = {ruleId: string;occurrenceDate: string;params?: DeleteSchedulesRuleIdOccurrenceDateParams}
+    export type DeleteSchedulesRuleIdOccurrenceDateMutationVariables = {ruleId: string;occurrenceDate: string}
 
     /**
  * @summary Delete schedule occurrence
@@ -1875,30 +1825,21 @@ export const usePostSchedulesRuleIdOccurrenceDatereschedule = <TError = ErrorTyp
     }
 
 export const getPostSchedulesRuleIdOccurrenceDaterestoreUrl = (ruleId: string,
-    occurrenceDate: string,
-    params?: PostSchedulesRuleIdOccurrenceDaterestoreParams,) => {
-  const normalizedParams = new URLSearchParams();
+    occurrenceDate: string,) => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
 
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/schedules/${ruleId}/${occurrenceDate}:restore?${stringifiedParams}` : `/api/schedules/${ruleId}/${occurrenceDate}:restore`
+  return `/api/schedules/${ruleId}/${occurrenceDate}:restore`
 }
 
 /**
  * @summary Restore schedule occurrence
  */
 export const postSchedulesRuleIdOccurrenceDaterestore = async (ruleId: string,
-    occurrenceDate: string,
-    params?: PostSchedulesRuleIdOccurrenceDaterestoreParams, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+    occurrenceDate: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
 
-  return apiFetch<void>(getPostSchedulesRuleIdOccurrenceDaterestoreUrl(ruleId,occurrenceDate,params),
+  return apiFetch<void>(getPostSchedulesRuleIdOccurrenceDaterestoreUrl(ruleId,occurrenceDate),
   {
     ...options,
     method: 'POST'
@@ -1928,9 +1869,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDaterestore>>, PostSchedulesRuleIdOccurrenceDaterestoreMutationVariables> = (props) => {
-          const {ruleId,occurrenceDate,params} = props ?? {};
+          const {ruleId,occurrenceDate} = props ?? {};
 
-          return  postSchedulesRuleIdOccurrenceDaterestore(ruleId,occurrenceDate,params,requestOptions)
+          return  postSchedulesRuleIdOccurrenceDaterestore(ruleId,occurrenceDate,requestOptions)
         }
 
 
@@ -1943,7 +1884,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PostSchedulesRuleIdOccurrenceDaterestoreMutationResult = NonNullable<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDaterestore>>>
 
     export type PostSchedulesRuleIdOccurrenceDaterestoreMutationError = ErrorType<unknown>
-    export type PostSchedulesRuleIdOccurrenceDaterestoreMutationVariables = {ruleId: string;occurrenceDate: string;params?: PostSchedulesRuleIdOccurrenceDaterestoreParams}
+    export type PostSchedulesRuleIdOccurrenceDaterestoreMutationVariables = {ruleId: string;occurrenceDate: string}
 
     /**
  * @summary Restore schedule occurrence
@@ -1960,30 +1901,21 @@ export const usePostSchedulesRuleIdOccurrenceDaterestore = <TError = ErrorType<u
     }
 
 export const getPostSchedulesRuleIdOccurrenceDateskipUrl = (ruleId: string,
-    occurrenceDate: string,
-    params?: PostSchedulesRuleIdOccurrenceDateskipParams,) => {
-  const normalizedParams = new URLSearchParams();
+    occurrenceDate: string,) => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
 
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/schedules/${ruleId}/${occurrenceDate}:skip?${stringifiedParams}` : `/api/schedules/${ruleId}/${occurrenceDate}:skip`
+  return `/api/schedules/${ruleId}/${occurrenceDate}:skip`
 }
 
 /**
  * @summary Skip schedule occurrence
  */
 export const postSchedulesRuleIdOccurrenceDateskip = async (ruleId: string,
-    occurrenceDate: string,
-    params?: PostSchedulesRuleIdOccurrenceDateskipParams, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+    occurrenceDate: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
 
-  return apiFetch<void>(getPostSchedulesRuleIdOccurrenceDateskipUrl(ruleId,occurrenceDate,params),
+  return apiFetch<void>(getPostSchedulesRuleIdOccurrenceDateskipUrl(ruleId,occurrenceDate),
   {
     ...options,
     method: 'POST'
@@ -2013,9 +1945,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDateskip>>, PostSchedulesRuleIdOccurrenceDateskipMutationVariables> = (props) => {
-          const {ruleId,occurrenceDate,params} = props ?? {};
+          const {ruleId,occurrenceDate} = props ?? {};
 
-          return  postSchedulesRuleIdOccurrenceDateskip(ruleId,occurrenceDate,params,requestOptions)
+          return  postSchedulesRuleIdOccurrenceDateskip(ruleId,occurrenceDate,requestOptions)
         }
 
 
@@ -2028,7 +1960,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PostSchedulesRuleIdOccurrenceDateskipMutationResult = NonNullable<Awaited<ReturnType<typeof postSchedulesRuleIdOccurrenceDateskip>>>
 
     export type PostSchedulesRuleIdOccurrenceDateskipMutationError = ErrorType<unknown>
-    export type PostSchedulesRuleIdOccurrenceDateskipMutationVariables = {ruleId: string;occurrenceDate: string;params?: PostSchedulesRuleIdOccurrenceDateskipParams}
+    export type PostSchedulesRuleIdOccurrenceDateskipMutationVariables = {ruleId: string;occurrenceDate: string}
 
     /**
  * @summary Skip schedule occurrence

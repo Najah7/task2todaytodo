@@ -1,14 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { ApiError, apiFetch, isTodoRegenerationRequired } from "./http"
-
-describe("Todo regeneration confirmation errors", () => {
-  it("recognizes only the explicit confirmation-required detail on HTTP 409", () => {
-    expect(isTodoRegenerationRequired(new ApiError(409, { error: { details: [{ code: "todo_regeneration_required" }] } }))).toBe(true)
-    expect(isTodoRegenerationRequired(new ApiError(409, { error: { details: [{ code: "revision_conflict" }] } }))).toBe(false)
-    expect(isTodoRegenerationRequired(new ApiError(412, { error: { details: [{ code: "todo_regeneration_required" }] } }))).toBe(false)
-    expect(isTodoRegenerationRequired(new Error("failed"))).toBe(false)
-  })
-})
+import { ApiError, apiFetch } from "./http"
 
 describe("apiFetch session handling", () => {
   beforeEach(() => {

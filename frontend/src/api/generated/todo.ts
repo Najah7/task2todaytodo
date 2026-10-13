@@ -38,7 +38,6 @@ export interface RestTodoItemResponse {
   can_reopen?: boolean;
   can_restore?: boolean;
   completed?: boolean;
-  completes_source?: boolean;
   description?: string;
   duration_minutes?: number;
   estimate_editable?: boolean;
@@ -61,7 +60,6 @@ export interface RestTodoItemResponse {
   /** @nullable */
   scheduled_start?: string | null;
   source_completed?: boolean;
-  started?: boolean;
   task_id?: string;
   task_title?: string;
   title?: string;

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 import { createAccount, fillCredentials } from "./helpers/auth.ts"
 
-test("configures a weekly allocation, edits its future rule, guards drafts, and edits daily sleep", async ({ page, request }) => {
+test("configures a weekly allocation, edits its future rule, guards drafts, and edits daily active time", async ({ page, request }) => {
   const credentials = await createAccount(request)
   await page.goto("/login")
   await fillCredentials(page, credentials)
@@ -91,31 +91,31 @@ test("configures a weekly allocation, edits its future rule, guards drafts, and 
   const activeProjectsLoaded = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/projects" && response.status() === 200)
   await page.goto("/profile")
   await activeProjectsLoaded
-  const wake = page.getByLabel("起床時刻", { exact: true })
-  await wake.fill("10:30")
-  await page.locator("form").filter({ hasText: "起床時刻" }).getByRole("button", { name: "設定を保存", exact: true }).click()
-  await expect(page.getByText(/Weekly E2E projectの割り当て.*睡眠時間と重なっています。/)).toBeVisible()
-  await expect(wake).toHaveValue("10:30")
+  const activeStart = page.getByLabel("開始時刻", { exact: true })
+  await activeStart.fill("10:30")
+  await page.locator("form").filter({ hasText: "開始時刻" }).getByRole("button", { name: "設定を保存", exact: true }).click()
+  await expect(page.getByText(/Weekly E2E projectの割り当て.*作業可能時間の外にあります。/)).toBeVisible()
+  await expect(activeStart).toHaveValue("10:30")
 
   await page.goto(`/weekly-plan?week_start=${weekStart}`)
   const day = page.locator(`section[data-date="${allocationDate}"]`)
-  await day.getByRole("button", { name: /睡眠時間を編集/ }).click()
-  const sleepEditor = page.getByRole("dialog", { name: `${allocationDate}の睡眠時間` })
-  await sleepEditor.getByLabel("起床時刻", { exact: true }).fill("08:00")
-  await sleepEditor.getByLabel("就寝時刻", { exact: true }).fill("23:30")
-  await sleepEditor.getByRole("button", { name: "この日の睡眠を保存", exact: true }).click()
-  await expect(page.getByText("この日の睡眠時間を保存しました。", { exact: true })).toBeVisible()
+  await day.getByRole("button", { name: /作業可能時間を編集/ }).click()
+  const activeEditor = page.getByRole("dialog", { name: `${allocationDate}の作業可能時間` })
+  await activeEditor.getByLabel("開始時刻", { exact: true }).fill("08:00")
+  await activeEditor.getByLabel("終了時刻", { exact: true }).fill("23:30")
+  await activeEditor.getByRole("button", { name: "この日の作業可能時間を保存", exact: true }).click()
+  await expect(page.getByText("この日の作業可能時間を保存しました。", { exact: true })).toBeVisible()
   const exceptionResponse = await page.request.get(`/api/allocation-weeks/${weekStart}`, { headers })
-  const exceptionWeek = await exceptionResponse.json() as { days: Array<{ date: string; has_sleep_exception: boolean }> }
-  expect(exceptionWeek.days.find((item) => item.date === allocationDate)?.has_sleep_exception).toBe(true)
+  const exceptionWeek = await exceptionResponse.json() as { days: Array<{ date: string; has_active_exception: boolean }> }
+  expect(exceptionWeek.days.find((item) => item.date === allocationDate)?.has_active_exception).toBe(true)
 
-  await day.getByRole("button", { name: /睡眠時間を編集/ }).click()
-  const resetEditor = page.getByRole("dialog", { name: `${allocationDate}の睡眠時間` })
-  await resetEditor.getByRole("button", { name: "通常の睡眠設定に戻す", exact: true }).click()
-  await expect(page.getByText("この日の睡眠時間を通常設定に戻しました。", { exact: true })).toBeVisible()
+  await day.getByRole("button", { name: /作業可能時間を編集/ }).click()
+  const resetEditor = page.getByRole("dialog", { name: `${allocationDate}の作業可能時間` })
+  await resetEditor.getByRole("button", { name: "標準の作業可能時間に戻す", exact: true }).click()
+  await expect(page.getByText("この日の作業可能時間を標準設定に戻しました。", { exact: true })).toBeVisible()
   const resetResponse = await page.request.get(`/api/allocation-weeks/${weekStart}`, { headers })
-  const resetWeek = await resetResponse.json() as { days: Array<{ date: string; has_sleep_exception: boolean }> }
-  expect(resetWeek.days.find((item) => item.date === allocationDate)?.has_sleep_exception).toBe(false)
+  const resetWeek = await resetResponse.json() as { days: Array<{ date: string; has_active_exception: boolean }> }
+  expect(resetWeek.days.find((item) => item.date === allocationDate)?.has_active_exception).toBe(false)
 })
 
 function localDate(date: Date, timezone: string): string {

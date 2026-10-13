@@ -142,7 +142,7 @@ test("creates a Task with an ActionItem and reflects completion in list progress
   await expect(revisedTaskRow).toBeVisible()
 })
 
-test("confirms first-child and last-child changes for a manually planned direct Task", async ({ page, request }) => {
+test("saves first-child and last-child changes for a manually planned direct Task without Todo regeneration", async ({ page, request }) => {
   test.setTimeout(120_000)
   await signIn(page, request)
   const token = await page.evaluate(() => localStorage.getItem("personal_access_token"))
@@ -171,28 +171,22 @@ test("confirms first-child and last-child changes for a manually planned direct 
   await page.getByRole("button", { name: "アクションアイテムを追加", exact: true }).click()
   await page.getByLabel("アクションアイテム名 1", { exact: true }).fill("Structural child")
   await page.getByLabel("見積り 1", { exact: true }).fill("0:45")
-  await page.getByRole("button", { name: "変更を保存", exact: true }).click()
-
-  const firstChildConfirmation = page.getByRole("alertdialog", { name: "今日のリストを更新しますか？" })
-  await expect(firstChildConfirmation).toBeVisible()
-  await expect(firstChildConfirmation).toContainText("未着手のTask・ActionItemの手動追加や並び順")
-  await firstChildConfirmation.getByRole("button", { name: "編集を続ける", exact: true }).click()
-  const childrenAfterCancel = await request.get(`/api/tasks/${task.id}/action-items`, { headers })
-  expect(childrenAfterCancel.status()).toBe(200)
-  expect((await childrenAfterCancel.json()).items).toHaveLength(0)
-  const todayAfterCancel = await request.get("/api/today-todo", { headers })
-  expect((await todayAfterCancel.json()).items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "task", task_id: task.id })]))
-
-  await page.getByRole("button", { name: "変更を保存", exact: true }).click()
   const createConfirmedChild = page.waitForResponse((response) =>
     response.request().method() === "POST" && response.url().endsWith(`/api/tasks/${task.id}/action-items`) && response.status() === 201,
   )
-  await page.getByRole("alertdialog", { name: "今日のリストを更新しますか？" }).getByRole("button", { name: "今日のリストを再生成", exact: true }).click()
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click()
+
+  await expect(page.getByRole("alertdialog")).toHaveCount(0)
   await createConfirmedChild
-  const childrenAfterConfirm = await request.get(`/api/tasks/${task.id}/action-items`, { headers })
-  expect(childrenAfterConfirm.status()).toBe(200)
-  const child = (await childrenAfterConfirm.json()).items[0] as { id: string; title: string }
+  const childrenAfterCreate = await request.get(`/api/tasks/${task.id}/action-items`, { headers })
+  expect(childrenAfterCreate.status()).toBe(200)
+  const child = (await childrenAfterCreate.json()).items[0] as { id: string; title: string }
   expect(child.title).toBe("Structural child")
+  const todoAfterChildCreate = await request.get("/api/today-todo", { headers })
+  expect(todoAfterChildCreate.status()).toBe(200)
+  const todoRowsAfterChildCreate = (await todoAfterChildCreate.json()).items
+  expect(todoRowsAfterChildCreate).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "task", task_id: task.id })]))
+  expect(todoRowsAfterChildCreate).not.toEqual(expect.arrayContaining([expect.objectContaining({ action_item_id: child.id })]))
 
   await page.goto("/tasks")
   const childBearingRow = page.getByRole("row").filter({ hasText: "Structural direct Task" })
@@ -205,21 +199,11 @@ test("confirms first-child and last-child changes for a manually planned direct 
   await childBearingRow.getByRole("button", { name: "タスクを編集: Structural direct Task", exact: true }).click()
   await page.getByLabel("アクションアイテム 1 を削除", { exact: true }).click()
   await page.getByLabel(/見積り/).fill("1:00")
-  await page.getByRole("button", { name: "変更を保存", exact: true }).click()
-  const lastChildConfirmation = page.getByRole("alertdialog", { name: "今日のリストを更新しますか？" })
-  await expect(lastChildConfirmation).toBeVisible()
-  await expect(lastChildConfirmation).toContainText("未着手のTask・ActionItemの手動追加や並び順")
-  await lastChildConfirmation.getByRole("button", { name: "編集を続ける", exact: true }).click()
-  const childAfterDeleteCancel = await request.get(`/api/tasks/${task.id}/action-items`, { headers })
-  expect((await childAfterDeleteCancel.json()).items).toHaveLength(1)
-  const taskAfterDeleteCancel = await request.get(`/api/tasks/${task.id}`, { headers })
-  expect((await taskAfterDeleteCancel.json()).task).toMatchObject({ manual_estimated_minutes: 30, action_item_count: 1 })
-
-  await page.getByRole("button", { name: "変更を保存", exact: true }).click()
   const deleteConfirmedChild = page.waitForResponse((response) =>
     response.request().method() === "DELETE" && response.url().endsWith(`/api/tasks/${task.id}/action-items/${child.id}`) && response.status() >= 200 && response.status() < 300,
   )
-  await page.getByRole("alertdialog", { name: "今日のリストを更新しますか？" }).getByRole("button", { name: "今日のリストを再生成", exact: true }).click()
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click()
+  await expect(page.getByRole("alertdialog")).toHaveCount(0)
   await deleteConfirmedChild
   const childrenAfterLastDelete = await request.get(`/api/tasks/${task.id}/action-items`, { headers })
   expect(childrenAfterLastDelete.status()).toBe(200)

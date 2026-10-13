@@ -278,7 +278,7 @@
   color: var(--color-text-muted);
 }
 
-.dayHeader .sleepSettings {
+.dayHeader .activeTimeSettings {
   display: grid;
   justify-items: center;
   max-width: 100%;
@@ -337,12 +337,12 @@
   cursor: pointer;
 }
 
-.sleepBlock {
+.activeTimeBlock {
   position: absolute;
   z-index: 0;
   right: 0;
   left: 0;
-  background: var(--color-sleep);
+  background: var(--color-active-time);
   pointer-events: none;
 }
 
@@ -384,7 +384,7 @@
   white-space: nowrap;
 }
 
-.sleepSettings {
+.activeTimeSettings {
   display: block;
   width: 100%;
   padding: var(--space-xs);
@@ -429,7 +429,7 @@
 }
 
 .legendAllocation::before,
-.legendSleep::before {
+.legendActiveTime::before {
   width: 0.8rem;
   height: 0.8rem;
   border-radius: var(--radius-xs);
@@ -440,8 +440,8 @@
   background: var(--color-project-1);
 }
 
-.legendSleep::before {
-  background: var(--color-sleep);
+.legendActiveTime::before {
+  background: var(--color-active-time);
 }
 
 @media (max-width: 58em) {

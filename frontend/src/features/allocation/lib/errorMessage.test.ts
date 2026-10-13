@@ -9,7 +9,7 @@ describe("allocationErrorMessage", () => {
     const error = new ApiError(409, {
       error: {
         details: [{ metadata: {
-          kind: "sleep_conflict",
+          kind: "outside_active_time",
           project_id: "project-1",
           start_at: "2026-10-12T01:00:00Z",
           end_at: "2026-10-12T02:00:00Z",
@@ -21,7 +21,7 @@ describe("allocationErrorMessage", () => {
       timezone: "Asia/Tokyo",
       language: "en",
       projectNames: new Map([["project-1", "Planning"]]),
-    })).toBe('weeklyPlan.error.sleepOverlap:{"project":"Planning","start":"Oct 12, 2026, 10:00","end":"Oct 12, 2026, 11:00"}')
+    })).toBe('weeklyPlan.error.outsideActiveTime:{"project":"Planning","start":"Oct 12, 2026, 10:00","end":"Oct 12, 2026, 11:00"}')
   })
 
   it("distinguishes a stale revision from an overlap conflict", () => {

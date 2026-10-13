@@ -1,6 +1,5 @@
 import { getTodayTodo, addTodayTodoActionItem, addTodayTodoTask, type RestTodoTodayResponse } from "~/api/generated/todo"
 import { getTasksId, patchTasksId, patchTasksTaskIdActionItemsId } from "~/api/generated/tasks"
-import { ApiError } from "~/api/http"
 import { notify } from "~/features/shared/notification"
 import type { MessageKey } from "~/features/i18n/messages/types"
 import { todoRevisionHeaders } from "./revisionHeaders"
@@ -15,12 +14,6 @@ export async function addTaskToToday(taskId: string): Promise<RestTodoTodayRespo
   const todo = await getTodayTodo()
   if (todo.revision === undefined) throw new Error("Today revision is missing")
   return addTodayTodoTask(taskId, { headers: todoRevisionHeaders(todo.revision) })
-}
-
-export function isAllDayScheduleBlocksActionItems(error: unknown): boolean {
-  if (!(error instanceof ApiError) || typeof error.data !== "object" || error.data === null) return false
-  const details = (error.data as { error?: { details?: unknown } }).error?.details
-  return Array.isArray(details) && details.some((detail) => typeof detail === "object" && detail !== null && (detail as { code?: unknown }).code === "all_day_schedule_blocks_action_items")
 }
 
 export function showAddedToTodayToast(

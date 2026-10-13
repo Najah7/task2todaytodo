@@ -6,7 +6,6 @@ import type { TaskFormValues } from "~/features/task/components/TaskForm/schema"
 export type TaskFormSaveResult = {
   complete: boolean
   conflict?: boolean
-  regenerationConfirmationRequired?: boolean
   taskSaved?: boolean
   taskResetValues?: Partial<Pick<TaskFormValues, "title" | "description" | "dueDate" | "priority" | "projectId" | "manualEstimate" | "actualMinutes">>
   actionItems?: {
@@ -44,7 +43,7 @@ export type UpdateTaskCompletionInput = {
 
 export type TaskActions = {
   busy: boolean
-  submit: (values: TaskFormValues, dirtyFields: TaskFormDirtyFields, confirmTodoRegeneration?: boolean) => Promise<TaskFormSaveResult>
+  submit: (values: TaskFormValues, dirtyFields: TaskFormDirtyFields) => Promise<TaskFormSaveResult>
   saveComplete: () => void
   retry: () => Promise<void>
   retryOptions: () => Promise<void>

@@ -32,11 +32,10 @@ export function tasks2taskListRowViews(inputs: Input[]): TaskListRowView[] {
       canAddToToday: task.can_add_to_today,
       canAddActionItem: task.can_add_action_item,
       estimateEditable: task.estimate_editable,
-      started: task.started,
       completed: status === "done",
       revision: task.revision,
       priority: task.priority,
-      todayRegistration: null,
+      todayRegistered: false,
       projectLabel: task.project_name || unassignedProject,
       statusLabel: getStatusLabel(status),
       statusTone,
@@ -56,7 +55,7 @@ export function tasks2taskListRowViews(inputs: Input[]): TaskListRowView[] {
           estimateLabel: durationLabel(item.estimated_minutes),
           completed: item.completed ?? false,
           priority: item.priority,
-          todayRegistration: null,
+          todayRegistered: false,
         }
       }),
     }

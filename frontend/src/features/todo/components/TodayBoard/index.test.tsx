@@ -10,8 +10,8 @@ function renderBoard(overrides: Partial<TodayBoardProps> = {}) {
   const props: TodayBoardProps = {
     dateLabel: "2026-10-12",
     items: [
-      { id: "action-1", kind: "action_item", title: "Write outline", groupLabel: "Project · Task", status: "today.status.notScheduled", timeLabel: "—", durationLabel: "0:30", completed: false, history: false, canComplete: true, canReopen: false, canMove: true, canRemove: true, canHide: false },
-      { id: "schedule-1", kind: "schedule", title: "Team review", groupLabel: "Project", status: "today.status.scheduled", timeLabel: "13:00", durationLabel: "0:30", completed: false, history: false, canComplete: false, canReopen: false, canMove: false, canRemove: false, canHide: true },
+      { id: "action-1", kind: "action_item", title: "Write outline", groupLabel: "Project · Task", status: "today.status.work", timeLabel: "—", durationLabel: "0:30", completed: false, history: false, canComplete: true, canReopen: false, canMove: true, canRemove: true, canHide: false },
+      { id: "schedule-1", kind: "schedule", title: "Team review", groupLabel: "Project", status: "today.status.scheduled", timeLabel: "13:00", durationLabel: "0:30", completed: false, history: false, canComplete: false, canReopen: false, canMove: true, canRemove: false, canHide: true },
     ],
     completedCount: 0,
     totalCount: 2,
@@ -20,7 +20,7 @@ function renderBoard(overrides: Partial<TodayBoardProps> = {}) {
     remainingTimeLabel: "1:00",
     hiddenScheduleCount: 1,
     onComplete: vi.fn(), onReopen: vi.fn(), onMove: vi.fn(), onReorder: vi.fn(), onRemove: vi.fn(), onHideSchedule: vi.fn(),
-    onShowHiddenSchedules: vi.fn(), onRegenerate: vi.fn(), onOpenHelp: vi.fn(), onScheduleMoveAttempt: vi.fn(),
+    onShowHiddenSchedules: vi.fn(), onOpenHelp: vi.fn(), onRegenerate: vi.fn(),
     ...overrides,
   }
   render(<LanguageProviderContext.Provider value={{ language: "en", setLanguage: vi.fn() }}><TodayBoard {...props} /></LanguageProviderContext.Provider>)
@@ -35,14 +35,20 @@ test("renders Today execution plan without a separate top list", () => {
   expect(screen.queryByRole("heading", { name: "Things to do" })).toBeNull()
 })
 
-test("keyboard move controls request one-position reorder and schedule drag attempt warns", () => {
+test("exposes a manual regenerate action", () => {
+  const props = renderBoard()
+  fireEvent.click(screen.getByRole("button", { name: "Regenerate today's list" }))
+  expect(props.onRegenerate).toHaveBeenCalledOnce()
+})
+
+test("keyboard move controls and dragging schedule rows change display order", () => {
   const props = renderBoard()
   fireEvent.click(screen.getByRole("button", { name: "Move Write outline later" }))
   expect(props.onMove).toHaveBeenCalledWith("action-1", 1)
   const scheduleRow = screen.getByText("Team review").closest("article")
   expect(scheduleRow).toBeTruthy()
   fireEvent.dragStart(scheduleRow!)
-  expect(props.onScheduleMoveAttempt).toHaveBeenCalledOnce()
+  expect(scheduleRow?.getAttribute("draggable")).toBe("true")
 })
 
 test("allows dropping ActionItems before or after a fixed Schedule anchor", () => {
@@ -59,7 +65,7 @@ test("allows dropping ActionItems before or after a fixed Schedule anchor", () =
 
 test("allows dropping ActionItems around completed fixed rows", () => {
   const props = renderBoard({ items: [
-    { id: "action-1", kind: "action_item", title: "Write outline", groupLabel: "Project · Task", status: "today.status.notScheduled", timeLabel: "—", durationLabel: "0:30", completed: false, history: false, canComplete: true, canReopen: false, canMove: true, canRemove: true, canHide: false },
+    { id: "action-1", kind: "action_item", title: "Write outline", groupLabel: "Project · Task", status: "today.status.work", timeLabel: "—", durationLabel: "0:30", completed: false, history: false, canComplete: true, canReopen: false, canMove: true, canRemove: true, canHide: false },
     { id: "completed-1", kind: "schedule", title: "Finished review", groupLabel: "Project", status: "today.status.completed", timeLabel: "10:00", durationLabel: "0:30", completed: true, history: false, canComplete: false, canReopen: true, canMove: false, canRemove: false, canHide: false },
   ] })
   const source = screen.getByText("Write outline").closest("article")!
@@ -73,9 +79,7 @@ test("allows dropping ActionItems around completed fixed rows", () => {
   expect(target.getAttribute("draggable")).toBe("false")
 })
 
-test("explains why an in-progress ActionItem cannot be removed", () => {
-  renderBoard({ items: [
-    { id: "started-1", kind: "action_item", title: "Draft section", groupLabel: "Report", status: "today.status.inProgress", timeLabel: "—", durationLabel: "0:30", completed: false, history: false, canComplete: false, canReopen: false, canMove: false, canRemove: false, canHide: false, removalBlockedMessage: "today.item.startedRemoveWarning" },
-  ] })
-  expect(screen.getByText("Work in progress cannot be removed here. Edit or split the source ActionItem in Tasks.")).toBeTruthy()
+test("does not restrict work order around fixed schedule times", () => {
+  const props = renderBoard()
+  expect(props.items.filter((item) => !item.history).map((item) => item.id)).toEqual(["action-1", "schedule-1"])
 })

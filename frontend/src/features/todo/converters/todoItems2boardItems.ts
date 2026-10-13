@@ -6,7 +6,7 @@ export function todoItems2boardItems(items: RestTodoItemResponse[], timezone: st
     const history = item.history === true
     const completed = item.completed === true
     const kind = item.kind === "schedule" ? "schedule" : item.kind === "task" ? "task" : "action_item"
-    const status = history ? "today.status.history" : completed ? "today.status.completed" : item.started ? "today.status.inProgress" : kind === "schedule" ? "today.status.scheduled" : "today.status.notScheduled"
+    const status = history ? "today.status.history" : completed ? "today.status.completed" : kind === "schedule" ? "today.status.scheduled" : "today.status.work"
     const groupLabel = [item.project_title, kind === "action_item" ? item.task_title : undefined].filter(Boolean).join(" · ")
     return {
       id: item.id || "",
@@ -14,7 +14,7 @@ export function todoItems2boardItems(items: RestTodoItemResponse[], timezone: st
       title: item.title || "",
       groupLabel,
       status,
-      timeLabel: history ? "—" : timeLabel(item.scheduled_start, timezone, locale),
+      timeLabel: history || kind !== "schedule" ? "—" : timeLabel(item.scheduled_start, timezone, locale),
       durationLabel: minutesLabel(kind === "schedule"
         ? item.duration_minutes ?? intervalMinutes(item.scheduled_start, item.scheduled_end)
         : item.planned_minutes),
@@ -22,10 +22,9 @@ export function todoItems2boardItems(items: RestTodoItemResponse[], timezone: st
       history,
       canComplete: item.can_complete === true,
       canReopen: item.can_reopen === true,
-      canMove: item.can_move === true && !history && !completed,
+      canMove: item.can_move === true && !history,
       canRemove: item.can_remove === true,
       canHide: item.can_hide === true,
-      removalBlockedMessage: item.started && !item.can_remove ? "today.item.startedRemoveWarning" : undefined,
     }
   })
 }

@@ -2,16 +2,16 @@ import { useContext, useRef, useState, type ReactNode } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   deleteAllocationsRuleIdOccurrenceDate,
-  deleteDailySleepExceptionsLocalDate,
+  deleteDailyActiveTimeExceptionsLocalDate,
   getGetAllocationPlansQueryKey,
   getGetAllocationRulesQueryKey,
   patchAllocationsRuleIdOccurrenceDate,
   postAllocations,
   putAllocationPlans,
   putAllocationRules,
-  putDailySleepExceptionsLocalDate,
+  putDailyActiveTimeExceptionsLocalDate,
 } from "~/api/generated/allocations"
-import { getGetUsersMeQueryKey, patchUsersMeSleep } from "~/api/generated/auth"
+import { getGetUsersMeQueryKey, patchUsersMeActiveTime } from "~/api/generated/auth"
 import { useI18n } from "~/features/i18n/hooks"
 import { useLanguage } from "~/features/i18n/hooks"
 import type { MessageKey } from "~/features/i18n/hooks"
@@ -122,12 +122,12 @@ export function AllocationActionProvider({ children }: { children: ReactNode }) 
     remove: (ruleId: string, occurrenceDate: string, revision: number, ruleRevision: number, scope: "current" | "following") =>
       perform(() => deleteAllocationsRuleIdOccurrenceDate(ruleId, occurrenceDate, { scope, rule_revision: ruleRevision }, { headers: revisionHeader(revision) }), "weeklyPlan.toast.deleted"),
     savePlanParts,
-    setSleep: (date: string, revision: number, request: Parameters<typeof putDailySleepExceptionsLocalDate>[1]) =>
-      perform(() => putDailySleepExceptionsLocalDate(date, request, { headers: revisionHeader(revision) }), "weeklyPlan.toast.sleepSaved"),
-    resetSleep: (date: string, revision: number) =>
-      perform(() => deleteDailySleepExceptionsLocalDate(date, { headers: revisionHeader(revision) }), "weeklyPlan.toast.sleepReset"),
-    saveProfileSleep: (request: Parameters<typeof patchUsersMeSleep>[0]) =>
-      perform(() => patchUsersMeSleep(request), "weeklyPlan.toast.profileSaved"),
+    setActiveTime: (date: string, revision: number, request: Parameters<typeof putDailyActiveTimeExceptionsLocalDate>[1]) =>
+      perform(() => putDailyActiveTimeExceptionsLocalDate(date, request, { headers: revisionHeader(revision) }), "weeklyPlan.toast.activeTimeSaved"),
+    resetActiveTime: (date: string, revision: number) =>
+      perform(() => deleteDailyActiveTimeExceptionsLocalDate(date, { headers: revisionHeader(revision) }), "weeklyPlan.toast.activeTimeReset"),
+    saveProfileActiveTime: (request: Parameters<typeof patchUsersMeActiveTime>[0]) =>
+      perform(() => patchUsersMeActiveTime(request), "weeklyPlan.toast.profileSaved"),
   }
 
   return <AllocationActionContext.Provider value={value}>{children}</AllocationActionContext.Provider>

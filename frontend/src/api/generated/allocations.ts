@@ -107,6 +107,12 @@ export interface RestAllocationRulesRequest {
   items?: RestAllocationRuleRequest[];
 }
 
+export interface RestActiveTimeIntervalResponse {
+  end_at?: string;
+  local_date?: string;
+  start_at?: string;
+}
+
 export interface RestAllocationOccurrenceResponse {
   can_delete?: boolean;
   can_delete_following?: boolean;
@@ -127,13 +133,13 @@ export interface RestAllocationOccurrenceResponse {
 }
 
 export interface RestAllocationDayResponse {
+  active_end_at?: string;
+  active_revision?: number;
+  active_start_at?: string;
   allocated_minutes?: number;
-  bedtime_at?: string;
   date?: string;
   free_minutes?: number;
-  has_sleep_exception?: boolean;
-  sleep_revision?: number;
-  wake_at?: string;
+  has_active_exception?: boolean;
 }
 
 export interface RestPausedAllocationRuleResponse {
@@ -151,13 +157,8 @@ export interface RestAllocationWeekProjectResponse {
   title?: string;
 }
 
-export interface RestSleepIntervalResponse {
-  end_at?: string;
-  local_date?: string;
-  start_at?: string;
-}
-
 export interface RestAllocationWeekResponse {
+  active_intervals?: RestActiveTimeIntervalResponse[];
   allocated_minutes?: number;
   allocations?: RestAllocationOccurrenceResponse[];
   days?: RestAllocationDayResponse[];
@@ -165,7 +166,6 @@ export interface RestAllocationWeekResponse {
   free_minutes?: number;
   paused_rules?: RestPausedAllocationRuleResponse[];
   projects?: RestAllocationWeekProjectResponse[];
-  sleep_intervals?: RestSleepIntervalResponse[];
   target_minutes?: number;
   timezone?: string;
   week_start?: string;
@@ -187,19 +187,19 @@ export interface RestUpdateAllocationRequest {
   start_at?: string;
 }
 
-export interface RestSleepExceptionResponse {
-  bedtime_local?: string;
+export interface RestActiveTimeExceptionResponse {
+  active_end_local?: string;
+  active_start_local?: string;
   has_exception?: boolean;
   local_date?: string;
   revision?: number;
   timezone?: string;
-  wake_local?: string;
 }
 
-export interface RestDailySleepExceptionRequest {
-  bedtime_local?: string;
+export interface RestDailyActiveTimeExceptionRequest {
+  active_end_local?: string;
+  active_start_local?: string;
   timezone?: string;
-  wake_local?: string;
 }
 
 export type DeleteAllocationsRuleIdOccurrenceDateParams = {
@@ -975,19 +975,19 @@ export const usePatchAllocationsRuleIdOccurrenceDate = <TError = ErrorType<RestE
       return useMutation(getPatchAllocationsRuleIdOccurrenceDateMutationOptions(options), queryClient);
     }
 
-export const getPutDailySleepExceptionsLocalDateUrl = (localDate: string,) => {
+export const getPutDailyActiveTimeExceptionsLocalDateUrl = (localDate: string,) => {
 
 
 
 
-  return `/api/daily-sleep-exceptions/${localDate}`
+  return `/api/daily-active-time-exceptions/${localDate}`
 }
 
 /**
- * @summary Set daily sleep exception
+ * @summary Set daily active_time exception
  */
-export const putDailySleepExceptionsLocalDate = async (localDate: string,
-    restDailySleepExceptionRequest: RestDailySleepExceptionRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestSleepExceptionResponse> => {
+export const putDailyActiveTimeExceptionsLocalDate = async (localDate: string,
+    restDailyActiveTimeExceptionRequest: RestDailyActiveTimeExceptionRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestActiveTimeExceptionResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -1003,12 +1003,12 @@ export const putDailySleepExceptionsLocalDate = async (localDate: string,
     }
     return headers;
   };
-return apiFetch<RestSleepExceptionResponse>(getPutDailySleepExceptionsLocalDateUrl(localDate),
+return apiFetch<RestActiveTimeExceptionResponse>(getPutDailyActiveTimeExceptionsLocalDateUrl(localDate),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(restDailySleepExceptionRequest)
+    body: JSON.stringify(restDailyActiveTimeExceptionRequest)
   }
 );}
 
@@ -1016,13 +1016,13 @@ return apiFetch<RestSleepExceptionResponse>(getPutDailySleepExceptionsLocalDateU
 
 
 
-export const getPutDailySleepExceptionsLocalDateMutationKey = () => ['putDailySleepExceptionsLocalDate'] as const;
+export const getPutDailyActiveTimeExceptionsLocalDateMutationKey = () => ['putDailyActiveTimeExceptionsLocalDate'] as const;
 
-export const getPutDailySleepExceptionsLocalDateMutationOptions = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putDailySleepExceptionsLocalDate>>, TError,PutDailySleepExceptionsLocalDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof putDailySleepExceptionsLocalDate>>, TError,PutDailySleepExceptionsLocalDateMutationVariables, TContext> => {
+export const getPutDailyActiveTimeExceptionsLocalDateMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putDailyActiveTimeExceptionsLocalDate>>, TError,PutDailyActiveTimeExceptionsLocalDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof putDailyActiveTimeExceptionsLocalDate>>, TError,PutDailyActiveTimeExceptionsLocalDateMutationVariables, TContext> => {
 
-const mutationKey = getPutDailySleepExceptionsLocalDateMutationKey();
+const mutationKey = getPutDailyActiveTimeExceptionsLocalDateMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1032,10 +1032,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof putDailySleepExceptionsLocalDate>>, PutDailySleepExceptionsLocalDateMutationVariables> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof putDailyActiveTimeExceptionsLocalDate>>, PutDailyActiveTimeExceptionsLocalDateMutationVariables> = (props) => {
           const {localDate,data} = props ?? {};
 
-          return  putDailySleepExceptionsLocalDate(localDate,data,requestOptions)
+          return  putDailyActiveTimeExceptionsLocalDate(localDate,data,requestOptions)
         }
 
 
@@ -1045,39 +1045,39 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type PutDailySleepExceptionsLocalDateMutationResult = NonNullable<Awaited<ReturnType<typeof putDailySleepExceptionsLocalDate>>>
-    export type PutDailySleepExceptionsLocalDateMutationBody = RestDailySleepExceptionRequest
-    export type PutDailySleepExceptionsLocalDateMutationError = ErrorType<RestErrResponse>
-    export type PutDailySleepExceptionsLocalDateMutationVariables = {localDate: string;data: RestDailySleepExceptionRequest}
+    export type PutDailyActiveTimeExceptionsLocalDateMutationResult = NonNullable<Awaited<ReturnType<typeof putDailyActiveTimeExceptionsLocalDate>>>
+    export type PutDailyActiveTimeExceptionsLocalDateMutationBody = RestDailyActiveTimeExceptionRequest
+    export type PutDailyActiveTimeExceptionsLocalDateMutationError = ErrorType<RestErrResponse>
+    export type PutDailyActiveTimeExceptionsLocalDateMutationVariables = {localDate: string;data: RestDailyActiveTimeExceptionRequest}
 
     /**
- * @summary Set daily sleep exception
+ * @summary Set daily active_time exception
  */
-export const usePutDailySleepExceptionsLocalDate = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putDailySleepExceptionsLocalDate>>, TError,PutDailySleepExceptionsLocalDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const usePutDailyActiveTimeExceptionsLocalDate = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putDailyActiveTimeExceptionsLocalDate>>, TError,PutDailyActiveTimeExceptionsLocalDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof putDailySleepExceptionsLocalDate>>,
+        Awaited<ReturnType<typeof putDailyActiveTimeExceptionsLocalDate>>,
         TError,
-        PutDailySleepExceptionsLocalDateMutationVariables,
+        PutDailyActiveTimeExceptionsLocalDateMutationVariables,
         TContext
       > => {
-      return useMutation(getPutDailySleepExceptionsLocalDateMutationOptions(options), queryClient);
+      return useMutation(getPutDailyActiveTimeExceptionsLocalDateMutationOptions(options), queryClient);
     }
 
-export const getDeleteDailySleepExceptionsLocalDateUrl = (localDate: string,) => {
+export const getDeleteDailyActiveTimeExceptionsLocalDateUrl = (localDate: string,) => {
 
 
 
 
-  return `/api/daily-sleep-exceptions/${localDate}`
+  return `/api/daily-active-time-exceptions/${localDate}`
 }
 
 /**
- * @summary Reset daily sleep exception
+ * @summary Reset daily active_time exception
  */
-export const deleteDailySleepExceptionsLocalDate = async (localDate: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+export const deleteDailyActiveTimeExceptionsLocalDate = async (localDate: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
 
-  return apiFetch<void>(getDeleteDailySleepExceptionsLocalDateUrl(localDate),
+  return apiFetch<void>(getDeleteDailyActiveTimeExceptionsLocalDateUrl(localDate),
   {
     ...options,
     method: 'DELETE'
@@ -1090,13 +1090,13 @@ export const deleteDailySleepExceptionsLocalDate = async (localDate: string, opt
 
 
 
-export const getDeleteDailySleepExceptionsLocalDateMutationKey = () => ['deleteDailySleepExceptionsLocalDate'] as const;
+export const getDeleteDailyActiveTimeExceptionsLocalDateMutationKey = () => ['deleteDailyActiveTimeExceptionsLocalDate'] as const;
 
-export const getDeleteDailySleepExceptionsLocalDateMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDailySleepExceptionsLocalDate>>, TError,DeleteDailySleepExceptionsLocalDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteDailySleepExceptionsLocalDate>>, TError,DeleteDailySleepExceptionsLocalDateMutationVariables, TContext> => {
+export const getDeleteDailyActiveTimeExceptionsLocalDateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDailyActiveTimeExceptionsLocalDate>>, TError,DeleteDailyActiveTimeExceptionsLocalDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteDailyActiveTimeExceptionsLocalDate>>, TError,DeleteDailyActiveTimeExceptionsLocalDateMutationVariables, TContext> => {
 
-const mutationKey = getDeleteDailySleepExceptionsLocalDateMutationKey();
+const mutationKey = getDeleteDailyActiveTimeExceptionsLocalDateMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1106,10 +1106,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteDailySleepExceptionsLocalDate>>, DeleteDailySleepExceptionsLocalDateMutationVariables> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteDailyActiveTimeExceptionsLocalDate>>, DeleteDailyActiveTimeExceptionsLocalDateMutationVariables> = (props) => {
           const {localDate} = props ?? {};
 
-          return  deleteDailySleepExceptionsLocalDate(localDate,requestOptions)
+          return  deleteDailyActiveTimeExceptionsLocalDate(localDate,requestOptions)
         }
 
 
@@ -1119,21 +1119,21 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type DeleteDailySleepExceptionsLocalDateMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDailySleepExceptionsLocalDate>>>
+    export type DeleteDailyActiveTimeExceptionsLocalDateMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDailyActiveTimeExceptionsLocalDate>>>
 
-    export type DeleteDailySleepExceptionsLocalDateMutationError = ErrorType<unknown>
-    export type DeleteDailySleepExceptionsLocalDateMutationVariables = {localDate: string}
+    export type DeleteDailyActiveTimeExceptionsLocalDateMutationError = ErrorType<unknown>
+    export type DeleteDailyActiveTimeExceptionsLocalDateMutationVariables = {localDate: string}
 
     /**
- * @summary Reset daily sleep exception
+ * @summary Reset daily active_time exception
  */
-export const useDeleteDailySleepExceptionsLocalDate = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDailySleepExceptionsLocalDate>>, TError,DeleteDailySleepExceptionsLocalDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const useDeleteDailyActiveTimeExceptionsLocalDate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDailyActiveTimeExceptionsLocalDate>>, TError,DeleteDailyActiveTimeExceptionsLocalDateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof deleteDailySleepExceptionsLocalDate>>,
+        Awaited<ReturnType<typeof deleteDailyActiveTimeExceptionsLocalDate>>,
         TError,
-        DeleteDailySleepExceptionsLocalDateMutationVariables,
+        DeleteDailyActiveTimeExceptionsLocalDateMutationVariables,
         TContext
       > => {
-      return useMutation(getDeleteDailySleepExceptionsLocalDateMutationOptions(options), queryClient);
+      return useMutation(getDeleteDailyActiveTimeExceptionsLocalDateMutationOptions(options), queryClient);
     }

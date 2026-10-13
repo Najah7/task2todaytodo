@@ -2,15 +2,15 @@ import { Temporal } from "@js-temporal/polyfill"
 import type { RestAllocationWeekResponse } from "~/api/generated/allocations"
 import { zonedTime } from "~/features/shared/calendar/zonedTime"
 import { instantToLocalDateTime } from "~/features/shared/calendar/dateTime"
-import type { WeeklyPlanBoardProps, WeeklyPlanSleepView } from "~/features/allocation/components/WeeklyPlanBoard/types"
+import type { WeeklyPlanActiveIntervalView, WeeklyPlanBoardProps } from "~/features/allocation/components/WeeklyPlanBoard/types"
 
 type WeeklyPlanBoardModel = Omit<WeeklyPlanBoardProps,
-  "canEdit" | "busy" | "onChangeWeek" | "onEditPlan" | "onCreateAllocation" | "onEditAllocation" | "onEditSleep"
+  "canEdit" | "busy" | "onChangeWeek" | "onEditPlan" | "onCreateAllocation" | "onEditAllocation" | "onEditActiveTime"
 >
-function splitSleepInterval(startAt: string, endAt: string, timezone: string): WeeklyPlanSleepView[] {
+function splitActiveInterval(startAt: string, endAt: string, timezone: string): WeeklyPlanActiveIntervalView[] {
   const end = Temporal.Instant.from(endAt).toZonedDateTimeISO(timezone)
   let cursor = Temporal.Instant.from(startAt).toZonedDateTimeISO(timezone)
-  const segments: WeeklyPlanSleepView[] = []
+  const segments: WeeklyPlanActiveIntervalView[] = []
   while (Temporal.ZonedDateTime.compare(cursor, end) < 0) {
     const nextDay = cursor.startOfDay().add({ days: 1 })
     const segmentEnd = Temporal.ZonedDateTime.compare(end, nextDay) < 0 ? end : nextDay
@@ -39,10 +39,10 @@ export function allocationWeeks2weeklyPlanBoardProps(weeks: RestAllocationWeekRe
       date: day.date || "",
       allocatedMinutes: day.allocated_minutes ?? 0,
       freeMinutes: day.free_minutes ?? 0,
-      wakeAt: day.wake_at || "",
-      bedtimeAt: day.bedtime_at || "",
-      hasSleepException: day.has_sleep_exception ?? false,
-      sleepRevision: day.sleep_revision ?? 0,
+      activeStartAt: day.active_start_at ? instantToLocalDateTime(day.active_start_at, timezone).slice(11, 16) : "",
+      activeEndAt: day.active_end_at ? instantToLocalDateTime(day.active_end_at, timezone).slice(11, 16) : "",
+      hasActiveException: day.has_active_exception ?? false,
+      activeRevision: day.active_revision ?? 0,
     }))
     const weekDates = new Set(days.map((day) => day.date))
     const allocations = (week.allocations ?? []).filter((item) => item.rule_id && item.occurrence_date && item.start_at && item.end_at).flatMap((item) => {
@@ -82,8 +82,8 @@ export function allocationWeeks2weeklyPlanBoardProps(weeks: RestAllocationWeekRe
       }
       return result
     })
-    const sleepIntervals = (week.sleep_intervals ?? []).flatMap((sleep) =>
-      sleep.start_at && sleep.end_at ? splitSleepInterval(sleep.start_at, sleep.end_at, timezone) : [],
+    const activeIntervals = (week.active_intervals ?? []).flatMap((active) =>
+      active.start_at && active.end_at ? splitActiveInterval(active.start_at, active.end_at, timezone) : [],
     )
     const titles = new Map(projects.map((project) => [project.id, project.title]))
     const pausedRules = (week.paused_rules ?? []).filter((rule) => rule.rule_id).map((rule) => ({
@@ -98,7 +98,7 @@ export function allocationWeeks2weeklyPlanBoardProps(weeks: RestAllocationWeekRe
       projects,
       days,
       allocations,
-      sleepIntervals,
+      activeIntervals,
       pausedRules,
       allocatedMinutes: week.allocated_minutes ?? 0,
       targetMinutes: week.target_minutes ?? 0,

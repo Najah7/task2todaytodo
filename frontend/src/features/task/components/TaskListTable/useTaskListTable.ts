@@ -14,7 +14,7 @@ import { TaskAPIDataContext } from "~/features/task/providers/TaskAPIDataProvide
 import { TaskActionContext } from "~/features/task/providers/TaskActionProvider/context"
 import { TaskNavigationContext } from "~/features/task/providers/TaskNavigationProvider/context"
 import { getGetTodayTodoQueryOptions } from "~/api/generated/todo"
-import { todoItems2registrationTimeLabels } from "~/features/todo/converters/todoItems2registrationTimeLabels"
+import { todoItems2registeredIds } from "~/features/todo/converters/todoItems2registeredIds"
 import type { TaskActionItemRowView, TaskActionItemsQueryState, TaskListRowView } from "./types"
 
 export function useTaskListTable() {
@@ -44,7 +44,7 @@ export function useTaskListTable() {
     return [taskId, status]
   })) as Record<string, TaskActionItemsQueryState | undefined>
   const getStatusLabel = (status: string) => i18n(taskStatusLabel(status))
-  const registrations = todoItems2registrationTimeLabels(todayQuery.data?.items, todayQuery.data?.timezone || "UTC", language === "ja" ? "ja-JP" : "en-US")
+  const registeredIds = todoItems2registeredIds(todayQuery.data?.items)
   const rows = tasks2taskListRowViews((tasksQuery.data?.items ?? []).map((task) => ({
     task,
     actionItems: taskItemsById[task.id ?? ""] ?? [],
@@ -54,10 +54,8 @@ export function useTaskListTable() {
     getStatusLabel,
   }))).map((row) => ({
     ...row,
-    todayRegistration: registrations.has(row.id) ? { timeLabel: registrations.get(row.id)! } : null,
-    actionItems: row.actionItems.map((item) => registrations.has(item.id)
-      ? { ...item, todayRegistration: { timeLabel: registrations.get(item.id)! } }
-      : item),
+    todayRegistered: registeredIds.has(row.id),
+    actionItems: row.actionItems.map((item) => ({ ...item, todayRegistered: registeredIds.has(item.id) })),
   }))
   const summary = taskListResponses2summaryViews([tasksQuery.data], language, i18n)[0]!
   function toggleExpanded(taskId: string) {

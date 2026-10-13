@@ -172,18 +172,23 @@ export interface RestTimezoneListResponse {
 }
 
 export interface RestUserResponse {
-  bedtime?: string;
+  active_end_time?: string;
+  active_start_time?: string;
   email?: string;
   minimum_gap_minutes?: number;
   timezone?: string;
   user_id?: string;
   user_name?: string;
-  wake_up_time?: string;
 }
 
 export interface RestUserInfoUpdateRequest {
   first_name?: string;
   last_name?: string;
+}
+
+export interface RestUserActiveTimeSettingsUpdateRequest {
+  active_end_time?: string;
+  active_start_time?: string;
 }
 
 export interface RestUserMinimumGapUpdateRequest {
@@ -196,11 +201,6 @@ export interface RestUserMinimumGapUpdateRequest {
 
 export interface RestUserPasswordUpdateRequest {
   new_password?: string;
-}
-
-export interface RestUserSleepSettingsUpdateRequest {
-  bedtime?: string;
-  wake_up_time?: string;
 }
 
 export interface RestUserTimezoneUpdateRequest {
@@ -1501,6 +1501,94 @@ export const usePatchUsersMe = <TError = ErrorType<RestErrResponse>,
       return useMutation(getPatchUsersMeMutationOptions(options), queryClient);
     }
 
+export const getPatchUsersMeActiveTimeUrl = () => {
+
+
+
+
+  return `/api/users/me/active-time`
+}
+
+/**
+ * @summary Update current user active_time settings
+ */
+export const patchUsersMeActiveTime = async (restUserActiveTimeSettingsUpdateRequest: RestUserActiveTimeSettingsUpdateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestUserResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<RestUserResponse>(getPatchUsersMeActiveTimeUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restUserActiveTimeSettingsUpdateRequest)
+  }
+);}
+
+
+
+
+
+export const getPatchUsersMeActiveTimeMutationKey = () => ['patchUsersMeActiveTime'] as const;
+
+export const getPatchUsersMeActiveTimeMutationOptions = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchUsersMeActiveTime>>, TError,PatchUsersMeActiveTimeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchUsersMeActiveTime>>, TError,PatchUsersMeActiveTimeMutationVariables, TContext> => {
+
+const mutationKey = getPatchUsersMeActiveTimeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchUsersMeActiveTime>>, PatchUsersMeActiveTimeMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  patchUsersMeActiveTime(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchUsersMeActiveTimeMutationResult = NonNullable<Awaited<ReturnType<typeof patchUsersMeActiveTime>>>
+    export type PatchUsersMeActiveTimeMutationBody = RestUserActiveTimeSettingsUpdateRequest
+    export type PatchUsersMeActiveTimeMutationError = ErrorType<RestErrResponse>
+    export type PatchUsersMeActiveTimeMutationVariables = {data: RestUserActiveTimeSettingsUpdateRequest}
+
+    /**
+ * @summary Update current user active_time settings
+ */
+export const usePatchUsersMeActiveTime = <TError = ErrorType<RestErrResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchUsersMeActiveTime>>, TError,PatchUsersMeActiveTimeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof patchUsersMeActiveTime>>,
+        TError,
+        PatchUsersMeActiveTimeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPatchUsersMeActiveTimeMutationOptions(options), queryClient);
+    }
+
 export const getPatchUsersMeMinimumGapUrl = () => {
 
 
@@ -1676,94 +1764,6 @@ export const usePatchUsersMePassword = <TError = ErrorType<RestErrResponse>,
         TContext
       > => {
       return useMutation(getPatchUsersMePasswordMutationOptions(options), queryClient);
-    }
-
-export const getPatchUsersMeSleepUrl = () => {
-
-
-
-
-  return `/api/users/me/sleep`
-}
-
-/**
- * @summary Update current user sleep settings
- */
-export const patchUsersMeSleep = async (restUserSleepSettingsUpdateRequest: RestUserSleepSettingsUpdateRequest, options?: Parameters<typeof apiFetch>[1]): Promise<RestUserResponse> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return apiFetch<RestUserResponse>(getPatchUsersMeSleepUrl(),
-  {
-    ...options,
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(restUserSleepSettingsUpdateRequest)
-  }
-);}
-
-
-
-
-
-export const getPatchUsersMeSleepMutationKey = () => ['patchUsersMeSleep'] as const;
-
-export const getPatchUsersMeSleepMutationOptions = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchUsersMeSleep>>, TError,PatchUsersMeSleepMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof patchUsersMeSleep>>, TError,PatchUsersMeSleepMutationVariables, TContext> => {
-
-const mutationKey = getPatchUsersMeSleepMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchUsersMeSleep>>, PatchUsersMeSleepMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  patchUsersMeSleep(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type PatchUsersMeSleepMutationResult = NonNullable<Awaited<ReturnType<typeof patchUsersMeSleep>>>
-    export type PatchUsersMeSleepMutationBody = RestUserSleepSettingsUpdateRequest
-    export type PatchUsersMeSleepMutationError = ErrorType<RestErrResponse>
-    export type PatchUsersMeSleepMutationVariables = {data: RestUserSleepSettingsUpdateRequest}
-
-    /**
- * @summary Update current user sleep settings
- */
-export const usePatchUsersMeSleep = <TError = ErrorType<RestErrResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchUsersMeSleep>>, TError,PatchUsersMeSleepMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof patchUsersMeSleep>>,
-        TError,
-        PatchUsersMeSleepMutationVariables,
-        TContext
-      > => {
-      return useMutation(getPatchUsersMeSleepMutationOptions(options), queryClient);
     }
 
 export const getPatchUsersMeTimezoneUrl = () => {

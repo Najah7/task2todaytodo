@@ -28,7 +28,7 @@ export default function MinimumGapSettings({ minimumGapMinutes }: Props) {
     try {
       const updated = await patchUsersMeMinimumGap({ minimum_gap_minutes: values.minimumGapMinutes })
       client.setQueryData(getGetUsersMeQueryOptions().queryKey, updated)
-      notify.success(i18n("weeklyPlan.toast.profileSaved"))
+      notify.success(i18n("profile.minimumGap.saved"))
       reset(values)
     } catch {
       notify.error(i18n("weeklyPlan.profileGapSaveError"))
@@ -43,7 +43,7 @@ export default function MinimumGapSettings({ minimumGapMinutes }: Props) {
       <input id="profile-minimum-gap" className={controls.input} type="number" min={0} max={1440} step={1} inputMode="numeric" aria-invalid={Boolean(errors.minimumGapMinutes)} aria-describedby={errors.minimumGapMinutes ? "profile-minimum-gap-error" : "profile-minimum-gap-hint"} {...register("minimumGapMinutes", { valueAsNumber: true })} />
       <p className="text-caption" id="profile-minimum-gap-hint">{i18n("profile.minimumGap.hint")}</p>
       {errors.minimumGapMinutes && <p className={styles.error} role="alert" id="profile-minimum-gap-error">{i18n("profile.minimumGap.invalid")}</p>}
-      <button type="submit" className={`${controls.button} ${controls.primaryButton}`} disabled={isSubmitting || !isDirty}>{i18n("weeklyPlan.sleep.profileSave")}</button>
+      <button type="submit" className={`${controls.button} ${controls.primaryButton}`} disabled={isSubmitting || !isDirty}>{i18n("profile.minimumGap.save")}</button>
     </form>
   </section>
 }

@@ -11,10 +11,10 @@ export type WeeklyPlanDayView = {
   date: string
   allocatedMinutes: number
   freeMinutes: number
-  wakeAt: string
-  bedtimeAt: string
-  hasSleepException: boolean
-  sleepRevision: number
+  activeStartAt: string
+  activeEndAt: string
+  hasActiveException: boolean
+  activeRevision: number
 }
 
 export type WeeklyPlanAllocationView = {
@@ -40,7 +40,7 @@ export type WeeklyPlanAllocationView = {
   canDeleteFollowing: boolean
 }
 
-export type WeeklyPlanSleepView = {
+export type WeeklyPlanActiveIntervalView = {
   date: string
   startMinute: number
   endMinute: number
@@ -59,7 +59,7 @@ export type WeeklyPlanBoardProps = {
   projects: WeeklyPlanProjectView[]
   days: WeeklyPlanDayView[]
   allocations: WeeklyPlanAllocationView[]
-  sleepIntervals: WeeklyPlanSleepView[]
+  activeIntervals: WeeklyPlanActiveIntervalView[]
   pausedRules: WeeklyPlanPausedRuleView[]
   allocatedMinutes: number
   targetMinutes: number
@@ -71,5 +71,5 @@ export type WeeklyPlanBoardProps = {
   onEditPlan: () => void
   onCreateAllocation: (projectId: string, date: string, startMinute: number, endMinute: number) => void
   onEditAllocation: (allocation: WeeklyPlanAllocationView) => void
-  onEditSleep: (date: string) => void
+  onEditActiveTime: (date: string) => void
 }

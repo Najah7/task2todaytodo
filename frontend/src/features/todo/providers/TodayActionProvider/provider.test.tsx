@@ -3,9 +3,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, renderHook } from "@testing-library/react"
 import { expect, it, vi } from "vitest"
 import { getGetTodayTodoQueryKey, type RestTodoTodayResponse } from "~/api/generated/todo"
+import { getGetTodoCompletionMetricsQueryKey } from "~/api/generated/metrics"
 import { getListInboxQueryKey } from "~/api/generated/inbox"
 import { getGetTasksQueryKey } from "~/api/generated/tasks"
 import { getGetProjectsQueryKey } from "~/api/generated/projects"
+import { notify } from "~/features/shared/notification"
 import { LanguageProviderContext } from "~/features/i18n/languageContext"
 import { TodayActionContext } from "~/features/todo/providers/TodayActionProvider/context"
 import { TodayActionProvider } from "~/features/todo/providers/TodayActionProvider/provider"
@@ -82,6 +84,72 @@ it("invalidates Task, Inbox, and Project data after completing a direct Task row
   expect(queryClient.getQueryState(taskKey)?.isInvalidated).toBe(true)
   expect(queryClient.getQueryState(inboxKey)?.isInvalidated).toBe(true)
   expect(queryClient.getQueryState(projectsKey)?.isInvalidated).toBe(true)
+  vi.unstubAllGlobals()
+  queryClient.clear()
+})
+
+it("regenerates with the current revision, replaces the Todo snapshot, and invalidates completion metrics", async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const todayKey = getGetTodayTodoQueryKey()
+  const metrics7Key = getGetTodoCompletionMetricsQueryKey({ days: 7 })
+  const metrics30Key = getGetTodoCompletionMetricsQueryKey({ days: 30 })
+  const original: RestTodoTodayResponse = { date: "2026-10-12", revision: 7, items: [{ id: "manual-row", kind: "task", completed: true }] }
+  const regenerated: RestTodoTodayResponse = { date: "2026-10-12", revision: 8, items: [{ id: "new-row", kind: "task", completed: false }] }
+  queryClient.setQueryData(todayKey, original)
+  queryClient.setQueryData(metrics7Key, { completed_items: 1 })
+  queryClient.setQueryData(metrics30Key, { completed_items: 1 })
+  const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(regenerated), { status: 200, headers: { "content-type": "application/json" } }))
+  vi.stubGlobal("fetch", fetchMock)
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>
+      <LanguageProviderContext.Provider value={{ language: "en", setLanguage: () => undefined }}>
+        <TodayActionProvider>{children}</TodayActionProvider>
+      </LanguageProviderContext.Provider>
+    </QueryClientProvider>
+  }
+
+  const { result } = renderHook(() => useContext(TodayActionContext), { wrapper: Wrapper })
+  let saved = false
+  await act(async () => { saved = await result.current!.regenerate() })
+
+  expect(saved).toBe(true)
+  expect(fetchMock).toHaveBeenCalledOnce()
+  expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/today-todo:regenerate")
+  const [, request] = fetchMock.mock.calls[0] as [string, RequestInit]
+  expect(request.method).toBe("POST")
+  expect(new Headers(request.headers).get("If-Match")).toBe('"7"')
+  expect(queryClient.getQueryData(todayKey)).toEqual(regenerated)
+  expect(queryClient.getQueryState(metrics7Key)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(metrics30Key)?.isInvalidated).toBe(true)
+  expect(notify.success).toHaveBeenCalledWith("Today's list was regenerated.")
+  vi.unstubAllGlobals()
+  queryClient.clear()
+})
+
+it("keeps the saved Todo snapshot and reports an error when regeneration fails", async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const todayKey = getGetTodayTodoQueryKey()
+  const original: RestTodoTodayResponse = { date: "2026-10-12", revision: 9, items: [{ id: "manual-row", kind: "action_item" }] }
+  queryClient.setQueryData(todayKey, original)
+  const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { message: "failed" } }), { status: 500, headers: { "content-type": "application/json" } }))
+  vi.stubGlobal("fetch", fetchMock)
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>
+      <LanguageProviderContext.Provider value={{ language: "en", setLanguage: () => undefined }}>
+        <TodayActionProvider>{children}</TodayActionProvider>
+      </LanguageProviderContext.Provider>
+    </QueryClientProvider>
+  }
+
+  const { result } = renderHook(() => useContext(TodayActionContext), { wrapper: Wrapper })
+  let saved = true
+  await act(async () => { saved = await result.current!.regenerate() })
+
+  expect(saved).toBe(false)
+  expect(queryClient.getQueryData(todayKey)).toEqual(original)
+  expect(notify.error).toHaveBeenCalledWith("Today's list could not be updated. Reload and try again.")
   vi.unstubAllGlobals()
   queryClient.clear()
 })

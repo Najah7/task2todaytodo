@@ -14,7 +14,6 @@ import { ScheduleAPIDataContext } from "~/features/schedule/providers/ScheduleAP
 import { ScheduleActionContext } from "~/features/schedule/providers/ScheduleActionProvider/context"
 import { ScheduleNavigationContext, type ScheduleSlotPrefill } from "~/features/schedule/providers/ScheduleNavigationProvider/context"
 import type { ScheduleFormController } from "./types"
-import { RegenerationConfirmationCancelledError } from "~/features/schedule/providers/ScheduleActionProvider/RegenerationConfirmationCancelledError"
 
 const frequencies: ScheduleFormValues["frequency"][] = ["once", "daily", "weekly", "monthly", "yearly"]
 
@@ -49,8 +48,7 @@ export function useScheduleCreateForm(): ScheduleFormController {
       dirtyGuard.markClean()
       form.reset(form.getValues())
       navigation.afterSave()
-    } catch (error) {
-      if (error instanceof RegenerationConfirmationCancelledError) return
+    } catch {
       setServerError("schedules.error.requestFailed")
     }
   })
@@ -145,7 +143,6 @@ export function useScheduleEditForm(): ScheduleFormController {
       setHasConflict(false)
       navigation.afterSave()
     } catch (error) {
-      if (error instanceof RegenerationConfirmationCancelledError) return
       if (error instanceof ApiError && (error.status === 409 || error.status === 412)) {
         setServerError("schedules.error.conflict")
         setHasConflict(true)

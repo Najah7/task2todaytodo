@@ -13,7 +13,7 @@ function conflictDetails(error: unknown) {
   for (const detailValue of details) {
     const detail = asRecord(detailValue)
     const metadata = asRecord(detail?.metadata)
-    if (metadata && (metadata.kind === "allocation_conflict" || metadata.kind === "sleep_conflict")) return metadata
+    if (metadata && (metadata.kind === "allocation_conflict" || metadata.kind === "outside_active_time")) return metadata
   }
   return undefined
 }
@@ -46,7 +46,7 @@ export function allocationErrorMessage(
     const project = options.projectNames?.get(projectId) || translate("weeklyPlan.unknownProject")
     const start = localDateTime(details.start_at, options.timezone || "UTC", options.language || "en")
     const end = localDateTime(details.end_at, options.timezone || "UTC", options.language || "en")
-    return translate(details.kind === "sleep_conflict" ? "weeklyPlan.error.sleepOverlap" : "weeklyPlan.error.allocationOverlap", { project, start, end })
+    return translate(details.kind === "outside_active_time" ? "weeklyPlan.error.outsideActiveTime" : "weeklyPlan.error.allocationOverlap", { project, start, end })
   }
   if (options.status === 409) return translate("weeklyPlan.error.conflict")
   return translate("weeklyPlan.error.request")

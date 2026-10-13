@@ -57,9 +57,7 @@ test("quick-creates a Task and multi-day all-day Schedule, filters, edits, and c
   await quickCreate.getByLabel("終日", { exact: true }).check()
   await saveScreenshot(page, testInfo.outputPath("inbox-quick-create-schedule.png"))
   await quickCreate.getByRole("button", { name: "追加", exact: true }).click()
-  const scheduleImpact = page.getByRole("alertdialog")
-  await expect(scheduleImpact).toBeVisible()
-  await scheduleImpact.getByRole("button", { name: "再生成する", exact: true }).click()
+  await expect(page.getByRole("alertdialog")).toHaveCount(0)
   const scheduleRow = page.getByRole("listitem").filter({ hasText: scheduleTitle })
   await expect(scheduleRow).toBeVisible()
   await expect(scheduleRow).toContainText("終日")
@@ -174,7 +172,6 @@ test("shows a virtual recurring Schedule, edits that occurrence, and completes i
       frequency: "daily",
       interval: 1,
       weekdays: [],
-      confirm_todo_regeneration: true,
     },
   })
   expect(create.status()).toBe(201)

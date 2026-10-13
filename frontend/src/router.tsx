@@ -20,7 +20,7 @@ import ScheduleEditPage from "~/pages/ScheduleEdit"
 import InboxPage from "~/pages/Inbox"
 import WeeklyPlanPage from "~/pages/WeeklyPlan"
 import WeeklyPlanEditPage from "~/pages/WeeklyPlanEdit"
-import ProfileSleepSettings from "~/pages/ProfileSleep"
+import ProfileActiveTimeSettings from "~/pages/ProfileActiveTime"
 import TodayPage from "~/pages/Today"
 import MembersPage from "~/pages/Members"
 import MembersRoleHelpPage from "~/pages/MembersRoleHelp"
@@ -61,7 +61,7 @@ export const router = createBrowserRouter([
       { path: "/members", element: <App><MembersPage /></App> },
       { path: "/members/roles", element: <App><MembersRoleHelpPage /></App> },
       { path: "/metrics", element: <App><MetricsPage /></App> },
-      { path: "/profile", element: <App><ProfileSleepSettings /></App> },
+      { path: "/profile", element: <App><ProfileActiveTimeSettings /></App> },
       { path: "*", element: <App><PageHeading messageKey="page.notFound.title" /></App> },
     ],
   },

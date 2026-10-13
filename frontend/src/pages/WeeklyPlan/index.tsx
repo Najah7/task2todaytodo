@@ -4,9 +4,9 @@ import { Temporal } from "@js-temporal/polyfill"
 import { useQuery } from "@tanstack/react-query"
 import { getGetUsersMeQueryOptions } from "~/api/generated/auth"
 import type { AllocationEditorValues } from "~/features/allocation/components/AllocationEditor/schema"
-import type { DailySleepValues } from "~/features/allocation/components/DailySleepEditor/schema"
+import type { DailyActiveTimeValues } from "~/features/allocation/components/DailyActiveTimeEditor/schema"
 import AllocationEditor from "~/features/allocation/components/AllocationEditor"
-import DailySleepEditor from "~/features/allocation/components/DailySleepEditor"
+import DailyActiveTimeEditor from "~/features/allocation/components/DailyActiveTimeEditor"
 import WeeklyPlanBoard from "~/features/allocation/components/WeeklyPlanBoard"
 import { allocationWeeks2weeklyPlanBoardProps } from "~/features/allocation/converters/allocationWeeks2weeklyPlanBoardProps"
 import { dateAndMinute2localDateTime } from "~/features/allocation/converters/localDateTimes"
@@ -49,7 +49,7 @@ function WeeklyPlanContents() {
   const actions = actionsContext
   const navigation = navigationContext
   const [editor, setEditor] = useState<EditorState>()
-  const [sleepDate, setSleepDate] = useState<string>()
+  const [activeTimeDate, setActiveTimeDate] = useState<string>()
   const board = useMemo(() => data.week ? allocationWeeks2weeklyPlanBoardProps([data.week])[0] : undefined, [data.week])
   const model = editor?.kind === "edit" ? editor.allocation : undefined
   const initialValues: AllocationEditorValues = useMemo(() => editor?.kind === "edit"
@@ -62,7 +62,7 @@ function WeeklyPlanContents() {
     {data.state !== "loading" && <button type="button" onClick={() => { void data.refetch() }}>{i18n("weeklyPlan.retry")}</button>}
   </>
 
-  const sleepDay = sleepDate ? board.days.find((day) => day.date === sleepDate) : undefined
+  const activeTimeDay = activeTimeDate ? board.days.find((day) => day.date === activeTimeDate) : undefined
 
   async function saveAllocation(values: AllocationEditorValues) {
     const startAt = localDateTimeToInstant(values.startAt, data.timezone)
@@ -87,22 +87,22 @@ function WeeklyPlanContents() {
     setEditor(undefined)
   }
 
-  async function saveSleep(values: DailySleepValues) {
-    if (!sleepDate || !sleepDay) return
-    const date = Temporal.PlainDate.from(sleepDate)
-    const bedtimeDate = values.nextDay ? date.add({ days: 1 }) : date
-    await actions.setSleep(sleepDate, sleepDay.sleepRevision, {
-      wake_local: sleepDate + "T" + values.wake,
-      bedtime_local: bedtimeDate.toString() + "T" + values.bedtime,
+  async function saveActiveTime(values: DailyActiveTimeValues) {
+    if (!activeTimeDate || !activeTimeDay) return
+    const date = Temporal.PlainDate.from(activeTimeDate)
+    const endDate = values.nextDay ? date.add({ days: 1 }) : date
+    await actions.setActiveTime(activeTimeDate, activeTimeDay.activeRevision, {
+      active_start_local: activeTimeDate + "T" + values.start,
+      active_end_local: endDate.toString() + "T" + values.end,
       timezone: data.timezone,
     })
-    setSleepDate(undefined)
+    setActiveTimeDate(undefined)
   }
 
-  async function resetSleep() {
-    if (!sleepDate || !sleepDay) return
-    await actions.resetSleep(sleepDate, sleepDay.sleepRevision)
-    setSleepDate(undefined)
+  async function resetActiveTime() {
+    if (!activeTimeDate || !activeTimeDay) return
+    await actions.resetActiveTime(activeTimeDate, activeTimeDay.activeRevision)
+    setActiveTimeDate(undefined)
   }
 
   return <>
@@ -111,8 +111,8 @@ function WeeklyPlanContents() {
       onChangeWeek={navigation.changeWeek} onEditPlan={navigation.editPlan}
       onCreateAllocation={(projectId, date, startMinute, endMinute) => setEditor({ kind: "create", projectId, date, startMinute, endMinute })}
       onEditAllocation={(allocation) => setEditor({ kind: "edit", allocation })}
-      onEditSleep={setSleepDate} />
+      onEditActiveTime={setActiveTimeDate} />
     <AllocationEditor open={Boolean(editor)} timezone={data.timezone} projects={model && !data.projects.some((project) => project.id === model.projectId) ? [...data.projects, { id: model.projectId, title: model.projectTitle }] : data.projects} initialValues={initialValues} allocation={model} busy={actions.busy} onSave={saveAllocation} onDelete={deleteAllocation} onCancel={() => setEditor(undefined)} />
-    {sleepDate && sleepDay && <DailySleepEditor open date={sleepDate} wake={sleepDay.wakeAt || data.user?.wake_up_time || "07:00"} bedtime={sleepDay.bedtimeAt || data.user?.bedtime || "23:00"} timezone={data.timezone} revision={sleepDay.sleepRevision} hasException={sleepDay.hasSleepException} busy={actions.busy} onSave={saveSleep} onReset={resetSleep} onCancel={() => setSleepDate(undefined)} />}
+    {activeTimeDate && activeTimeDay && <DailyActiveTimeEditor open date={activeTimeDate} start={activeTimeDay.activeStartAt || data.user?.active_start_time || "07:00"} end={activeTimeDay.activeEndAt || data.user?.active_end_time || "23:00"} timezone={data.timezone} revision={activeTimeDay.activeRevision} hasException={activeTimeDay.hasActiveException} busy={actions.busy} onSave={saveActiveTime} onReset={resetActiveTime} onCancel={() => setActiveTimeDate(undefined)} />}
   </>
 }

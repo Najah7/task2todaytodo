@@ -1,4 +1,4 @@
-import { useContext, useRef, useState, type ReactNode } from "react"
+import { useContext, useState, type ReactNode } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { getListInboxQueryKey } from "~/api/generated/inbox"
 import { getGetTodayTodoQueryKey } from "~/api/generated/todo"
@@ -18,8 +18,6 @@ import {
   type RestScheduleOccurrenceUpdateRequest,
 } from "~/api/generated/schedules"
 import { notify } from "~/features/shared/notification"
-import { isTodoRegenerationRequired } from "~/api/http"
-import ConfirmationDialog from "~/features/shared/components/ConfirmationDialog"
 import { useI18n } from "~/features/i18n/hooks"
 import { scheduleEvents2formValues } from "~/features/schedule/converters/scheduleEvents2formValues"
 import { scheduleRuleRevisions2formValues } from "~/features/schedule/converters/scheduleRuleRevisions2formValues"
@@ -31,7 +29,6 @@ import { scheduleFormValues2ruleCreateRequests } from "~/features/schedule/conve
 import { scheduleFormValues2ruleUpdateRequests } from "~/features/schedule/converters/scheduleFormValues2ruleUpdateRequests"
 import { scheduleFormValues2occurrenceUpdateRequests } from "~/features/schedule/converters/scheduleFormValues2occurrenceUpdateRequests"
 import { ScheduleActionContext, type ScheduleActions, type ScheduleEditInput } from "./context"
-import { RegenerationConfirmationCancelledError } from "./RegenerationConfirmationCancelledError"
 
 type Props = { children: ReactNode }
 
@@ -40,31 +37,10 @@ export function ScheduleActionProvider({ children }: Props) {
   const queryClient = useQueryClient()
   const t = useI18n()
   const [busy, setBusy] = useState(false)
-  const [regenerationConfirmationOpen, setRegenerationConfirmationOpen] = useState(false)
-  const regenerationConfirmationResolver = useRef<((confirmed: boolean) => void) | undefined>(undefined)
-
-  function requestRegenerationConfirmation() {
-    setRegenerationConfirmationOpen(true)
-    return new Promise<boolean>((resolve) => { regenerationConfirmationResolver.current = resolve })
-  }
-
-  function settleRegenerationConfirmation(confirmed: boolean) {
-    setRegenerationConfirmationOpen(false)
-    regenerationConfirmationResolver.current?.(confirmed)
-    regenerationConfirmationResolver.current = undefined
-  }
-
-  async function perform(action: (confirmRegeneration: boolean) => Promise<unknown>, notification: "saved" | "created" | "deleted" | "completed" | "reopened" | "skipped" | "restored") {
+  async function perform(action: () => Promise<unknown>, notification: "saved" | "created" | "deleted" | "completed" | "reopened" | "skipped" | "restored") {
     setBusy(true)
     try {
-      try {
-        await action(false)
-      } catch (error) {
-        if (!isTodoRegenerationRequired(error)) throw error
-        const confirmed = await requestRegenerationConfirmation()
-        if (!confirmed) throw new RegenerationConfirmationCancelledError()
-        await action(true)
-      }
+      await action()
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["schedules"] }),
         queryClient.invalidateQueries({ queryKey: getListInboxQueryKey() }),
@@ -72,7 +48,6 @@ export function ScheduleActionProvider({ children }: Props) {
       ])
       notify.success(t(`schedules.notification.${notification}`))
     } catch (error) {
-      if (error instanceof RegenerationConfirmationCancelledError) throw error
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["schedules"] }),
         queryClient.invalidateQueries({ queryKey: getListInboxQueryKey() }),
@@ -87,26 +62,26 @@ export function ScheduleActionProvider({ children }: Props) {
 
   const actions: ScheduleActions = {
     busy,
-    create: (values) => perform((confirmRegeneration) => {
+    create: (values) => perform(() => {
       const request = scheduleFormValues2ruleCreateRequests([values])[0]
-      return postScheduleRules({ ...request, ...(confirmRegeneration ? { confirm_todo_regeneration: true } : {}) })
+      return postScheduleRules(request)
     }, "created"),
-    update: (input) => perform((confirmRegeneration) => updateSchedule(input, confirmRegeneration), "saved"),
+    update: (input) => perform(() => updateSchedule(input), "saved"),
     complete: (event) => perform(() => postSchedulesRuleIdOccurrenceDatecomplete(event.ruleId, event.occurrenceDate, { headers: revisionHeaders(event.revision) }), "completed"),
     reopen: (event) => perform(() => postSchedulesRuleIdOccurrenceDatereopen(event.ruleId, event.occurrenceDate, { headers: revisionHeaders(event.revision) }), "reopened"),
-    skip: (event) => perform((confirmRegeneration) => postSchedulesRuleIdOccurrenceDateskip(event.ruleId, event.occurrenceDate, { confirm_todo_regeneration: confirmRegeneration || undefined }, { headers: revisionHeaders(event.revision) }), "skipped"),
-    restore: (event) => perform((confirmRegeneration) => postSchedulesRuleIdOccurrenceDaterestore(event.ruleId, event.occurrenceDate, { confirm_todo_regeneration: confirmRegeneration || undefined }, { headers: revisionHeaders(event.revision) }), "restored"),
-    delete: (event, scope) => perform(async (confirmRegeneration) => {
+    skip: (event) => perform(() => postSchedulesRuleIdOccurrenceDateskip(event.ruleId, event.occurrenceDate, { headers: revisionHeaders(event.revision) }), "skipped"),
+    restore: (event) => perform(() => postSchedulesRuleIdOccurrenceDaterestore(event.ruleId, event.occurrenceDate, { headers: revisionHeaders(event.revision) }), "restored"),
+    delete: (event, scope) => perform(async () => {
       if (scope === "following") {
         const rule = await queryClient.fetchQuery({
           queryKey: getGetScheduleRulesIdQueryKey(event.ruleId),
           queryFn: () => getScheduleRulesId(event.ruleId),
         })
-        return deleteScheduleRulesIdFollowingOccurrenceDate(event.ruleId, event.occurrenceDate, { confirm_todo_regeneration: confirmRegeneration || undefined }, {
+        return deleteScheduleRulesIdFollowingOccurrenceDate(event.ruleId, event.occurrenceDate, {
           headers: revisionHeaders(rule.revision || 0),
         })
       }
-      return deleteSchedulesRuleIdOccurrenceDate(event.ruleId, event.occurrenceDate, { confirm_todo_regeneration: confirmRegeneration || undefined }, { headers: revisionHeaders(event.revision) })
+      return deleteSchedulesRuleIdOccurrenceDate(event.ruleId, event.occurrenceDate, { headers: revisionHeaders(event.revision) })
     }, "deleted"),
     reloadLatest: async (event, scope, currentValues) => {
       const occurrence = await getSchedulesRuleIdOccurrenceDate(event.ruleId, event.occurrenceDate)
@@ -169,15 +144,12 @@ export function ScheduleActionProvider({ children }: Props) {
     },
   }
 
-  return <ScheduleActionContext.Provider value={actions}>
-    {children}
-    <ConfirmationDialog open={regenerationConfirmationOpen} title={t("today.confirm.sourceChangeTitle")} description={t("today.confirm.sourceChangeDescription")} confirmLabel={t("today.confirm.regenerate")} cancelLabel={t("today.confirm.cancel")} onCancel={() => settleRegenerationConfirmation(false)} onConfirm={() => settleRegenerationConfirmation(true)} />
-  </ScheduleActionContext.Provider>
+  return <ScheduleActionContext.Provider value={actions}>{children}</ScheduleActionContext.Provider>
 
-  async function updateSchedule(input: ScheduleEditInput, confirmRegeneration: boolean) {
+  async function updateSchedule(input: ScheduleEditInput) {
     if (input.scope === "following") {
       const request = scheduleFormValues2ruleUpdateRequests([input.values], [input.baselineValues])[0]
-      return patchScheduleRulesId(input.ruleId, { ...request, ...(confirmRegeneration ? { confirm_todo_regeneration: true } : {}) }, {
+      return patchScheduleRulesId(input.ruleId, request, {
         headers: revisionHeaders(input.ruleRevision),
       })
     }
@@ -188,7 +160,6 @@ export function ScheduleActionProvider({ children }: Props) {
       if (!input.values.assigneeId) return
       request = { assignee_id: input.values.assigneeId }
     }
-    if (confirmRegeneration) request.confirm_todo_regeneration = true
     return patchSchedulesRuleIdOccurrenceDate(input.ruleId, input.occurrenceDate, request, {
       headers: revisionHeaders(input.revision),
     })

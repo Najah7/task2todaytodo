@@ -11,7 +11,7 @@ import { InboxNavigationContext } from "~/features/inbox/providers/InboxNavigati
 import controls from "~/styles/controls.module.css"
 import { formatInboxSchedule } from "./formatInboxSchedule"
 import { getAllTaskActionItems } from "~/features/task/queries"
-import { todoItems2registrationTimeLabels } from "~/features/todo/converters/todoItems2registrationTimeLabels"
+import { todoItems2registeredIds } from "~/features/todo/converters/todoItems2registeredIds"
 import type { RestActionItemResponse } from "~/api/generated/tasks"
 import ActionItemActualMinutesDialog from "~/features/shared/components/ActionItemActualMinutesDialog"
 import styles from "./index.module.css"
@@ -28,13 +28,13 @@ export default function InboxList() {
   const { busy, complete } = useContext(InboxActionContext)!
   const { editItem, state } = useContext(InboxNavigationContext)!
   const todayQuery = useQuery({ ...getGetTodayTodoQueryOptions(), retry: false })
-  const registrationTimeLabels = todoItems2registrationTimeLabels(todayQuery.data?.items, todayQuery.data?.timezone || timezone || "UTC", language === "ja" ? "ja-JP" : "en-US")
+  const registeredIds = todoItems2registeredIds(todayQuery.data?.items)
   if (!inbox) return null
   if (inbox.items.length === 0) return state.pageToken ? null : <p className={`${styles.empty} text-body`}>{i18n("inbox.empty")}</p>
 
   return <div className={styles.list} role="list" aria-label={i18n("inbox.list.title")}>
     {inbox.items.map((item) => {
-      if (item.type === "task") return <InboxTaskRow key={`task-${item.id}`} item={item} registrationTimeLabels={registrationTimeLabels} />
+      if (item.type === "task") return <InboxTaskRow key={`task-${item.id}`} item={item} registeredIds={registeredIds} />
       const canComplete = Boolean(item.schedule?.can_update)
       const canEdit = Boolean(item.schedule?.can_update || item.schedule?.can_update_following)
       const locale = language === "ja" ? "ja-JP" : "en-US"
@@ -58,7 +58,7 @@ export default function InboxList() {
   </div>
 }
 
-function InboxTaskRow({ item, registrationTimeLabels }: { item: RestInboxItemResponse; registrationTimeLabels: Map<string, string> }) {
+function InboxTaskRow({ item, registeredIds }: { item: RestInboxItemResponse; registeredIds: Set<string> }) {
   const i18n = useI18n()
   const { language } = useLanguage()
   const { busy, complete, completeActionItem, reopenActionItem, addActionItemToToday, addTaskToToday } = useContext(InboxActionContext)!
@@ -94,8 +94,8 @@ function InboxTaskRow({ item, registrationTimeLabels }: { item: RestInboxItemRes
       </div>
       <div className={styles.actions}>
         {canEdit && <button className={`${controls.button} ${controls.neutralButton} ${controls.focusRing} ${styles.editButton} text-button-small`} type="button" disabled={busy} aria-label={i18n("inbox.row.edit", { title: taskTitle })} onClick={() => editItem(item)}>{i18n("inbox.row.editLabel")}</button>}
-        {item.task?.action_item_count === 0 && item.task.can_add_to_today && !registrationTimeLabels.has(taskId) && <button className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} ${styles.todayButton} text-button-small`} type="button" disabled={busy} onClick={() => void addTaskToToday(taskId, item.task?.priority).catch(() => undefined)}>{i18n("tasks.actionItem.registerToday")}</button>}
-        {item.task?.action_item_count === 0 && registrationTimeLabels.has(taskId) && <span className="text-caption">{i18n("tasks.actionItem.scheduled", { time: registrationTimeLabels.get(taskId) ?? "—" })}</span>}
+        {item.task?.action_item_count === 0 && item.task.can_add_to_today && !registeredIds.has(taskId) && <button className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} ${styles.todayButton} text-button-small`} type="button" disabled={busy} onClick={() => void addTaskToToday(taskId, item.task?.priority).catch(() => undefined)}>{i18n("tasks.actionItem.registerToday")}</button>}
+        {item.task?.action_item_count === 0 && registeredIds.has(taskId) && <span className="text-caption">{i18n("tasks.actionItem.inToday")}</span>}
         <button type="button" className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} ${styles.todayButton} text-button-small`} aria-controls={panelId} aria-expanded={expanded} aria-label={i18n(expanded ? "inbox.row.collapseActionItems" : "inbox.row.expandActionItems", { title: taskTitle })} onClick={() => setExpanded((value) => !value)}>
       {i18n(expanded ? "inbox.row.hideActionItems" : "inbox.row.showActionItems")}
         </button>
@@ -115,7 +115,7 @@ function InboxTaskRow({ item, registrationTimeLabels }: { item: RestInboxItemRes
           </button>
           <span className={`text-body ${actionItem.completed ? styles.actionItemCompleted : ""}`}>{actionItem.title}</span>
           <span className="text-caption">{actionItem.estimated_minutes == null ? "—" : i18n("inbox.detail.estimate", { hours: Math.floor(actionItem.estimated_minutes / 60), minutes: actionItem.estimated_minutes % 60 })}</span>
-          <span className="text-caption" aria-label={actionItem.id && registrationTimeLabels.has(actionItem.id) ? i18n("tasks.actionItem.scheduled", { time: registrationTimeLabels.get(actionItem.id) ?? "—" }) : undefined}>{actionItem.id ? registrationTimeLabels.get(actionItem.id) ?? "—" : "—"}</span>
+          {actionItem.id && registeredIds.has(actionItem.id) && <span className="text-caption">{i18n("tasks.actionItem.inToday")}</span>}
           {!actionItem.completed && <button className={`${controls.button} ${controls.outlineButton} ${controls.focusRing} text-button-small`} type="button" disabled={busy || !canEdit || !actionItem.id} title={!canEdit ? i18n("inbox.row.noPermission") : undefined} onClick={() => void addActionItemToToday(taskId, actionItem).catch(() => undefined)}>{i18n("tasks.actionItem.registerToday")}</button>}
         </li>)}
       </ul>}

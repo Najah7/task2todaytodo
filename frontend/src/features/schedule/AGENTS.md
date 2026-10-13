@@ -16,8 +16,8 @@ Follow the [feature guide](../AGENTS.md). Paths are defined in [router.tsx](../.
 ## Change checks
 
 - Address edits by rule ID and original occurrence date. `current` and `following` scopes have different API operations; keep occurrence and rule revisions separate.
-- Preserve virtual occurrence revision `0`, conflict reload, and Todo-regeneration confirmation. Display timezone/all-day values from the returned occurrence/rule without duplicating recurrence rules in the client.
-- Capability flags govern edit/delete/following actions; changes can affect `/inbox` and `/today`.
+- Preserve virtual occurrence revision `0` and conflict reload. Display timezone/all-day values from the returned occurrence/rule without duplicating recurrence rules in the client.
+- Schedule changes synchronize today's fixed-time Schedule rows without reselecting or reordering work. Capability flags govern edit/delete/following actions.
 
 ## Verification
 

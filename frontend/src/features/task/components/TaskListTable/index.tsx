@@ -118,7 +118,7 @@ function TaskRows({ task, expanded, busyActionItemKey, actionItemsQueryState, on
         <td><span className={styles[`due_${task.dueDateTone}`]}>{task.dueDateLabel}</span></td>
         <td>
           {task.actionItemCount === 0 && task.canUpdate && <button className={styles.checkButton} type="button" disabled={busyActionItemKey === task.id} aria-label={i18n(task.completed ? "tasks.task.reopen" : "tasks.task.complete", { title: task.title })} aria-pressed={task.completed} onClick={() => task.completed ? onReopenTask(task) : onCompleteTask(task)}><span aria-hidden="true">{task.completed ? "✓" : ""}</span></button>}
-          {task.actionItemCount === 0 && task.canAddToToday && (task.todayRegistration ? <RegisteredTime timeLabel={task.todayRegistration.timeLabel} /> : <button className={`${styles.registerButton} text-button-small`} type="button" disabled={busyActionItemKey === task.id} onClick={() => void onAddTaskToToday(task.id, task.priority)}>{i18n("tasks.actionItem.registerToday")}</button>)}
+          {task.actionItemCount === 0 && task.canAddToToday && (task.todayRegistered ? <RegisteredToday /> : <button className={`${styles.registerButton} text-button-small`} type="button" disabled={busyActionItemKey === task.id} onClick={() => void onAddTaskToToday(task.id, task.priority)}>{i18n("tasks.actionItem.registerToday")}</button>)}
           {task.canUpdate && <button className={`${styles.editButton} text-button-small`} type="button" aria-label={i18n("tasks.editTask", { title: task.title })} onClick={() => onEdit(task.id)}>{i18n("tasks.edit")}</button>}
         </td>
       </tr>
@@ -153,8 +153,8 @@ function ActionItemRow({ item, busy, onToggle, onAddToToday }: { item: TaskActio
       </button>
       <span className={styles.itemTitle}><span className="text-body">{item.title}</span></span>
       <span className={`${styles.itemEstimate} text-numeric`}>{item.estimateLabel}</span>
-      {item.todayRegistration ? (
-        <RegisteredTime timeLabel={item.todayRegistration.timeLabel} />
+      {item.todayRegistered ? (
+        <RegisteredToday />
       ) : !item.completed ? (
         <button className={`${styles.registerButton} text-button-small`} type="button" disabled={busy || !item.id} onClick={() => void onAddToToday(item.taskId, item.id, item.priority)}>{i18n("tasks.actionItem.registerToday")}</button>
       ) : <span />}
@@ -162,9 +162,9 @@ function ActionItemRow({ item, busy, onToggle, onAddToToday }: { item: TaskActio
   )
 }
 
-export function RegisteredTime({ timeLabel }: { timeLabel: string }) {
+export function RegisteredToday() {
   const i18n = useI18n()
-  return <span className={`${styles.registeredTime} text-caption`}><span aria-hidden="true">◷</span>{i18n("tasks.actionItem.scheduled", { time: timeLabel })}</span>
+  return <span className={`${styles.registeredTime} text-caption`}>{i18n("tasks.actionItem.inToday")}</span>
 }
 
 function ProgressBar({ completedLabel, totalLabel, progress }: { completedLabel: string; totalLabel: string; progress: number }) {

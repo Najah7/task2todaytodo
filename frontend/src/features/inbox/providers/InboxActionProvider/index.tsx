@@ -1,13 +1,11 @@
-import { useContext, useRef, useState, type ReactNode } from "react"
+import { useContext, useState, type ReactNode } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { getGetProjectsIdTasksQueryKey, getGetTasksQueryKey, getGetTasksTaskIdActionItemsQueryKey, postProjectsIdTasks, postTasks, postTasksIdcomplete, postTasksTaskIdActionItemsIdcomplete, postTasksTaskIdActionItemsIdreopen, type RestActionItemResponse } from "~/api/generated/tasks"
 import { getGetProjectsIdQueryKey, getGetProjectsQueryKey } from "~/api/generated/projects"
 import { postScheduleRules, postSchedulesRuleIdOccurrenceDatecomplete } from "~/api/generated/schedules"
-import { isTodoRegenerationRequired } from "~/api/http"
-import ConfirmationDialog from "~/features/shared/components/ConfirmationDialog"
 import { getListInboxQueryKey } from "~/api/generated/inbox"
 import { getGetTodayTodoQueryKey } from "~/api/generated/todo"
-import { addActionItemToToday, addTaskToToday as addTaskToday, isAllDayScheduleBlocksActionItems, makeActionItemUrgent, makeTaskUrgent, showAddedToTodayToast } from "~/features/todo/actions/addActionItemToToday"
+import { addActionItemToToday, addTaskToToday as addTaskToday, makeActionItemUrgent, makeTaskUrgent, showAddedToTodayToast } from "~/features/todo/actions/addActionItemToToday"
 import { useI18n } from "~/features/i18n/hooks"
 import { notify } from "~/features/shared/notification"
 import { inboxQuickCreateValues2scheduleFormValues } from "~/features/inbox/converters/inboxQuickCreateValues2scheduleFormValues"
@@ -26,20 +24,6 @@ export function InboxActionProvider({ children }: Props) {
   const queryClient = useQueryClient()
   const t = useI18n()
   const [busy, setBusy] = useState(false)
-  const [regenerationConfirmationOpen, setRegenerationConfirmationOpen] = useState(false)
-  const regenerationConfirmationResolver = useRef<((confirmed: boolean) => void) | undefined>(undefined)
-
-  function requestRegenerationConfirmation() {
-    setRegenerationConfirmationOpen(true)
-    return new Promise<boolean>((resolve) => { regenerationConfirmationResolver.current = resolve })
-  }
-
-  function settleRegenerationConfirmation(confirmed: boolean) {
-    setRegenerationConfirmationOpen(false)
-    regenerationConfirmationResolver.current?.(confirmed)
-    regenerationConfirmationResolver.current = undefined
-  }
-
   async function invalidateCommon() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: getListInboxQueryKey() }),
@@ -80,17 +64,10 @@ export function InboxActionProvider({ children }: Props) {
       if (!assigneeId) throw new Error("Current user is not loaded")
       const scheduleValues = inboxQuickCreateValues2scheduleFormValues([values], [assigneeId])[0]!
       const request = scheduleFormValues2ruleCreateRequests([scheduleValues])[0]!
-      try {
-        await postScheduleRules(request)
-      } catch (error) {
-        if (!isTodoRegenerationRequired(error)) throw error
-        if (!await requestRegenerationConfirmation()) throw new InboxRegenerationConfirmationCancelledError()
-        await postScheduleRules({ ...request, confirm_todo_regeneration: true })
-      }
+      await postScheduleRules(request)
       await Promise.all([invalidateCommon(), invalidateProject(values.projectId)])
       notify.success(t("schedules.notification.created"))
     } catch (error) {
-      if (error instanceof InboxRegenerationConfirmationCancelledError) throw error
       notify.error(t("schedules.error.requestFailed"))
       throw error
     } finally {
@@ -193,8 +170,8 @@ export function InboxActionProvider({ children }: Props) {
           queryClient.invalidateQueries({ queryKey: getGetTasksTaskIdActionItemsQueryKey(taskId) }),
         ]))
       })
-    } catch (error) {
-      notify.error(t(isAllDayScheduleBlocksActionItems(error) ? "today.toast.allDayBlocks" : "today.error"))
+    } catch {
+      notify.error(t("today.error"))
     } finally {
       setBusy(false)
     }
@@ -212,8 +189,8 @@ export function InboxActionProvider({ children }: Props) {
           queryClient.invalidateQueries({ queryKey: getGetTodayTodoQueryKey() }),
         ]))
       })
-    } catch (error) {
-      notify.error(t(isAllDayScheduleBlocksActionItems(error) ? "today.toast.allDayBlocks" : "today.error"))
+    } catch {
+      notify.error(t("today.error"))
     } finally {
       setBusy(false)
     }
@@ -230,12 +207,8 @@ export function InboxActionProvider({ children }: Props) {
   const actions = { busy, createTask, createSchedule, complete, completeActionItem, reopenActionItem, addActionItemToToday: addItemToToday, addTaskToToday: addTaskToTodayAction, retry, retryOptions }
   return <InboxActionContext.Provider value={actions}>
     {children}
-    <ConfirmationDialog open={regenerationConfirmationOpen} title={t("today.confirm.sourceChangeTitle")} description={t("today.confirm.sourceChangeDescription")} confirmLabel={t("today.confirm.regenerate")} cancelLabel={t("today.confirm.cancel")} onCancel={() => settleRegenerationConfirmation(false)} onConfirm={() => settleRegenerationConfirmation(true)} />
   </InboxActionContext.Provider>
-
 }
-
-class InboxRegenerationConfirmationCancelledError extends Error {}
 
 function revisionHeaders(revision: number): Record<string, string> {
   return { "If-Match": `"${revision}"` }

@@ -24,7 +24,6 @@ export function useTaskEditForm(): TaskFormController {
   const [serverError, setServerError] = useState(false)
   const [hasConflict, setHasConflict] = useState(false)
   const [confirmReload, setConfirmReload] = useState(false)
-  const [confirmRegeneration, setConfirmRegeneration] = useState(false)
   const [reloading, setReloading] = useState(false)
   const projects = data.projectsQuery.data ?? []
   const projectOptions = projects.map((project) => ({ value: project.id, label: project.title }))
@@ -39,18 +38,14 @@ export function useTaskEditForm(): TaskFormController {
   const form = useForm<TaskFormValues>({ resolver: zodResolver(taskCreateSchema), defaultValues: initialValues })
   const dirtyGuard = useFormDraftGuard(form.formState.isDirty)
 
-  async function submit(values: TaskFormValues, confirm = false) {
+  async function submit(values: TaskFormValues) {
     setServerError(false)
     setPartialSaveMessage(undefined)
     try {
-      const result = await actions.submit(values, form.formState.dirtyFields as TaskFormDirtyFields, confirm)
+      const result = await actions.submit(values, form.formState.dirtyFields as TaskFormDirtyFields)
       applyTaskFormSaveResult(form, result, setActionItemErrors)
       if (result.conflict) {
         setHasConflict(true)
-        return
-      }
-      if (result.regenerationConfirmationRequired) {
-        setConfirmRegeneration(true)
         return
       }
       if (result.revisionRefreshError) setPartialSaveMessage("tasks.form.revisionRefreshError")
@@ -59,7 +54,6 @@ export function useTaskEditForm(): TaskFormController {
       dirtyGuard.markClean()
       form.reset(form.getValues())
       setHasConflict(false)
-      setConfirmRegeneration(false)
       actions.saveComplete()
       navigation.afterSave()
     } catch (cause) {
@@ -111,11 +105,6 @@ export function useTaskEditForm(): TaskFormController {
       open: dirtyGuard.dialogOpen,
       onConfirm: dirtyGuard.leave,
       onCancel: dirtyGuard.stay,
-    },
-    regenerationConfirmation: {
-      open: confirmRegeneration,
-      onConfirm: () => { void form.handleSubmit((values) => submit(values, true))() },
-      onCancel: () => setConfirmRegeneration(false),
     },
     ...(hasConflict && actions.reloadLatest ? { conflict: {
       onRequestReload: () => setConfirmReload(true),

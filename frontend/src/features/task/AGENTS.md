@@ -17,7 +17,8 @@ Follow the [feature guide](../AGENTS.md). Paths are defined in [router.tsx](../.
 ## Change checks
 
 - Task and ActionItem saves are individual requests; preserve row-level errors, successful-field resets, and retry of only unsaved operations.
-- After partial creation, retain the created Task ID to avoid a duplicate on retry. Keep revision and Todo-regeneration confirmation handling in the Action Provider/form flow.
+- After partial creation, retain the created Task ID to avoid a duplicate on retry. Keep revision handling in the Action Provider/form flow; source edits never regenerate today's plan.
+- Task and ActionItem rows show estimate durations without planned start/end times. Today membership is a simple registered indicator.
 - Changes to status, progress, or assignment may affect `/inbox`, `/today`, and `/metrics`; use server capabilities for available actions.
 
 ## Verification

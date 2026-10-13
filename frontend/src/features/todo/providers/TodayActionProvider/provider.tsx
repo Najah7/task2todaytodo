@@ -8,14 +8,15 @@ import {
   reopenTodayTodoItem,
   hideTodayTodoSchedule,
   restoreTodayTodoSchedule,
-  regenerateTodayTodo,
   reorderTodayTodo,
+  regenerateTodayTodo,
   type RestTodoTodayResponse,
 } from "~/api/generated/todo"
 import { getGetProjectsIdTasksQueryKey, getGetTasksQueryKey, getGetTasksTaskIdActionItemsQueryKey } from "~/api/generated/tasks"
 import { getGetProjectsIdQueryKey, getGetProjectsQueryKey } from "~/api/generated/projects"
 import { getListInboxQueryKey } from "~/api/generated/inbox"
 import { getGetProjectsIdSchedulesQueryKey, getGetSchedulesQueryKey } from "~/api/generated/schedules"
+import { getGetTodoCompletionMetricsQueryKey } from "~/api/generated/metrics"
 import { notify } from "~/features/shared/notification"
 import { useI18n } from "~/features/i18n/hooks"
 import type { MessageKey } from "~/features/i18n/messages/types"
@@ -94,6 +95,12 @@ export function TodayActionProvider({ children }: Props) {
     return saved
   }
 
+  async function regenerate() {
+    const saved = await mutate((headers) => regenerateTodayTodo({ headers }), "today.toast.regenerated")
+    if (saved) await queryClient.invalidateQueries({ queryKey: getGetTodoCompletionMetricsQueryKey() })
+    return saved
+  }
+
   const value = {
     busy,
     complete,
@@ -103,7 +110,7 @@ export function TodayActionProvider({ children }: Props) {
     restore: (itemId: string) => mutate((headers) => restoreTodayTodoSchedule(itemId, { headers }), "today.toast.restored"),
     addActionItem: (actionItemId: string) => mutate((headers) => addTodayTodoActionItem(actionItemId, { headers }), "today.toast.added"),
     reorder: (itemIds: string[]) => mutate((headers) => reorderTodayTodo({ item_ids: itemIds }, { headers })),
-    regenerate: () => mutate((headers) => regenerateTodayTodo({ headers }), "today.toast.regenerated"),
+    regenerate,
   }
 
   return <TodayActionContext.Provider value={value}>{children}</TodayActionContext.Provider>

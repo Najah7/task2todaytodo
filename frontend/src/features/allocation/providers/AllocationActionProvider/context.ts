@@ -1,7 +1,7 @@
 import { createContext } from "react"
 import type {
   RestCreateAllocationRequest,
-  RestDailySleepExceptionRequest,
+  RestDailyActiveTimeExceptionRequest,
   RestUpdateAllocationRequest,
   RestAllocationPlansRequest,
   RestAllocationPlansResponse,
@@ -9,7 +9,7 @@ import type {
   RestAllocationRulesResponse,
   RestAllocationWeekResponse,
 } from "~/api/generated/allocations"
-import type { RestUserSleepSettingsUpdateRequest } from "~/api/generated/auth"
+import type { RestUserActiveTimeSettingsUpdateRequest } from "~/api/generated/auth"
 
 export type AllocationActions = {
   busy: boolean
@@ -25,9 +25,9 @@ export type AllocationActions = {
     plans?: RestAllocationPlansResponse
     errors: { rules?: unknown; plans?: unknown }
   }>
-  setSleep: (date: string, revision: number, request: RestDailySleepExceptionRequest) => Promise<void>
-  resetSleep: (date: string, revision: number) => Promise<void>
-  saveProfileSleep: (request: RestUserSleepSettingsUpdateRequest) => Promise<void>
+  setActiveTime: (date: string, revision: number, request: RestDailyActiveTimeExceptionRequest) => Promise<void>
+  resetActiveTime: (date: string, revision: number) => Promise<void>
+  saveProfileActiveTime: (request: RestUserActiveTimeSettingsUpdateRequest) => Promise<void>
   refetch: () => Promise<void>
   week?: RestAllocationWeekResponse
 }

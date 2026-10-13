@@ -3,7 +3,7 @@ import type { RestAllocationWeekResponse } from "~/api/generated/allocations"
 import { allocationWeeks2weeklyPlanBoardProps } from "./allocationWeeks2weeklyPlanBoardProps"
 
 describe("allocationWeeks2weeklyPlanBoardProps", () => {
-  it("uses backend totals and splits overnight sleep and allocations in the user's timezone", () => {
+  it("uses backend totals and splits overnight active time and allocations in the user's timezone", () => {
     const week = allocationWeeks2weeklyPlanBoardProps([{
       week_start: "2026-10-12",
       timezone: "Asia/Tokyo",
@@ -12,7 +12,7 @@ describe("allocationWeeks2weeklyPlanBoardProps", () => {
       difference_minutes: -480,
       free_minutes: 1320,
       projects: [{ project_id: "p1", title: "Research", color_index: 1, target_minutes: 600, allocated_minutes: 120, difference_minutes: -480 }],
-      days: [12, 13, 14, 15, 16, 17, 18].map((day) => ({ date: `2026-10-${day}`, wake_at: "07:00", bedtime_at: "23:00", allocated_minutes: 120, free_minutes: 1320 })),
+      days: [12, 13, 14, 15, 16, 17, 18].map((day) => ({ date: `2026-10-${day}`, active_start_at: "2026-10-11T22:00:00Z", active_end_at: "2026-10-12T14:00:00Z", allocated_minutes: 120, free_minutes: 1320 })),
       allocations: [{
         id: "allocation-1", rule_id: "rule-1", occurrence_date: "2026-10-12",
         project_id: "p1", project_title: "Research", timezone: "Asia/Tokyo",
@@ -29,7 +29,7 @@ describe("allocationWeeks2weeklyPlanBoardProps", () => {
         start_at: "2026-10-13T14:00:00Z", end_at: "2026-10-13T15:00:00Z",
         revision: 6, rule_revision: 7, can_update: true,
       }],
-      sleep_intervals: [{ local_date: "2026-10-12", start_at: "2026-10-12T14:00:00Z", end_at: "2026-10-12T22:00:00Z" }],
+      active_intervals: [{ local_date: "2026-10-12", start_at: "2026-10-12T14:00:00Z", end_at: "2026-10-12T22:00:00Z" }],
     } satisfies RestAllocationWeekResponse])[0]!
 
     expect(week.allocatedMinutes).toBe(120)
@@ -40,7 +40,7 @@ describe("allocationWeeks2weeklyPlanBoardProps", () => {
       expect.objectContaining({ date: "2026-10-13", startMinute: 540, endMinute: 600, ruleId: "rule-moved", occurrenceDate: "2026-10-12" }),
       expect.objectContaining({ date: "2026-10-13", startMinute: 1380, endMinute: 1440, ruleId: "rule-midnight" }),
     ]))
-    expect(week.sleepIntervals).toEqual([
+    expect(week.activeIntervals).toEqual([
       { date: "2026-10-12", startMinute: 1380, endMinute: 1440 },
       { date: "2026-10-13", startMinute: 0, endMinute: 420 },
     ])

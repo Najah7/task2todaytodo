@@ -15,7 +15,6 @@ export type TodayBoardItem = {
   canMove: boolean
   canRemove: boolean
   canHide: boolean
-  removalBlockedMessage?: MessageKey
 }
 
 export type TodayBoardProps = {
@@ -36,7 +35,6 @@ export type TodayBoardProps = {
   onRemove: (itemId: string) => void
   onHideSchedule: (itemId: string) => void
   onShowHiddenSchedules: () => void
-  onRegenerate: () => void
   onOpenHelp: () => void
-  onScheduleMoveAttempt: () => void
+  onRegenerate: () => void
 }

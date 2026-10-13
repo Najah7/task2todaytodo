@@ -38,12 +38,9 @@ export default function TodayBoard(props: TodayBoardProps) {
             className={`${styles.item} ${item.history ? styles.history : ""} ${item.completed ? styles.completed : ""} ${draggedId === item.id ? styles.dragging : ""}`}
             key={item.id}
             role="listitem"
-            draggable={!props.busy && !item.completed && !item.history && (item.kind === "schedule" || item.canMove)}
+            draggable={!props.busy && !item.history && item.canMove}
             onDragStart={(event) => {
-              if (item.kind === "schedule") {
-                event.preventDefault()
-                props.onScheduleMoveAttempt()
-              } else if (!item.canMove) event.preventDefault()
+              if (!item.canMove) event.preventDefault()
               else setDraggedId(item.id)
             }}
             onDragEnd={() => setDraggedId(undefined)}
@@ -61,7 +58,6 @@ export default function TodayBoard(props: TodayBoardProps) {
             <div className={styles.titleCell}>
               <strong className="text-body-strong">{item.title}</strong>
               <span className="text-caption">{item.groupLabel}</span>
-              {item.removalBlockedMessage && <span className={`${styles.warning} text-caption`} role="note">{i18n(item.removalBlockedMessage)}</span>}
             </div>
             <span className={`${styles.duration} text-numeric`}>{item.durationLabel}</span>
             <div className={styles.rowActions}>
