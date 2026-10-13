@@ -25,7 +25,7 @@ function renderForm() {
           <LanguageSwitcher />
           <Routes>
             <Route path="/login" element={<LoginForm />} />
-            <Route path="/today" element={<h1>Today</h1>} />
+            <Route path="/inbox" element={<h1>Inbox</h1>} />
           </Routes>
           <NotificationViewport />
         </MemoryRouter>
@@ -57,7 +57,7 @@ test("field errors follow the selected language and disappear after correction",
   fireEvent.change(screen.getByLabelText("Password", { exact: true }), { target: { value: "Password1!" } })
   await waitFor(() => expect(screen.queryAllByRole("alert")).toHaveLength(0))
   fireEvent.click(screen.getByRole("button", { name: "Log in" }))
-  expect(await screen.findByRole("heading", { name: "Today" })).toBeTruthy()
+  expect(await screen.findByRole("heading", { name: "Inbox" })).toBeTruthy()
 })
 
 test("submission stays disabled during a request and recovers after a network failure", async () => {
@@ -82,6 +82,6 @@ test.each(["missing token", "storage failure"])("does not navigate after %s", as
   fireEvent.click(screen.getByRole("button", { name: "ログイン" }))
   const message = failure === "missing token" ? "ログイン情報を取得できませんでした" : "ログイン情報を保存できませんでした"
   expect(await screen.findByText(new RegExp(message))).toBeTruthy()
-  expect(screen.queryByRole("heading", { name: "Today" })).toBeNull()
+  expect(screen.queryByRole("heading", { name: "Inbox" })).toBeNull()
   expect(localStorage.getItem("personal_access_token")).toBeNull()
 })

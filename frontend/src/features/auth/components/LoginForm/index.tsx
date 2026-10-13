@@ -16,6 +16,7 @@ import { postEmailVerificationResend } from "~/api/generated/auth"
 import { Link } from "react-router"
 import { useLocation } from "react-router"
 import type { RestErrResponse } from "~/api/generated/auth"
+import { DEFAULT_TAB } from "~/store/tab"
 
 export default function LoginForm() {
   const i18n = useI18n()
@@ -37,7 +38,7 @@ export default function LoginForm() {
     setResendComplete(false)
     try {
       const hasInvitationToken = new URLSearchParams(location.hash.slice(1)).has("token")
-      const destination = hasInvitationToken ? `/invitations${location.search}${location.hash}` : "/today"
+      const destination = hasInvitationToken ? `/invitations${location.search}${location.hash}` : `/${DEFAULT_TAB}`
       await logIn(data, destination)
     } catch (cause) {
       if (cause instanceof ApiError) {

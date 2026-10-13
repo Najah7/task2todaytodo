@@ -26,7 +26,7 @@ function renderForm() {
         <MemoryRouter initialEntries={["/signup"]}>
           <Routes>
             <Route path="/signup" element={<SignupForm />} />
-            <Route path="/today" element={<h1>Today</h1>} />
+            <Route path="/inbox" element={<h1>Inbox</h1>} />
           </Routes>
           <NotificationViewport />
         </MemoryRouter>

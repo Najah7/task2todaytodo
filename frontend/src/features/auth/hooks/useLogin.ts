@@ -3,13 +3,14 @@ import { useNavigate } from "react-router"
 import { usePostLogin, type RestLoginRequest } from "~/api/generated/auth"
 import { savePersonalAccessToken } from "~/features/auth/lib/localStorage"
 import { SessionError } from "~/features/auth/errors"
+import { DEFAULT_TAB } from "~/store/tab"
 
 export function useLogin() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const mutation = usePostLogin({ mutation: { retry: false, gcTime: 0 } })
 
-  async function logIn(data: RestLoginRequest, destination = "/today") {
+  async function logIn(data: RestLoginRequest, destination = `/${DEFAULT_TAB}`) {
     const response = await mutation.mutateAsync({ data })
     if (typeof response?.personal_access_token !== "string" || !response.personal_access_token.trim()) {
       throw new SessionError("auth.error.tokenMissing")

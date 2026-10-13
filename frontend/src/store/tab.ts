@@ -2,4 +2,4 @@ export const tabs = ["today", "inbox", "projects", "tasks", "schedules", "weekly
 
 export type Tab = (typeof tabs)[number]
 
-export const DEFAULT_TAB: Tab = "today"
+export const DEFAULT_TAB: Tab = "inbox"

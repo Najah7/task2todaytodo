@@ -48,7 +48,7 @@ export async function fillCredentials(page: Page, credentials: ReturnType<typeof
 }
 
 export async function expectAuthenticated(page: Page, email: string) {
-  await expect(page).toHaveURL("/today")
+  await expect(page).toHaveURL("/inbox")
   const token = await page.evaluate(() => localStorage.getItem("personal_access_token"))
   expect(token).toBeTruthy()
   const response = await page.request.get("/api/users/me", { headers: { Authorization: `Bearer ${token}` } })

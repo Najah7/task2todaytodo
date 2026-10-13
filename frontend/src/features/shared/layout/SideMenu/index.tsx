@@ -13,15 +13,18 @@ const SideMenu = ({ inboxCount = 0 }: Props) => {
     <aside className={styles.sidebar}>
       <nav className={styles.navigation} aria-label={i18n("common.navigation")}>
         <div className={styles.group}>
-          <SideMenuItem tab="today" inboxCount={inboxCount} />
           <SideMenuItem tab="inbox" inboxCount={inboxCount} />
+          <SideMenuItem tab="weekly-plan" />
+          <SideMenuItem tab="today" inboxCount={inboxCount} />
         </div>
         <div className={styles.group} role="group" aria-labelledby="manage-label">
           <p className={`${styles.groupLabel} text-caption`} id="manage-label">{i18n("sidebar.group.manage")}</p>
           <SideMenuItem tab="projects" inboxCount={inboxCount} />
           <SideMenuItem tab="tasks" />
           <SideMenuItem tab="schedules" inboxCount={inboxCount} />
-          <SideMenuItem tab="weekly-plan" />
+        </div>
+        <div className={styles.group} role="group" aria-labelledby="team-label">
+          <p className={`${styles.groupLabel} text-caption`} id="team-label">{i18n("sidebar.group.team")}</p>
           <SideMenuItem tab="members" />
         </div>
         <div className={styles.group} role="group" aria-labelledby="analysis-label">

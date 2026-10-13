@@ -25,7 +25,7 @@ test("password reset link is inert until explicit POST, then new password logs i
   await page.goto("/login")
   await fillCredentials(page, credentials)
   await page.getByRole("button", { name: "ログイン", exact: true }).click()
-  await expect(page).toHaveURL("/today")
+  await expect(page).toHaveURL("/inbox")
   const oldPersonalAccessToken = await page.evaluate(() => localStorage.getItem("personal_access_token"))
   expect(oldPersonalAccessToken).toBeTruthy()
   if (!oldPersonalAccessToken) throw new Error("Login did not persist a personal access token.")
@@ -67,7 +67,7 @@ test("password reset link is inert until explicit POST, then new password logs i
   await page.goto("/login")
   await fillCredentials(page, { ...credentials, password: nextPassword })
   await page.getByRole("button", { name: "ログイン", exact: true }).click()
-  await expect(page).toHaveURL("/today")
+  await expect(page).toHaveURL("/inbox")
 })
 
 test("same-route fragment changes use the latest token; wrong confirmation password stays on page", async ({ page }) => {

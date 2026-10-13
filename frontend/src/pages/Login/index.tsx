@@ -6,6 +6,7 @@ import Wordmark from "~/features/shared/components/Wordmark"
 import controls from "~/styles/controls.module.css"
 import styles from "./index.module.css"
 import { useI18n } from "~/features/i18n/hooks"
+import { DEFAULT_TAB } from "~/store/tab"
 
 export default function LoginPage() {
   const i18n = useI18n()
@@ -13,7 +14,7 @@ export default function LoginPage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <Link className={`${styles.brand} ${controls.focusRing}`} to="/today">
+        <Link className={`${styles.brand} ${controls.focusRing}`} to={`/${DEFAULT_TAB}`}>
           <Wordmark className={styles.wordmark} width={200} height={25} />
         </Link>
         <div className={styles.preferences}>
@@ -29,7 +30,7 @@ export default function LoginPage() {
             {i18n("auth.login.signup")}
           </Link>
         </aside>
-        <Link className={`${styles.backLink} ${controls.focusRing} text-caption`} to="/today">{i18n("common.backToToday")}</Link>
+        <Link className={`${styles.backLink} ${controls.focusRing} text-caption`} to={`/${DEFAULT_TAB}`}>{i18n("common.backToInbox")}</Link>
       </div>
     </main>
   )

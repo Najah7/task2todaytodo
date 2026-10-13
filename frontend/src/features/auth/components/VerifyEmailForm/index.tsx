@@ -13,6 +13,7 @@ import { useI18n, type MessageKey } from "~/features/i18n/hooks"
 import { verifyEmailSchema, type VerifyEmailFormValues } from "./schema"
 import controls from "~/styles/controls.module.css"
 import styles from "./index.module.css"
+import { DEFAULT_TAB } from "~/store/tab"
 
 export default function VerifyEmailForm() {
   const i18n = useI18n()
@@ -35,7 +36,7 @@ export default function VerifyEmailForm() {
         savePersonalAccessToken(result.personal_access_token)
         await queryClient.cancelQueries()
         queryClient.clear()
-        navigate("/today", { replace: true })
+        navigate(`/${DEFAULT_TAB}`, { replace: true })
       } else {
         navigate("/login?verified=1", { replace: true })
       }
