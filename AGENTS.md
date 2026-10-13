@@ -1,36 +1,43 @@
 # Task2TodayToDo
 
-## Product
+## Overview
 
-The primary value is generating today's doable workload list from managed ActionItems, eligible direct Tasks, and Schedules. Managing Tasks and Schedules together in one platform is the supporting value.
+Task2TodayToDo is a productivity SaaS that turns managed work and fixed commitments into a doable Todo for today. Its main value is helping people spend less effort planning and more time doing. The product serves individuals first; shared Projects support small-team use.
 
-Reduce the burden of maintaining long-term plans so users can focus on today's work. Automatically generate a Todo when first created for a user-local day, selecting whole ActionItems and existing direct childless Tasks using positive active time, project allocations, fixed Schedules, the gap policy, and priority multiplied by urgency. Project work fits only in its own allocation; projectless work fits active-time gaps outside every project allocation. An allocation must fit wholly inside active time. Do not split work or create virtual Projects. Keep Schedule times fixed and visible. After initial generation, users can add or remove work and change display order; no automatic regeneration or repair occurs. Internal work timestamps stay hidden and unchanged by display reorder or Schedule edits.
+## Problem
 
-Users may explicitly regenerate today's Todo with its current revision. Regeneration is destructive: it replaces every saved row, including completed, manual, hidden, and reordered rows, with a fresh plan from current sources. It preserves completion and actual minutes on source records, keeps the Todo identity, and advances its revision. Stale revisions must leave the Todo unchanged. Source changes never trigger automatic regeneration.
+Recording tasks does not answer what to do today. People still have to judge priorities, find time around meetings, fit work into available hours, divide time among Projects, and revise plans when circumstances change. Repeating that planning work creates cognitive load without moving the work forward.
 
-When a Schedule is created, its start time changes, or it is restored, insert it before the item with the nearest internal `scheduled_start` greater than or equal to the Schedule start, using that item's current display position as anchor; append if no such item exists. Preserve other items' relative order. `position` is the persisted display order.
+## Solution
 
-## Domain
+Manage Projects, Tasks, ActionItems, and Schedules together. The backend uses that source data, active time, Project allocations, fixed commitments, priority, and urgency to generate each user's daily Todo. Users can then adjust the list for the day. Keep planning rules and persisted state in the backend; clients own presentation and interaction. Maintain one source of truth for business rules, API contracts, and design values.
 
-- Project: Groups Tasks and Schedules. Tasks and Schedules may also exist without a Project.
-- Task: Groups ActionItems.
-- ActionItem: One-off work without a fixed start and end time.
-- Schedule: Work with a fixed start and end time; one-off or recurring.
-- Todo: The daily doable workload list, initially generated once for a user-local day and combining eligible work and fixed Schedules. Users can then add/remove work and reorder its display.
-- Active time: Positive user-local work intervals defined by `active_start_time` and `active_end_time`, with per-day `daily_active_time_exceptions` (`active_start_local`, `active_end_local`, timezone, and revision). Project allocation intervals must fit wholly inside active time.
+## Features
 
-## Principles
+- **Work and time:** Projects group Tasks and Schedules; Tasks group ActionItems. Tasks and Schedules can also exist without a Project. Schedules have fixed times and can recur. Users define active time and Project allocation windows.
+- **Today's Todo:** Generate a plan once for each user-local day, selecting whole eligible ActionItems and direct childless Tasks that fit around fixed Schedules. Project work fits its allocation; work without a Project uses gaps outside Project allocations. After generation, users can add or remove work, reorder display, and complete items. Source changes do not automatically regenerate the plan. Explicit regeneration replaces the saved daily rows using the current revision. See the [Todo guide](backend/internal/application/todo/AGENTS.md) for the exact placement, revision, and Schedule synchronization rules.
+- **Collaboration and insight:** Project membership, invitations, assignment, a weekly allocation view, an Inbox, and Todo completion and overdue-work metrics are present in the codebase.
+- **Billing:** Free, Pro, and Team plan states are present. Pro and Team are monthly, per-user subscriptions managed through Stripe. Configured Stripe Prices determine current charges. Feature limits and plan entitlements are not implemented by the billing flow; figures and limits in business notes are hypotheses rather than current product rules.
+- **Future direction:** Google Calendar integration, MCP support, and mobile access are planned, not current features.
 
-- Centralize business rules in the backend. Clients own presentation and interaction.
-- Preserve a single source of truth across the system for business rules, data, API contracts, and design values.
-- Give each file one clear responsibility. Keep related functions and types together when they serve that responsibility; split files that handle distinct concerns.
-- Build concrete solutions first. Extract abstractions from demonstrated needs; abstract upfront only with a clear, stable requirement.
-- Maintain AGENTS.md as well since it's part of the source of truth for the system.
+## Backend Map
 
-## Future direction
+Read [backend/AGENTS.md](backend/AGENTS.md) first, then guides for changed areas. Links do not load guides automatically.
 
-Planned: Google Calendar integration, MCP support, and a mobile app.
+- [application/AGENTS.md](backend/internal/application/AGENTS.md): context boundaries, operation-specific use cases, repositories, and transactions. Then read the relevant context guide, such as [Todo](backend/internal/application/todo/AGENTS.md) or [Billing](backend/internal/application/billing/AGENTS.md).
+- [db/AGENTS.md](backend/db/AGENTS.md): migrations, SQL sources, and generated sqlc code.
+- [port/rest/AGENTS.md](backend/internal/port/rest/AGENTS.md): HTTP handlers and errors. `backend/cmd/api/` owns routes and wiring.
+- [settings/AGENTS.md](backend/internal/settings/AGENTS.md) and [telemetry/AGENTS.md](backend/internal/telemetry/AGENTS.md): runtime configuration and observability.
 
-## Local guidance
+Keep affected guides current. Give each file one responsibility; extract abstractions from concrete needs.
 
-Before working in backend or frontend, read its guide: [backend/AGENTS.md](backend/AGENTS.md) or [frontend/AGENTS.md](frontend/AGENTS.md). Local guides and READMEs define implementation conventions and commands. Relevant specifications define detailed behavior.
+## Frontend Map
+
+Read [frontend/AGENTS.md](frontend/AGENTS.md), then [src/features/AGENTS.md](frontend/src/features/AGENTS.md) and the changed feature's guide. Links do not load guides automatically.
+
+- `frontend/src/pages/` composes screens; `frontend/src/router.tsx` declares routes.
+- `frontend/src/features/` owns feature UI and interactions; its guide links to feature guides.
+- `frontend/src/api/generated/` comes from backend OpenAPI; do not hand-edit. `frontend/src/styles/` owns design values.
+- `frontend/e2e/` tests journeys against the real backend.
+
+Keep affected feature guides current.

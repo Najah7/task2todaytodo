@@ -2,57 +2,37 @@
 
 [English](README.md)
 
-***明日のために生きるな、今日を全力で生きよう。***
+Task2TodayToDo は、タスクと時間の決まった予定から、今日実行できる計画を作るアプリです。作業可能時間、Project ごとの時間配分、優先度を考慮し、会議の合間に何をするか考える負担を減らします。生成した Todo は手動で調整でき、元のタスクを変更しても自動で作り直しません。
 
-task2todaytodo は、プロジェクト、タスク、ActionItem、独立したスケジュールを管理し、今日実行できる作業リストを生成します。
+## ローカルで動かす
 
-週単位や月単位で仕事を計画することは、始めるのは簡単でも、維持し続けるのは難しいものです。割り込みによって計画はずれ込み、長期的なカレンダーを手作業で修正し続けることはすぐに大きな負担になります。task2todaytodo は、プロジェクト、タスク、ActionItem、スケジュールを構造化された情報源として管理し、ユーザーのローカル日付ごとに Todo を一度生成することで、その負担を避けます。
+Docker と Compose、Node.js、pnpm 10.5.2 が必要です。リポジトリのルートから、ターミナルを2つ使います。
 
-生成された Todo は、固定スケジュールと作業可能時間に合わせて実行可能な作業を選び、プロジェクトの時間割り当てと優先度を考慮します。生成後、ユーザーは作業の追加・削除と表示順の変更ができます。また、現在のリビジョンを指定して今日の Todo を明示的に再生成できます。再生成すると今日の行と手動で変更した表示内容はすべて置き換わりますが、作業元の完了状態と実績時間は保持されます。
-
-# 価値
-
-- タスク管理: Task とその ActionItem を管理します。繰り返し作業と単発作業に対応します。
-- スケジュール管理: Project に属する、または個人で管理する固定時間の Schedule を管理します。将来的に Google Calendar などと同期できます。
-- 今日の Todo 生成: 実行可能な作業、作業可能時間、プロジェクトの時間割り当て、固定スケジュールをもとに、ユーザーのローカル日付ごとに一度、今日の作業リストを生成します。生成後は内容と表示順を調整できます。
-
-## バックエンドのクイックスタート
-
-前提条件: Docker、Go、Air。
+**ターミナル1 — バックエンド**
 
 ```bash
 cd backend
-cp .env.example .env # 初回セットアップ時のみ
-openssl rand -base64 32 # 出力を backend/.env の PAGE_TOKEN_KEY に設定
-make env-up
-make migrate-up
-air
+test -f .env || cp .env.example .env
 ```
 
-API ドキュメント: <http://localhost:8080/swagger/index.html>
-
-`PAGE_TOKEN_KEY` は API インスタンス間で同じ値を使い、変更すると有効期限内（最大24時間）のページトークンは使えなくなります。
-
-便利なバックエンドコマンドの確認:
+`PAGE_TOKEN_KEY` がサンプル値のままなら、`openssl rand -base64 32` の出力で `backend/.env` の値を置き換えます。次に PostgreSQL とローカルのメール受信箱を起動します。DB が healthy になったらマイグレーションと API を起動します。
 
 ```bash
-make help        # ヘルプを表示
+make env-up
+until [ "$(docker inspect --format '{{.State.Health.Status}}' task2todaytodo-db)" = healthy ]; do sleep 1; done
+make migrate-up
+make dev
 ```
 
-### ログとトレース
-
-概要と実装・設定ガイドへのリンクは、
-[バックエンドのログとトレースの概要](backend/README.ja.md#ログとトレース)を参照してください。
-
-## フロントエンドのクイックスタート
-
-前提条件: Node.js、pnpm 10.5.2。リポジトリルートから、別のターミナルで、上記の手順でバックエンドを起動した後にフロントエンドを起動します。Vite は既定で `/api` を `http://127.0.0.1:8080` に転送します。
+**ターミナル2 — フロントエンド**
 
 ```bash
 cd frontend
+test -f .env || cp .env.example .env
 pnpm install --frozen-lockfile
-cp .env.example .env # 初回セットアップ時のみ
 pnpm dev
 ```
 
-<http://localhost:5173> を開きます。バックエンドの接続先が異なる場合は `frontend/.env` の `API_PROXY_TARGET` を設定してください。コマンドや詳細は[フロントエンド README](frontend/README.md)を参照してください。
+<http://localhost:5173> で新規登録し、<http://localhost:8025> で確認メールを開きます。認証・ログイン後、Task や Schedule を作成し、**Today** で生成された計画を確認できます。
+
+ローカル利用に Stripe 課金設定は不要です。`backend/.env` の Stripe 項目が空でもアプリは動きます。課金機能には Sandbox の認証情報と Webhook 転送が必要です。
