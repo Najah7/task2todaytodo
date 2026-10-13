@@ -1,11 +1,150 @@
 ---
-import Welcome from '../components/Welcome.astro';
+import FaqItem from '../components/FaqItem.astro';
+import Brand from '../components/Brand.astro';
+import EditorialItem from '../components/EditorialItem.astro';
+import PlanCard from '../components/PlanCard.astro';
+import StepItem from '../components/StepItem.astro';
 import Layout from '../layouts/Layout.astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const problems = [
+	{ number: '01', title: '予定は、そのまま。', description: '会議や約束を固定したまま、使える時間に合わせて今日の仕事を選びます。' },
+	{ number: '02', title: '今日に、詰め込みすぎない。', description: '見積もり時間が入らない仕事は分割せず、今日のリストから外しておきます。' },
+	{ number: '03', title: '最後は、自分で決められる。', description: '生成したリストは追加、削除、並べ替え、完了ができます。日々の変化にも自分の判断で対応できます。' },
+];
+
+const steps = [
+	{ number: '01', title: 'やることと予定を登録', description: '仕事に優先度、締切、見積もり時間を設定し、働ける時間を登録。会議などは固定予定として登録します。', note: '最初に一度、必要に応じて更新' },
+	{ number: '02', title: '今日のTodoをつくる', description: '今日を初めて開くと、空き時間に収まる仕事を選んでリストにします。', note: '今日の最初の表示で生成' },
+	{ number: '03', title: 'リストを整えて、取りかかる', description: '必要なら順番を変えたり、仕事を加えたり。終わったらチェックします。', note: 'その日のTodoを自分で調整' },
+];
+
+const plans = [
+	{
+		name: 'Free', price: '0', priceNote: '円', description: 'まずは日々の仕事を、今日のTodoに。', action: '無料で始める', actionStyle: 'primary',
+		features: ['今日のTodo自動生成と手動調整', '未完了のプロジェクトは3件まで', '作業項目はプロジェクトごとに100件まで', 'プロジェクトなしの作業項目も100件まで'],
+	},
+	{
+		name: 'Pro', label: '個人の計画を広げる', price: '1,485', priceNote: '円（税込） / 月', description: 'プロジェクトごとの時間配分と振り返りに。', action: 'Freeから始める', actionStyle: 'secondary', featured: true,
+		features: ['Freeのすべての機能', '個人プロジェクトと作業項目の件数上限なし', 'プロジェクトの時間配分計画', '完了状況と期限超過の分析'],
+	},
+	{
+		name: 'Team', price: '2,475', priceNote: '円（税込） / 月・ユーザー', description: 'プロジェクトを小さなチームで共有。', action: 'Freeから始める', actionStyle: 'secondary',
+		features: ['Proのすべての機能', 'プロジェクトへのメンバー招待と共同作業', '共同編集する人は各自Team契約が必要', '閲覧だけならFreeで参加可能'],
+	},
+];
+
+const faqs = [
+	{ question: 'どんな人に向いていますか？', answer: '会議や締切のある仕事をいくつも抱え、「今日は何から始めよう」と迷う人に。タスクの整理だけでなく、今日取り組む仕事を決める負担を減らしたい方に向いています。' },
+	{ question: '普通のTodoリストと何が違いますか？', answer: 'タスクの管理に加えて、予定を踏まえた「今日の仕事」まで自動で選べます。長いリストを眺めて悩む時間を減らし、目の前の仕事に集中できます。' },
+	{ question: '無料でも、毎日の仕事に使えますか？', answer: 'はい。タスクと予定の管理、今日のTodoの自動生成、自分に合わせた調整をFreeで使えます。まずは毎日の計画づくりで、使い心地を試してください。' },
+	{ question: '決められた計画どおりに動く必要がありますか？', answer: 'いいえ。今日のTodoは、自分の判断で調整できます。その日の状況や優先したいことに合わせて、納得できる進め方を選べます。' },
+	{ question: 'Proは、どんなときに選べばいいですか？', answer: '複数のプロジェクトに時間を確保したいときや、日々の実行状況を振り返りたいときに。管理する仕事の量も広げながら、自分に合う進め方を見直せます。' },
+	{ question: 'ひとりでも、チームでも使えますか？', answer: 'はい。個人ではFree・Proから始められます。Teamではプロジェクトを共有し、メンバーと一緒に仕事を進められます。' },
+];
 ---
 
 <Layout>
-	<Welcome />
+	<a class="skip" href="#main">本文へスキップ</a>
+	<div class="nav-shell">
+		<nav class="island" aria-label="メインメニュー">
+			<Brand />
+			<ul class="nav-links">
+				<li><a href="#features">できること</a></li><li><a href="#how">使い方</a></li><li><a href="#pricing">料金</a></li><li><a href="#faq">FAQ</a></li>
+			</ul>
+			<a class="button button-small" href="#start">無料で始める</a>
+			<button class="menu-toggle" id="menuToggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="menuOverlay"><span></span><span></span></button>
+		</nav>
+	</div>
+	<nav class="menu-overlay" id="menuOverlay" aria-label="メニュー" aria-hidden="true" inert>
+		<a href="#features">できること</a><a href="#how">使い方</a><a href="#pricing">料金</a><a href="#faq">FAQ</a>
+		<a class="button" href="#start">無料で始める</a>
+	</nav>
+
+	<main id="main">
+		<section class="hero" id="top" aria-labelledby="hero-title">
+			<div class="wrap hero-grid">
+				<div class="hero-copy">
+					<span class="kicker">予定のある毎日に、ちょうどいいTodo</span>
+					<h1 id="hero-title"><span>今日の計画は、</span><span>もう考えなくていい。</span></h1>
+					<p>タスクと予定から、今日のTodoを自動生成。会議の合間に取り組める量を選んで、あとは目の前の仕事へ。</p>
+					<div class="hero-action">
+						<a class="button" href="#start">無料で始める <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6" /></svg></a>
+						<p class="hero-note"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg><span>Todo自動生成はFreeで利用できます。カード登録不要。</span></p>
+					</div>
+				</div>
+				<div class="demo-wrap">
+					<aside class="paper-note" aria-hidden="true"><strong>あとでやること</strong><span>企画書の見直し</span><span>請求書を送る</span><span>資料を読む</span></aside>
+					<section class="demo" aria-labelledby="demo-title">
+						<div class="demo-top"><div class="demo-heading"><strong id="demo-title">今日の一枚</strong><span>ある日のTodo</span></div><span class="plan-label">今日の計画</span></div>
+						<p class="demo-caption">登録した仕事から、今日に収まる3件を選んだ例。</p>
+						<ul class="todo-list" id="todoList">
+							<li><label class="todo-row"><input type="checkbox" data-minutes="45" aria-label="「企画書の構成を整える」を完了にする" /><span class="todo-main"><span class="todo-title">企画書の構成を整える</span><span class="todo-meta"><span>秋のキャンペーン</span><span>企画</span></span></span><span class="todo-duration">45分</span></label></li>
+							<li><label class="todo-row"><input type="checkbox" data-minutes="45" aria-label="「問い合わせの返信を書く」を完了にする" /><span class="todo-main"><span class="todo-title">問い合わせの返信を書く</span><span class="todo-meta"><span>カスタマー対応</span><span>メール</span></span></span><span class="todo-duration">45分</span></label></li>
+							<li><label class="todo-row"><input type="checkbox" data-minutes="30" aria-label="「週次メモをまとめる」を完了にする" /><span class="todo-main"><span class="todo-title">週次メモをまとめる</span><span class="todo-meta"><span>チーム運営</span><span>記録</span></span></span><span class="todo-duration">30分</span></label></li>
+							<li class="schedule-row"><span class="schedule-time">10:00–10:30</span><strong>プロジェクト定例</strong><span class="schedule-tag">固定の予定</span></li>
+						</ul>
+						<div class="demo-bottom"><p class="demo-status" id="demoStatus" aria-live="polite">今日の作業 3件・2時間</p><button class="reset" id="resetDemo" type="button" hidden>デモをリセット</button></div>
+					</section>
+				</div>
+			</div>
+		</section>
+
+		<section class="section section-white" id="features" aria-labelledby="features-title">
+			<div class="wrap editorial">
+				<header class="section-head reveal"><span class="eyebrow">できること</span><h2 id="features-title">やることはある。<br />今日の段取りが、<br />決まらない。</h2><p>タスクを並べたあとに残る、優先順位と時間のやりくり。毎朝くり返す段取りを、Todoづくりから軽くします。</p></header>
+				<ol class="editorial-list reveal">
+					{problems.map((problem) => <EditorialItem {...problem} />)}
+				</ol>
+			</div>
+		</section>
+
+		<section class="tagline section" aria-label="Task2TodayToDoの約束">
+			<div class="wrap"><p id="tagline"><span class="sr-only">計画の時間を、実行の時間に。</span><span class="line" aria-hidden="true">計画の時間を、</span><span class="line" aria-hidden="true">実行の時間に。</span></p></div>
+		</section>
+
+		<section class="section section-white" id="how" aria-labelledby="how-title">
+			<div class="wrap">
+				<header class="section-head reveal"><span class="eyebrow">使い方</span><h2 id="how-title">最初に整えたら、今日のリストから始める。</h2><p>タスクや予定を登録したら、今日のTodoを開くだけ。働ける時間と締切、重要度をもとに、その日の計画をつくります。</p></header>
+				<ol class="steps">
+					{steps.map((step) => <StepItem {...step} />)}
+				</ol>
+			</div>
+		</section>
+
+		<section class="section" id="pricing" aria-labelledby="pricing-title">
+			<div class="wrap">
+				<div class="pricing-intro">
+					<header class="section-head reveal"><span class="eyebrow">料金</span><h2 id="pricing-title">今日のTodoは、Freeから。</h2><p>個人の毎日の計画づくりは無料。プロジェクトの時間配分や実績の確認が必要になったら、有料プランを選べます。</p></header>
+					<p class="reveal">すべて月額、ユーザーごとの料金です。登録にカードは必要ありません。</p>
+				</div>
+				<div class="plans">
+					{plans.map((plan) => <PlanCard {...plan} />)}
+				</div>
+				<div class="pricing-note"><span><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>FreeのTodo自動生成にカード登録は不要</span><span><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>有料プランは月ごとの契約</span></div>
+				<p class="pricing-note">共同編集するオーナーとメンバーは、それぞれTeam契約が必要です。閲覧だけならFreeで参加できます。</p>
+			</div>
+		</section>
+
+		<section class="section section-white" id="faq" aria-labelledby="faq-title">
+			<div class="wrap">
+				<header class="section-head reveal"><span class="eyebrow">FAQ</span><h2 id="faq-title">はじめる前に、気になること。</h2></header>
+				<div class="faq">
+					{faqs.map((faq) => <FaqItem {...faq} />)}
+				</div>
+			</div>
+		</section>
+
+		<section class="final" id="start" aria-labelledby="final-title">
+			<div class="wrap final-inner">
+				<div><h2 id="final-title">今日から、実行に集中しよう。</h2><p>やることと予定を登録したら、今日のTodoへ。計画を考える時間を、目の前の仕事に使おう。</p></div>
+				<div class="final-action"><button class="button" type="button" disabled aria-describedby="signup-note">無料で始める</button><small id="signup-note">登録ページは公開準備中です。</small></div>
+			</div>
+		</section>
+	</main>
+	<footer>
+		<div class="wrap footer-inner">
+			<Brand variant="inverse" />
+			<nav class="footer-links" aria-label="フッター"><span class="soon">利用規約（準備中）</span><span class="soon">プライバシーポリシー（準備中）</span><a href="#top">ページの先頭へ</a></nav>
+		</div>
+	</footer>
 </Layout>

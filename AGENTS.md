@@ -40,5 +40,6 @@ Read [frontend/AGENTS.md](frontend/AGENTS.md), then [src/features/AGENTS.md](fro
 - `frontend/src/features/` owns feature UI and interactions; its guide links to feature guides.
 - `frontend/src/api/generated/` comes from backend OpenAPI; do not hand-edit. `frontend/src/styles/` owns design values.
 - `frontend/e2e/` tests journeys against the real backend.
+- `landing/` is an independent Astro landing page, separate from the React app; read [landing/AGENTS.md](landing/AGENTS.md) before changing it.
 
 Keep affected feature guides current.

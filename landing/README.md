@@ -1,46 +1,22 @@
-# Astro Starter Kit: Basics
+# Task2TodayToDo landing page
+
+Astro project for the Task2TodayToDo Japanese landing page. The page is a static mock; signup is not connected yet.
+
+## Development
+
+Run commands from this directory.
 
 ```sh
-npm create astro@latest -- --template basics
+npm install
+npx astro dev --background
+npm run build
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Manage the background dev server with `npx astro dev status`, `npx astro dev logs`, and `npx astro dev stop`.
 
-## 🚀 Project Structure
+## Structure
 
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src
-│   ├── assets
-│   │   └── astro.svg
-│   ├── components
-│   │   └── Welcome.astro
-│   ├── layouts
-│   │   └── Layout.astro
-│   └── pages
-│       └── index.astro
-└── package.json
-```
-
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+- `src/pages/index.astro` composes page sections and content.
+- `src/components/` contains reusable repeated page items and cards.
+- `src/layouts/Layout.astro` owns document metadata and client-side interactions.
+- `src/styles/global.css` holds the landing page styles.

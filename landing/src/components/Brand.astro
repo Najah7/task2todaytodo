@@ -1,0 +1,35 @@
+---
+import serviceName from '../../../frontend/src/assets/service_name.webp';
+
+interface Props {
+  href?: string;
+  variant?: 'default' | 'inverse';
+}
+
+const { href = '#top', variant = 'default' } = Astro.props;
+---
+
+<a class="brand" href={href} aria-label="Task2TodayToDo トップへ">
+	{variant === 'inverse' ? (
+		<svg class="brand-wordmark" viewBox="0 0 1568 195" role="presentation" aria-hidden="true" focusable="false">
+			<defs>
+				<filter id="brand-ink-filter" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+					<feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -1.095 0 0 0 1.095" />
+				</filter>
+				<filter id="brand-accent-filter" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+					<feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.138 0 -1.138 0 0" />
+				</filter>
+				<mask id="brand-ink-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1568" height="195" style="mask-type: alpha">
+					<image href={serviceName.src} width="1568" height="195" filter="url(#brand-ink-filter)" />
+				</mask>
+				<mask id="brand-accent-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1568" height="195" style="mask-type: alpha">
+					<image href={serviceName.src} width="1568" height="195" filter="url(#brand-accent-filter)" />
+				</mask>
+			</defs>
+			<rect width="1568" height="195" class="brand-wordmark-ink" mask="url(#brand-ink-mask)" />
+			<rect width="1568" height="195" class="brand-wordmark-accent" mask="url(#brand-accent-mask)" />
+		</svg>
+	) : (
+		<img class="brand-wordmark" src={serviceName.src} width="1568" height="195" alt="" />
+	)}
+</a>

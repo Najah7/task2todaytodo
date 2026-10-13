@@ -1,0 +1,35 @@
+---
+interface Props {
+  name: string;
+  label?: string;
+  price: string;
+  priceNote: string;
+  description: string;
+  features: string[];
+  action: string;
+  actionStyle: 'primary' | 'secondary';
+  featured?: boolean;
+}
+
+const { name, label, price, priceNote, description, features, action, actionStyle, featured = false } = Astro.props;
+---
+
+<article class:list={['plan', 'reveal', { featured }]}>
+	<div class="plan-header">
+		<h3 class="plan-name">{name}</h3>
+		{label && <span class="plan-label">{label}</span>}
+	</div>
+	<div class="plan-price-wrap"><p class="price">{price}<small>{priceNote}</small></p></div>
+	<p class="plan-desc">{description}</p>
+	<ul>
+		{features.map((feature) => (
+			<li>
+				<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+				{feature}
+			</li>
+		))}
+	</ul>
+	{actionStyle === 'primary'
+		? <a class="button" href="#start">{action}</a>
+		: <a class="plain-link" href="#start">{action}</a>}
+</article>
