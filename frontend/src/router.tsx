@@ -26,6 +26,7 @@ import MembersPage from "~/pages/Members"
 import MembersRoleHelpPage from "~/pages/MembersRoleHelp"
 import InvitationAcceptancePage from "~/pages/InvitationAcceptance"
 import MetricsPage from "~/pages/Metrics"
+import BillingPage from "~/pages/Billing"
 
 function requireAuthentication() {
   if (!getPersonalAccessToken()?.trim()) return replace("/login")
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
       { path: "/members", element: <App><MembersPage /></App> },
       { path: "/members/roles", element: <App><MembersRoleHelpPage /></App> },
       { path: "/metrics", element: <App><MetricsPage /></App> },
+      { path: "/billing", element: <App><BillingPage /></App> },
       { path: "/profile", element: <App><ProfileActiveTimeSettings /></App> },
       { path: "*", element: <App><PageHeading messageKey="page.notFound.title" /></App> },
     ],

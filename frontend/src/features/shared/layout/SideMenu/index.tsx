@@ -32,6 +32,7 @@ const SideMenu = ({ inboxCount = 0 }: Props) => {
           <SideMenuItem tab="metrics" inboxCount={inboxCount} />
         </div>
         <div className={styles.profile}>
+          <SideMenuItem tab="billing" />
           <SideMenuItem tab="profile" inboxCount={inboxCount} />
         </div>
       </nav>

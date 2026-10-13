@@ -14,6 +14,7 @@ Also read the guide for the feature being changed:
 
 - [Auth](src/features/auth/AGENTS.md), [Project](src/features/project/AGENTS.md), [Task](src/features/task/AGENTS.md), [Schedule](src/features/schedule/AGENTS.md)
 - [Allocation](src/features/allocation/AGENTS.md), [Todo](src/features/todo/AGENTS.md), [Inbox](src/features/inbox/AGENTS.md), [Metrics](src/features/metrics/AGENTS.md)
+- [Billing](src/features/billing/AGENTS.md)
 - [Display](src/features/display/AGENTS.md), [i18n](src/features/i18n/AGENTS.md), [Shared](src/features/shared/AGENTS.md)
 
 Keep each routed feature guide's page paths in sync with `src/router.tsx` when routes change.

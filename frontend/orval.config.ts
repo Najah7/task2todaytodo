@@ -10,6 +10,7 @@ const inboxClientPath = fileURLToPath(new URL("./src/api/generated/inbox.ts", im
 const allocationsClientPath = fileURLToPath(new URL("./src/api/generated/allocations.ts", import.meta.url))
 const todoClientPath = fileURLToPath(new URL("./src/api/generated/todo.ts", import.meta.url))
 const metricsClientPath = fileURLToPath(new URL("./src/api/generated/metrics.ts", import.meta.url))
+const billingClientPath = fileURLToPath(new URL("./src/api/generated/billing.ts", import.meta.url))
 
 async function replaceSharedHttpImport(path: string) {
   const client = await readFile(path, "utf8")
@@ -230,6 +231,33 @@ export default defineConfig({
     hooks: {
       afterAllFilesWrite: async () => {
         await replaceSharedHttpImport(metricsClientPath)
+      },
+    },
+  },
+  billing: {
+    input: {
+      target: "../backend/docs/swagger.json",
+      filters: { tags: ["Billing"] },
+    },
+    output: {
+      baseUrl: "/api",
+      target: billingClientPath,
+      tsconfig: "./tsconfig.app.json",
+      client: "react-query",
+      httpClient: "fetch",
+      override: {
+        mutator: {
+          path: "./src/api/http.ts",
+          name: "apiFetch",
+          alias: { "~": fileURLToPath(new URL("./src", import.meta.url)) },
+        },
+        fetch: { includeHttpResponseReturnType: false, forceSuccessResponse: true },
+        query: { version: 5 },
+      },
+    },
+    hooks: {
+      afterAllFilesWrite: async () => {
+        await replaceSharedHttpImport(billingClientPath)
       },
     },
   },

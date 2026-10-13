@@ -10,6 +10,7 @@ const icons: Record<Tab, ReactNode> = {
   "weekly-plan": <><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M8 2v4m8-4v4M3 9h18M8 13h3m2 0h3m-8 4h3" /></>,
   members: <><circle cx="9" cy="7" r="4" /><path d="M2 21v-2a7 7 0 0 1 14 0v2M16 3a4 4 0 0 1 0 8m3 3a7 7 0 0 1 3 5v2" /></>,
   metrics: <path d="M3 3v18h18M7 17v-6m5 6V6m5 11V9" />,
+  billing: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18M7 15h3" /></>,
   profile: <><circle cx="12" cy="7" r="4" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" /></>,
 }
 
